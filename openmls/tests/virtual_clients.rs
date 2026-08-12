@@ -8,7 +8,7 @@ use openmls::{
             EpochId, VcDerivationEpochState, VcEmulationBindings, VC_COMPONENT_ID,
         },
         vc_operation_tree::OperationSecretTree,
-        vc_retention::{VcRetentionError, VcRetentionState},
+        vc_retention::{VcCreationTracking, VcEpochRefs, VcRetentionError, VcRetentionState},
     },
     credentials::NewSignerBundle,
     extensions::{
@@ -280,6 +280,7 @@ fn send_vc_commit<P: OpenMlsProvider>(
 /// emulation-group state, which an application must not do.
 fn send_vc_commit_at_epoch<P: OpenMlsProvider>(
     sender_group: &mut MlsGroup,
+    emulator_group: &MlsGroup,
     sender_provider: &P,
     sender_signer: &SignatureKeyPair,
     epoch_id: EpochId,
@@ -289,6 +290,7 @@ fn send_vc_commit_at_epoch<P: OpenMlsProvider>(
         .vc_emulation_at_epoch(
             sender_provider.crypto(),
             sender_provider.storage(),
+            emulator_group.group_id(),
             epoch_id,
         )
         .unwrap()
@@ -387,6 +389,7 @@ struct SiblingEmulators {
     emulator_a: MlsGroup,
     emulator_a_signer: SignatureKeyPair,
     emulator_b: MlsGroup,
+    emulator_b_signer: SignatureKeyPair,
     alice_b_main: MlsGroup,
     epoch_id: EpochId,
 }
@@ -417,7 +420,7 @@ fn join_sibling_emulator<P: OpenMlsProvider>(
         b"AliceEmulatorA",
         true,
     );
-    let (_e_commit, emulator_b, _emulator_b_signer) = add_emulator_client(
+    let (_e_commit, emulator_b, emulator_b_signer) = add_emulator_client(
         emulator_ciphersuite,
         &mut emulator_a,
         alice_a_provider,
@@ -480,6 +483,7 @@ fn join_sibling_emulator<P: OpenMlsProvider>(
             emulator_a,
             emulator_a_signer,
             emulator_b,
+            emulator_b_signer,
             alice_b_main,
             epoch_id,
         },
@@ -3707,6 +3711,10 @@ fn process_and_merge_commit<P: OpenMlsProvider>(
 /// was bound when it was sent, even after a later VC commit re-bound the
 /// group to a newer derivation epoch.
 ///
+/// Both emulator clients advance past the bound derivation epoch before the
+/// delayed message is delivered, so the binding reference is the only thing that
+/// keeps its state from being reaped.
+///
 /// Setup mirrors `vc_two_alice_clients_in_group_with_bob_and_charly`: two
 /// Alice clients share the main-group leaf and a two-member emulation group,
 /// so the emulation group can advance epochs with commits the sibling
@@ -3760,6 +3768,7 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
         mut emulator_a,
         emulator_a_signer,
         mut emulator_b,
+        emulator_b_signer,
         mut alice_b_main,
         epoch_id: epoch_id_one,
     } = sib;
@@ -3832,6 +3841,23 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
         .expect("emulation bindings present");
     assert_eq!(bindings.get(first_bound_epoch), Some(&epoch_id_one));
     assert_eq!(bindings.get(second_bound_epoch), Some(&epoch_id_two));
+
+    // ---- Both emulator clients move past the first derivation epoch, so the
+    // baseline retention window no longer covers it and nothing but the binding
+    // keeps its state on alice_b. The commit of the sibling that received the
+    // resync is what completed its creation tracking, so that reference is gone
+    // by now too. ----
+    send_emulation_commit(&mut emulator_b, &alice_b_provider, &emulator_b_signer, true);
+    assert!(
+        !retention_state(&emulator_b, &alice_b_provider).is_in_baseline_window(&epoch_id_one),
+        "both members advanced past the first derivation epoch"
+    );
+    let refs = epoch_refs(&alice_b_provider, &epoch_id_one)
+        .expect("the binding of the first bound epoch holds the derivation epoch");
+    assert_eq!(refs.bindings(), &BTreeSet::from([main_group_id.clone()]));
+    assert!(refs.pending_commits().is_empty());
+    assert!(refs.creations().is_empty());
+    assert!(epoch_state_is_stored(&alice_b_provider, &epoch_id_one));
 
     // ---- The delayed message is attributed via the first derivation
     // epoch's state. ----
@@ -5721,8 +5747,13 @@ fn vc_commit_uses_newest_derivation_epoch_after_membership_change() {
     );
 
     // The escape hatch still commits from the older epoch.
-    let delayed_commit =
-        send_vc_commit_at_epoch(&mut main_a, &provider_a, &vc_signer, old_epoch_id.clone());
+    let delayed_commit = send_vc_commit_at_epoch(
+        &mut main_a,
+        &emulator_a,
+        &provider_a,
+        &vc_signer,
+        old_epoch_id.clone(),
+    );
     let delayed_bound_epoch = main_a.epoch();
     process_and_merge_commit(&mut main_b, &provider_b, delayed_commit);
     let bindings: VcEmulationBindings = provider_b
@@ -6626,5 +6657,603 @@ fn a_removal_drops_the_removed_members_retention() {
     assert!(
         removed.is_none(),
         "a client removed from the emulation group keeps no retention state"
+    );
+}
+
+/// The reverse reference index of `epoch_id`, read straight out of storage.
+/// `None` means no higher-level group holds the epoch.
+fn epoch_refs<P: OpenMlsProvider>(provider: &P, epoch_id: &EpochId) -> Option<VcEpochRefs> {
+    provider
+        .storage()
+        .vc_epoch_refs(epoch_id)
+        .expect("read epoch references")
+}
+
+/// The creation tracking of the higher-level group `group_id`, read straight out
+/// of storage. `None` means no sibling is waited for anymore.
+fn creation_tracking<P: OpenMlsProvider>(
+    provider: &P,
+    group_id: &GroupId,
+) -> Option<VcCreationTracking> {
+    provider
+        .storage()
+        .vc_creation_tracking(group_id)
+        .expect("read creation tracking")
+}
+
+/// Build a VC-flavoured commit on `sender_group` and leave it pending, so the
+/// derivation epoch it draws on stays in use without the commit being merged.
+fn stage_vc_commit<P: OpenMlsProvider>(
+    sender_group: &mut MlsGroup,
+    emulator_group: &MlsGroup,
+    sender_provider: &P,
+    sender_signer: &SignatureKeyPair,
+) {
+    sender_group
+        .commit_builder()
+        .vc_emulation(
+            sender_provider.crypto(),
+            sender_provider.storage(),
+            emulator_group.group_id(),
+        )
+        .expect("vc emulation")
+        .load_psks(sender_provider.storage())
+        .expect("load psks")
+        .build(
+            sender_provider.rand(),
+            sender_provider.crypto(),
+            sender_signer,
+            |_| true,
+        )
+        .expect("build vc commit")
+        .stage_commit(sender_provider)
+        .expect("stage vc commit");
+}
+
+/// Advance the emulation group by one derivation epoch per member, so every
+/// older epoch leaves the baseline retention window on both clients.
+fn advance_emulation_group<P: OpenMlsProvider>(
+    emulator_a: &mut MlsGroup,
+    provider_a: &P,
+    signer_a: &SignatureKeyPair,
+    emulator_b: &mut MlsGroup,
+    provider_b: &P,
+    signer_b: &SignatureKeyPair,
+) {
+    let commit = send_emulation_commit(emulator_a, provider_a, signer_a, true);
+    process_and_merge_commit(emulator_b, provider_b, commit);
+    let commit = send_emulation_commit(emulator_b, provider_b, signer_b, true);
+    process_and_merge_commit(emulator_a, provider_a, commit);
+}
+
+/// A higher-level group founded by a virtual client while it still had a single
+/// emulator client, so its creation waits for no sibling and holds no creation
+/// reference. The sibling joins the emulation group afterwards.
+struct VcGroupWithoutCreationRefs {
+    emulator_a: MlsGroup,
+    signer_a: SignatureKeyPair,
+    emulator_b: MlsGroup,
+    signer_b: SignatureKeyPair,
+    main_a: MlsGroup,
+    vc_signer: SignatureKeyPair,
+    /// The derivation epoch the sibling's entry created, which is the newest one
+    /// and the one a commit in the higher-level group draws on.
+    epoch_id: EpochId,
+}
+
+fn vc_group_without_creation_refs<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider_a: &P,
+    provider_b: &P,
+) -> VcGroupWithoutCreationRefs {
+    let (mut emulator_a, signer_a) =
+        make_emulator_group(ciphersuite, provider_a, b"EmulatorA", true);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, provider_a, provider_b);
+    let main_a = create_vc_group(
+        ciphersuite,
+        provider_a,
+        &vc_signer,
+        vc_credential,
+        &emulator_a,
+    );
+    assert!(
+        creation_tracking(provider_a, main_a.group_id()).is_none(),
+        "a single-member virtual client waits for no sibling"
+    );
+
+    let (_commit, emulator_b, signer_b) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        provider_a,
+        &signer_a,
+        provider_b,
+        b"EmulatorB",
+    );
+    let epoch_id = newest_epoch(&emulator_a, provider_a);
+
+    VcGroupWithoutCreationRefs {
+        emulator_a,
+        signer_a,
+        emulator_b,
+        signer_b,
+        main_a,
+        vc_signer,
+        epoch_id,
+    }
+}
+
+/// A pending commit in a higher-level group holds the derivation epoch it was
+/// built from, across emulation-group commits that move the epoch out of the
+/// baseline window. The holder declares it, so the sibling keeps it too. Merging
+/// the commit releases the reference and the sibling drops the epoch with the
+/// next declaration.
+#[openmls_test]
+fn a_pending_higher_level_commit_holds_and_declares_its_derivation_epoch() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let VcGroupWithoutCreationRefs {
+        mut emulator_a,
+        signer_a,
+        mut emulator_b,
+        signer_b,
+        mut main_a,
+        vc_signer,
+        epoch_id,
+    } = vc_group_without_creation_refs(ciphersuite, &provider_a, &provider_b);
+
+    stage_vc_commit(&mut main_a, &emulator_a, &provider_a, &vc_signer);
+    assert_eq!(
+        epoch_refs(&provider_a, &epoch_id)
+            .expect("the pending commit holds the epoch")
+            .pending_commits(),
+        &BTreeSet::from([main_a.group_id().clone()])
+    );
+
+    advance_emulation_group(
+        &mut emulator_a,
+        &provider_a,
+        &signer_a,
+        &mut emulator_b,
+        &provider_b,
+        &signer_b,
+    );
+
+    let leaf_a = emulator_a.own_leaf_index();
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert!(
+            !retention_state(group, provider).is_in_baseline_window(&epoch_id),
+            "the epoch left the baseline window"
+        );
+        assert!(
+            epoch_state_is_stored(provider, &epoch_id),
+            "the pending commit holds the epoch, and the declaration carries that to the sibling"
+        );
+        assert_eq!(
+            latest_declaration(group, provider, leaf_a),
+            Some(BTreeSet::from([epoch_id.clone()]))
+        );
+    }
+
+    main_a
+        .merge_pending_commit(&provider_a)
+        .expect("merge the pending commit");
+    let refs = epoch_refs(&provider_a, &epoch_id).expect("the merged commit's binding remains");
+    assert!(
+        refs.pending_commits().is_empty(),
+        "merging releases the pending-commit reference"
+    );
+    assert_eq!(
+        refs.bindings(),
+        &BTreeSet::from([main_a.group_id().clone()]),
+        "the merged commit bound the group's new epoch to the derivation epoch"
+    );
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+    assert_eq!(
+        latest_declaration(&emulator_b, &provider_b, leaf_a),
+        Some(BTreeSet::new()),
+        "the holder stops declaring the released epoch"
+    );
+    assert!(!epoch_state_is_stored(&provider_b, &epoch_id));
+    assert!(!retained_epoch_ids(&emulator_b, &provider_b).contains(&epoch_id));
+    assert!(
+        epoch_state_is_stored(&provider_a, &epoch_id),
+        "on the holder the group's binding keeps the epoch for delayed messages"
+    );
+}
+
+/// Discarding a pending commit releases its derivation epoch just like merging
+/// it does, and the epoch goes at the next reap point on both clients.
+#[openmls_test]
+fn a_discarded_higher_level_commit_releases_its_derivation_epoch() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let VcGroupWithoutCreationRefs {
+        mut emulator_a,
+        signer_a,
+        mut emulator_b,
+        signer_b,
+        mut main_a,
+        vc_signer,
+        epoch_id,
+    } = vc_group_without_creation_refs(ciphersuite, &provider_a, &provider_b);
+
+    stage_vc_commit(&mut main_a, &emulator_a, &provider_a, &vc_signer);
+    advance_emulation_group(
+        &mut emulator_a,
+        &provider_a,
+        &signer_a,
+        &mut emulator_b,
+        &provider_b,
+        &signer_b,
+    );
+    assert!(epoch_state_is_stored(&provider_a, &epoch_id));
+
+    main_a
+        .clear_pending_commit(provider_a.storage())
+        .expect("discard the pending commit");
+    assert!(
+        epoch_refs(&provider_a, &epoch_id).is_none(),
+        "the discarded commit was the epoch's only reference"
+    );
+
+    // The reference is gone, but this client's own applied declaration still
+    // names the epoch. The next commit retires that declaration.
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert!(!epoch_state_is_stored(provider, &epoch_id));
+        assert!(!retained_epoch_ids(group, provider).contains(&epoch_id));
+    }
+}
+
+/// A leaf binding keeps its derivation epoch on the client that holds the
+/// binding, so a delayed message from the bound epoch can still be deprotected.
+/// It is not declared: the sibling is not asked to keep the epoch and drops it.
+/// Deleting the higher-level group releases the binding.
+#[openmls_test]
+fn a_leaf_binding_keeps_a_derivation_epoch_locally_without_declaring_it() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+    let epoch_id = newest_epoch(&emulator_a, &provider_a);
+    let mut main_a = create_vc_group(
+        ciphersuite,
+        &provider_a,
+        &vc_signer,
+        vc_credential,
+        &emulator_a,
+    );
+
+    // The sibling reconstructs the created group and commits in it, which
+    // completes the creator's creation tracking. It then drops its copy, so on
+    // the creator only the binding is left holding the epoch.
+    let verifiable_group_info =
+        export_verifiable_group_info(&main_a, &provider_a, &vc_signer, true);
+    let mut main_b = MlsGroup::vc_join_at_creation(
+        &provider_b,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id.clone(),
+    )
+    .expect("the sibling reconstructs the created group");
+    let commit = send_vc_commit(&mut main_b, &emulator_b, &provider_b, &vc_signer);
+    process_and_merge_commit(&mut main_a, &provider_a, commit);
+    assert!(
+        creation_tracking(&provider_a, main_a.group_id()).is_none(),
+        "the sibling's commit in the group completed the tracking"
+    );
+    main_b
+        .delete(provider_b.storage())
+        .expect("the sibling drops its copy of the group");
+    assert!(epoch_refs(&provider_b, &epoch_id).is_none());
+
+    advance_emulation_group(
+        &mut emulator_a,
+        &provider_a,
+        &signer_a,
+        &mut emulator_b,
+        &provider_b,
+        &signer_b,
+    );
+
+    assert_eq!(
+        epoch_refs(&provider_a, &epoch_id)
+            .expect("the binding holds the epoch")
+            .bindings(),
+        &BTreeSet::from([main_a.group_id().clone()])
+    );
+    assert!(epoch_state_is_stored(&provider_a, &epoch_id));
+    assert_eq!(
+        latest_declaration(&emulator_a, &provider_a, emulator_a.own_leaf_index()),
+        Some(BTreeSet::new()),
+        "a binding serves local decryption only, so it is not declared"
+    );
+    assert!(
+        !epoch_state_is_stored(&provider_b, &epoch_id),
+        "the sibling was never asked to keep the epoch"
+    );
+
+    main_a
+        .delete(provider_a.storage())
+        .expect("delete the higher-level group");
+    assert!(epoch_refs(&provider_a, &epoch_id).is_none());
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+    assert!(!epoch_state_is_stored(&provider_a, &epoch_id));
+}
+
+/// A group a virtual client creates holds the derivation epoch it drew on until
+/// every sibling was seen committing in that group. The creator declares it, so
+/// a sibling can still reconstruct the group long after the epoch left the
+/// baseline window, which is what the reference is for.
+#[openmls_test]
+fn a_created_group_holds_and_declares_its_epoch_until_every_sibling_committed() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+    let epoch_id = newest_epoch(&emulator_a, &provider_a);
+    let leaf_a = emulator_a.own_leaf_index();
+    let leaf_b = emulator_b.own_leaf_index();
+
+    let mut main_a = create_vc_group(
+        ciphersuite,
+        &provider_a,
+        &vc_signer,
+        vc_credential,
+        &emulator_a,
+    );
+    let tracking = creation_tracking(&provider_a, main_a.group_id())
+        .expect("the creation waits for the sibling");
+    assert_eq!(tracking.epoch_id(), &epoch_id);
+    assert_eq!(tracking.outstanding(), &BTreeSet::from([leaf_b]));
+    assert_eq!(
+        epoch_refs(&provider_a, &epoch_id)
+            .expect("the creation holds the epoch")
+            .creations(),
+        &BTreeSet::from([main_a.group_id().clone()])
+    );
+
+    advance_emulation_group(
+        &mut emulator_a,
+        &provider_a,
+        &signer_a,
+        &mut emulator_b,
+        &provider_b,
+        &signer_b,
+    );
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert!(
+            !retention_state(group, provider).is_in_baseline_window(&epoch_id),
+            "the epoch left the baseline window"
+        );
+        assert!(
+            epoch_state_is_stored(provider, &epoch_id),
+            "the creation holds the epoch, and the declaration carries that to the sibling"
+        );
+        assert_eq!(
+            latest_declaration(group, provider, leaf_a),
+            Some(BTreeSet::from([epoch_id.clone()]))
+        );
+    }
+
+    // The sibling reconstructs the group from the held epoch and commits in it.
+    let verifiable_group_info =
+        export_verifiable_group_info(&main_a, &provider_a, &vc_signer, true);
+    let mut main_b = MlsGroup::vc_join_at_creation(
+        &provider_b,
+        &vc_join_config(),
+        verifiable_group_info,
+        None,
+        epoch_id.clone(),
+    )
+    .expect("the sibling reconstructs the created group");
+    let commit = send_vc_commit(&mut main_b, &emulator_b, &provider_b, &vc_signer);
+    process_and_merge_commit(&mut main_a, &provider_a, commit);
+
+    assert!(
+        creation_tracking(&provider_a, main_a.group_id()).is_none(),
+        "every sibling was seen committing in the group"
+    );
+    // That commit drew on the emulation group's newest derivation epoch, so it
+    // also moved both copies of the group off the epoch they were bound to.
+    for provider in [&provider_a, &provider_b] {
+        assert!(
+            epoch_refs(provider, &epoch_id).is_none(),
+            "nothing holds the creation epoch anymore"
+        );
+    }
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert_eq!(
+            latest_declaration(group, provider, leaf_a),
+            Some(BTreeSet::new()),
+            "the released creation stops being declared"
+        );
+        assert!(!epoch_state_is_stored(provider, &epoch_id));
+        assert!(!retained_epoch_ids(group, provider).contains(&epoch_id));
+    }
+}
+
+/// Deleting a group a virtual client created releases the derivation epoch its
+/// creation held, on the creator and, through the declaration, on the sibling.
+#[openmls_test]
+fn deleting_a_created_group_releases_its_derivation_epoch() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+    let epoch_id = newest_epoch(&emulator_a, &provider_a);
+    let mut main_a = create_vc_group(
+        ciphersuite,
+        &provider_a,
+        &vc_signer,
+        vc_credential,
+        &emulator_a,
+    );
+
+    advance_emulation_group(
+        &mut emulator_a,
+        &provider_a,
+        &signer_a,
+        &mut emulator_b,
+        &provider_b,
+        &signer_b,
+    );
+    assert!(epoch_state_is_stored(&provider_a, &epoch_id));
+
+    main_a
+        .delete(provider_a.storage())
+        .expect("delete the created group");
+    assert!(creation_tracking(&provider_a, main_a.group_id()).is_none());
+    assert!(
+        epoch_refs(&provider_a, &epoch_id).is_none(),
+        "the creation and the binding go with the group"
+    );
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        assert!(!epoch_state_is_stored(provider, &epoch_id));
+        assert!(!retained_epoch_ids(group, provider).contains(&epoch_id));
+    }
+}
+
+/// Removing the sibling a creation is still waiting for releases the creation
+/// reference: a client that left the emulation group performs no further
+/// virtual-client operation, so it will never commit in the created group.
+#[openmls_test]
+fn removing_the_outstanding_sibling_releases_a_created_groups_epoch() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+    let epoch_id = newest_epoch(&emulator_a, &provider_a);
+    let leaf_b = emulator_b.own_leaf_index();
+    let mut main_a = create_vc_group(
+        ciphersuite,
+        &provider_a,
+        &vc_signer,
+        vc_credential,
+        &emulator_a,
+    );
+
+    advance_emulation_group(
+        &mut emulator_a,
+        &provider_a,
+        &signer_a,
+        &mut emulator_b,
+        &provider_b,
+        &signer_b,
+    );
+
+    let (_commit, _welcome, _gi) = emulator_a
+        .remove_members(&provider_a, &signer_a, &[leaf_b])
+        .expect("remove the outstanding sibling");
+    emulator_a
+        .merge_pending_commit(&provider_a)
+        .expect("merge the removal");
+
+    assert!(
+        creation_tracking(&provider_a, main_a.group_id()).is_none(),
+        "the removed sibling will never commit in the created group"
+    );
+    assert!(epoch_refs(&provider_a, &epoch_id)
+        .expect("the group's binding remains")
+        .creations()
+        .is_empty());
+    assert!(epoch_state_is_stored(&provider_a, &epoch_id));
+
+    // With the creation released, the group's own binding is the last reference.
+    main_a
+        .delete(provider_a.storage())
+        .expect("delete the created group");
+    send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    assert!(!epoch_state_is_stored(&provider_a, &epoch_id));
+    assert!(!retained_epoch_ids(&emulator_a, &provider_a).contains(&epoch_id));
+}
+
+/// A virtual client that joins a higher-level group by external commit tracks
+/// that join exactly like a creation: the sibling it shares the leaf with may
+/// still have to derive its own leaf in the group from the same epoch.
+#[openmls_test]
+fn an_external_commit_join_tracks_the_joined_group() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (emulator_a, _signer_a, emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+    let epoch_id = newest_epoch(&emulator_a, &provider_a);
+    let leaf_a = emulator_a.own_leaf_index();
+    let main_a = create_vc_group(
+        ciphersuite,
+        &provider_a,
+        &vc_signer,
+        vc_credential.clone(),
+        &emulator_a,
+    );
+
+    let verifiable_group_info =
+        export_verifiable_group_info(&main_a, &provider_a, &vc_signer, true);
+    let (mut main_b, _bundle) = MlsGroup::external_commit_builder()
+        .with_config(vc_join_config())
+        .build_group(&provider_b, verifiable_group_info, vc_credential)
+        .expect("build group")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(vc_capabilities())
+                .with_extensions(vc_leaf_extensions())
+                .build(),
+        )
+        .vc_emulation(
+            provider_b.crypto(),
+            provider_b.storage(),
+            emulator_b.group_id(),
+        )
+        .expect("vc emulation")
+        .load_psks(provider_b.storage())
+        .expect("load psks")
+        .build(provider_b.rand(), provider_b.crypto(), &vc_signer, |_| true)
+        .expect("build external commit")
+        .finalize(&provider_b)
+        .expect("finalize external commit");
+
+    let tracking = creation_tracking(&provider_b, main_b.group_id())
+        .expect("the joiner tracks the group it joined");
+    assert_eq!(tracking.epoch_id(), &epoch_id);
+    assert_eq!(tracking.outstanding(), &BTreeSet::from([leaf_a]));
+    assert_eq!(
+        epoch_refs(&provider_b, &epoch_id)
+            .expect("the join holds the epoch")
+            .creations(),
+        &BTreeSet::from([main_b.group_id().clone()])
+    );
+
+    main_b
+        .delete(provider_b.storage())
+        .expect("delete the joined group");
+    assert!(creation_tracking(&provider_b, main_b.group_id()).is_none());
+    assert!(
+        epoch_refs(&provider_b, &epoch_id).is_none(),
+        "the creation and the binding go with the group"
     );
 }

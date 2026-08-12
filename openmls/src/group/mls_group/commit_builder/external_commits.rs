@@ -430,6 +430,8 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
                 super::Complete {
                     result: create_commit_result,
                     original_wire_format_policy,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    vc_external_join,
                 },
             ..
         } = self;
@@ -455,11 +457,36 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_derivation_epoch_id = create_commit_result
+            .staged_commit
+            .vc_derivation_epoch_id
+            .clone();
         group.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
         )));
 
         group.merge_pending_commit(provider)?;
+
+        // A virtual client that joined this group by external commit holds its
+        // derivation epoch until every sibling was seen committing here: a
+        // sibling that has not processed the join yet may still have to derive
+        // its own leaf in this group from that epoch. The merge above took the
+        // group's binding reference.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let (Some((emulation_group_id, own_emulation_leaf)), Some(epoch_id)) =
+            (vc_external_join, vc_derivation_epoch_id)
+        {
+            let group_id = group.group_id().clone();
+            crate::group::mls_group::vc_retention::initialize_vc_creation_tracking(
+                provider.storage(),
+                &emulation_group_id,
+                &group_id,
+                &epoch_id,
+                own_emulation_leaf,
+            )
+            .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
+        }
 
         let bundle = super::CommitMessageBundle {
             version: group.version(),

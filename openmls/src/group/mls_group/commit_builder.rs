@@ -67,6 +67,9 @@ use crate::{
 #[derive(Debug)]
 struct VcLoaded {
     epoch_id: EpochId,
+    /// The emulation group the commit acts as a virtual client of. An external
+    /// commit needs it to start tracking the joined group's creation.
+    emulation_group_id: GroupId,
     emulation_leaf_index: LeafNodeIndex,
     epoch_encryption_key: EpochEncryptionKey,
     emulation_ciphersuite: openmls_traits::types::Ciphersuite,
@@ -162,6 +165,11 @@ pub struct Complete {
     result: CreateCommitResult,
     // Only for external commits
     original_wire_format_policy: Option<WireFormatPolicy>,
+    /// The emulation group and own emulation leaf a virtual client's external
+    /// commit joins the group from. `None` for every other commit. `finalize`
+    /// starts the joined group's creation tracking from it.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_external_join: Option<(GroupId, LeafNodeIndex)>,
 }
 
 /// The [`CommitBuilder`] is used to easily and dynamically build commit messages.
@@ -460,7 +468,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         emulation_group_id: &GroupId,
     ) -> Result<Self, CreateCommitError> {
         let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group_id)?;
-        self.vc_emulation_internal(crypto, storage, epoch_id)
+        self.vc_emulation_internal(crypto, storage, emulation_group_id, epoch_id)
     }
 
     /// Test-only variant of [`Self::vc_emulation`] that commits from the named
@@ -476,9 +484,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         self,
         crypto: &Crypto,
         storage: &Storage,
+        emulation_group_id: &GroupId,
         epoch_id: EpochId,
     ) -> Result<Self, CreateCommitError> {
-        self.vc_emulation_internal(crypto, storage, epoch_id)
+        self.vc_emulation_internal(crypto, storage, emulation_group_id, epoch_id)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -486,6 +495,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         mut self,
         crypto: &Crypto,
         storage: &Storage,
+        emulation_group_id: &GroupId,
         epoch_id: EpochId,
     ) -> Result<Self, CreateCommitError> {
         let state: VcDerivationEpochState = storage
@@ -543,6 +553,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 
         self.vc_loaded = Some(VcLoaded {
             epoch_id,
+            emulation_group_id: emulation_group_id.clone(),
             emulation_leaf_index,
             epoch_encryption_key,
             emulation_ciphersuite,
@@ -1365,6 +1376,16 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 .external_commit_info
                 .as_ref()
                 .map(|info| info.wire_format_policy),
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_external_join: vc_loaded
+                .as_ref()
+                .filter(|_| is_external_commit)
+                .map(|loaded| {
+                    (
+                        loaded.emulation_group_id.clone(),
+                        loaded.emulation_leaf_index,
+                    )
+                }),
         }))
     }
 
@@ -1430,9 +1451,27 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
                 Complete {
                     result: create_commit_result,
                     original_wire_format_policy: _,
+                    #[cfg(feature = "virtual-clients-draft")]
+                        vc_external_join: _,
                 },
             ..
         } = self;
+
+        // A commit built from a derivation epoch keeps that epoch in use for as
+        // long as it is pending. The reference is taken before the pending commit
+        // is installed, so an error between the two cannot leave a pending commit
+        // whose derivation epoch is reapable. It is released when the commit is
+        // merged or discarded.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(epoch_id) = create_commit_result
+            .staged_commit
+            .vc_derivation_epoch_id
+            .clone()
+        {
+            group
+                .take_vc_pending_commit_ref(provider.storage(), &epoch_id)
+                .map_err(CommitBuilderStageError::KeyStoreError)?;
+        }
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results

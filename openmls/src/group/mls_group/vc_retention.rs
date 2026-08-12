@@ -8,6 +8,12 @@
 //! changes and declaration, deletes derivation-epoch state nothing protects
 //! anymore, and offers the application the two signals OpenMLS cannot derive on
 //! its own.
+//!
+//! It also maintains the reverse reference index [`VcEpochRefs`], through which
+//! a higher-level group holds a derivation epoch its pending commit, its leaf
+//! bindings or its unacknowledged creation still needs. Every reference goes
+//! through [`update_vc_epoch_refs`], which keeps a row for exactly as long as
+//! something holds the epoch.
 
 use std::collections::BTreeSet;
 
@@ -18,10 +24,10 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::KeyPackageRef,
     components::{
-        vc_derivation_info::{EpochId, RegisteredVcDerivationEpoch},
-        vc_retention::{VcEpochRefs, VcRetentionState},
+        vc_derivation_info::{EpochId, RegisteredVcDerivationEpoch, VcEmulationBindings},
+        vc_retention::{VcCreationTracking, VcEpochRefs, VcRetentionState},
     },
-    group::PublicGroup,
+    group::{GroupId, PublicGroup},
     storage::StorageProvider,
 };
 
@@ -102,12 +108,167 @@ pub(crate) fn initialize_vc_retention_state<Storage: StorageProvider>(
     storage.write_vc_retention_state(public_group.group_id(), &state)
 }
 
+/// Load the reverse reference index of `epoch_id`, hand it to `mutate`, and
+/// persist the result.
+///
+/// The row is deleted rather than written when the mutation left it empty, so an
+/// epoch that no higher-level group holds anymore has no row at all and the
+/// reaper's check stays a plain lookup. Every reference this module takes or
+/// releases goes through here.
+pub(crate) fn update_vc_epoch_refs<Storage: StorageProvider>(
+    storage: &Storage,
+    epoch_id: &EpochId,
+    mutate: impl FnOnce(&mut VcEpochRefs),
+) -> Result<(), Storage::Error> {
+    let mut refs: VcEpochRefs = storage.vc_epoch_refs(epoch_id)?.unwrap_or_default();
+    mutate(&mut refs);
+    if refs.is_empty() {
+        storage.delete_vc_epoch_refs(epoch_id)
+    } else {
+        storage.write_vc_epoch_refs(epoch_id, &refs)
+    }
+}
+
+/// Release the binding references `group_id` holds through `bindings`, one per
+/// distinct derivation epoch the bindings point at.
+///
+/// Called where a group's bindings row goes as a whole, on self-removal and on
+/// group deletion. The row itself is deleted by the caller.
+pub(crate) fn release_vc_binding_refs<Storage: StorageProvider>(
+    storage: &Storage,
+    group_id: &GroupId,
+    bindings: &VcEmulationBindings,
+) -> Result<(), Storage::Error> {
+    let bound: BTreeSet<&EpochId> = bindings.epoch_ids().collect();
+    for epoch_id in bound {
+        update_vc_epoch_refs(storage, epoch_id, |refs| {
+            refs.remove_binding(group_id);
+        })?;
+    }
+    Ok(())
+}
+
+/// Take the binding reference `group_id` gains by binding one of its epochs to
+/// the derivation epoch `epoch_id`.
+///
+/// Used where a group is created or joined with its first binding already
+/// written. Later bindings are diffed against the previous ones in
+/// [`MlsGroup::update_vc_binding_refs`].
+pub(crate) fn take_vc_binding_ref<Storage: StorageProvider>(
+    storage: &Storage,
+    group_id: &GroupId,
+    epoch_id: &EpochId,
+) -> Result<(), Storage::Error> {
+    update_vc_epoch_refs(storage, epoch_id, |refs| {
+        refs.add_binding(group_id.clone());
+    })
+}
+
+/// Start tracking the higher-level group `new_group_id`, which this client
+/// created or externally joined from the derivation epoch `epoch_id` as a
+/// virtual client of `emulation_group_id`.
+///
+/// A sibling that has not processed the creation yet cannot hold a reference to
+/// `epoch_id` of its own, and it may still have to derive its leaf in the new
+/// group from that epoch. So every sibling that is in the group holds the epoch
+/// until all others were seen committing there. `own_leaf` is this client's own
+/// emulation leaf, which the tracking does not wait for.
+///
+/// Nothing is written when this client is the emulation group's only member,
+/// since there is no sibling to wait for.
+pub(crate) fn initialize_vc_creation_tracking<Storage: StorageProvider>(
+    storage: &Storage,
+    emulation_group_id: &GroupId,
+    new_group_id: &GroupId,
+    epoch_id: &EpochId,
+    own_leaf: LeafNodeIndex,
+) -> Result<(), Storage::Error> {
+    let Some(state): Option<VcRetentionState> = storage.vc_retention_state(emulation_group_id)?
+    else {
+        log::error!(
+            "vc: no retention state to read the member set from in {emulation_group_id:?}, \
+             tracking no creation of {new_group_id:?}"
+        );
+        return Ok(());
+    };
+    let outstanding: BTreeSet<LeafNodeIndex> =
+        state.members().filter(|leaf| *leaf != own_leaf).collect();
+    if outstanding.is_empty() {
+        return Ok(());
+    }
+    let tracking = VcCreationTracking::new(epoch_id.clone(), outstanding);
+    storage.write_vc_creation_tracking(new_group_id, &tracking)?;
+    update_vc_epoch_refs(storage, epoch_id, |refs| {
+        refs.add_creation(new_group_id.clone());
+    })
+}
+
+/// Record the emulation-group leaf `leaf` as seen in `group_id`'s creation
+/// tracking, and release the creation reference once every sibling was seen.
+///
+/// A sibling is seen either because it committed in the created group, which
+/// proves it processed the creation, or because it left the emulation group,
+/// which means it will never act on the epoch again.
+///
+/// Releasing does not reap. The epoch becomes reapable and goes at the emulation
+/// group's next reap point.
+pub(crate) fn mark_vc_creation_seen<Storage: StorageProvider>(
+    storage: &Storage,
+    group_id: &GroupId,
+    leaf: LeafNodeIndex,
+) -> Result<(), Storage::Error> {
+    let Some(mut tracking): Option<VcCreationTracking> = storage.vc_creation_tracking(group_id)?
+    else {
+        return Ok(());
+    };
+    if !tracking.mark_seen(leaf) {
+        return Ok(());
+    }
+    if !tracking.is_complete() {
+        return storage.write_vc_creation_tracking(group_id, &tracking);
+    }
+    storage.delete_vc_creation_tracking(group_id)?;
+    update_vc_epoch_refs(storage, tracking.epoch_id(), |refs| {
+        refs.remove_creation(group_id);
+    })
+}
+
+/// Release the creation reference `group_id` holds, whatever is still
+/// outstanding, and drop its tracking row.
+///
+/// Called where the group itself goes: a group that no longer exists needs no
+/// sibling to be able to derive a leaf in it.
+pub(crate) fn release_vc_creation_tracking<Storage: StorageProvider>(
+    storage: &Storage,
+    group_id: &GroupId,
+) -> Result<(), Storage::Error> {
+    let Some(tracking): Option<VcCreationTracking> = storage.vc_creation_tracking(group_id)? else {
+        return Ok(());
+    };
+    storage.delete_vc_creation_tracking(group_id)?;
+    update_vc_epoch_refs(storage, tracking.epoch_id(), |refs| {
+        refs.remove_creation(group_id);
+    })
+}
+
 /// The epochs this client declares as in use in its next commit in `group`, or
 /// `None` when the commit carries no declaration at all.
 ///
 /// A commit carries no declaration when the group is not an emulation group, when
 /// its GroupContext does not require Safe AAD framing so a commit cannot carry
 /// the item, and when the group has no retention bookkeeping to declare from.
+///
+/// On top of what the bookkeeping itself declares, this adds the epochs a
+/// higher-level group holds through a pending commit or an unacknowledged
+/// creation: the siblings have to keep those, because they have work of this
+/// client's that is not on the wire yet.
+///
+/// Two reference kinds stay out. Retained KeyPackage material is held by every
+/// current member anyway, since the upload rides in a commit all of them process.
+/// A leaf binding only serves this client's decryption of traffic that was
+/// already delivered, which the application's ordering discipline has it process
+/// before it acts on a shrinking retention set, so no sibling needs to keep the
+/// epoch on its behalf.
 pub(crate) fn vc_declared_epochs<Storage: StorageProvider>(
     storage: &Storage,
     group: &MlsGroup,
@@ -115,8 +276,24 @@ pub(crate) fn vc_declared_epochs<Storage: StorageProvider>(
     if !group.is_emulation_group() || !group.context().safe_aad_required() {
         return Ok(None);
     }
-    let state: Option<VcRetentionState> = storage.vc_retention_state(group.group_id())?;
-    Ok(state.map(|state| state.declared_epochs()))
+    let Some(state): Option<VcRetentionState> = storage.vc_retention_state(group.group_id())?
+    else {
+        return Ok(None);
+    };
+    let mut declared = state.declared_epochs();
+    for retained in state.retained_epochs() {
+        let epoch_id = retained.epoch_id();
+        if declared.contains(epoch_id) {
+            continue;
+        }
+        let Some(refs): Option<VcEpochRefs> = storage.vc_epoch_refs(epoch_id)? else {
+            continue;
+        };
+        if !refs.pending_commits().is_empty() || !refs.creations().is_empty() {
+            declared.insert(epoch_id.clone());
+        }
+    }
+    Ok(Some(declared))
 }
 
 /// Delete every retained derivation epoch of `state` that nothing protects
@@ -151,6 +328,35 @@ pub(crate) fn reap_vc_derivation_epochs<Storage: StorageProvider>(
         storage.delete_vc_derivation_epoch_state(&epoch_id)?;
         storage.delete_vc_epoch_refs(&epoch_id)?;
         state.remove_retained(&epoch_id);
+    }
+    Ok(())
+}
+
+/// Mark every leaf in `removed` as seen in the creation tracking of the
+/// higher-level groups that hold a retained epoch of `state`.
+///
+/// A client removed from the emulation group performs no further virtual-client
+/// operation, so waiting for it to commit in a created group would hold the
+/// epoch forever. Run before the reaper, so an epoch this releases can go in the
+/// same merge.
+fn release_creations_of_removed_members<Storage: StorageProvider>(
+    storage: &Storage,
+    state: &VcRetentionState,
+    removed: &BTreeSet<LeafNodeIndex>,
+) -> Result<(), Storage::Error> {
+    // Collect first: marking a leaf as seen rewrites the reference rows this
+    // walk reads.
+    let mut tracked: BTreeSet<GroupId> = BTreeSet::new();
+    for retained in state.retained_epochs() {
+        let Some(refs): Option<VcEpochRefs> = storage.vc_epoch_refs(retained.epoch_id())? else {
+            continue;
+        };
+        tracked.extend(refs.creations().iter().cloned());
+    }
+    for group_id in &tracked {
+        for leaf in removed {
+            mark_vc_creation_seen(storage, group_id, *leaf)?;
+        }
     }
     Ok(())
 }
@@ -202,8 +408,10 @@ impl MlsGroup {
     ///
     /// Members come and go with the commit's proposals, a created derivation
     /// epoch is appended to the retained-epoch log, and a declaration the commit
-    /// carries installs and advances its author's watermark. The reaper runs
-    /// last, so the state written here is already free of the epochs it deleted.
+    /// carries installs and advances its author's watermark. A removed member is
+    /// also marked as seen in every creation tracking that still waits for it,
+    /// since it will never act on the epoch again. The reaper runs last, so the
+    /// state written here is already free of the epochs it deleted.
     pub(crate) fn apply_vc_retention_at_merge<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -263,8 +471,67 @@ impl MlsGroup {
             );
         }
 
+        if !removed.is_empty() {
+            release_creations_of_removed_members(storage, &state, &removed)?;
+        }
         reap_vc_derivation_epochs(storage, &mut state)?;
         storage.write_vc_retention_state(self.group_id(), &state)
+    }
+
+    /// Bring this group's binding references in line with a binding row that
+    /// moved from `before` to `now`.
+    ///
+    /// A derivation epoch the row started pointing at gains a reference, one it
+    /// stopped pointing at loses one. Both lists come straight off the row, so
+    /// an epoch bound at several of the group's epochs repeats and its reference
+    /// only goes when the last of those bindings does.
+    pub(crate) fn update_vc_binding_refs<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        before: &[EpochId],
+        now: &[EpochId],
+    ) -> Result<(), Storage::Error> {
+        let bound_before: BTreeSet<&EpochId> = before.iter().collect();
+        let bound_now: BTreeSet<&EpochId> = now.iter().collect();
+        for epoch_id in bound_now.difference(&bound_before) {
+            take_vc_binding_ref(storage, self.group_id(), epoch_id)?;
+        }
+        let group_id = self.group_id().clone();
+        for epoch_id in bound_before.difference(&bound_now) {
+            update_vc_epoch_refs(storage, epoch_id, |refs| {
+                refs.remove_binding(&group_id);
+            })?;
+        }
+        Ok(())
+    }
+
+    /// Take a pending-commit reference on `epoch_id` for this group, the epoch a
+    /// commit that is about to become pending was built from.
+    pub(crate) fn take_vc_pending_commit_ref<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        epoch_id: &EpochId,
+    ) -> Result<(), Storage::Error> {
+        let group_id = self.group_id().clone();
+        update_vc_epoch_refs(storage, epoch_id, |refs| {
+            refs.add_pending_commit(group_id);
+        })
+    }
+
+    /// Release the pending-commit reference this group holds on `epoch_id`.
+    ///
+    /// Called from both ends of a pending commit's life, its merge and its
+    /// discard. Releasing does not reap: the epoch becomes reapable and goes at
+    /// the emulation group's next reap point.
+    pub(crate) fn release_vc_pending_commit_ref<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        epoch_id: &EpochId,
+    ) -> Result<(), Storage::Error> {
+        let group_id = self.group_id().clone();
+        update_vc_epoch_refs(storage, epoch_id, |refs| {
+            refs.remove_pending_commit(&group_id);
+        })
     }
 
     /// Tell OpenMLS that the virtual client's KeyPackages named by

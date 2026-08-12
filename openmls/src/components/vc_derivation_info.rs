@@ -1020,6 +1020,12 @@ impl VcEmulationBindings {
         None
     }
 
+    /// The derivation epochs the bindings point at, one entry per binding and
+    /// in binding order, so an epoch bound at several epochs repeats.
+    pub(crate) fn epoch_ids(&self) -> impl Iterator<Item = &EpochId> + '_ {
+        self.bindings.iter().map(|(_epoch, epoch_id)| epoch_id)
+    }
+
     /// Record `epoch_id` as the binding for `epoch`, keeping at most
     /// `max_entries` entries by dropping the oldest ones.
     pub(crate) fn insert(
@@ -1504,6 +1510,9 @@ impl TargetOperationSecret {
 pub(crate) struct VcCommitMaterial {
     /// Derivation epoch the commit's derivation info references.
     pub(crate) epoch_id: EpochId,
+    /// Emulation-group leaf index of the sibling that sent the commit, from the
+    /// commit's `DerivationInfoTbe`.
+    pub(crate) leaf_index: LeafNodeIndex,
     /// Per-commit operation secret the receiver rederives the path from.
     pub(crate) operation_secret: OperationSecret,
     /// External init secret carried by an external commit, `None` otherwise.

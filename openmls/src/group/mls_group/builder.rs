@@ -130,6 +130,7 @@ impl MlsGroupBuilder {
                 mls_group_create_config,
                 group_id,
                 self.replace_old_group,
+                emulation_group_id,
                 epoch_id,
             );
         }
@@ -434,6 +435,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     mls_group_create_config: MlsGroupCreateConfig,
     group_id: GroupId,
     replace_old_group: bool,
+    emulation_group_id: &GroupId,
     epoch_id: crate::components::vc_derivation_info::EpochId,
 ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
     use openmls_traits::storage::StorageProvider as _;
@@ -443,6 +445,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
             load_vc_epoch_state_and_tree, DerivationInfo, DerivationInfoTbe,
             VirtualClientOperationType, VirtualClientsError,
         },
+        group::mls_group::vc_retention,
         schedule::EpochSecrets,
         treesync::TreeSync,
     };
@@ -612,11 +615,26 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         .map_err(NewGroupError::StorageError)?
         .unwrap_or_default();
     let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
-    bindings.insert(mls_group.epoch(), epoch_id, max_entries);
+    bindings.insert(mls_group.epoch(), epoch_id.clone(), max_entries);
     provider
         .storage()
         .write_vc_emulation_bindings(&group_id, &bindings)
         .map_err(NewGroupError::StorageError)?;
+
+    // The binding holds the derivation epoch for as long as the new group is
+    // bound to it, and the creation tracking holds it until every sibling was
+    // seen committing in the group. Until then a sibling that has not processed
+    // the creation yet may still have to derive its leaf from this epoch.
+    vc_retention::take_vc_binding_ref(provider.storage(), &group_id, &epoch_id)
+        .map_err(NewGroupError::StorageError)?;
+    vc_retention::initialize_vc_creation_tracking(
+        provider.storage(),
+        emulation_group_id,
+        &group_id,
+        &epoch_id,
+        emulation_leaf_index,
+    )
+    .map_err(NewGroupError::StorageError)?;
 
     mls_group
         .store(provider.storage())

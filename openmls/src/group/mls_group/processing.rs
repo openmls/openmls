@@ -483,6 +483,29 @@ impl MlsGroup {
         // members.
         #[cfg(feature = "virtual-clients-draft")]
         if staged_commit.self_removed() {
+            let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> =
+                provider
+                    .storage()
+                    .vc_emulation_bindings(self.group_id())
+                    .map_err(MergeCommitError::StorageError)?;
+            if let Some(bindings) = bindings {
+                vc_retention::release_vc_binding_refs(
+                    provider.storage(),
+                    self.group_id(),
+                    &bindings,
+                )
+                .map_err(|e| {
+                    log::error!("vc: release binding references on self-removal failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
+            }
+            // The virtual client's leaf in this group is gone, so no sibling has
+            // to be able to derive one here anymore.
+            vc_retention::release_vc_creation_tracking(provider.storage(), self.group_id())
+                .map_err(|e| {
+                    log::error!("vc: release creation tracking on self-removal failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
             provider
                 .storage()
                 .delete_vc_emulation_bindings(self.group_id())
@@ -517,11 +540,13 @@ impl MlsGroup {
                 .clone()
                 .or_else(|| bindings.get(self.epoch()).cloned());
             if let Some(epoch_id) = epoch_id {
+                let bound_before: Vec<_> = bindings.epoch_ids().cloned().collect();
                 // Keep one entry per retained message-secrets epoch plus
                 // the new current one, so bindings age out in lockstep
                 // with the message secrets they are needed for.
                 let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
                 bindings.insert(staged_commit.epoch(), epoch_id, max_entries);
+                let bound_now: Vec<_> = bindings.epoch_ids().cloned().collect();
                 provider
                     .storage()
                     .write_vc_emulation_bindings(self.group_id(), &bindings)
@@ -529,7 +554,29 @@ impl MlsGroup {
                         log::error!("vc: persist emulation bindings at merge failed: {e:?}");
                         MergeCommitError::StorageError(e)
                     })?;
+                // A bound derivation epoch is in use as long as the binding
+                // lives, so that a delayed message from the bound epoch can
+                // still be deprotected. An epoch the insert aged out of the
+                // window is released again.
+                self.update_vc_binding_refs(provider.storage(), &bound_before, &bound_now)
+                    .map_err(|e| {
+                        log::error!("vc: update binding references at merge failed: {e:?}");
+                        MergeCommitError::StorageError(e)
+                    })?;
             }
+        }
+
+        // A sibling's commit in a group this client created or externally joined
+        // proves the sibling processed that creation, so it no longer has to be
+        // waited for. The sender's emulation leaf comes from the commit's
+        // derivation info.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(sender_leaf) = staged_commit.vc_sender_emulation_leaf {
+            vc_retention::mark_vc_creation_seen(provider.storage(), self.group_id(), sender_leaf)
+                .map_err(|e| {
+                log::error!("vc: mark a sibling's commit in a created group failed: {e:?}");
+                MergeCommitError::StorageError(e)
+            })?;
         }
 
         // Merge staged commit
@@ -560,6 +607,13 @@ impl MlsGroup {
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
+    ///
+    #[cfg_attr(
+        feature = "virtual-clients-draft",
+        doc = "A commit built from a derivation epoch releases that epoch's\n\
+        pending-commit reference here. Releasing does not delete the epoch: it\n\
+        becomes reapable and goes at the emulation group's next reap point.\n"
+    )]
     pub fn merge_pending_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -568,7 +622,15 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit(provider, (*pending_commit_state).into())?;
+                    let staged_commit: StagedCommit = (*pending_commit_state).into();
+                    #[cfg(feature = "virtual-clients-draft")]
+                    let vc_derivation_epoch_id = staged_commit.vc_derivation_epoch_id.clone();
+                    self.merge_staged_commit(provider, staged_commit)?;
+                    #[cfg(feature = "virtual-clients-draft")]
+                    if let Some(epoch_id) = vc_derivation_epoch_id {
+                        self.release_vc_pending_commit_ref(provider.storage(), &epoch_id)
+                            .map_err(MergeCommitError::StorageError)?;
+                    }
                 }
                 Ok(())
             }
@@ -723,6 +785,7 @@ impl MlsGroup {
         Ok(Some(
             crate::components::vc_derivation_info::VcCommitMaterial {
                 epoch_id: epoch_id.clone(),
+                leaf_index: tbe.leaf_index(),
                 operation_secret,
                 external_init_secret,
             },

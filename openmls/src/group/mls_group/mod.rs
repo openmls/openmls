@@ -453,6 +453,14 @@ impl MlsGroup {
     /// the pending commit will not be used in the group. In particular, if a
     /// pending commit is later accepted by the group, this client will lack the
     /// key material to encrypt or decrypt group messages.
+    ///
+    #[cfg_attr(
+        feature = "virtual-clients-draft",
+        doc = "A discarded commit that was built from a derivation epoch releases\n\
+        that epoch's pending-commit reference. Releasing does not delete the\n\
+        epoch: it becomes reapable and goes at the emulation group's next reap\n\
+        point.\n"
+    )]
     pub fn clear_pending_commit<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -460,8 +468,19 @@ impl MlsGroup {
         match self.group_state {
             MlsGroupState::PendingCommit(ref pending_commit_state) => {
                 if let PendingCommitState::Member(_) = **pending_commit_state {
+                    // Read off the discarded commit before the state goes.
+                    #[cfg(feature = "virtual-clients-draft")]
+                    let vc_derivation_epoch_id = pending_commit_state
+                        .staged_commit()
+                        .vc_derivation_epoch_id
+                        .clone();
                     self.group_state = MlsGroupState::Operational;
-                    storage.write_group_state(self.group_id(), &self.group_state)
+                    storage.write_group_state(self.group_id(), &self.group_state)?;
+                    #[cfg(feature = "virtual-clients-draft")]
+                    if let Some(epoch_id) = vc_derivation_epoch_id {
+                        self.release_vc_pending_commit_ref(storage, &epoch_id)?;
+                    }
+                    Ok(())
                 } else {
                     Ok(())
                 }
@@ -574,12 +593,21 @@ impl MlsGroup {
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
         // Drop this group's derivation-epoch bindings, its registration record
-        // and its retention bookkeeping. `VcDerivationEpochState` and the
-        // operation secret tree are keyed on the derivation epoch and may still
-        // be referenced by other higher-level groups, so they're not deleted
-        // here.
+        // and its retention bookkeeping, and release every derivation epoch this
+        // group held. `VcDerivationEpochState` and the operation secret tree are
+        // keyed on the derivation epoch and may still be referenced by other
+        // higher-level groups, so they're not deleted here. A released epoch
+        // becomes reapable and goes at the emulation group's next reap point.
         #[cfg(feature = "virtual-clients-draft")]
         {
+            use crate::components::vc_derivation_info::VcEmulationBindings;
+
+            let bindings: Option<VcEmulationBindings> =
+                storage.vc_emulation_bindings(self.group_id())?;
+            if let Some(bindings) = bindings {
+                vc_retention::release_vc_binding_refs(storage, self.group_id(), &bindings)?;
+            }
+            vc_retention::release_vc_creation_tracking(storage, self.group_id())?;
             storage.delete_vc_emulation_bindings(self.group_id())?;
             storage.delete_registered_vc_derivation_epoch(self.group_id())?;
             storage.delete_vc_retention_state(self.group_id())?;

@@ -367,15 +367,20 @@ impl MlsGroup {
         // the staged commit, and the external init secret (external commits
         // only) feeds the key schedule.
         #[cfg(feature = "virtual-clients-draft")]
-        let (vc_material, vc_derivation_epoch_id, vc_external_init_secret) =
-            match vc_commit_material {
-                Some(material) => (
-                    Some(material.operation_secret),
-                    Some(material.epoch_id),
-                    material.external_init_secret,
-                ),
-                None => (None, None, None),
-            };
+        let (
+            vc_material,
+            vc_derivation_epoch_id,
+            vc_sender_emulation_leaf,
+            vc_external_init_secret,
+        ) = match vc_commit_material {
+            Some(material) => (
+                Some(material.operation_secret),
+                Some(material.epoch_id),
+                Some(material.leaf_index),
+                material.external_init_secret,
+            ),
+            None => (None, None, None, None),
+        };
 
         // A sibling-resync external commit is a VC external commit sent by a
         // sibling emulator client to onboard itself into this higher-level
@@ -649,6 +654,7 @@ impl MlsGroup {
         {
             staged_commit.marks_new_vc_derivation_epoch = marks_new_vc_derivation_epoch;
             staged_commit.vc_declaration = vc_declaration;
+            staged_commit.vc_sender_emulation_leaf = vc_sender_emulation_leaf;
         }
 
         Ok(staged_commit)
@@ -1013,6 +1019,15 @@ pub struct StagedCommit {
     #[serde(default, alias = "vc_emulation_epoch_id")]
     // alias for backwards compatibility after renaming field
     pub(super) vc_derivation_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
+    /// Emulation-group leaf index of the sibling emulator client that sent this
+    /// commit, read off its derivation info. `None` for a commit this client
+    /// built itself and for any commit from outside the virtual client.
+    ///
+    /// Merging it in a group the virtual client created or externally joined is
+    /// what marks that sibling as having acknowledged the creation.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[serde(default)]
+    pub(super) vc_sender_emulation_leaf: Option<LeafNodeIndex>,
     /// Whether the commit's virtual-clients Safe AAD item carries a
     /// `new_derivation_epoch` action. Set when the commit is staged, and read
     /// again at merge, which is why it is persisted with an own pending commit.
@@ -1046,6 +1061,8 @@ impl StagedCommit {
             state,
             #[cfg(feature = "virtual-clients-draft")]
             vc_derivation_epoch_id,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_sender_emulation_leaf: None,
             #[cfg(feature = "virtual-clients-draft")]
             marks_new_vc_derivation_epoch: false,
             #[cfg(feature = "virtual-clients-draft")]

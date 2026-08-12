@@ -251,6 +251,14 @@ impl VcRetentionState {
         self.members.get(&leaf)
     }
 
+    /// The leaves of the emulation group's members, ascending.
+    ///
+    /// Membership only changes at derivation epochs, so this is the member set
+    /// of the newest retained derivation epoch.
+    pub fn members(&self) -> impl Iterator<Item = LeafNodeIndex> + '_ {
+        self.members.keys().copied()
+    }
+
     /// The emulation-group epoch number `epoch_id` was sourced from, or `None`
     /// if the epoch is not in the log.
     pub fn epoch_number(&self, epoch_id: &EpochId) -> Option<GroupEpoch> {
@@ -408,6 +416,22 @@ impl VcEpochRefs {
     /// Whether no higher-level group holds this epoch anymore.
     pub fn is_empty(&self) -> bool {
         self.pending_commits.is_empty() && self.bindings.is_empty() && self.creations.is_empty()
+    }
+
+    /// The groups whose pending commit draws on this epoch.
+    pub fn pending_commits(&self) -> &BTreeSet<GroupId> {
+        &self.pending_commits
+    }
+
+    /// The groups with a leaf bound to this epoch.
+    pub fn bindings(&self) -> &BTreeSet<GroupId> {
+        &self.bindings
+    }
+
+    /// The groups a virtual client created or externally joined from this epoch
+    /// and whose creation is not acknowledged by every sibling yet.
+    pub fn creations(&self) -> &BTreeSet<GroupId> {
+        &self.creations
     }
 
     /// Record that `group_id` has a pending commit drawing on this epoch.
