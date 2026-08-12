@@ -655,7 +655,7 @@ mod virtual_clients_draft {
     /// emulation groups, so this error is always wrapped in the error of the
     /// operation that triggered the registration.
     ///
-    /// See [`MlsGroupJoinConfigBuilder::emulation_group`](crate::group::MlsGroupJoinConfigBuilder::emulation_group).
+    /// See [`MlsGroupCreateConfigBuilder::emulation_group`](crate::group::MlsGroupCreateConfigBuilder::emulation_group).
     #[derive(Error, Debug, PartialEq, Clone)]
     pub enum RegisterVcDerivationEpochError<StorageError> {
         /// Puncturing the application exporter for the virtual-clients

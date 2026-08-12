@@ -231,7 +231,7 @@ impl MlsGroupBuilder {
 
         // The initial epoch of an emulation group is a derivation epoch.
         #[cfg(feature = "virtual-clients-draft")]
-        if mls_group_create_config.join_config.emulation_group {
+        if mls_group_create_config.emulation_group {
             crate::components::vc_derivation_info::register_vc_derivation_epoch(
                 provider.crypto(),
                 provider.storage(),
@@ -257,6 +257,8 @@ impl MlsGroupBuilder {
             resumption_psk_store,
             #[cfg(feature = "extensions-draft")]
             application_export_tree: Some(application_export_tree),
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: mls_group_create_config.emulation_group,
         };
 
         mls_group
@@ -588,6 +590,8 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         // Reconstructed VC groups do not populate the application export tree,
         // matching the other VC group-entry paths.
         application_export_tree: None,
+        // A group a virtual client creates is not itself an emulation group.
+        emulation_group: false,
     };
 
     // Bind epoch 0 of the new group to the derivation epoch so later VC

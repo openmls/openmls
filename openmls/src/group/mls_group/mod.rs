@@ -292,6 +292,14 @@ pub struct MlsGroup {
     // `None` on import — it initializes on the next merged commit.
     #[cfg_attr(feature = "migration-import", serde(default))]
     application_export_tree: Option<ApplicationExportTree>,
+    /// Whether this group is an emulation group of a virtual client. Not
+    /// persisted on its own: [`MlsGroup::load`] recovers it from the presence of
+    /// the group's derivation-epoch registration record.
+    #[cfg(feature = "virtual-clients-draft")]
+    // Migration bridge (see the note on the struct): a group migrated in from a
+    // version without `virtual-clients-draft` is never an emulation group.
+    #[cfg_attr(feature = "migration-import", serde(default))]
+    emulation_group: bool,
 }
 
 impl MlsGroup {
@@ -511,6 +519,13 @@ impl MlsGroup {
         let group_state = storage.group_state(group_id)?;
         #[cfg(feature = "extensions-draft")]
         let application_export_tree = storage.application_export_tree(group_id)?;
+        // A group has a derivation-epoch registration record for exactly as long
+        // as it is an emulation group. The record is written by the initial
+        // registration at creation or Welcome join and removed by `delete`.
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulation_group =
+            crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, group_id)?
+                .is_some();
 
         let build = || -> Option<Self> {
             Some(Self {
@@ -527,6 +542,8 @@ impl MlsGroup {
                 group_state: group_state?,
                 #[cfg(feature = "extensions-draft")]
                 application_export_tree,
+                #[cfg(feature = "virtual-clients-draft")]
+                emulation_group,
             })
         };
 
@@ -768,14 +785,16 @@ impl MlsGroup {
         Ok(Some(state))
     }
 
-    /// Returns whether this group is an emulation group of a virtual client, as
-    /// declared by the application in the group's [`MlsGroupJoinConfig`]. See
-    /// [`MlsGroupJoinConfigBuilder::emulation_group`].
+    /// Returns whether this group is an emulation group of a virtual client.
     ///
-    /// [`MlsGroupJoinConfigBuilder::emulation_group`]: crate::group::MlsGroupJoinConfigBuilder::emulation_group
+    /// The flag is set when the application creates the group as an emulation
+    /// group or joins one, and it is restored from storage when the group is
+    /// loaded. See [`MlsGroupCreateConfigBuilder::emulation_group`].
+    ///
+    /// [`MlsGroupCreateConfigBuilder::emulation_group`]: crate::group::MlsGroupCreateConfigBuilder::emulation_group
     #[cfg(feature = "virtual-clients-draft")]
     pub fn is_emulation_group(&self) -> bool {
-        self.mls_group_config.emulation_group
+        self.emulation_group
     }
 
     /// Returns the [`EpochId`] of the newest derivation epoch of this emulation
@@ -1275,6 +1294,13 @@ impl MlsGroup {
                     self.application_export_tree, other.application_export_tree
                 ));
             }
+            #[cfg(feature = "virtual-clients-draft")]
+            if self.emulation_group != other.emulation_group {
+                diagnostics.push(format!(
+                    "emulation_group:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.emulation_group, other.emulation_group
+                ));
+            }
 
             log::error!(
                 "Loaded group does not match current group! Differing fields ({}):\n\n{}",
@@ -1325,6 +1351,11 @@ pub struct StagedWelcome {
 
     /// If we got a path secret, these are the derived path keys.
     path_keypairs: Option<Vec<EncryptionKeyPair>>,
+
+    /// Whether to join the group as an emulation group of a virtual client. Set
+    /// by [`Self::emulation_group`].
+    #[cfg(feature = "virtual-clients-draft")]
+    emulation_group: bool,
 }
 
 /// A `Welcome` message that has been processed but not staged yet.

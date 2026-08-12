@@ -178,15 +178,6 @@ fn emulation_group_config(
     emulation_config_builder(ciphersuite, emulation_group, true).build()
 }
 
-/// The join config a sibling emulator client uses to join an emulation group.
-fn emulation_join_config() -> MlsGroupJoinConfig {
-    MlsGroupJoinConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .use_ratchet_tree_extension(true)
-        .emulation_group(true)
-        .build()
-}
-
 /// A KeyPackage carrying the leaf configuration a virtual-client leaf needs,
 /// together with the freshly generated signature keypair it is signed with.
 fn vc_key_package<P: OpenMlsProvider>(
@@ -365,8 +356,8 @@ fn new_vc_main_group_with_policy<P: OpenMlsProvider>(
     MlsGroup::new(provider, signer, &group_config, credential).expect("create vc main group")
 }
 
-/// The join config used by emulator clients resyncing into a higher-level
-/// group: pure-plaintext framing with the ratchet tree carried inline.
+/// The join config used by emulator clients joining a higher-level group or an
+/// emulation group: pure-plaintext framing with the ratchet tree carried inline.
 fn vc_join_config() -> MlsGroupJoinConfig {
     MlsGroupJoinConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
@@ -4891,10 +4882,11 @@ fn add_emulator_client<P: OpenMlsProvider>(
         .expect("emulator_a merge add");
     let group = StagedWelcome::new_from_welcome(
         joiner_provider,
-        &emulation_join_config(),
+        &vc_join_config(),
         welcome.into_welcome().expect("emulator welcome"),
         Some(emulator_a.export_ratchet_tree().into()),
     )
+    .map(|staged| staged.emulation_group(true))
     .and_then(|s| s.into_group(joiner_provider))
     .expect("joiner join emulation group");
     (commit, group, signer)
@@ -5194,7 +5186,8 @@ fn external_commit_into_emulation_group_creates_vc_derivation_epoch() {
         new_credential(&provider_c, b"EmulatorC", ciphersuite.signature_algorithm());
 
     let (emulator_c, bundle) = MlsGroup::external_commit_builder()
-        .with_config(emulation_join_config())
+        .with_config(vc_join_config())
+        .emulation_group(true)
         .build_group(&provider_c, verifiable_group_info, credential_c)
         .expect("build external commit group")
         .leaf_node_parameters(
@@ -5212,6 +5205,7 @@ fn external_commit_into_emulation_group_creates_vc_derivation_epoch() {
 
     process_and_merge_commit(&mut emulator_a, &provider_a, bundle.into_commit());
 
+    assert!(emulator_c.is_emulation_group());
     let after_a = newest_epoch(&emulator_a, &provider_a);
     let after_c = newest_epoch(&emulator_c, &provider_c);
     assert_ne!(after_a, before);
@@ -5219,6 +5213,33 @@ fn external_commit_into_emulation_group_creates_vc_derivation_epoch() {
         after_a, after_c,
         "the external joiner and the existing member must converge"
     );
+}
+
+/// Loading a group recovers whether it is an emulation group, so the
+/// application only declares it once, when it enters the group.
+#[openmls_test]
+fn loading_a_group_recovers_the_emulation_group_flag() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (emulator_a, _signer_a, emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (plain_group, _signer) =
+        make_emulator_group(ciphersuite, &provider_a, b"NotAnEmulator", false);
+
+    for (group, provider) in [
+        (&emulator_a, &provider_a),
+        (&emulator_b, &provider_b),
+        (&plain_group, &provider_a),
+    ] {
+        let loaded = MlsGroup::load(provider.storage(), group.group_id())
+            .expect("load group")
+            .expect("the group was stored");
+        assert_eq!(loaded.is_emulation_group(), group.is_emulation_group());
+    }
+    assert!(emulator_a.is_emulation_group());
+    assert!(emulator_b.is_emulation_group());
+    assert!(!plain_group.is_emulation_group());
 }
 
 /// A group without the `emulation_group` flag writes no virtual-clients state,
@@ -5300,10 +5321,11 @@ fn malformed_vc_commit_data_is_rejected_by_emulation_group() {
         .expect("alice merge add");
     let mut bob_group = StagedWelcome::new_from_welcome(
         &bob_provider,
-        &emulation_join_config(),
+        &vc_join_config(),
         welcome.into_welcome().expect("welcome"),
         Some(alice_group.export_ratchet_tree().into()),
     )
+    .map(|staged| staged.emulation_group(true))
     .and_then(|s| s.into_group(&bob_provider))
     .expect("bob join emulation group");
 

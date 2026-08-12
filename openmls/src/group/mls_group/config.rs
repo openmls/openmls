@@ -214,10 +214,6 @@ pub struct MlsGroupJoinConfig {
     pub(crate) use_ratchet_tree_extension: bool,
     /// Sender ratchet configuration
     pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
-    /// Flag marking this group as an emulation group of a virtual client.
-    #[cfg(feature = "virtual-clients-draft")]
-    #[serde(default)]
-    pub(crate) emulation_group: bool,
 }
 
 impl MlsGroupJoinConfig {
@@ -239,13 +235,6 @@ impl MlsGroupJoinConfig {
     /// Returns the [`SenderRatchetConfiguration`] set in this  [`MlsGroupJoinConfig`].
     pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
         &self.sender_ratchet_configuration
-    }
-
-    /// Returns whether this group is an emulation group of a virtual client.
-    /// See [`MlsGroupJoinConfigBuilder::emulation_group`].
-    #[cfg(feature = "virtual-clients-draft")]
-    pub fn emulation_group(&self) -> bool {
-        self.emulation_group
     }
 
     /// Returns the max past epochs configured in this [`MlsGroupJoinConfig`]
@@ -275,6 +264,11 @@ pub struct MlsGroupCreateConfig {
     pub(crate) group_context_extensions: Extensions<GroupContext>,
     /// List of initial leaf node extensions
     pub(crate) leaf_node_extensions: Extensions<LeafNode>,
+    /// Flag marking the created group as an emulation group of a virtual
+    /// client. Only consulted at group creation, the group keeps the flag
+    /// itself afterwards.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) emulation_group: bool,
 }
 
 impl Default for MlsGroupCreateConfig {
@@ -286,6 +280,8 @@ impl Default for MlsGroupCreateConfig {
             join_config: MlsGroupJoinConfig::default(),
             group_context_extensions: Extensions::default(),
             leaf_node_extensions: Extensions::default(),
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: false,
         }
     }
 }
@@ -374,37 +370,6 @@ impl MlsGroupJoinConfigBuilder {
         self
     }
 
-    /// Marks the group as an emulation group of a virtual client.
-    ///
-    /// This is the application's declaration that the group's members are the
-    /// emulator clients of one virtual client. It is local state, nothing about
-    /// it travels on the wire, and every member of an emulation group has to
-    /// set it.
-    ///
-    /// An emulation group derives the virtual client's secrets from its
-    /// derivation epochs. The initial epoch is a derivation epoch, and so is
-    /// the output epoch of every commit that changes membership or that carries
-    /// a `new_derivation_epoch` action in its virtual-clients Safe AAD item
-    /// (see [`CommitBuilder::derivation_epoch`]). OpenMLS derives and
-    /// persists the derivation-epoch state itself at group creation, at a
-    /// Welcome join, and when such a commit is merged. Applications should wrap
-    /// merge calls in a storage transaction, since those writes happen
-    /// alongside the merge's own writes.
-    ///
-    /// Use [`MlsGroup::newest_vc_derivation_epoch`] to look up the derivation
-    /// epoch that virtual-client operations resolve to. It may be older than
-    /// the group's current epoch.
-    ///
-    /// Groups without this flag never write virtual-clients state.
-    ///
-    /// [`CommitBuilder::derivation_epoch`]: crate::group::CommitBuilder::derivation_epoch
-    /// [`MlsGroup::newest_vc_derivation_epoch`]: crate::group::MlsGroup::newest_vc_derivation_epoch
-    #[cfg(feature = "virtual-clients-draft")]
-    pub fn emulation_group(mut self, emulation_group: bool) -> Self {
-        self.join_config.emulation_group = emulation_group;
-        self
-    }
-
     /// Finalizes the builder and returns an [`MlsGroupJoinConfig`].
     pub fn build(self) -> MlsGroupJoinConfig {
         self.join_config
@@ -462,6 +427,13 @@ impl MlsGroupCreateConfig {
     /// Returns the [`Ciphersuite`].
     pub fn ciphersuite(&self) -> Ciphersuite {
         self.ciphersuite
+    }
+
+    /// Returns whether groups created with this config are emulation groups of
+    /// a virtual client. See [`MlsGroupCreateConfigBuilder::emulation_group`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(&self) -> bool {
+        self.emulation_group
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -563,11 +535,38 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
-    /// Marks the group as an emulation group of a virtual client. See
-    /// [`MlsGroupJoinConfigBuilder::emulation_group`] for what that entails.
+    /// Marks the group as an emulation group of a virtual client.
+    ///
+    /// This is the application's declaration that the group's members are the
+    /// emulator clients of one virtual client. It is local state, nothing about
+    /// it travels on the wire, and every member of an emulation group has to
+    /// set it. Members that join by Welcome set it on the
+    /// [`StagedWelcome`](crate::group::StagedWelcome) instead, and members that
+    /// join by external commit on the
+    /// [`ExternalCommitBuilder`](crate::group::ExternalCommitBuilder).
+    ///
+    /// An emulation group derives the virtual client's secrets from its
+    /// derivation epochs. The initial epoch is a derivation epoch, and so is
+    /// the output epoch of every commit that changes membership or that carries
+    /// a `new_derivation_epoch` action in its virtual-clients Safe AAD item
+    /// (see [`CommitBuilder::derivation_epoch`]). OpenMLS derives and
+    /// persists the derivation-epoch state itself at group creation, at a
+    /// Welcome join, and when such a commit is merged. Applications should wrap
+    /// every merge in a storage transaction. A merge performs several storage
+    /// writes even without virtual clients, and derivation-epoch registration
+    /// adds more.
+    ///
+    /// Use [`MlsGroup::newest_vc_derivation_epoch`] to look up the derivation
+    /// epoch that virtual-client operations resolve to. It may be older than
+    /// the group's current epoch.
+    ///
+    /// Groups without this flag never write virtual-clients state.
+    ///
+    /// [`CommitBuilder::derivation_epoch`]: crate::group::CommitBuilder::derivation_epoch
+    /// [`MlsGroup::newest_vc_derivation_epoch`]: crate::group::MlsGroup::newest_vc_derivation_epoch
     #[cfg(feature = "virtual-clients-draft")]
     pub fn emulation_group(mut self, emulation_group: bool) -> Self {
-        self.config.join_config.emulation_group = emulation_group;
+        self.config.emulation_group = emulation_group;
         self
     }
 
@@ -745,23 +744,6 @@ pub const MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPoli
 #[cfg(test)]
 mod tests {
     use super::PastEpochDeletionPolicy;
-
-    /// A join config stored before the `emulation_group` flag existed loads
-    /// with the flag unset.
-    #[cfg(feature = "virtual-clients-draft")]
-    #[test]
-    fn join_config_without_emulation_group_field_deserializes() {
-        let mut json = serde_json::to_value(super::MlsGroupJoinConfig::default()).unwrap();
-        let removed = json
-            .as_object_mut()
-            .unwrap()
-            .remove("emulation_group")
-            .expect("the current encoding carries the field");
-        assert_eq!(removed, serde_json::Value::Bool(false));
-
-        let deserialized: super::MlsGroupJoinConfig = serde_json::from_value(json).unwrap();
-        assert!(!deserialized.emulation_group());
-    }
 
     #[test]
     fn past_epoch_deletion_policy_roundtrip() {

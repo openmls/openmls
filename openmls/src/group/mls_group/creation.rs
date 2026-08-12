@@ -488,6 +488,8 @@ impl ProcessedWelcome {
             verifiable_group_info: self.verifiable_group_info,
             key_material: self.key_material,
             path_keypairs,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: false,
         };
 
         Ok(staged_welcome)
@@ -606,6 +608,21 @@ impl StagedWelcome {
         &self.application_export_secret
     }
 
+    /// Join the group as an emulation group of a virtual client. See
+    /// [`MlsGroupCreateConfigBuilder::emulation_group`] for what an emulation
+    /// group is.
+    ///
+    /// Nothing on the wire marks a group as an emulation group, so a joiner has
+    /// to set this itself. Joining an emulation group without it leaves the
+    /// virtual client's secrets underived.
+    ///
+    /// [`MlsGroupCreateConfigBuilder::emulation_group`]: crate::group::MlsGroupCreateConfigBuilder::emulation_group
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(mut self, emulation_group: bool) -> Self {
+        self.emulation_group = emulation_group;
+        self
+    }
+
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
     pub fn into_group<Provider: OpenMlsProvider>(
         self,
@@ -629,7 +646,7 @@ impl StagedWelcome {
         // The epoch the Welcome hands us is a derivation epoch of the emulation
         // group: the commit that created it added us, so it changed membership.
         #[cfg(feature = "virtual-clients-draft")]
-        if self.mls_group_config.emulation_group() {
+        if self.emulation_group {
             crate::components::vc_derivation_info::register_vc_derivation_epoch(
                 provider.crypto(),
                 provider.storage(),
@@ -657,6 +674,8 @@ impl StagedWelcome {
             resumption_psk_store: self.resumption_psk_store,
             #[cfg(feature = "extensions-draft")]
             application_export_tree: Some(application_export_tree),
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: self.emulation_group,
         };
 
         mls_group
@@ -1026,6 +1045,10 @@ impl MlsGroup {
             resumption_psk_store: ResumptionPskStore::new(join_config.number_of_resumption_psks),
             #[cfg(feature = "extensions-draft")]
             application_export_tree: None,
+            // A virtual client joins a higher-level group here, never its own
+            // emulation group.
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: false,
         };
 
         // Parse and verify the external commit against the prior-epoch group.
@@ -1274,6 +1297,8 @@ impl MlsGroup {
             resumption_psk_store,
             #[cfg(feature = "extensions-draft")]
             application_export_tree: None,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: false,
         };
         mls_group
             .store(provider.storage())

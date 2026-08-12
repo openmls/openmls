@@ -97,22 +97,30 @@ through `.capabilities(...)` and `.with_leaf_node_extensions(...)`, and to the
 ## Derivation epochs
 
 An emulation group is an ordinary `MlsGroup`. Each emulator client maintains its
-own copy. What makes it an emulation group is a flag on its config, which every
-emulator client has to set:
+own copy. What makes it an emulation group is a flag every emulator client has to
+set when it creates or joins the group. The creator sets it on the create config:
 
 ```rust,no_run,noplayground
 let create_config = MlsGroupCreateConfig::builder()
     .emulation_group(true)
     // ... the leaf requirements above, ciphersuite, wire format policy
     .build();
-
-let join_config = MlsGroupJoinConfig::builder()
-    .emulation_group(true)
-    .build();
 ```
 
+A member joining by Welcome sets it on the `StagedWelcome`:
+
+```rust,no_run,noplayground
+let group = StagedWelcome::new_from_welcome(provider, &join_config, welcome, ratchet_tree)?
+    .emulation_group(true)
+    .into_group(provider)?;
+```
+
+A member resyncing by external commit sets it on the `ExternalCommitBuilder`,
+via `.emulation_group(true)` before `build_group`.
+
 The flag is local state. Nothing about it travels on the wire, and OpenMLS does
-not verify that the other members set it.
+not verify that the other members set it. Loading a group recovers the flag from
+storage, so it only has to be set once.
 
 Virtual-client secrets are not derived from every epoch of the emulation group,
 only from its *derivation epochs*. The initial epoch is one, and so is the output
