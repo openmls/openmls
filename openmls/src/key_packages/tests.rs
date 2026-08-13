@@ -251,7 +251,7 @@ fn last_resort_key_package() {
 }
 
 /// Build a batch of virtual-client KeyPackages and verify the first carries a
-/// reproducible derivation info. Registers an emulation epoch on a VC-capable
+/// reproducible derivation info. Registers a derivation epoch on a VC-capable
 /// emulator group, calls `build_vc_batch`, and checks that the batch reports
 /// generation 0, that the first leaf carries a `VC_COMPONENT_ID` entry in its
 /// `app_data_dictionary`, and that the embedded `DerivationInfo` decrypts
@@ -264,7 +264,7 @@ fn last_resort_key_package() {
 fn build_vc_key_package_carries_reproducible_derivation_info() {
     use crate::{
         components::vc_derivation_info::{
-            DerivationInfo, DerivationInfoTbe, EmulationEpochState, VirtualClientOperationType,
+            DerivationInfo, DerivationInfoTbe, VcDerivationEpochState, VirtualClientOperationType,
             VC_COMPONENT_ID,
         },
         credentials::test_utils::new_credential,
@@ -303,8 +303,9 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
         .capabilities(capabilities.clone())
         .with_leaf_node_extensions(vc_leaf_extensions.clone())
         .expect("attach emulator leaf-node extensions")
+        .emulation_group(true)
         .build();
-    let mut emulator = MlsGroup::new(
+    let emulator = MlsGroup::new(
         &provider,
         &emulator_signer,
         &emulator_config,
@@ -314,8 +315,9 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
     let emulation_leaf_index = emulator.own_leaf_index();
 
     let epoch_id = emulator
-        .register_vc_emulation_epoch(provider.crypto(), provider.storage())
-        .expect("register vc emulation epoch");
+        .newest_vc_derivation_epoch(provider.storage())
+        .expect("read newest vc derivation epoch")
+        .expect("group creation registers a derivation epoch");
 
     // The virtual client's own signing identity for the KeyPackage.
     let (vc_credential, vc_signer) = new_credential(
@@ -330,7 +332,7 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
         &provider,
         &vc_signer,
         vc_credential.clone(),
-        epoch_id.clone(),
+        emulator.group_id(),
         0,
     );
     assert_eq!(empty.unwrap_err(), KeyPackageNewError::EmptyBatch);
@@ -343,7 +345,7 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
             &provider,
             &vc_signer,
             vc_credential,
-            epoch_id.clone(),
+            emulator.group_id(),
             1,
         )
         .expect("build_vc_batch must succeed");
@@ -375,11 +377,11 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
         .expect("leaf must carry a VC_COMPONENT_ID entry");
 
     // The embedded DerivationInfo decrypts with the epoch's encryption key.
-    let state: EmulationEpochState = provider
+    let state: VcDerivationEpochState = provider
         .storage()
-        .vc_emulation_epoch_state(&epoch_id)
-        .expect("load emulation epoch state")
-        .expect("emulation epoch state present");
+        .vc_derivation_epoch_state(&epoch_id)
+        .expect("load derivation epoch state")
+        .expect("derivation epoch state present");
     let (_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
     let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
         .expect("deserialize DerivationInfo");

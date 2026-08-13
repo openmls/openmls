@@ -37,12 +37,15 @@ use crate::{
 };
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
+    components::vc_commit_data::VirtualClientCommitData,
     components::vc_derivation_info::{
-        DerivationInfo, DerivationInfoTbe, EmulationEpochState, EpochEncryptionKey, EpochId,
-        ExternalInitSecret, OperationSecret, VirtualClientOperationType, VirtualClientsError,
+        require_newest_vc_derivation_epoch, DerivationInfo, DerivationInfoTbe, EpochEncryptionKey,
+        EpochId, ExternalInitSecret, OperationSecret, VcDerivationEpochState,
+        VirtualClientOperationType, VirtualClientsError,
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
+    group::GroupId,
 };
 #[cfg(feature = "extensions-draft")]
 use crate::{
@@ -213,6 +216,11 @@ pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     #[cfg(feature = "virtual-clients-draft")]
     vc_loaded: Option<VcLoaded>,
 
+    /// Set by [`Self::derivation_epoch`]. `build` stages the marker action
+    /// in the group's Safe AAD before it assembles the commit.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_new_derivation_epoch: bool,
+
     pd: PhantomData<&'a ()>,
 }
 
@@ -244,6 +252,8 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
             stage,
             #[cfg(feature = "virtual-clients-draft")]
             vc_loaded,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_new_derivation_epoch,
             pd: PhantomData,
         } = self;
 
@@ -256,6 +266,8 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
                 stage,
                 #[cfg(feature = "virtual-clients-draft")]
                 vc_loaded,
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_new_derivation_epoch,
                 pd: PhantomData,
             },
         )
@@ -350,6 +362,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             stage,
             #[cfg(feature = "virtual-clients-draft")]
             vc_loaded: None,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_new_derivation_epoch: false,
             pd: PhantomData,
         }
     }
@@ -363,13 +377,18 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
 
     /// Opt this commit into the virtual-clients-draft sender flow.
     ///
-    /// The application supplies the [`EpochId`] of an already-registered
-    /// emulation epoch (see
-    /// [`MlsGroup::register_vc_emulation_epoch`]). This method loads the
-    /// per-epoch operation secret tree and AEAD key from the storage
-    /// provider, validates the leaf configuration (see the preconditions
-    /// below), then advances the own `LeafNode` operation ratchet by one
-    /// generation and immediately persists the advanced tree. `build` then:
+    /// The commit uses the newest derivation epoch of the emulation group named
+    /// by `emulation_group_id`, which is what the draft requires of every new
+    /// virtual-client operation. The epoch is resolved from the emulation
+    /// group's current state, so a commit that itself asks for a new derivation
+    /// epoch (see [`Self::derivation_epoch`]) still uses the epoch of its
+    /// input state: the requested one only exists once that commit is merged.
+    ///
+    /// This method loads the per-epoch operation secret tree and AEAD key from
+    /// the storage provider, validates the leaf configuration (see the
+    /// preconditions below), then advances the own `LeafNode` operation ratchet
+    /// by one generation and immediately persists the advanced tree. `build`
+    /// then:
     ///
     /// - derives the path secret and the new leaf's encryption keypair
     ///   from the allocated `OperationSecret`, so a sibling virtual
@@ -400,30 +419,59 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// [`CreateCommitError::VirtualClientsError`]) before allocating a
     /// generation, so no operation secret is burned in that case.
     ///
-    /// Fails with `VirtualClientsError::MissingEmulationEpochState` or
-    /// `VirtualClientsError::MissingOperationTree` if the epoch was never
-    /// registered. Neither the state nor the tree is instantiated on the
-    /// fly, since that could diverge from a sibling virtual client's
-    /// already-advanced ratchets.
+    /// Fails with `VirtualClientsError::NoDerivationEpoch` if the emulation
+    /// group has no registered derivation epoch, and with
+    /// `VirtualClientsError::MissingDerivationEpochState` or
+    /// `VirtualClientsError::MissingOperationTree` if the resolved epoch's state
+    /// is gone. Neither the state nor the tree is instantiated on the fly, since
+    /// that could diverge from a sibling virtual client's already-advanced
+    /// ratchets.
     ///
     /// Implies that a self-update takes place: the commit will always have
     /// a path even if no other proposals are queued.
-    ///
-    /// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        self,
+        crypto: &Crypto,
+        storage: &Storage,
+        emulation_group_id: &GroupId,
+    ) -> Result<Self, CreateCommitError> {
+        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group_id)?;
+        self.vc_emulation_internal(crypto, storage, epoch_id)
+    }
+
+    /// Test-only variant of [`Self::vc_emulation`] that commits from the named
+    /// derivation epoch instead of the emulation group's newest one.
+    ///
+    /// Using an epoch other than the newest one violates the draft, which
+    /// requires every new virtual-client operation to use the newest derivation
+    /// epoch of the acting client's current emulation-group state. It exists to
+    /// construct scenarios that an application must not produce, such as a
+    /// sibling that acts on a stale emulation-group state.
+    #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
+    pub fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        self,
+        crypto: &Crypto,
+        storage: &Storage,
+        epoch_id: EpochId,
+    ) -> Result<Self, CreateCommitError> {
+        self.vc_emulation_internal(crypto, storage, epoch_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_internal<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         mut self,
         crypto: &Crypto,
         storage: &Storage,
         epoch_id: EpochId,
     ) -> Result<Self, CreateCommitError> {
-        let state: EmulationEpochState = storage
-            .vc_emulation_epoch_state(&epoch_id)
+        let state: VcDerivationEpochState = storage
+            .vc_derivation_epoch_state(&epoch_id)
             .map_err(|e| {
-                log::error!("vc: load emulation epoch state in vc_emulation failed: {e:?}");
+                log::error!("vc: load derivation epoch state in vc_emulation failed: {e:?}");
                 CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
             })?
-            .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+            .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
         let mut operation_tree: OperationSecretTree = storage
             .vc_operation_tree(&epoch_id)
             .map_err(|e| {
@@ -480,6 +528,35 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             resolved_dictionary,
         });
         Ok(self)
+    }
+
+    /// Ask the emulation group to start a new derivation epoch with this
+    /// commit.
+    ///
+    /// When set, `build` makes sure the commit's virtual-clients Safe AAD item
+    /// carries a `new_derivation_epoch` action, creating the item if the
+    /// application staged none. Every member of the emulation group then
+    /// registers the epoch this commit moves the group into as a derivation
+    /// epoch when the commit is merged, and subsequent virtual-client
+    /// operations resolve to it.
+    ///
+    /// This is the application's cadence knob for post-compromise security of
+    /// the virtual client's secrets. Commits that change membership create a
+    /// derivation epoch on their own, so they do not need this.
+    ///
+    /// Like all actions, the marker applies relative to the commit's input
+    /// state. Operations that reference a derivation epoch keep using the
+    /// newest derivation epoch of that input state, including operations
+    /// carried by this very commit.
+    ///
+    /// The group has to be configured as an emulation group and its
+    /// GroupContext has to require Safe AAD framing. Otherwise `build` fails
+    /// with [`CreateCommitError::NewDerivationEpochOutsideEmulationGroup`] or
+    /// [`CreateCommitError::NewDerivationEpochWithoutSafeAad`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn derivation_epoch(mut self, derivation_epoch: bool) -> Self {
+        self.vc_new_derivation_epoch = derivation_epoch;
+        self
     }
 
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
@@ -653,7 +730,23 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             other_extensions,
         } = cur_stage.group_info_config;
 
+        // Stage the marker before any proposal validation or path computation,
+        // so a misconfigured group is rejected before an operation generation is
+        // burned. The staged Safe AAD is what gets serialized into the commit's
+        // `authenticated_data` further down.
+        #[cfg(feature = "virtual-clients-draft")]
+        if builder.vc_new_derivation_epoch {
+            stage_vc_new_derivation_epoch(builder.group.borrow_mut())?;
+        }
+
         let group = builder.group.borrow();
+
+        // The staged Safe AAD is authoritative for whether this commit creates a
+        // derivation epoch, so an application that staged the marker itself gets
+        // the same result as one that called `derivation_epoch`.
+        #[cfg(feature = "virtual-clients-draft")]
+        let marks_new_vc_derivation_epoch = staged_vc_commit_data(group)?
+            .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
         let ciphersuite = group.ciphersuite();
         let own_leaf_index = group.own_leaf_index();
         let (sender, is_external_commit) = match cur_stage.external_commit_info {
@@ -946,13 +1039,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     // The spec requires the SafeAAD prefix even with zero items
                     // when the target GroupContext has `safe_aad` present, so a
                     // bare `aad` would be rejected by SafeAAD-aware receivers.
+                    // The joining group carries no application-staged items, so
+                    // the prefix is empty unless the builder staged the
+                    // virtual-clients marker.
                     #[cfg(feature = "extensions-draft")]
                     let aad_bytes = if group.context().safe_aad_required() {
-                        crate::framing::safe_aad::assemble_authenticated_data(
-                            &crate::framing::SafeAad::empty(),
-                            aad,
-                        )
-                        .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
+                        crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, aad)
+                            .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
                     } else {
                         aad.clone()
                     };
@@ -961,6 +1054,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                     (aad_bytes, WireFormat::PublicMessage)
                 }
             };
+
         let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
         // Build AuthenticatedContent
@@ -1166,12 +1260,17 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             #[cfg(feature = "virtual-clients-draft")]
             None,
         );
-        let staged_commit = StagedCommit::new(
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let mut staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
             #[cfg(feature = "virtual-clients-draft")]
             vc_loaded.as_ref().map(|loaded| loaded.epoch_id.clone()),
         );
+        #[cfg(feature = "virtual-clients-draft")]
+        {
+            staged_commit.marks_new_vc_derivation_epoch = marks_new_vc_derivation_epoch;
+        }
 
         Ok(builder.into_stage(Complete {
             result: CreateCommitResult {
@@ -1284,12 +1383,49 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     }
 }
 
+/// The virtual-clients commit data staged for `group`'s next outgoing message.
+///
+/// `Ok(None)` when the group does not act on the item at all, that is when it is
+/// not an emulation group or its GroupContext does not require Safe AAD framing,
+/// and when no item is staged.
+#[cfg(feature = "virtual-clients-draft")]
+fn staged_vc_commit_data(
+    group: &MlsGroup,
+) -> Result<Option<VirtualClientCommitData>, CreateCommitError> {
+    if !group.is_emulation_group() || !group.context().safe_aad_required() {
+        return Ok(None);
+    }
+    Ok(VirtualClientCommitData::from_safe_aad(&group.safe_aad)?)
+}
+
+/// Add a `new_derivation_epoch` action to the virtual-clients Safe AAD item
+/// staged on `group`, creating the item if the application staged none.
+///
+/// Every other entry of an application-staged item is preserved. Fails if the
+/// group cannot carry the marker, either because it is not an emulation group or
+/// because its GroupContext does not require Safe AAD framing.
+#[cfg(feature = "virtual-clients-draft")]
+fn stage_vc_new_derivation_epoch(group: &mut MlsGroup) -> Result<(), CreateCommitError> {
+    if !group.is_emulation_group() {
+        return Err(CreateCommitError::NewDerivationEpochOutsideEmulationGroup);
+    }
+    if !group.context().safe_aad_required() {
+        return Err(CreateCommitError::NewDerivationEpochWithoutSafeAad);
+    }
+
+    let mut commit_data = staged_vc_commit_data(group)?
+        .map_or_else(|| VirtualClientCommitData::new(None, Vec::new()), Ok)?;
+    commit_data.require_new_derivation_epoch();
+    group.safe_aad.upsert(commit_data.to_safe_aad_item()?);
+    Ok(())
+}
+
 /// Build the path-secret + leaf-keypair override from the
 /// [`OperationSecret`] allocated in [`CommitBuilder::vc_emulation`] and
 /// inject the corresponding `DerivationInfo` blob into
 /// `leaf_node_parameters`'s `app_data_dictionary` extension.
 ///
-/// The `DerivationInfoTbe` wrapping stays in the emulation epoch's
+/// The `DerivationInfoTbe` wrapping stays in the derivation epoch's
 /// ciphersuite, while the operation secret is imported into the
 /// higher-level group ciphersuite to produce MLS path material for this
 /// group. The generation was consumed and the advanced tree persisted when

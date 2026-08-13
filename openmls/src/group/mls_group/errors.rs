@@ -62,6 +62,11 @@ pub enum NewGroupError<StorageError> {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// The group is an emulation group, and registering the derivation epoch of
+    /// its initial epoch failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    RegisterVcDerivationEpoch(#[from] RegisterVcDerivationEpochError<StorageError>),
 }
 
 /// An error when deleting past epoch secrets.
@@ -594,7 +599,6 @@ mod virtual_clients_draft {
     use super::MlsGroupStateError;
     use crate::error::LibraryError;
     use crate::framing::MessageEncryptionError;
-    use crate::group::SafeExportSecretError;
     use crate::tree::secret_tree::SecretTreeError;
 
     /// Create message error
@@ -646,13 +650,29 @@ mod virtual_clients_draft {
         }
     }
 
-    /// Errors returned by
-    /// [`MlsGroup::register_vc_emulation_epoch`](crate::group::MlsGroup::register_vc_emulation_epoch).
+    /// Errors returned when deriving and persisting the state of a
+    /// virtual-clients derivation epoch. OpenMLS does this implicitly for
+    /// emulation groups, so this error is always wrapped in the error of the
+    /// operation that triggered the registration.
+    ///
+    /// See [`MlsGroupCreateConfigBuilder::emulation_group`](crate::group::MlsGroupCreateConfigBuilder::emulation_group).
     #[derive(Error, Debug, PartialEq, Clone)]
-    pub enum RegisterVcEmulationEpochError<StorageError> {
-        /// See [`SafeExportSecretError`] for more details.
+    pub enum RegisterVcDerivationEpochError<StorageError> {
+        /// Puncturing the application exporter for the virtual-clients
+        /// component failed. See
+        /// [`ApplicationExportTreeError`](super::ApplicationExportTreeError) for
+        /// more details.
         #[error(transparent)]
-        SafeExportSecret(#[from] SafeExportSecretError<StorageError>),
+        ApplicationExportTree(#[from] super::ApplicationExportTreeError),
+        /// The emulation group has no application export tree to source the
+        /// derivation epoch from. This happens when a group stored by an
+        /// OpenMLS version without application-exporter support is marked as
+        /// an emulation group.
+        #[error(
+            "The emulation group has no application export tree to source the derivation epoch \
+             from."
+        )]
+        MissingApplicationExportTree,
         /// See [`VirtualClientsError`](crate::components::vc_derivation_info::VirtualClientsError)
         /// for more details.
         #[error(transparent)]

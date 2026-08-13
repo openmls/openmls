@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use openmls_traits::storage::{
     traits::GroupId as GroupIdTrait, traits::HashReference as HashReferenceTrait,
-    traits::VcEmulationEpochState as VcEmulationEpochStateTrait,
+    traits::VcDerivationEpochState as VcDerivationEpochStateTrait,
     traits::VcEpochId as VcEpochIdTrait, Entity as EntityTrait, Key,
 };
 use rusqlite::{params, OptionalExtension as _, ToSql};
@@ -14,13 +14,13 @@ use crate::{
 };
 
 enum SecretType {
-    EmulationEpochState,
+    DerivationEpochState,
 }
 
 impl ToSql for SecretType {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         let secret_type_str = match self {
-            SecretType::EmulationEpochState => "emulation_epoch_state",
+            SecretType::DerivationEpochState => "derivation_epoch_state",
         };
         Ok(rusqlite::types::ToSqlOutput::Borrowed(
             rusqlite::types::ValueRef::Text(secret_type_str.as_bytes()),
@@ -32,10 +32,10 @@ pub(super) struct StorableEntityRef<'a, Entity: EntityTrait<STORAGE_PROVIDER_VER
     pub &'a Entity,
 );
 
-impl<'a, VcEmulationEpochState: VcEmulationEpochStateTrait<STORAGE_PROVIDER_VERSION>>
-    StorableEntityRef<'a, VcEmulationEpochState>
+impl<'a, VcDerivationEpochState: VcDerivationEpochStateTrait<STORAGE_PROVIDER_VERSION>>
+    StorableEntityRef<'a, VcDerivationEpochState>
 {
-    pub(super) fn store_vc_emulation_epoch_state<
+    pub(super) fn store_vc_derivation_epoch_state<
         C: Codec,
         EpochId: Key<STORAGE_PROVIDER_VERSION>,
     >(
@@ -44,14 +44,14 @@ impl<'a, VcEmulationEpochState: VcEmulationEpochStateTrait<STORAGE_PROVIDER_VERS
         epoch_id: &EpochId,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO vc_emulation_group_secrets (provider_version, epoch_id, secret_type, vc_secret)
+            "INSERT INTO vc_derivation_epoch_secrets (provider_version, epoch_id, secret_type, vc_secret)
             VALUES (?1, ?2, ?3, ?4)
             ON CONFLICT(epoch_id, secret_type) DO UPDATE SET
                 vc_secret = excluded.vc_secret",
             params![
                 STORAGE_PROVIDER_VERSION,
                 KeyRefWrapper::<C, _>(epoch_id, PhantomData),
-                SecretType::EmulationEpochState,
+                SecretType::DerivationEpochState,
                 EntityRefWrapper::<C, _>(self.0, PhantomData)
             ],
         )?;
@@ -60,17 +60,17 @@ impl<'a, VcEmulationEpochState: VcEmulationEpochStateTrait<STORAGE_PROVIDER_VERS
 }
 
 impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcEpochId> {
-    pub(super) fn load_vc_emulation_epoch_state<
+    pub(super) fn load_vc_derivation_epoch_state<
         C: Codec,
-        VcEmulationEpochState: VcEmulationEpochStateTrait<STORAGE_PROVIDER_VERSION>,
+        VcDerivationEpochState: VcDerivationEpochStateTrait<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         connection: &rusqlite::Connection,
-    ) -> Result<Option<VcEmulationEpochState>, rusqlite::Error> {
+    ) -> Result<Option<VcDerivationEpochState>, rusqlite::Error> {
         let Self(epoch_id) = self;
         let mut stmt = connection.prepare(
             "SELECT vc_secret
-            FROM vc_emulation_group_secrets
+            FROM vc_derivation_epoch_secrets
             WHERE epoch_id = ?1
                 AND provider_version = ?2
                 AND secret_type = ?3",
@@ -79,30 +79,30 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
             params![
                 KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
                 STORAGE_PROVIDER_VERSION,
-                SecretType::EmulationEpochState
+                SecretType::DerivationEpochState
             ],
             |row| {
-                let EntityWrapper::<C, VcEmulationEpochState>(state, ..) = row.get(0)?;
+                let EntityWrapper::<C, VcDerivationEpochState>(state, ..) = row.get(0)?;
                 Ok(state)
             },
         )
         .optional()
     }
 
-    pub(super) fn delete_vc_emulation_epoch_state<C: Codec>(
+    pub(super) fn delete_vc_derivation_epoch_state<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
         let Self(epoch_id) = self;
         connection.execute(
-            "DELETE FROM vc_emulation_group_secrets
+            "DELETE FROM vc_derivation_epoch_secrets
             WHERE epoch_id = ?1
                 AND provider_version = ?2
                 AND secret_type = ?3",
             params![
                 KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
                 STORAGE_PROVIDER_VERSION,
-                SecretType::EmulationEpochState
+                SecretType::DerivationEpochState
             ],
         )?;
         Ok(())
@@ -174,7 +174,7 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
     }
 }
 
-/// Per-epoch bindings from a higher-level group to emulation epochs. One row
+/// Per-epoch bindings from a higher-level group to derivation epochs. One row
 /// per higher-level group, holding the serialized binding record. Written on
 /// every commit merge.
 pub(super) struct StorableEmulationBindingRef<
@@ -255,18 +255,18 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
     }
 }
 
-/// The emulation epoch an emulation group registered for its current group
+/// The derivation epoch an emulation group registered for its current group
 /// epoch. One row per emulation group, holding the serialized registration
-/// record. Written by `register_vc_emulation_epoch`.
-pub(super) struct StorableRegisteredVcEmulationEpochRef<
+/// record. Written when a derivation epoch is registered.
+pub(super) struct StorableRegisteredVcDerivationEpochRef<
     'a,
-    RegisteredVcEmulationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>,
->(pub &'a RegisteredVcEmulationEpoch);
+    RegisteredVcDerivationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>,
+>(pub &'a RegisteredVcDerivationEpoch);
 
-impl<'a, RegisteredVcEmulationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>>
-    StorableRegisteredVcEmulationEpochRef<'a, RegisteredVcEmulationEpoch>
+impl<'a, RegisteredVcDerivationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>>
+    StorableRegisteredVcDerivationEpochRef<'a, RegisteredVcDerivationEpoch>
 {
-    pub(super) fn store_registered_vc_emulation_epoch<
+    pub(super) fn store_registered_vc_derivation_epoch<
         C: Codec,
         GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>,
     >(
@@ -275,7 +275,7 @@ impl<'a, RegisteredVcEmulationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>>
         group_id: &GroupId,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO registered_vc_emulation_epochs (provider_version, group_id, registration)
+            "INSERT INTO registered_vc_derivation_epochs (provider_version, group_id, registration)
             VALUES (?1, ?2, ?3)
             ON CONFLICT(group_id) DO UPDATE SET
                 registration = excluded.registration,
@@ -291,17 +291,17 @@ impl<'a, RegisteredVcEmulationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>>
 }
 
 impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
-    pub(super) fn load_registered_vc_emulation_epoch<
+    pub(super) fn load_registered_vc_derivation_epoch<
         C: Codec,
-        RegisteredVcEmulationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>,
+        RegisteredVcDerivationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         connection: &rusqlite::Connection,
-    ) -> Result<Option<RegisteredVcEmulationEpoch>, rusqlite::Error> {
+    ) -> Result<Option<RegisteredVcDerivationEpoch>, rusqlite::Error> {
         let Self(group_id) = self;
         let mut stmt = connection.prepare(
             "SELECT registration
-            FROM registered_vc_emulation_epochs
+            FROM registered_vc_derivation_epochs
             WHERE group_id = ?1
                 AND provider_version = ?2",
         )?;
@@ -311,7 +311,7 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
                 STORAGE_PROVIDER_VERSION
             ],
             |row| {
-                let EntityWrapper::<C, RegisteredVcEmulationEpoch>(registration, ..) =
+                let EntityWrapper::<C, RegisteredVcDerivationEpoch>(registration, ..) =
                     row.get(0)?;
                 Ok(registration)
             },
@@ -319,13 +319,13 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
         .optional()
     }
 
-    pub(super) fn delete_registered_vc_emulation_epoch<C: Codec>(
+    pub(super) fn delete_registered_vc_derivation_epoch<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
         let Self(group_id) = self;
         connection.execute(
-            "DELETE FROM registered_vc_emulation_epochs
+            "DELETE FROM registered_vc_derivation_epochs
             WHERE group_id = ?1
                 AND provider_version = ?2",
             params![
@@ -337,8 +337,8 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
     }
 }
 
-/// Per-emulation-epoch Virtual Client Operation Secret Tree. One row per
-/// emulation epoch, holding the serialized tree (node secrets plus per-leaf
+/// Per-derivation-epoch Virtual Client Operation Secret Tree. One row per
+/// derivation epoch, holding the serialized tree (node secrets plus per-leaf
 /// operation ratchets). Written back after every ratchet advance.
 pub(super) struct StorableOperationTreeRef<
     'a,
@@ -373,7 +373,7 @@ impl<'a, VcOperationTree: EntityTrait<STORAGE_PROVIDER_VERSION>>
 }
 
 /// Per-KeyPackage material a sibling retains when it processes a
-/// KeyPackageUpload. One row per KeyPackage reference, holding the emulation
+/// KeyPackageUpload. One row per KeyPackage reference, holding the derivation
 /// epoch and the per-KeyPackage seed secret needed to rederive the
 /// KeyPackage's keys.
 pub(super) struct StorableRetainedKeyPackageMaterialRef<

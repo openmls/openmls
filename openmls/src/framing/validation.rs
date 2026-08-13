@@ -492,9 +492,10 @@ impl ProcessedMessage {
     /// [`VC_COMPONENT_ID`]: crate::components::vc_derivation_info::VC_COMPONENT_ID
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_commit_data(&self) -> Result<Option<VirtualClientCommitData>, VcCommitDataError> {
-        self.safe_aad_item(crate::components::vc_derivation_info::VC_COMPONENT_ID)
-            .map(VirtualClientCommitData::from_safe_aad_item_data)
-            .transpose()
+        let Some(safe_aad) = self.safe_aad.as_ref() else {
+            return Ok(None);
+        };
+        VirtualClientCommitData::from_safe_aad(safe_aad)
     }
 
     /// Returns the bytes of `authenticated_data` after any Safe AAD prefix.
@@ -630,7 +631,7 @@ pub enum ProcessedMessageContent {
     /// match is checked before any sibling-commit (virtual clients) material is
     /// loaded, so an own Commit fanned back by the delivery service surfaces as
     /// `OwnPendingCommit` without consuming an operation-secret generation from
-    /// the emulation epoch's operation secret tree.
+    /// the derivation epoch's operation secret tree.
     OwnPendingCommit,
     /// A PrivateMessage whose sender data claims this client's own leaf index,
     /// i.e. a message this client authored that the delivery service fanned
@@ -648,9 +649,9 @@ pub enum ProcessedMessageContent {
     /// decryptable while their secrets are retained: unconfirmed own sends
     /// and messages from sibling emulator clients decrypt and process
     /// normally. This variant is then only returned in groups that do not
-    /// use virtual clients (no emulation state registered for the message's
-    /// epoch), when decryption of an own message fails, e.g. because the
-    /// send was already confirmed via
+    /// use virtual clients (no derivation epoch state registered for the
+    /// message's epoch), when decryption of an own message fails, e.g. because
+    /// the send was already confirmed via
     /// `MlsGroup::confirm_application_message()`.
     OwnPrivateMessage,
     /// A Commit message covering AppDataUpdate proposals.

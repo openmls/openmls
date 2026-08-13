@@ -348,7 +348,7 @@ impl ProcessedWelcome {
         // whose signature key matches the local KeyPackage. On the
         // virtual-client path there is no local signature key, so the leaf is
         // located by its derived encryption key and validated against the
-        // emulation epoch's derivation info.
+        // derivation epoch's derivation info.
         let own_leaf_index = match &self.key_material.inner() {
             WelcomeKeyMaterialInner::KeyPackage(key_package_bundle) => {
                 // Check that the leaf node of the added key package supports all extensions in
@@ -496,6 +496,8 @@ impl ProcessedWelcome {
             verifiable_group_info: self.verifiable_group_info,
             key_material: self.key_material,
             path_keypairs,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: false,
         };
 
         Ok(staged_welcome)
@@ -614,6 +616,21 @@ impl StagedWelcome {
         &self.application_export_secret
     }
 
+    /// Join the group as an emulation group of a virtual client. See
+    /// [`MlsGroupCreateConfigBuilder::emulation_group`] for what an emulation
+    /// group is.
+    ///
+    /// Nothing on the wire marks a group as an emulation group, so a joiner has
+    /// to set this itself. Joining an emulation group without it leaves the
+    /// virtual client's secrets underived.
+    ///
+    /// [`MlsGroupCreateConfigBuilder::emulation_group`]: crate::group::MlsGroupCreateConfigBuilder::emulation_group
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(mut self, emulation_group: bool) -> Self {
+        self.emulation_group = emulation_group;
+        self
+    }
+
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
     pub fn into_group<Provider: OpenMlsProvider>(
         self,
@@ -630,7 +647,24 @@ impl StagedWelcome {
         };
 
         #[cfg(feature = "extensions-draft")]
-        let application_export_tree = ApplicationExportTree::new(self.application_export_secret);
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let mut application_export_tree =
+            ApplicationExportTree::new(self.application_export_secret);
+
+        // The epoch the Welcome hands us is a derivation epoch of the emulation
+        // group: the commit that created it added us, so it changed membership.
+        #[cfg(feature = "virtual-clients-draft")]
+        if self.emulation_group {
+            crate::components::vc_derivation_info::register_vc_derivation_epoch(
+                provider.crypto(),
+                provider.storage(),
+                Some(&mut application_export_tree),
+                crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
+                    &self.public_group,
+                    self.own_leaf_index,
+                ),
+            )?;
+        }
 
         let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
 
@@ -648,6 +682,8 @@ impl StagedWelcome {
             resumption_psk_store: self.resumption_psk_store,
             #[cfg(feature = "extensions-draft")]
             application_export_tree: Some(application_export_tree),
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: self.emulation_group,
         };
 
         mls_group
@@ -818,7 +854,7 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
 /// the derivation info the VC sender embedded under [`VC_COMPONENT_ID`]: the
 /// leaf whose cleartext `epoch_id` equals the material's and whose
 /// `encryption_key` equals the key derived in the first welcome stage. That
-/// leaf's encrypted [`DerivationInfoTbe`] is then decrypted with the emulation
+/// leaf's encrypted [`DerivationInfoTbe`] is then decrypted with the derivation
 /// epoch state and its `leaf_index`, `generation`, and `key_package_index`
 /// must equal the material's.
 ///
@@ -833,7 +869,7 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     use tls_codec::{DeserializeBytes as _, Serialize as _};
 
     use crate::components::vc_derivation_info::{
-        DerivationInfo, DerivationInfoTbe, EmulationEpochState, VirtualClientOperationType,
+        DerivationInfo, DerivationInfoTbe, VcDerivationEpochState, VirtualClientOperationType,
         VirtualClientsError, VC_COMPONENT_ID,
     };
 
@@ -869,14 +905,14 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
         return Err(VirtualClientsError::DerivationInfoMalformed.into());
     }
 
-    let state: EmulationEpochState = provider
+    let state: VcDerivationEpochState = provider
         .storage()
-        .vc_emulation_epoch_state(&material.epoch_id)
+        .vc_derivation_epoch_state(&material.epoch_id)
         .map_err(|e| {
-            log::error!("vc: load emulation epoch state in welcome staging failed: {e:?}");
+            log::error!("vc: load derivation epoch state in welcome staging failed: {e:?}");
             VirtualClientsError::StorageError
         })?
-        .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+        .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     let (_state_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
 
     let leaf_encryption_key = own_leaf
@@ -928,7 +964,7 @@ impl MlsGroup {
     /// The creator emulator client built the group with
     /// [`MlsGroupBuilder::vc_emulation`], its `key_package`-sourced leaf key
     /// material derived from a `key_package` operation secret. Sharing the same
-    /// emulation epoch (`epoch_id`), this client reconstructs the epoch-0 state:
+    /// derivation epoch (`epoch_id`), this client reconstructs the epoch-0 state:
     /// it verifies the GroupInfo and single-leaf ratchet tree (which may instead
     /// travel in the GroupInfo's `ratchet_tree` extension), rederives the creator
     /// leaf's key material from the shared operation secret tree, and derives the
@@ -987,7 +1023,7 @@ impl MlsGroup {
             return Err(Error::CreatorLeafNotKeyPackageSourced);
         };
 
-        // Read the creator leaf's derivation info and check the emulation epoch.
+        // Read the creator leaf's derivation info and check the derivation epoch.
         let derivation_info_bytes = creator_leaf
             .extensions()
             .app_data_dictionary()
@@ -999,7 +1035,7 @@ impl MlsGroup {
             return Err(Error::EpochIdMismatch);
         }
 
-        // Load the emulation epoch state and operation tree.
+        // Load the derivation epoch state and operation tree.
         let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
         let (_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
 
@@ -1101,11 +1137,11 @@ impl MlsGroup {
             group_epoch_secrets.resumption_psk().clone(),
         );
 
-        // Bind epoch 0 of the created group to the emulation epoch so later VC
-        // operations in this group resolve the right emulation state. Written
-        // before the group itself, so an error between the writes cannot leave a
-        // loadable group without a binding (a bound group is required for the
-        // reuse-guard MUST).
+        // Bind epoch 0 of the created group to the derivation epoch so later
+        // VC operations in this group resolve the right derivation epoch state.
+        // Written before the group itself, so an error between the writes
+        // cannot leave a loadable group without a binding (a bound group is
+        // required for the reuse-guard MUST).
         let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
             .storage()
             .vc_emulation_bindings(public_group.group_id())
@@ -1132,6 +1168,8 @@ impl MlsGroup {
             resumption_psk_store,
             #[cfg(feature = "extensions-draft")]
             application_export_tree: None,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: false,
         };
         mls_group
             .store(provider.storage())
@@ -1295,6 +1333,9 @@ impl VcExternalCommitJoinBuilder {
             resumption_psk_store,
             #[cfg(feature = "extensions-draft")]
             application_export_tree: None,
+            // A virtual client joins a higher-level group here, never its own
+            // emulation group.
+            emulation_group: false,
         };
 
         // Parse and verify the external commit against the prior-epoch group.

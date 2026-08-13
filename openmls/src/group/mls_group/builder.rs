@@ -34,8 +34,10 @@ pub struct MlsGroupBuilder {
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
     replace_old_group: bool,
     psk_ids: Vec<PreSharedKeyId>,
+    /// The emulation group to create this group as a virtual client of. The
+    /// derivation epoch is resolved from its state when [`Self::build`] runs.
     #[cfg(feature = "virtual-clients-draft")]
-    vc_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
+    vc_emulation_group_id: Option<GroupId>,
 }
 
 impl MlsGroupBuilder {
@@ -49,7 +51,13 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Create the group as a virtual client on the emulation epoch `epoch_id`.
+    /// Create the group as a virtual client of the emulation group named by
+    /// `emulation_group_id`.
+    ///
+    /// The group is created from the newest derivation epoch of the emulation
+    /// group, which is what the draft requires of every new virtual-client
+    /// operation. The epoch is resolved when [`Self::build`] runs, against the
+    /// emulation group's state at that point.
     ///
     /// The creator's leaf is `key_package`-sourced and its key material is
     /// derived from a fresh `key_package` operation secret of that epoch (so
@@ -60,11 +68,8 @@ impl MlsGroupBuilder {
     ///
     /// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn vc_emulation(
-        mut self,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
-    ) -> Self {
-        self.vc_epoch_id = Some(epoch_id);
+    pub fn vc_emulation(mut self, emulation_group_id: &GroupId) -> Self {
+        self.vc_emulation_group_id = Some(emulation_group_id.clone());
         self
     }
 
@@ -112,7 +117,12 @@ impl MlsGroupBuilder {
             .map_err(|_| NewGroupError::UnsupportedCiphersuite(ciphersuite))?;
 
         #[cfg(feature = "virtual-clients-draft")]
-        if let Some(epoch_id) = self.vc_epoch_id.clone() {
+        if let Some(emulation_group_id) = &self.vc_emulation_group_id {
+            let epoch_id =
+                crate::components::vc_derivation_info::require_newest_vc_derivation_epoch(
+                    provider.storage(),
+                    emulation_group_id,
+                )?;
             return build_vc_internal(
                 provider,
                 signer,
@@ -216,7 +226,22 @@ impl MlsGroupBuilder {
         resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
         #[cfg(feature = "extensions-draft")]
-        let application_export_tree = ApplicationExportTree::new(application_exporter);
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let mut application_export_tree = ApplicationExportTree::new(application_exporter);
+
+        // The initial epoch of an emulation group is a derivation epoch.
+        #[cfg(feature = "virtual-clients-draft")]
+        if mls_group_create_config.emulation_group {
+            crate::components::vc_derivation_info::register_vc_derivation_epoch(
+                provider.crypto(),
+                provider.storage(),
+                Some(&mut application_export_tree),
+                crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
+                    &public_group,
+                    LeafNodeIndex::new(0),
+                ),
+            )?;
+        }
 
         let mls_group = MlsGroup {
             mls_group_config: mls_group_create_config.join_config.clone(),
@@ -232,6 +257,8 @@ impl MlsGroupBuilder {
             resumption_psk_store,
             #[cfg(feature = "extensions-draft")]
             application_export_tree: Some(application_export_tree),
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: mls_group_create_config.emulation_group,
         };
 
         mls_group
@@ -381,7 +408,7 @@ impl MlsGroupBuilder {
 /// leaf).
 ///
 /// The creator's leaf is `key_package`-sourced and its key material is derived
-/// from a fresh `key_package` operation secret of the emulation epoch
+/// from a fresh `key_package` operation secret of the derivation epoch
 /// `epoch_id` (batch index 0). The epoch-0 `epoch_secret` is derived from the
 /// same KeyPackage seed under the created group's ciphersuite. A sibling
 /// emulator client reconstructs this exact state with
@@ -433,7 +460,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         None,
     )?;
 
-    // Load the emulation epoch state and operation tree, allocate a fresh
+    // Load the derivation epoch state and operation tree, allocate a fresh
     // `key_package` generation (empty operation context, matching the KeyPackage
     // batch path), and persist the advanced tree right away. A retried creation
     // consumes a fresh generation.
@@ -563,13 +590,15 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         // Reconstructed VC groups do not populate the application export tree,
         // matching the other VC group-entry paths.
         application_export_tree: None,
+        // A group a virtual client creates is not itself an emulation group.
+        emulation_group: false,
     };
 
-    // Bind epoch 0 of the new group to the emulation epoch so later VC
-    // operations in this group resolve the right emulation state. Written before
-    // the group itself, so an error between the writes cannot leave a loadable
-    // group without a binding (a bound group is required for the reuse-guard
-    // MUST).
+    // Bind epoch 0 of the new group to the derivation epoch so later VC
+    // operations in this group resolve the right derivation epoch state.
+    // Written before the group itself, so an error between the writes cannot
+    // leave a loadable group without a binding (a bound group is required for
+    // the reuse-guard MUST).
     let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
         .storage()
         .vc_emulation_bindings(&group_id)
