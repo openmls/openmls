@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/validation.rs`."><title>validation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-650bd49d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (12c36e253 2026-08-10)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-d4bd101e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>validation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Validation steps for incoming messages
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/validation.rs`."><title>validation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-650bd49d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (c98d0cb27 2026-08-12)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-d4bd101e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/framing/</div>validation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Validation steps for incoming messages
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! ```text
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -492,203 +492,204 @@
 <a href=#492 id=492 data-nosnippet>492</a>    /// [`VC_COMPONENT_ID`]: crate::components::vc_derivation_info::VC_COMPONENT_ID
 <a href=#493 id=493 data-nosnippet>493</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
 <a href=#494 id=494 data-nosnippet>494</a>    </span><span class="kw">pub fn </span>vc_commit_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;VirtualClientCommitData&gt;, VcCommitDataError&gt; {
-<a href=#495 id=495 data-nosnippet>495</a>        <span class="self">self</span>.safe_aad_item(<span class="kw">crate</span>::components::vc_derivation_info::VC_COMPONENT_ID)
-<a href=#496 id=496 data-nosnippet>496</a>            .map(VirtualClientCommitData::from_safe_aad_item_data)
-<a href=#497 id=497 data-nosnippet>497</a>            .transpose()
-<a href=#498 id=498 data-nosnippet>498</a>    }
-<a href=#499 id=499 data-nosnippet>499</a>
-<a href=#500 id=500 data-nosnippet>500</a>    <span class="doccomment">/// Returns the bytes of `authenticated_data` after any Safe AAD prefix.
-<a href=#501 id=501 data-nosnippet>501</a>    /// Equal to [`Self::aad`] when no Safe AAD prefix is present.
-<a href=#502 id=502 data-nosnippet>502</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#503 id=503 data-nosnippet>503</a>    </span><span class="kw">pub fn </span>tail_aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
-<a href=#504 id=504 data-nosnippet>504</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.authenticated_data[<span class="self">self</span>.safe_aad_prefix_len..]
-<a href=#505 id=505 data-nosnippet>505</a>    }
-<a href=#506 id=506 data-nosnippet>506</a>
-<a href=#507 id=507 data-nosnippet>507</a>    <span class="doccomment">/// Returns the sender's leaf index in the emulation group when this
-<a href=#508 id=508 data-nosnippet>508</a>    /// message is an application message from a sibling emulator client.
-<a href=#509 id=509 data-nosnippet>509</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#510 id=510 data-nosnippet>510</a>    </span><span class="kw">pub fn </span>emulator_sender_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt; {
-<a href=#511 id=511 data-nosnippet>511</a>        <span class="self">self</span>.emulator_sender_leaf_index
-<a href=#512 id=512 data-nosnippet>512</a>    }
-<a href=#513 id=513 data-nosnippet>513</a>
-<a href=#514 id=514 data-nosnippet>514</a>    <span class="doccomment">/// Returns the group ID of the message.
-<a href=#515 id=515 data-nosnippet>515</a>    </span><span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
-<a href=#516 id=516 data-nosnippet>516</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.group_id
-<a href=#517 id=517 data-nosnippet>517</a>    }
-<a href=#518 id=518 data-nosnippet>518</a>
-<a href=#519 id=519 data-nosnippet>519</a>    <span class="doccomment">/// Returns the epoch of the message.
-<a href=#520 id=520 data-nosnippet>520</a>    </span><span class="kw">pub fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
-<a href=#521 id=521 data-nosnippet>521</a>        <span class="self">self</span>.epoch
-<a href=#522 id=522 data-nosnippet>522</a>    }
-<a href=#523 id=523 data-nosnippet>523</a>
-<a href=#524 id=524 data-nosnippet>524</a>    <span class="doccomment">/// Returns the sender of the message.
-<a href=#525 id=525 data-nosnippet>525</a>    </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
-<a href=#526 id=526 data-nosnippet>526</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.sender
-<a href=#527 id=527 data-nosnippet>527</a>    }
-<a href=#528 id=528 data-nosnippet>528</a>
-<a href=#529 id=529 data-nosnippet>529</a>    <span class="doccomment">/// Returns the additional authenticated data (AAD) of the message.
-<a href=#530 id=530 data-nosnippet>530</a>    </span><span class="kw">pub fn </span>aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
-<a href=#531 id=531 data-nosnippet>531</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.authenticated_data
-<a href=#532 id=532 data-nosnippet>532</a>    }
-<a href=#533 id=533 data-nosnippet>533</a>
-<a href=#534 id=534 data-nosnippet>534</a>    <span class="doccomment">/// Returns the content of the message.
-<a href=#535 id=535 data-nosnippet>535</a>    </span><span class="kw">pub fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProcessedMessageContent {
-<a href=#536 id=536 data-nosnippet>536</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.content
-<a href=#537 id=537 data-nosnippet>537</a>    }
-<a href=#538 id=538 data-nosnippet>538</a>
-<a href=#539 id=539 data-nosnippet>539</a>    <span class="doccomment">/// Returns the content of the message and consumes the message.
-<a href=#540 id=540 data-nosnippet>540</a>    </span><span class="kw">pub fn </span>into_content(<span class="self">self</span>) -&gt; ProcessedMessageContent {
-<a href=#541 id=541 data-nosnippet>541</a>        <span class="self">self</span>.content
-<a href=#542 id=542 data-nosnippet>542</a>    }
-<a href=#543 id=543 data-nosnippet>543</a>
-<a href=#544 id=544 data-nosnippet>544</a>    <span class="doccomment">/// Returns the credential of the message.
-<a href=#545 id=545 data-nosnippet>545</a>    </span><span class="kw">pub fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Credential {
-<a href=#546 id=546 data-nosnippet>546</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.credential
-<a href=#547 id=547 data-nosnippet>547</a>    }
-<a href=#548 id=548 data-nosnippet>548</a>
-<a href=#549 id=549 data-nosnippet>549</a>    <span class="doccomment">/// Safely export a value if the content of the processed message is a
-<a href=#550 id=550 data-nosnippet>550</a>    /// [`StagedCommit`].
-<a href=#551 id=551 data-nosnippet>551</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#552 id=552 data-nosnippet>552</a>    </span><span class="kw">pub fn </span>safe_export_secret&lt;Crypto: OpenMlsCrypto&gt;(
-<a href=#553 id=553 data-nosnippet>553</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#554 id=554 data-nosnippet>554</a>        crypto: <span class="kw-2">&amp;</span>Crypto,
-<a href=#555 id=555 data-nosnippet>555</a>        component_id: ComponentId,
-<a href=#556 id=556 data-nosnippet>556</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ProcessedMessageSafeExportSecretError&gt; {
-<a href=#557 id=557 data-nosnippet>557</a>        <span class="kw">if let </span>ProcessedMessageContent::StagedCommitMessage(<span class="kw-2">ref mut </span>staged_commit) =
-<a href=#558 id=558 data-nosnippet>558</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>.content
-<a href=#559 id=559 data-nosnippet>559</a>        {
-<a href=#560 id=560 data-nosnippet>560</a>            <span class="kw">let </span>secret = staged_commit.safe_export_secret(crypto, component_id)<span class="question-mark">?</span>;
-<a href=#561 id=561 data-nosnippet>561</a>            <span class="prelude-val">Ok</span>(secret)
-<a href=#562 id=562 data-nosnippet>562</a>        } <span class="kw">else </span>{
-<a href=#563 id=563 data-nosnippet>563</a>            <span class="prelude-val">Err</span>(ProcessedMessageSafeExportSecretError::NotACommit)
-<a href=#564 id=564 data-nosnippet>564</a>        }
-<a href=#565 id=565 data-nosnippet>565</a>    }
-<a href=#566 id=566 data-nosnippet>566</a>}
-<a href=#567 id=567 data-nosnippet>567</a>
-<a href=#568 id=568 data-nosnippet>568</a><span class="doccomment">/// Content of a processed message.
-<a href=#569 id=569 data-nosnippet>569</a>///
-<a href=#570 id=570 data-nosnippet>570</a>/// See the content variants' documentation for more information.
-<a href=#571 id=571 data-nosnippet>571</a>/// [`StagedCommit`] and [`QueuedProposal`] can be inspected for authorization purposes.
-<a href=#572 id=572 data-nosnippet>572</a></span><span class="attr">#[derive(Debug)]
-<a href=#573 id=573 data-nosnippet>573</a></span><span class="kw">pub enum </span>ProcessedMessageContent {
-<a href=#574 id=574 data-nosnippet>574</a>    <span class="doccomment">/// An application message.
-<a href=#575 id=575 data-nosnippet>575</a>    ///
-<a href=#576 id=576 data-nosnippet>576</a>    /// The [`ApplicationMessage`] contains a vector of bytes that can be used right-away.
-<a href=#577 id=577 data-nosnippet>577</a>    </span>ApplicationMessage(ApplicationMessage),
-<a href=#578 id=578 data-nosnippet>578</a>    <span class="doccomment">/// A standalone proposal.
-<a href=#579 id=579 data-nosnippet>579</a>    ///
-<a href=#580 id=580 data-nosnippet>580</a>    /// The [`QueuedProposal`] can be inspected for authorization purposes by the application.
-<a href=#581 id=581 data-nosnippet>581</a>    /// If the proposal is deemed to be allowed, it should be added to the group's proposal
-<a href=#582 id=582 data-nosnippet>582</a>    /// queue using [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
-<a href=#583 id=583 data-nosnippet>583</a>    </span>ProposalMessage(Box&lt;QueuedProposal&gt;),
-<a href=#584 id=584 data-nosnippet>584</a>    <span class="doccomment">/// An [external join proposal](crate::prelude::JoinProposal) sent by a
-<a href=#585 id=585 data-nosnippet>585</a>    /// [NewMemberProposal](crate::prelude::Sender::NewMemberProposal) sender which is outside the group.
-<a href=#586 id=586 data-nosnippet>586</a>    ///
-<a href=#587 id=587 data-nosnippet>587</a>    /// Since this originates from a party outside the group, the [`QueuedProposal`] SHOULD be
-<a href=#588 id=588 data-nosnippet>588</a>    /// inspected for authorization purposes by the application. If the proposal is deemed to be
-<a href=#589 id=589 data-nosnippet>589</a>    /// allowed, it should be added to the group's proposal queue using
-<a href=#590 id=590 data-nosnippet>590</a>    /// [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
-<a href=#591 id=591 data-nosnippet>591</a>    </span>ExternalJoinProposalMessage(Box&lt;QueuedProposal&gt;),
-<a href=#592 id=592 data-nosnippet>592</a>    <span class="doccomment">/// A Commit message.
-<a href=#593 id=593 data-nosnippet>593</a>    ///
-<a href=#594 id=594 data-nosnippet>594</a>    /// The [`StagedCommit`] can be inspected for authorization purposes by the application.
-<a href=#595 id=595 data-nosnippet>595</a>    /// If the type of the commit and the proposals it covers are deemed to be allowed,
-<a href=#596 id=596 data-nosnippet>596</a>    /// the commit should be merged into the group's state using
-<a href=#597 id=597 data-nosnippet>597</a>    /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
-<a href=#598 id=598 data-nosnippet>598</a>    </span>StagedCommitMessage(Box&lt;StagedCommit&gt;),
-<a href=#599 id=599 data-nosnippet>599</a>    <span class="doccomment">/// A Commit authored by this client that it got fanned out by the delivery
-<a href=#600 id=600 data-nosnippet>600</a>    /// service, matching the group's pending commit.
-<a href=#601 id=601 data-nosnippet>601</a>    ///
-<a href=#602 id=602 data-nosnippet>602</a>    /// This is returned instead of
-<a href=#603 id=603 data-nosnippet>603</a>    /// [`StagedCommitMessage`](Self::StagedCommitMessage) when the processed
-<a href=#604 id=604 data-nosnippet>604</a>    /// Commit was created by this client and matches the group's pending commit.
-<a href=#605 id=605 data-nosnippet>605</a>    /// Since this client already holds the corresponding pending commit, the
-<a href=#606 id=606 data-nosnippet>606</a>    /// incoming Commit is not staged. To apply it, merge the pending commit
-<a href=#607 id=607 data-nosnippet>607</a>    /// using
-<a href=#608 id=608 data-nosnippet>608</a>    /// [`MlsGroup::merge_pending_commit()`](crate::group::mls_group::MlsGroup::merge_pending_commit()).
-<a href=#609 id=609 data-nosnippet>609</a>    /// An own Commit that does not match the pending commit is instead returned
-<a href=#610 id=610 data-nosnippet>610</a>    /// as a [`StagedCommitMessage`](Self::StagedCommitMessage) (if it has no
-<a href=#611 id=611 data-nosnippet>611</a>    /// UpdatePath) or rejected (if it has an UpdatePath we cannot decrypt).
-<a href=#612 id=612 data-nosnippet>612</a>    ///
-<a href=#613 id=613 data-nosnippet>613</a>    /// The match against the pending commit is established by comparing the
-<a href=#614 id=614 data-nosnippet>614</a>    /// confirmation tag of the incoming Commit against the one stored with the
-<a href=#615 id=615 data-nosnippet>615</a>    /// pending commit. The message signature has already been verified, which
-<a href=#616 id=616 data-nosnippet>616</a>    /// authenticates the Commit as ours, and a matching confirmation tag binds
-<a href=#617 id=617 data-nosnippet>617</a>    /// the confirmed transcript hash of the new epoch. We do not otherwise
-<a href=#618 id=618 data-nosnippet>618</a>    /// compare the contents of the incoming Commit against the pending commit,
-<a href=#619 id=619 data-nosnippet>619</a>    /// and the incoming Commit's state is never adopted.
-<a href=#620 id=620 data-nosnippet>620</a>    ///
-<a href=#621 id=621 data-nosnippet>621</a>    /// This is only produced for Commits framed as
-<a href=#622 id=622 data-nosnippet>622</a>    /// [`PublicMessage`](crate::framing::MlsMessageBodyIn::PublicMessage). A
-<a href=#623 id=623 data-nosnippet>623</a>    /// Commit framed as a
-<a href=#624 id=624 data-nosnippet>624</a>    /// [`PrivateMessage`](crate::framing::MlsMessageBodyIn::PrivateMessage)
-<a href=#625 id=625 data-nosnippet>625</a>    /// cannot be decrypted by its own author and instead surfaces as
-<a href=#626 id=626 data-nosnippet>626</a>    /// [`OwnPrivateMessage`](Self::OwnPrivateMessage). The exception is the
-<a href=#627 id=627 data-nosnippet>627</a>    /// `virtual-clients-draft` feature, where an own private Commit whose
-<a href=#628 id=628 data-nosnippet>628</a>    /// encryption secret is still retained (not yet confirmed) decrypts and
-<a href=#629 id=629 data-nosnippet>629</a>    /// can produce this variant as well. Under that feature the pending-commit
-<a href=#630 id=630 data-nosnippet>630</a>    /// match is checked before any sibling-commit (virtual clients) material is
-<a href=#631 id=631 data-nosnippet>631</a>    /// loaded, so an own Commit fanned back by the delivery service surfaces as
-<a href=#632 id=632 data-nosnippet>632</a>    /// `OwnPendingCommit` without consuming an operation-secret generation from
-<a href=#633 id=633 data-nosnippet>633</a>    /// the emulation epoch's operation secret tree.
-<a href=#634 id=634 data-nosnippet>634</a>    </span>OwnPendingCommit,
-<a href=#635 id=635 data-nosnippet>635</a>    <span class="doccomment">/// A PrivateMessage whose sender data claims this client's own leaf index,
-<a href=#636 id=636 data-nosnippet>636</a>    /// i.e. a message this client authored that the delivery service fanned
-<a href=#637 id=637 data-nosnippet>637</a>    /// back.
-<a href=#638 id=638 data-nosnippet>638</a>    ///
-<a href=#639 id=639 data-nosnippet>639</a>    /// The content cannot be decrypted (the own sender ratchet is
-<a href=#640 id=640 data-nosnippet>640</a>    /// encryption-only) and the signature cannot be verified.
-<a href=#641 id=641 data-nosnippet>641</a>    ///
-<a href=#642 id=642 data-nosnippet>642</a>    /// Applications should treat this variant as a hint to skip the message.
-<a href=#643 id=643 data-nosnippet>643</a>    /// The content type of the incoming message (application/proposal/commit)
-<a href=#644 id=644 data-nosnippet>644</a>    /// is available via `ProtocolMessage::content_type()` before processing,
-<a href=#645 id=645 data-nosnippet>645</a>    /// and is unauthenticated plaintext in the PrivateMessage framing.
-<a href=#646 id=646 data-nosnippet>646</a>    ///
-<a href=#647 id=647 data-nosnippet>647</a>    /// With the `virtual-clients-draft` feature, own-leaf messages are
-<a href=#648 id=648 data-nosnippet>648</a>    /// decryptable while their secrets are retained: unconfirmed own sends
-<a href=#649 id=649 data-nosnippet>649</a>    /// and messages from sibling emulator clients decrypt and process
-<a href=#650 id=650 data-nosnippet>650</a>    /// normally. This variant is then only returned in groups that do not
-<a href=#651 id=651 data-nosnippet>651</a>    /// use virtual clients (no emulation state registered for the message's
-<a href=#652 id=652 data-nosnippet>652</a>    /// epoch), when decryption of an own message fails, e.g. because the
-<a href=#653 id=653 data-nosnippet>653</a>    /// send was already confirmed via
-<a href=#654 id=654 data-nosnippet>654</a>    /// `MlsGroup::confirm_application_message()`.
-<a href=#655 id=655 data-nosnippet>655</a>    </span>OwnPrivateMessage,
-<a href=#656 id=656 data-nosnippet>656</a>    <span class="doccomment">/// A Commit message covering AppDataUpdate proposals.
-<a href=#657 id=657 data-nosnippet>657</a>    ///
-<a href=#658 id=658 data-nosnippet>658</a>    /// The proposals carry diffs in an application-defined format, so the
-<a href=#659 id=659 data-nosnippet>659</a>    /// commit cannot be staged before the application has interpreted them and
-<a href=#660 id=660 data-nosnippet>660</a>    /// computed the resulting dictionary entries. Inspect the proposals via
-<a href=#661 id=661 data-nosnippet>661</a>    /// [`UnresolvedAppDataCommit::app_data_update_proposals()`], compute the
-<a href=#662 id=662 data-nosnippet>662</a>    /// updates with the help of
-<a href=#663 id=663 data-nosnippet>663</a>    /// [`MlsGroup::app_data_dictionary_updater()`](crate::group::mls_group::MlsGroup::app_data_dictionary_updater)
-<a href=#664 id=664 data-nosnippet>664</a>    /// and resume staging via
-<a href=#665 id=665 data-nosnippet>665</a>    /// [`MlsGroup::stage_app_data_commit()`](crate::group::mls_group::MlsGroup::stage_app_data_commit).
-<a href=#666 id=666 data-nosnippet>666</a>    ///
-<a href=#667 id=667 data-nosnippet>667</a>    /// This variant is likewise returned by
-<a href=#668 id=668 data-nosnippet>668</a>    /// [`PublicGroup::process_message()`](crate::group::public_group::PublicGroup::process_message),
-<a href=#669 id=669 data-nosnippet>669</a>    /// where the updates are computed with
-<a href=#670 id=670 data-nosnippet>670</a>    /// [`PublicGroup::app_data_dictionary_updater()`](crate::group::public_group::PublicGroup::app_data_dictionary_updater)
-<a href=#671 id=671 data-nosnippet>671</a>    /// and staging resumes via
-<a href=#672 id=672 data-nosnippet>672</a>    /// [`PublicGroup::stage_app_data_commit()`](crate::group::public_group::PublicGroup::stage_app_data_commit).
-<a href=#673 id=673 data-nosnippet>673</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#674 id=674 data-nosnippet>674</a>    </span>UnresolvedAppDataCommit(Box&lt;UnresolvedAppDataCommit&gt;),
-<a href=#675 id=675 data-nosnippet>675</a>}
-<a href=#676 id=676 data-nosnippet>676</a>
-<a href=#677 id=677 data-nosnippet>677</a><span class="doccomment">/// Application message received through a [ProcessedMessage].
-<a href=#678 id=678 data-nosnippet>678</a></span><span class="attr">#[derive(Debug, PartialEq, Eq)]
-<a href=#679 id=679 data-nosnippet>679</a></span><span class="kw">pub struct </span>ApplicationMessage {
-<a href=#680 id=680 data-nosnippet>680</a>    bytes: Vec&lt;u8&gt;,
-<a href=#681 id=681 data-nosnippet>681</a>}
-<a href=#682 id=682 data-nosnippet>682</a>
-<a href=#683 id=683 data-nosnippet>683</a><span class="kw">impl </span>ApplicationMessage {
-<a href=#684 id=684 data-nosnippet>684</a>    <span class="doccomment">/// Create a new [ApplicationMessage].
-<a href=#685 id=685 data-nosnippet>685</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(bytes: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
-<a href=#686 id=686 data-nosnippet>686</a>        <span class="self">Self </span>{ bytes }
-<a href=#687 id=687 data-nosnippet>687</a>    }
-<a href=#688 id=688 data-nosnippet>688</a>
-<a href=#689 id=689 data-nosnippet>689</a>    <span class="doccomment">/// Returns the inner bytes and consumes the [`ApplicationMessage`].
-<a href=#690 id=690 data-nosnippet>690</a>    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
-<a href=#691 id=691 data-nosnippet>691</a>        <span class="self">self</span>.bytes
-<a href=#692 id=692 data-nosnippet>692</a>    }
-<a href=#693 id=693 data-nosnippet>693</a>}
+<a href=#495 id=495 data-nosnippet>495</a>        <span class="kw">let </span><span class="prelude-val">Some</span>(safe_aad) = <span class="self">self</span>.safe_aad.as_ref() <span class="kw">else </span>{
+<a href=#496 id=496 data-nosnippet>496</a>            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+<a href=#497 id=497 data-nosnippet>497</a>        };
+<a href=#498 id=498 data-nosnippet>498</a>        VirtualClientCommitData::from_safe_aad(safe_aad)
+<a href=#499 id=499 data-nosnippet>499</a>    }
+<a href=#500 id=500 data-nosnippet>500</a>
+<a href=#501 id=501 data-nosnippet>501</a>    <span class="doccomment">/// Returns the bytes of `authenticated_data` after any Safe AAD prefix.
+<a href=#502 id=502 data-nosnippet>502</a>    /// Equal to [`Self::aad`] when no Safe AAD prefix is present.
+<a href=#503 id=503 data-nosnippet>503</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#504 id=504 data-nosnippet>504</a>    </span><span class="kw">pub fn </span>tail_aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+<a href=#505 id=505 data-nosnippet>505</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.authenticated_data[<span class="self">self</span>.safe_aad_prefix_len..]
+<a href=#506 id=506 data-nosnippet>506</a>    }
+<a href=#507 id=507 data-nosnippet>507</a>
+<a href=#508 id=508 data-nosnippet>508</a>    <span class="doccomment">/// Returns the sender's leaf index in the emulation group when this
+<a href=#509 id=509 data-nosnippet>509</a>    /// message is an application message from a sibling emulator client.
+<a href=#510 id=510 data-nosnippet>510</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#511 id=511 data-nosnippet>511</a>    </span><span class="kw">pub fn </span>emulator_sender_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt; {
+<a href=#512 id=512 data-nosnippet>512</a>        <span class="self">self</span>.emulator_sender_leaf_index
+<a href=#513 id=513 data-nosnippet>513</a>    }
+<a href=#514 id=514 data-nosnippet>514</a>
+<a href=#515 id=515 data-nosnippet>515</a>    <span class="doccomment">/// Returns the group ID of the message.
+<a href=#516 id=516 data-nosnippet>516</a>    </span><span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+<a href=#517 id=517 data-nosnippet>517</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.group_id
+<a href=#518 id=518 data-nosnippet>518</a>    }
+<a href=#519 id=519 data-nosnippet>519</a>
+<a href=#520 id=520 data-nosnippet>520</a>    <span class="doccomment">/// Returns the epoch of the message.
+<a href=#521 id=521 data-nosnippet>521</a>    </span><span class="kw">pub fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+<a href=#522 id=522 data-nosnippet>522</a>        <span class="self">self</span>.epoch
+<a href=#523 id=523 data-nosnippet>523</a>    }
+<a href=#524 id=524 data-nosnippet>524</a>
+<a href=#525 id=525 data-nosnippet>525</a>    <span class="doccomment">/// Returns the sender of the message.
+<a href=#526 id=526 data-nosnippet>526</a>    </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
+<a href=#527 id=527 data-nosnippet>527</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.sender
+<a href=#528 id=528 data-nosnippet>528</a>    }
+<a href=#529 id=529 data-nosnippet>529</a>
+<a href=#530 id=530 data-nosnippet>530</a>    <span class="doccomment">/// Returns the additional authenticated data (AAD) of the message.
+<a href=#531 id=531 data-nosnippet>531</a>    </span><span class="kw">pub fn </span>aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+<a href=#532 id=532 data-nosnippet>532</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.authenticated_data
+<a href=#533 id=533 data-nosnippet>533</a>    }
+<a href=#534 id=534 data-nosnippet>534</a>
+<a href=#535 id=535 data-nosnippet>535</a>    <span class="doccomment">/// Returns the content of the message.
+<a href=#536 id=536 data-nosnippet>536</a>    </span><span class="kw">pub fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProcessedMessageContent {
+<a href=#537 id=537 data-nosnippet>537</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.content
+<a href=#538 id=538 data-nosnippet>538</a>    }
+<a href=#539 id=539 data-nosnippet>539</a>
+<a href=#540 id=540 data-nosnippet>540</a>    <span class="doccomment">/// Returns the content of the message and consumes the message.
+<a href=#541 id=541 data-nosnippet>541</a>    </span><span class="kw">pub fn </span>into_content(<span class="self">self</span>) -&gt; ProcessedMessageContent {
+<a href=#542 id=542 data-nosnippet>542</a>        <span class="self">self</span>.content
+<a href=#543 id=543 data-nosnippet>543</a>    }
+<a href=#544 id=544 data-nosnippet>544</a>
+<a href=#545 id=545 data-nosnippet>545</a>    <span class="doccomment">/// Returns the credential of the message.
+<a href=#546 id=546 data-nosnippet>546</a>    </span><span class="kw">pub fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Credential {
+<a href=#547 id=547 data-nosnippet>547</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.credential
+<a href=#548 id=548 data-nosnippet>548</a>    }
+<a href=#549 id=549 data-nosnippet>549</a>
+<a href=#550 id=550 data-nosnippet>550</a>    <span class="doccomment">/// Safely export a value if the content of the processed message is a
+<a href=#551 id=551 data-nosnippet>551</a>    /// [`StagedCommit`].
+<a href=#552 id=552 data-nosnippet>552</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#553 id=553 data-nosnippet>553</a>    </span><span class="kw">pub fn </span>safe_export_secret&lt;Crypto: OpenMlsCrypto&gt;(
+<a href=#554 id=554 data-nosnippet>554</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#555 id=555 data-nosnippet>555</a>        crypto: <span class="kw-2">&amp;</span>Crypto,
+<a href=#556 id=556 data-nosnippet>556</a>        component_id: ComponentId,
+<a href=#557 id=557 data-nosnippet>557</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ProcessedMessageSafeExportSecretError&gt; {
+<a href=#558 id=558 data-nosnippet>558</a>        <span class="kw">if let </span>ProcessedMessageContent::StagedCommitMessage(<span class="kw-2">ref mut </span>staged_commit) =
+<a href=#559 id=559 data-nosnippet>559</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>.content
+<a href=#560 id=560 data-nosnippet>560</a>        {
+<a href=#561 id=561 data-nosnippet>561</a>            <span class="kw">let </span>secret = staged_commit.safe_export_secret(crypto, component_id)<span class="question-mark">?</span>;
+<a href=#562 id=562 data-nosnippet>562</a>            <span class="prelude-val">Ok</span>(secret)
+<a href=#563 id=563 data-nosnippet>563</a>        } <span class="kw">else </span>{
+<a href=#564 id=564 data-nosnippet>564</a>            <span class="prelude-val">Err</span>(ProcessedMessageSafeExportSecretError::NotACommit)
+<a href=#565 id=565 data-nosnippet>565</a>        }
+<a href=#566 id=566 data-nosnippet>566</a>    }
+<a href=#567 id=567 data-nosnippet>567</a>}
+<a href=#568 id=568 data-nosnippet>568</a>
+<a href=#569 id=569 data-nosnippet>569</a><span class="doccomment">/// Content of a processed message.
+<a href=#570 id=570 data-nosnippet>570</a>///
+<a href=#571 id=571 data-nosnippet>571</a>/// See the content variants' documentation for more information.
+<a href=#572 id=572 data-nosnippet>572</a>/// [`StagedCommit`] and [`QueuedProposal`] can be inspected for authorization purposes.
+<a href=#573 id=573 data-nosnippet>573</a></span><span class="attr">#[derive(Debug)]
+<a href=#574 id=574 data-nosnippet>574</a></span><span class="kw">pub enum </span>ProcessedMessageContent {
+<a href=#575 id=575 data-nosnippet>575</a>    <span class="doccomment">/// An application message.
+<a href=#576 id=576 data-nosnippet>576</a>    ///
+<a href=#577 id=577 data-nosnippet>577</a>    /// The [`ApplicationMessage`] contains a vector of bytes that can be used right-away.
+<a href=#578 id=578 data-nosnippet>578</a>    </span>ApplicationMessage(ApplicationMessage),
+<a href=#579 id=579 data-nosnippet>579</a>    <span class="doccomment">/// A standalone proposal.
+<a href=#580 id=580 data-nosnippet>580</a>    ///
+<a href=#581 id=581 data-nosnippet>581</a>    /// The [`QueuedProposal`] can be inspected for authorization purposes by the application.
+<a href=#582 id=582 data-nosnippet>582</a>    /// If the proposal is deemed to be allowed, it should be added to the group's proposal
+<a href=#583 id=583 data-nosnippet>583</a>    /// queue using [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
+<a href=#584 id=584 data-nosnippet>584</a>    </span>ProposalMessage(Box&lt;QueuedProposal&gt;),
+<a href=#585 id=585 data-nosnippet>585</a>    <span class="doccomment">/// An [external join proposal](crate::prelude::JoinProposal) sent by a
+<a href=#586 id=586 data-nosnippet>586</a>    /// [NewMemberProposal](crate::prelude::Sender::NewMemberProposal) sender which is outside the group.
+<a href=#587 id=587 data-nosnippet>587</a>    ///
+<a href=#588 id=588 data-nosnippet>588</a>    /// Since this originates from a party outside the group, the [`QueuedProposal`] SHOULD be
+<a href=#589 id=589 data-nosnippet>589</a>    /// inspected for authorization purposes by the application. If the proposal is deemed to be
+<a href=#590 id=590 data-nosnippet>590</a>    /// allowed, it should be added to the group's proposal queue using
+<a href=#591 id=591 data-nosnippet>591</a>    /// [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
+<a href=#592 id=592 data-nosnippet>592</a>    </span>ExternalJoinProposalMessage(Box&lt;QueuedProposal&gt;),
+<a href=#593 id=593 data-nosnippet>593</a>    <span class="doccomment">/// A Commit message.
+<a href=#594 id=594 data-nosnippet>594</a>    ///
+<a href=#595 id=595 data-nosnippet>595</a>    /// The [`StagedCommit`] can be inspected for authorization purposes by the application.
+<a href=#596 id=596 data-nosnippet>596</a>    /// If the type of the commit and the proposals it covers are deemed to be allowed,
+<a href=#597 id=597 data-nosnippet>597</a>    /// the commit should be merged into the group's state using
+<a href=#598 id=598 data-nosnippet>598</a>    /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
+<a href=#599 id=599 data-nosnippet>599</a>    </span>StagedCommitMessage(Box&lt;StagedCommit&gt;),
+<a href=#600 id=600 data-nosnippet>600</a>    <span class="doccomment">/// A Commit authored by this client that it got fanned out by the delivery
+<a href=#601 id=601 data-nosnippet>601</a>    /// service, matching the group's pending commit.
+<a href=#602 id=602 data-nosnippet>602</a>    ///
+<a href=#603 id=603 data-nosnippet>603</a>    /// This is returned instead of
+<a href=#604 id=604 data-nosnippet>604</a>    /// [`StagedCommitMessage`](Self::StagedCommitMessage) when the processed
+<a href=#605 id=605 data-nosnippet>605</a>    /// Commit was created by this client and matches the group's pending commit.
+<a href=#606 id=606 data-nosnippet>606</a>    /// Since this client already holds the corresponding pending commit, the
+<a href=#607 id=607 data-nosnippet>607</a>    /// incoming Commit is not staged. To apply it, merge the pending commit
+<a href=#608 id=608 data-nosnippet>608</a>    /// using
+<a href=#609 id=609 data-nosnippet>609</a>    /// [`MlsGroup::merge_pending_commit()`](crate::group::mls_group::MlsGroup::merge_pending_commit()).
+<a href=#610 id=610 data-nosnippet>610</a>    /// An own Commit that does not match the pending commit is instead returned
+<a href=#611 id=611 data-nosnippet>611</a>    /// as a [`StagedCommitMessage`](Self::StagedCommitMessage) (if it has no
+<a href=#612 id=612 data-nosnippet>612</a>    /// UpdatePath) or rejected (if it has an UpdatePath we cannot decrypt).
+<a href=#613 id=613 data-nosnippet>613</a>    ///
+<a href=#614 id=614 data-nosnippet>614</a>    /// The match against the pending commit is established by comparing the
+<a href=#615 id=615 data-nosnippet>615</a>    /// confirmation tag of the incoming Commit against the one stored with the
+<a href=#616 id=616 data-nosnippet>616</a>    /// pending commit. The message signature has already been verified, which
+<a href=#617 id=617 data-nosnippet>617</a>    /// authenticates the Commit as ours, and a matching confirmation tag binds
+<a href=#618 id=618 data-nosnippet>618</a>    /// the confirmed transcript hash of the new epoch. We do not otherwise
+<a href=#619 id=619 data-nosnippet>619</a>    /// compare the contents of the incoming Commit against the pending commit,
+<a href=#620 id=620 data-nosnippet>620</a>    /// and the incoming Commit's state is never adopted.
+<a href=#621 id=621 data-nosnippet>621</a>    ///
+<a href=#622 id=622 data-nosnippet>622</a>    /// This is only produced for Commits framed as
+<a href=#623 id=623 data-nosnippet>623</a>    /// [`PublicMessage`](crate::framing::MlsMessageBodyIn::PublicMessage). A
+<a href=#624 id=624 data-nosnippet>624</a>    /// Commit framed as a
+<a href=#625 id=625 data-nosnippet>625</a>    /// [`PrivateMessage`](crate::framing::MlsMessageBodyIn::PrivateMessage)
+<a href=#626 id=626 data-nosnippet>626</a>    /// cannot be decrypted by its own author and instead surfaces as
+<a href=#627 id=627 data-nosnippet>627</a>    /// [`OwnPrivateMessage`](Self::OwnPrivateMessage). The exception is the
+<a href=#628 id=628 data-nosnippet>628</a>    /// `virtual-clients-draft` feature, where an own private Commit whose
+<a href=#629 id=629 data-nosnippet>629</a>    /// encryption secret is still retained (not yet confirmed) decrypts and
+<a href=#630 id=630 data-nosnippet>630</a>    /// can produce this variant as well. Under that feature the pending-commit
+<a href=#631 id=631 data-nosnippet>631</a>    /// match is checked before any sibling-commit (virtual clients) material is
+<a href=#632 id=632 data-nosnippet>632</a>    /// loaded, so an own Commit fanned back by the delivery service surfaces as
+<a href=#633 id=633 data-nosnippet>633</a>    /// `OwnPendingCommit` without consuming an operation-secret generation from
+<a href=#634 id=634 data-nosnippet>634</a>    /// the derivation epoch's operation secret tree.
+<a href=#635 id=635 data-nosnippet>635</a>    </span>OwnPendingCommit,
+<a href=#636 id=636 data-nosnippet>636</a>    <span class="doccomment">/// A PrivateMessage whose sender data claims this client's own leaf index,
+<a href=#637 id=637 data-nosnippet>637</a>    /// i.e. a message this client authored that the delivery service fanned
+<a href=#638 id=638 data-nosnippet>638</a>    /// back.
+<a href=#639 id=639 data-nosnippet>639</a>    ///
+<a href=#640 id=640 data-nosnippet>640</a>    /// The content cannot be decrypted (the own sender ratchet is
+<a href=#641 id=641 data-nosnippet>641</a>    /// encryption-only) and the signature cannot be verified.
+<a href=#642 id=642 data-nosnippet>642</a>    ///
+<a href=#643 id=643 data-nosnippet>643</a>    /// Applications should treat this variant as a hint to skip the message.
+<a href=#644 id=644 data-nosnippet>644</a>    /// The content type of the incoming message (application/proposal/commit)
+<a href=#645 id=645 data-nosnippet>645</a>    /// is available via `ProtocolMessage::content_type()` before processing,
+<a href=#646 id=646 data-nosnippet>646</a>    /// and is unauthenticated plaintext in the PrivateMessage framing.
+<a href=#647 id=647 data-nosnippet>647</a>    ///
+<a href=#648 id=648 data-nosnippet>648</a>    /// With the `virtual-clients-draft` feature, own-leaf messages are
+<a href=#649 id=649 data-nosnippet>649</a>    /// decryptable while their secrets are retained: unconfirmed own sends
+<a href=#650 id=650 data-nosnippet>650</a>    /// and messages from sibling emulator clients decrypt and process
+<a href=#651 id=651 data-nosnippet>651</a>    /// normally. This variant is then only returned in groups that do not
+<a href=#652 id=652 data-nosnippet>652</a>    /// use virtual clients (no derivation epoch state registered for the
+<a href=#653 id=653 data-nosnippet>653</a>    /// message's epoch), when decryption of an own message fails, e.g. because
+<a href=#654 id=654 data-nosnippet>654</a>    /// the send was already confirmed via
+<a href=#655 id=655 data-nosnippet>655</a>    /// `MlsGroup::confirm_application_message()`.
+<a href=#656 id=656 data-nosnippet>656</a>    </span>OwnPrivateMessage,
+<a href=#657 id=657 data-nosnippet>657</a>    <span class="doccomment">/// A Commit message covering AppDataUpdate proposals.
+<a href=#658 id=658 data-nosnippet>658</a>    ///
+<a href=#659 id=659 data-nosnippet>659</a>    /// The proposals carry diffs in an application-defined format, so the
+<a href=#660 id=660 data-nosnippet>660</a>    /// commit cannot be staged before the application has interpreted them and
+<a href=#661 id=661 data-nosnippet>661</a>    /// computed the resulting dictionary entries. Inspect the proposals via
+<a href=#662 id=662 data-nosnippet>662</a>    /// [`UnresolvedAppDataCommit::app_data_update_proposals()`], compute the
+<a href=#663 id=663 data-nosnippet>663</a>    /// updates with the help of
+<a href=#664 id=664 data-nosnippet>664</a>    /// [`MlsGroup::app_data_dictionary_updater()`](crate::group::mls_group::MlsGroup::app_data_dictionary_updater)
+<a href=#665 id=665 data-nosnippet>665</a>    /// and resume staging via
+<a href=#666 id=666 data-nosnippet>666</a>    /// [`MlsGroup::stage_app_data_commit()`](crate::group::mls_group::MlsGroup::stage_app_data_commit).
+<a href=#667 id=667 data-nosnippet>667</a>    ///
+<a href=#668 id=668 data-nosnippet>668</a>    /// This variant is likewise returned by
+<a href=#669 id=669 data-nosnippet>669</a>    /// [`PublicGroup::process_message()`](crate::group::public_group::PublicGroup::process_message),
+<a href=#670 id=670 data-nosnippet>670</a>    /// where the updates are computed with
+<a href=#671 id=671 data-nosnippet>671</a>    /// [`PublicGroup::app_data_dictionary_updater()`](crate::group::public_group::PublicGroup::app_data_dictionary_updater)
+<a href=#672 id=672 data-nosnippet>672</a>    /// and staging resumes via
+<a href=#673 id=673 data-nosnippet>673</a>    /// [`PublicGroup::stage_app_data_commit()`](crate::group::public_group::PublicGroup::stage_app_data_commit).
+<a href=#674 id=674 data-nosnippet>674</a>    </span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#675 id=675 data-nosnippet>675</a>    </span>UnresolvedAppDataCommit(Box&lt;UnresolvedAppDataCommit&gt;),
+<a href=#676 id=676 data-nosnippet>676</a>}
+<a href=#677 id=677 data-nosnippet>677</a>
+<a href=#678 id=678 data-nosnippet>678</a><span class="doccomment">/// Application message received through a [ProcessedMessage].
+<a href=#679 id=679 data-nosnippet>679</a></span><span class="attr">#[derive(Debug, PartialEq, Eq)]
+<a href=#680 id=680 data-nosnippet>680</a></span><span class="kw">pub struct </span>ApplicationMessage {
+<a href=#681 id=681 data-nosnippet>681</a>    bytes: Vec&lt;u8&gt;,
+<a href=#682 id=682 data-nosnippet>682</a>}
+<a href=#683 id=683 data-nosnippet>683</a>
+<a href=#684 id=684 data-nosnippet>684</a><span class="kw">impl </span>ApplicationMessage {
+<a href=#685 id=685 data-nosnippet>685</a>    <span class="doccomment">/// Create a new [ApplicationMessage].
+<a href=#686 id=686 data-nosnippet>686</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(bytes: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+<a href=#687 id=687 data-nosnippet>687</a>        <span class="self">Self </span>{ bytes }
+<a href=#688 id=688 data-nosnippet>688</a>    }
+<a href=#689 id=689 data-nosnippet>689</a>
+<a href=#690 id=690 data-nosnippet>690</a>    <span class="doccomment">/// Returns the inner bytes and consumes the [`ApplicationMessage`].
+<a href=#691 id=691 data-nosnippet>691</a>    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+<a href=#692 id=692 data-nosnippet>692</a>        <span class="self">self</span>.bytes
+<a href=#693 id=693 data-nosnippet>693</a>    }
+<a href=#694 id=694 data-nosnippet>694</a>}
 </code></pre></div></section></main></body></html>

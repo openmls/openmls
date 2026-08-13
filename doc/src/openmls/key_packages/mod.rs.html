@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/key_packages/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-650bd49d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (12c36e253 2026-08-10)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-d4bd101e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/key_packages/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Key Packages
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/key_packages/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-650bd49d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (c98d0cb27 2026-08-12)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-d4bd101e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/key_packages/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Key Packages
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! Key packages are pre-published public keys that carry information about a
 <a href=#4 id=4 data-nosnippet>4</a>//! user, allowing for the asynchronous addition of clients to an MLS group.
@@ -646,141 +646,148 @@
 <a href=#646 id=646 data-nosnippet>646</a>
 <a href=#647 id=647 data-nosnippet>647</a>    <span class="doccomment">/// Build a batch of virtual-client KeyPackages a sibling can reproduce.
 <a href=#648 id=648 data-nosnippet>648</a>    ///
-<a href=#649 id=649 data-nosnippet>649</a>    /// Allocates a single generation of the `key_package` operation ratchet for
-<a href=#650 id=650 data-nosnippet>650</a>    /// the emulation epoch identified by `epoch_id`. For each
-<a href=#651 id=651 data-nosnippet>651</a>    /// `key_package_index` in `0..count` it derives a per-KeyPackage seed
-<a href=#652 id=652 data-nosnippet>652</a>    /// secret from that one operation secret and derives the KeyPackage's init
-<a href=#653 id=653 data-nosnippet>653</a>    /// key and leaf encryption key from the seed. Each leaf carries an
-<a href=#654 id=654 data-nosnippet>654</a>    /// encrypted `DerivationInfo` under
-<a href=#655 id=655 data-nosnippet>655</a>    /// [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
-<a href=#656 id=656 data-nosnippet>656</a>    /// so a sibling can recover the emulation leaf index, generation, and
-<a href=#657 id=657 data-nosnippet>657</a>    /// index.
-<a href=#658 id=658 data-nosnippet>658</a>    ///
-<a href=#659 id=659 data-nosnippet>659</a>    /// The operation secret and the seeds are derived under the emulation
-<a href=#660 id=660 data-nosnippet>660</a>    /// epoch's ciphersuite (the operation tree's ciphersuite). The init and
-<a href=#661 id=661 data-nosnippet>661</a>    /// leaf-encryption keys are derived from each seed under the KeyPackage's
-<a href=#662 id=662 data-nosnippet>662</a>    /// own `ciphersuite`.
-<a href=#663 id=663 data-nosnippet>663</a>    ///
-<a href=#664 id=664 data-nosnippet>664</a>    /// Each leaf must declare `AppDataDictionary` support and list
-<a href=#665 id=665 data-nosnippet>665</a>    /// [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
-<a href=#666 id=666 data-nosnippet>666</a>    /// in its `AppComponents` entry, otherwise this returns
-<a href=#667 id=667 data-nosnippet>667</a>    /// [`VirtualClientsError::AppDataDictionaryNotSupported`](crate::components::vc_derivation_info::VirtualClientsError::AppDataDictionaryNotSupported)
-<a href=#668 id=668 data-nosnippet>668</a>    /// or
-<a href=#669 id=669 data-nosnippet>669</a>    /// [`VirtualClientsError::VcComponentNotListed`](crate::components::vc_derivation_info::VirtualClientsError::VcComponentNotListed).
-<a href=#670 id=670 data-nosnippet>670</a>    ///
-<a href=#671 id=671 data-nosnippet>671</a>    /// Returns a [`VcKeyPackageBatch`] holding the batch's `generation` and one
-<a href=#672 id=672 data-nosnippet>672</a>    /// `(KeyPackageBundle, KeyPackageInfo)` per KeyPackage. Each bundle is also
-<a href=#673 id=673 data-nosnippet>673</a>    /// written to storage so the creating client can process its own Welcomes,
-<a href=#674 id=674 data-nosnippet>674</a>    /// and each
-<a href=#675 id=675 data-nosnippet>675</a>    /// [`KeyPackageInfo`](crate::components::vc_derivation_info::KeyPackageInfo)
-<a href=#676 id=676 data-nosnippet>676</a>    /// carries the index the client hands to its sibling.
-<a href=#677 id=677 data-nosnippet>677</a>    ///
-<a href=#678 id=678 data-nosnippet>678</a>    /// Returns [`KeyPackageNewError::EmptyBatch`] when `count` is 0, before
-<a href=#679 id=679 data-nosnippet>679</a>    /// loading any state or consuming a generation.
-<a href=#680 id=680 data-nosnippet>680</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#681 id=681 data-nosnippet>681</a>    </span><span class="kw">pub fn </span>build_vc_batch(
-<a href=#682 id=682 data-nosnippet>682</a>        <span class="self">self</span>,
-<a href=#683 id=683 data-nosnippet>683</a>        ciphersuite: Ciphersuite,
-<a href=#684 id=684 data-nosnippet>684</a>        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
-<a href=#685 id=685 data-nosnippet>685</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#686 id=686 data-nosnippet>686</a>        credential_with_key: CredentialWithKey,
-<a href=#687 id=687 data-nosnippet>687</a>        epoch_id: <span class="kw">crate</span>::components::vc_derivation_info::EpochId,
-<a href=#688 id=688 data-nosnippet>688</a>        count: usize,
-<a href=#689 id=689 data-nosnippet>689</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;VcKeyPackageBatch, KeyPackageNewError&gt; {
-<a href=#690 id=690 data-nosnippet>690</a>        <span class="comment">// Reject an unsupported ciphersuite and an empty batch before loading
-<a href=#691 id=691 data-nosnippet>691</a>        // state or consuming a generation.
-<a href=#692 id=692 data-nosnippet>692</a>        </span>provider
-<a href=#693 id=693 data-nosnippet>693</a>            .crypto()
-<a href=#694 id=694 data-nosnippet>694</a>            .supports(ciphersuite)
-<a href=#695 id=695 data-nosnippet>695</a>            .map_err(|<span class="kw">_</span>| KeyPackageNewError::UnsupportedCiphersuite(ciphersuite))<span class="question-mark">?</span>;
-<a href=#696 id=696 data-nosnippet>696</a>
-<a href=#697 id=697 data-nosnippet>697</a>        <span class="kw">if </span>count == <span class="number">0 </span>{
-<a href=#698 id=698 data-nosnippet>698</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageNewError::EmptyBatch);
-<a href=#699 id=699 data-nosnippet>699</a>        }
-<a href=#700 id=700 data-nosnippet>700</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = VcKeyPackageBatchBuilder::with_capacity(provider, epoch_id, count)<span class="question-mark">?</span>;
-<a href=#701 id=701 data-nosnippet>701</a>        <span class="kw">for _ in </span><span class="number">0</span>..count {
-<a href=#702 id=702 data-nosnippet>702</a>            builder.add_key_package(
-<a href=#703 id=703 data-nosnippet>703</a>                <span class="self">self</span>.clone(),
-<a href=#704 id=704 data-nosnippet>704</a>                ciphersuite,
-<a href=#705 id=705 data-nosnippet>705</a>                provider.crypto(),
-<a href=#706 id=706 data-nosnippet>706</a>                signer,
-<a href=#707 id=707 data-nosnippet>707</a>                credential_with_key.clone(),
-<a href=#708 id=708 data-nosnippet>708</a>            )<span class="question-mark">?</span>;
-<a href=#709 id=709 data-nosnippet>709</a>        }
-<a href=#710 id=710 data-nosnippet>710</a>        builder.finalize(provider)
-<a href=#711 id=711 data-nosnippet>711</a>    }
-<a href=#712 id=712 data-nosnippet>712</a>}
-<a href=#713 id=713 data-nosnippet>713</a>
-<a href=#714 id=714 data-nosnippet>714</a><span class="doccomment">/// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the init and encryption
-<a href=#715 id=715 data-nosnippet>715</a>/// private key.
-<a href=#716 id=716 data-nosnippet>716</a>///
-<a href=#717 id=717 data-nosnippet>717</a>/// This is stored to ensure the private key is handled together with the key
-<a href=#718 id=718 data-nosnippet>718</a>/// package.
-<a href=#719 id=719 data-nosnippet>719</a></span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
-<a href=#720 id=720 data-nosnippet>720</a></span><span class="kw">pub struct </span>KeyPackageBundle {
-<a href=#721 id=721 data-nosnippet>721</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) key_package: KeyPackage,
-<a href=#722 id=722 data-nosnippet>722</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) private_init_key: HpkePrivateKey,
-<a href=#723 id=723 data-nosnippet>723</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) private_encryption_key: EncryptionPrivateKey,
-<a href=#724 id=724 data-nosnippet>724</a>}
-<a href=#725 id=725 data-nosnippet>725</a>
-<a href=#726 id=726 data-nosnippet>726</a><span class="comment">// Public `KeyPackageBundle` functions.
-<a href=#727 id=727 data-nosnippet>727</a></span><span class="kw">impl </span>KeyPackageBundle {
-<a href=#728 id=728 data-nosnippet>728</a>    <span class="doccomment">/// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
-<a href=#729 id=729 data-nosnippet>729</a>    </span><span class="kw">pub fn </span>key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackage {
-<a href=#730 id=730 data-nosnippet>730</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.key_package
-<a href=#731 id=731 data-nosnippet>731</a>    }
+<a href=#649 id=649 data-nosnippet>649</a>    /// The batch uses the newest derivation epoch of the emulation group named
+<a href=#650 id=650 data-nosnippet>650</a>    /// by `emulation_group_id`, which is what the draft requires of every new
+<a href=#651 id=651 data-nosnippet>651</a>    /// virtual-client operation. The epoch is resolved from the emulation
+<a href=#652 id=652 data-nosnippet>652</a>    /// group's current state, and the returned [`VcKeyPackageBatch`] reports it
+<a href=#653 id=653 data-nosnippet>653</a>    /// in its `epoch_id`.
+<a href=#654 id=654 data-nosnippet>654</a>    ///
+<a href=#655 id=655 data-nosnippet>655</a>    /// Allocates a single generation of the `key_package` operation ratchet for
+<a href=#656 id=656 data-nosnippet>656</a>    /// that derivation epoch. For each
+<a href=#657 id=657 data-nosnippet>657</a>    /// `key_package_index` in `0..count` it derives a per-KeyPackage seed
+<a href=#658 id=658 data-nosnippet>658</a>    /// secret from that one operation secret and derives the KeyPackage's init
+<a href=#659 id=659 data-nosnippet>659</a>    /// key and leaf encryption key from the seed. Each leaf carries an
+<a href=#660 id=660 data-nosnippet>660</a>    /// encrypted `DerivationInfo` under
+<a href=#661 id=661 data-nosnippet>661</a>    /// [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
+<a href=#662 id=662 data-nosnippet>662</a>    /// so a sibling can recover the emulation leaf index, generation, and
+<a href=#663 id=663 data-nosnippet>663</a>    /// index.
+<a href=#664 id=664 data-nosnippet>664</a>    ///
+<a href=#665 id=665 data-nosnippet>665</a>    /// The operation secret and the seeds are derived under the derivation
+<a href=#666 id=666 data-nosnippet>666</a>    /// epoch's ciphersuite (the operation tree's ciphersuite). The init and
+<a href=#667 id=667 data-nosnippet>667</a>    /// leaf-encryption keys are derived from each seed under the KeyPackage's
+<a href=#668 id=668 data-nosnippet>668</a>    /// own `ciphersuite`.
+<a href=#669 id=669 data-nosnippet>669</a>    ///
+<a href=#670 id=670 data-nosnippet>670</a>    /// Each leaf must declare `AppDataDictionary` support and list
+<a href=#671 id=671 data-nosnippet>671</a>    /// [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
+<a href=#672 id=672 data-nosnippet>672</a>    /// in its `AppComponents` entry, otherwise this returns
+<a href=#673 id=673 data-nosnippet>673</a>    /// [`VirtualClientsError::AppDataDictionaryNotSupported`](crate::components::vc_derivation_info::VirtualClientsError::AppDataDictionaryNotSupported)
+<a href=#674 id=674 data-nosnippet>674</a>    /// or
+<a href=#675 id=675 data-nosnippet>675</a>    /// [`VirtualClientsError::VcComponentNotListed`](crate::components::vc_derivation_info::VirtualClientsError::VcComponentNotListed).
+<a href=#676 id=676 data-nosnippet>676</a>    ///
+<a href=#677 id=677 data-nosnippet>677</a>    /// Returns a [`VcKeyPackageBatch`] holding the batch's `generation` and one
+<a href=#678 id=678 data-nosnippet>678</a>    /// `(KeyPackageBundle, KeyPackageInfo)` per KeyPackage. Each bundle is also
+<a href=#679 id=679 data-nosnippet>679</a>    /// written to storage so the creating client can process its own Welcomes,
+<a href=#680 id=680 data-nosnippet>680</a>    /// and each
+<a href=#681 id=681 data-nosnippet>681</a>    /// [`KeyPackageInfo`](crate::components::vc_derivation_info::KeyPackageInfo)
+<a href=#682 id=682 data-nosnippet>682</a>    /// carries the index the client hands to its sibling.
+<a href=#683 id=683 data-nosnippet>683</a>    ///
+<a href=#684 id=684 data-nosnippet>684</a>    /// Returns [`KeyPackageNewError::EmptyBatch`] when `count` is 0, before
+<a href=#685 id=685 data-nosnippet>685</a>    /// loading any state or consuming a generation.
+<a href=#686 id=686 data-nosnippet>686</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#687 id=687 data-nosnippet>687</a>    </span><span class="kw">pub fn </span>build_vc_batch(
+<a href=#688 id=688 data-nosnippet>688</a>        <span class="self">self</span>,
+<a href=#689 id=689 data-nosnippet>689</a>        ciphersuite: Ciphersuite,
+<a href=#690 id=690 data-nosnippet>690</a>        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+<a href=#691 id=691 data-nosnippet>691</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#692 id=692 data-nosnippet>692</a>        credential_with_key: CredentialWithKey,
+<a href=#693 id=693 data-nosnippet>693</a>        emulation_group_id: <span class="kw-2">&amp;</span><span class="kw">crate</span>::group::GroupId,
+<a href=#694 id=694 data-nosnippet>694</a>        count: usize,
+<a href=#695 id=695 data-nosnippet>695</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;VcKeyPackageBatch, KeyPackageNewError&gt; {
+<a href=#696 id=696 data-nosnippet>696</a>        <span class="comment">// Reject an unsupported ciphersuite and an empty batch before loading
+<a href=#697 id=697 data-nosnippet>697</a>        // state or consuming a generation.
+<a href=#698 id=698 data-nosnippet>698</a>        </span>provider
+<a href=#699 id=699 data-nosnippet>699</a>            .crypto()
+<a href=#700 id=700 data-nosnippet>700</a>            .supports(ciphersuite)
+<a href=#701 id=701 data-nosnippet>701</a>            .map_err(|<span class="kw">_</span>| KeyPackageNewError::UnsupportedCiphersuite(ciphersuite))<span class="question-mark">?</span>;
+<a href=#702 id=702 data-nosnippet>702</a>
+<a href=#703 id=703 data-nosnippet>703</a>        <span class="kw">if </span>count == <span class="number">0 </span>{
+<a href=#704 id=704 data-nosnippet>704</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageNewError::EmptyBatch);
+<a href=#705 id=705 data-nosnippet>705</a>        }
+<a href=#706 id=706 data-nosnippet>706</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder =
+<a href=#707 id=707 data-nosnippet>707</a>            VcKeyPackageBatchBuilder::with_capacity(provider, emulation_group_id, count)<span class="question-mark">?</span>;
+<a href=#708 id=708 data-nosnippet>708</a>        <span class="kw">for _ in </span><span class="number">0</span>..count {
+<a href=#709 id=709 data-nosnippet>709</a>            builder.add_key_package(
+<a href=#710 id=710 data-nosnippet>710</a>                <span class="self">self</span>.clone(),
+<a href=#711 id=711 data-nosnippet>711</a>                ciphersuite,
+<a href=#712 id=712 data-nosnippet>712</a>                provider.crypto(),
+<a href=#713 id=713 data-nosnippet>713</a>                signer,
+<a href=#714 id=714 data-nosnippet>714</a>                credential_with_key.clone(),
+<a href=#715 id=715 data-nosnippet>715</a>            )<span class="question-mark">?</span>;
+<a href=#716 id=716 data-nosnippet>716</a>        }
+<a href=#717 id=717 data-nosnippet>717</a>        builder.finalize(provider)
+<a href=#718 id=718 data-nosnippet>718</a>    }
+<a href=#719 id=719 data-nosnippet>719</a>}
+<a href=#720 id=720 data-nosnippet>720</a>
+<a href=#721 id=721 data-nosnippet>721</a><span class="doccomment">/// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the init and encryption
+<a href=#722 id=722 data-nosnippet>722</a>/// private key.
+<a href=#723 id=723 data-nosnippet>723</a>///
+<a href=#724 id=724 data-nosnippet>724</a>/// This is stored to ensure the private key is handled together with the key
+<a href=#725 id=725 data-nosnippet>725</a>/// package.
+<a href=#726 id=726 data-nosnippet>726</a></span><span class="attr">#[derive(Debug, Clone, Serialize, Deserialize)]
+<a href=#727 id=727 data-nosnippet>727</a></span><span class="kw">pub struct </span>KeyPackageBundle {
+<a href=#728 id=728 data-nosnippet>728</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) key_package: KeyPackage,
+<a href=#729 id=729 data-nosnippet>729</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) private_init_key: HpkePrivateKey,
+<a href=#730 id=730 data-nosnippet>730</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) private_encryption_key: EncryptionPrivateKey,
+<a href=#731 id=731 data-nosnippet>731</a>}
 <a href=#732 id=732 data-nosnippet>732</a>
-<a href=#733 id=733 data-nosnippet>733</a>    <span class="doccomment">/// Extract the key package from the bundle.
-<a href=#734 id=734 data-nosnippet>734</a>    </span><span class="kw">pub fn </span>into_key_package(<span class="self">self</span>) -&gt; KeyPackage {
-<a href=#735 id=735 data-nosnippet>735</a>        <span class="self">self</span>.key_package
-<a href=#736 id=736 data-nosnippet>736</a>    }
-<a href=#737 id=737 data-nosnippet>737</a>
-<a href=#738 id=738 data-nosnippet>738</a>    <span class="doccomment">/// Get a reference to the private init key.
-<a href=#739 id=739 data-nosnippet>739</a>    </span><span class="kw">pub fn </span>init_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePrivateKey {
-<a href=#740 id=740 data-nosnippet>740</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.private_init_key
-<a href=#741 id=741 data-nosnippet>741</a>    }
-<a href=#742 id=742 data-nosnippet>742</a>
-<a href=#743 id=743 data-nosnippet>743</a>    <span class="doccomment">/// Get the encryption key pair.
-<a href=#744 id=744 data-nosnippet>744</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_key_pair(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; EncryptionKeyPair {
-<a href=#745 id=745 data-nosnippet>745</a>        EncryptionKeyPair::from((
-<a href=#746 id=746 data-nosnippet>746</a>            <span class="self">self</span>.key_package.leaf_node().encryption_key().clone(),
-<a href=#747 id=747 data-nosnippet>747</a>            <span class="self">self</span>.private_encryption_key.clone(),
-<a href=#748 id=748 data-nosnippet>748</a>        ))
-<a href=#749 id=749 data-nosnippet>749</a>    }
-<a href=#750 id=750 data-nosnippet>750</a>}
-<a href=#751 id=751 data-nosnippet>751</a>
-<a href=#752 id=752 data-nosnippet>752</a><span class="attr">#[cfg(any(test, feature = <span class="string">"test-utils"</span>))]
-<a href=#753 id=753 data-nosnippet>753</a></span><span class="kw">impl </span>KeyPackageBundle {
-<a href=#754 id=754 data-nosnippet>754</a>    <span class="doccomment">/// Generate a new key package bundle with the private key.
-<a href=#755 id=755 data-nosnippet>755</a>    </span><span class="kw">pub fn </span>new(
-<a href=#756 id=756 data-nosnippet>756</a>        key_package: KeyPackage,
-<a href=#757 id=757 data-nosnippet>757</a>        private_init_key: HpkePrivateKey,
-<a href=#758 id=758 data-nosnippet>758</a>        private_encryption_key: EncryptionPrivateKey,
-<a href=#759 id=759 data-nosnippet>759</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#760 id=760 data-nosnippet>760</a>        <span class="self">Self </span>{
-<a href=#761 id=761 data-nosnippet>761</a>            key_package,
-<a href=#762 id=762 data-nosnippet>762</a>            private_init_key,
-<a href=#763 id=763 data-nosnippet>763</a>            private_encryption_key,
-<a href=#764 id=764 data-nosnippet>764</a>        }
-<a href=#765 id=765 data-nosnippet>765</a>    }
-<a href=#766 id=766 data-nosnippet>766</a>
-<a href=#767 id=767 data-nosnippet>767</a>    <span class="doccomment">/// Get a reference to the private encryption key.
-<a href=#768 id=768 data-nosnippet>768</a>    </span><span class="kw">pub fn </span>encryption_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePrivateKey {
-<a href=#769 id=769 data-nosnippet>769</a>        <span class="self">self</span>.private_encryption_key.key()
-<a href=#770 id=770 data-nosnippet>770</a>    }
-<a href=#771 id=771 data-nosnippet>771</a>}
-<a href=#772 id=772 data-nosnippet>772</a>
-<a href=#773 id=773 data-nosnippet>773</a><span class="attr">#[cfg(test)]
-<a href=#774 id=774 data-nosnippet>774</a></span><span class="kw">impl </span>KeyPackageBundle {
-<a href=#775 id=775 data-nosnippet>775</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>generate(
-<a href=#776 id=776 data-nosnippet>776</a>        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
-<a href=#777 id=777 data-nosnippet>777</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#778 id=778 data-nosnippet>778</a>        ciphersuite: Ciphersuite,
-<a href=#779 id=779 data-nosnippet>779</a>        credential_with_key: CredentialWithKey,
-<a href=#780 id=780 data-nosnippet>780</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#781 id=781 data-nosnippet>781</a>        KeyPackage::builder()
-<a href=#782 id=782 data-nosnippet>782</a>            .build(ciphersuite, provider, signer, credential_with_key)
-<a href=#783 id=783 data-nosnippet>783</a>            .unwrap()
-<a href=#784 id=784 data-nosnippet>784</a>    }
-<a href=#785 id=785 data-nosnippet>785</a>}
+<a href=#733 id=733 data-nosnippet>733</a><span class="comment">// Public `KeyPackageBundle` functions.
+<a href=#734 id=734 data-nosnippet>734</a></span><span class="kw">impl </span>KeyPackageBundle {
+<a href=#735 id=735 data-nosnippet>735</a>    <span class="doccomment">/// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
+<a href=#736 id=736 data-nosnippet>736</a>    </span><span class="kw">pub fn </span>key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackage {
+<a href=#737 id=737 data-nosnippet>737</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.key_package
+<a href=#738 id=738 data-nosnippet>738</a>    }
+<a href=#739 id=739 data-nosnippet>739</a>
+<a href=#740 id=740 data-nosnippet>740</a>    <span class="doccomment">/// Extract the key package from the bundle.
+<a href=#741 id=741 data-nosnippet>741</a>    </span><span class="kw">pub fn </span>into_key_package(<span class="self">self</span>) -&gt; KeyPackage {
+<a href=#742 id=742 data-nosnippet>742</a>        <span class="self">self</span>.key_package
+<a href=#743 id=743 data-nosnippet>743</a>    }
+<a href=#744 id=744 data-nosnippet>744</a>
+<a href=#745 id=745 data-nosnippet>745</a>    <span class="doccomment">/// Get a reference to the private init key.
+<a href=#746 id=746 data-nosnippet>746</a>    </span><span class="kw">pub fn </span>init_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePrivateKey {
+<a href=#747 id=747 data-nosnippet>747</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.private_init_key
+<a href=#748 id=748 data-nosnippet>748</a>    }
+<a href=#749 id=749 data-nosnippet>749</a>
+<a href=#750 id=750 data-nosnippet>750</a>    <span class="doccomment">/// Get the encryption key pair.
+<a href=#751 id=751 data-nosnippet>751</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_key_pair(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; EncryptionKeyPair {
+<a href=#752 id=752 data-nosnippet>752</a>        EncryptionKeyPair::from((
+<a href=#753 id=753 data-nosnippet>753</a>            <span class="self">self</span>.key_package.leaf_node().encryption_key().clone(),
+<a href=#754 id=754 data-nosnippet>754</a>            <span class="self">self</span>.private_encryption_key.clone(),
+<a href=#755 id=755 data-nosnippet>755</a>        ))
+<a href=#756 id=756 data-nosnippet>756</a>    }
+<a href=#757 id=757 data-nosnippet>757</a>}
+<a href=#758 id=758 data-nosnippet>758</a>
+<a href=#759 id=759 data-nosnippet>759</a><span class="attr">#[cfg(any(test, feature = <span class="string">"test-utils"</span>))]
+<a href=#760 id=760 data-nosnippet>760</a></span><span class="kw">impl </span>KeyPackageBundle {
+<a href=#761 id=761 data-nosnippet>761</a>    <span class="doccomment">/// Generate a new key package bundle with the private key.
+<a href=#762 id=762 data-nosnippet>762</a>    </span><span class="kw">pub fn </span>new(
+<a href=#763 id=763 data-nosnippet>763</a>        key_package: KeyPackage,
+<a href=#764 id=764 data-nosnippet>764</a>        private_init_key: HpkePrivateKey,
+<a href=#765 id=765 data-nosnippet>765</a>        private_encryption_key: EncryptionPrivateKey,
+<a href=#766 id=766 data-nosnippet>766</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#767 id=767 data-nosnippet>767</a>        <span class="self">Self </span>{
+<a href=#768 id=768 data-nosnippet>768</a>            key_package,
+<a href=#769 id=769 data-nosnippet>769</a>            private_init_key,
+<a href=#770 id=770 data-nosnippet>770</a>            private_encryption_key,
+<a href=#771 id=771 data-nosnippet>771</a>        }
+<a href=#772 id=772 data-nosnippet>772</a>    }
+<a href=#773 id=773 data-nosnippet>773</a>
+<a href=#774 id=774 data-nosnippet>774</a>    <span class="doccomment">/// Get a reference to the private encryption key.
+<a href=#775 id=775 data-nosnippet>775</a>    </span><span class="kw">pub fn </span>encryption_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePrivateKey {
+<a href=#776 id=776 data-nosnippet>776</a>        <span class="self">self</span>.private_encryption_key.key()
+<a href=#777 id=777 data-nosnippet>777</a>    }
+<a href=#778 id=778 data-nosnippet>778</a>}
+<a href=#779 id=779 data-nosnippet>779</a>
+<a href=#780 id=780 data-nosnippet>780</a><span class="attr">#[cfg(test)]
+<a href=#781 id=781 data-nosnippet>781</a></span><span class="kw">impl </span>KeyPackageBundle {
+<a href=#782 id=782 data-nosnippet>782</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>generate(
+<a href=#783 id=783 data-nosnippet>783</a>        provider: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsProvider,
+<a href=#784 id=784 data-nosnippet>784</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#785 id=785 data-nosnippet>785</a>        ciphersuite: Ciphersuite,
+<a href=#786 id=786 data-nosnippet>786</a>        credential_with_key: CredentialWithKey,
+<a href=#787 id=787 data-nosnippet>787</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#788 id=788 data-nosnippet>788</a>        KeyPackage::builder()
+<a href=#789 id=789 data-nosnippet>789</a>            .build(ciphersuite, provider, signer, credential_with_key)
+<a href=#790 id=790 data-nosnippet>790</a>            .unwrap()
+<a href=#791 id=791 data-nosnippet>791</a>    }
+<a href=#792 id=792 data-nosnippet>792</a>}
 </code></pre></div></section></main></body></html>
