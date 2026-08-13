@@ -1316,6 +1316,26 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
+        fn delete_retained_key_package_material_for_epoch<
+            EpochId: traits::VcEpochId<$version>,
+        >(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            let Data {
+                retained_key_package_material,
+                retained_key_package_epoch,
+                ..
+            } = &mut *data;
+            delete_retained_for_epoch(
+                epoch_id,
+                retained_key_package_material,
+                retained_key_package_epoch,
+            )
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
         fn delete_vc_retention_state<GroupId: traits::GroupId<$version>>(
             &self,
             group_id: &GroupId,
@@ -1576,6 +1596,28 @@ macro_rules! storage_helpers {
         ) -> Result<bool, $err> {
             let serialized = $ser(epoch_id)?;
             Ok(epoch_tags.values().any(|value| value == &serialized))
+        }
+
+        /// Deletes every retained key package material tagged with `epoch_id`.
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_retained_for_epoch<EpochId: Key<$version>>(
+            epoch_id: &EpochId,
+            material_table: &mut Table,
+            epoch_tags: &mut Table,
+        ) -> Result<(), $err> {
+            let serialized = $ser(epoch_id)?;
+            // Collect first, the removals below borrow the table mutably.
+            let ref_keys: Vec<Vec<u8>> = epoch_tags
+                .iter()
+                .filter(|(_, value)| *value == &serialized)
+                .map(|(ref_key, _)| ref_key.clone())
+                .collect();
+            for ref_key in ref_keys {
+                let _ = material_table.remove(&ref_key);
+                let _ = epoch_tags.remove(&ref_key);
+            }
+
+            Ok(())
         }
 
         /// Writes an advanced operation tree together with the retained key package

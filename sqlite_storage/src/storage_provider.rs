@@ -936,6 +936,17 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "virtual-clients-draft")]
+    fn delete_retained_key_package_material_for_epoch<
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        StorableKeyRef(epoch_id)
+            .delete_retained_key_package_material_for_epoch::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
     fn write_vc_retention_state<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         VcRetentionState: traits::VcRetentionState<STORAGE_PROVIDER_VERSION>,

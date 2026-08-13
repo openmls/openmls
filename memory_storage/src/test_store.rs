@@ -722,6 +722,14 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
+    fn delete_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
     fn write_vc_retention_state<
         GroupId: traits::GroupId<V_TEST>,
         VcRetentionState: traits::VcRetentionState<V_TEST>,

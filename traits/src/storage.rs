@@ -896,6 +896,20 @@ pub trait StorageProvider<const VERSION: u16> {
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error>;
 
+    /// Delete every retained virtual clients KeyPackage material tagged with the
+    /// given derivation epoch. Called when an emulation group is torn down and
+    /// the epoch's state goes with it. Unlike
+    /// [`Self::delete_retained_key_package_material`] this does not need the
+    /// individual KeyPackage references, which the caller cannot enumerate.
+    ///
+    /// The KeyPackages the material describes are not deleted. They are keyed
+    /// separately and the application owns their lifetime.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
+
     /// Delete the virtual clients retention state of the given emulation group
     /// (see [`Self::write_vc_retention_state`]). Called when the emulation group
     /// is deleted or the client removed itself from it.

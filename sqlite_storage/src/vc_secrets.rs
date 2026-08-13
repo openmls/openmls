@@ -172,6 +172,23 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
             |row| row.get::<_, bool>(0),
         )
     }
+
+    pub(super) fn delete_retained_key_package_material_for_epoch<C: Codec>(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<(), rusqlite::Error> {
+        let Self(epoch_id) = self;
+        connection.execute(
+            "DELETE FROM vc_retained_key_package_material
+            WHERE epoch_id = ?1
+                AND provider_version = ?2",
+            params![
+                KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+        )?;
+        Ok(())
+    }
 }
 
 /// Per-epoch bindings from a higher-level group to derivation epochs. One row

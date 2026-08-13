@@ -419,8 +419,9 @@ impl MlsGroup {
     }
 
     /// Delete this group's state as an emulation group: the per-epoch state of
-    /// every derivation epoch its retained-epoch log still holds, the log itself,
-    /// and the derivation-epoch registration record.
+    /// every derivation epoch its retained-epoch log still holds, the KeyPackage
+    /// material retained from those epochs, the log itself, and the
+    /// derivation-epoch registration record.
     ///
     /// Unlike the reaper, this deletes every retained epoch unconditionally,
     /// references and retained KeyPackage material notwithstanding. The virtual
@@ -428,6 +429,10 @@ impl MlsGroup {
     /// epochs anymore, and the retained-epoch log is the only index of that
     /// per-epoch state: whatever the log still names when it goes is key material
     /// nothing could ever find again, let alone delete.
+    ///
+    /// The retained KeyPackage material goes for the same reason. It is keyed by
+    /// KeyPackage reference, so the log is the only way to reach it, and its seed
+    /// secret is usable without any of the epoch state deleted here.
     fn tear_down_vc_emulation_state<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -438,6 +443,7 @@ impl MlsGroup {
             for retained in state.retained_epochs() {
                 storage.delete_vc_derivation_epoch_state(retained.epoch_id())?;
                 storage.delete_vc_epoch_refs(retained.epoch_id())?;
+                storage.delete_retained_key_package_material_for_epoch(retained.epoch_id())?;
             }
         }
         storage.delete_registered_vc_derivation_epoch(group_id)?;

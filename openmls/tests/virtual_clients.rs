@@ -5793,6 +5793,13 @@ fn assert_no_epoch_state_remains<P: OpenMlsProvider>(provider: &P, epoch_ids: &[
             epoch_refs(provider, epoch_id).is_none(),
             "the epoch's reverse reference row must be gone"
         );
+        assert!(
+            !provider
+                .storage()
+                .has_retained_key_package_material_for_epoch(epoch_id)
+                .expect("read retained key package material"),
+            "the KeyPackage material retained from the epoch must be gone"
+        );
     }
 }
 
@@ -6866,6 +6873,68 @@ fn key_package_material_holds_an_epoch_until_end_of_life() {
 
     assert!(!epoch_state_is_stored(&provider_b, &entry_epoch_id));
     assert!(!retained_epoch_ids(&emulator_b, &provider_b).contains(&entry_epoch_id));
+}
+
+/// Tearing down an emulation group takes the KeyPackage material retained from
+/// its derivation epochs with it.
+///
+/// That material is keyed by KeyPackage reference and only tagged with the epoch,
+/// so the retained-epoch log is the only way to reach it, and its seed secret
+/// stays usable without any of the epoch state the teardown deletes.
+#[openmls_test]
+fn deleting_an_emulation_group_deletes_retained_key_package_material() {
+    use openmls::components::vc_derivation_info::{
+        assemble_vc_key_package_upload, process_vc_key_package_upload,
+    };
+
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (emulator_a, _signer_a, mut emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+    let entry_epoch_id = newest_epoch(&emulator_a, &provider_a);
+
+    // emulator_a publishes a virtual-client KeyPackage from the entry epoch and
+    // hands the upload to emulator_b, which is where the material is retained.
+    let mut batch = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            ciphersuite,
+            &provider_a,
+            &vc_signer,
+            vc_credential,
+            emulator_a.group_id(),
+            1,
+        )
+        .expect("build_vc_batch");
+    let generation = batch.generation;
+    let (_bundle, key_package_info) = batch.key_packages.remove(0);
+    let upload = assemble_vc_key_package_upload(
+        provider_a.storage(),
+        entry_epoch_id.clone(),
+        generation,
+        vec![key_package_info],
+    )
+    .expect("assemble upload");
+    process_vc_key_package_upload(&provider_b, &upload).expect("process upload");
+
+    assert!(
+        provider_b
+            .storage()
+            .has_retained_key_package_material_for_epoch(&entry_epoch_id)
+            .expect("read retained key package material"),
+        "the sibling retains the material of the uploaded KeyPackage"
+    );
+    let retained = retained_epoch_ids(&emulator_b, &provider_b);
+    assert!(retained.contains(&entry_epoch_id));
+
+    emulator_b
+        .delete(provider_b.storage())
+        .expect("delete the emulation group");
+
+    assert_no_epoch_state_remains(&provider_b, &retained);
 }
 
 /// The retention entry points are only available on an emulation group: any other

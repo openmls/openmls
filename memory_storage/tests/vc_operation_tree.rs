@@ -100,6 +100,65 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
         .unwrap());
 }
 
+/// Deleting the retained material of one epoch leaves another epoch's material
+/// alone. This is what tearing down an emulation group needs: the material is
+/// keyed by KeyPackage reference, which the caller cannot enumerate.
+#[test]
+fn retained_material_is_deletable_per_epoch() {
+    let storage = MemoryStorage::default();
+    let epoch_id = TestEpochId(b"TornDownEpoch".to_vec());
+    let other_epoch_id = TestEpochId(b"SurvivingEpoch".to_vec());
+    let first_ref = TestKeyPackageRef(b"kp-ref-1".to_vec());
+    let second_ref = TestKeyPackageRef(b"kp-ref-2".to_vec());
+    let other_ref = TestKeyPackageRef(b"kp-ref-other".to_vec());
+    let material = TestRetainedMaterial(b"material".to_vec());
+
+    storage
+        .write_retained_key_package_material_batch(
+            &epoch_id,
+            &TestOperationTree(b"tree".to_vec()),
+            &[
+                (first_ref.clone(), material.clone()),
+                (second_ref.clone(), material.clone()),
+            ],
+        )
+        .unwrap();
+    storage
+        .write_retained_key_package_material_batch(
+            &other_epoch_id,
+            &TestOperationTree(b"other tree".to_vec()),
+            &[(other_ref.clone(), material.clone())],
+        )
+        .unwrap();
+
+    storage
+        .delete_retained_key_package_material_for_epoch(&epoch_id)
+        .unwrap();
+
+    // Both materials of the epoch are gone, by reference and by epoch tag.
+    for kp_ref in [&first_ref, &second_ref] {
+        let read: Option<TestRetainedMaterial> =
+            storage.retained_key_package_material(kp_ref).unwrap();
+        assert!(read.is_none());
+    }
+    assert!(!storage
+        .has_retained_key_package_material_for_epoch(&epoch_id)
+        .unwrap());
+
+    // The other epoch keeps its material.
+    let read: Option<TestRetainedMaterial> =
+        storage.retained_key_package_material(&other_ref).unwrap();
+    assert_eq!(read, Some(material));
+    assert!(storage
+        .has_retained_key_package_material_for_epoch(&other_epoch_id)
+        .unwrap());
+
+    // Deleting an epoch that has no material is a no-op.
+    storage
+        .delete_retained_key_package_material_for_epoch(&epoch_id)
+        .unwrap();
+}
+
 /// Write, read back, overwrite, and delete an operation secret tree.
 #[test]
 fn operation_tree_read_write_delete() {

@@ -1295,6 +1295,32 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
+    fn delete_retained_key_package_material_for_epoch<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        let serialized_epoch_id = serde_json::to_vec(epoch_id)?;
+        let mut values = self.values.write().unwrap();
+        // Collect first, the removals below invalidate this iteration.
+        let tag_keys: Vec<Vec<u8>> = values
+            .iter()
+            .filter(|(key, value)| is_epoch_tag(key) && *value == &serialized_epoch_id)
+            .map(|(key, _)| key.clone())
+            .collect();
+        for tag_key in tag_keys {
+            // The two keys of a material differ in their label only, so the
+            // material key is the tag key with the label swapped.
+            let mut material_key = RETAINED_KEY_PACKAGE_MATERIAL_LABEL.to_vec();
+            material_key.extend_from_slice(&tag_key[RETAINED_KEY_PACKAGE_EPOCH_LABEL.len()..]);
+            values.remove(&material_key);
+            values.remove(&tag_key);
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
     fn write_vc_retention_state<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         VcRetentionState: traits::VcRetentionState<CURRENT_VERSION>,
