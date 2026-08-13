@@ -744,7 +744,8 @@ impl MlsGroup {
         commit_data: Option<&crate::components::vc_commit_data::VirtualClientCommitData>,
     ) -> Result<Option<super::vc_retention::VcStagedDeclaration>, StageCommitError> {
         use crate::components::{
-            vc_derivation_info::VirtualClientsError, vc_retention::VcRetentionState,
+            vc_derivation_info::VirtualClientsError,
+            vc_retention::{VcRetentionError, VcRetentionState},
         };
 
         let Some(usage) = commit_data.and_then(|commit_data| commit_data.epoch_usage()) else {
@@ -756,9 +757,10 @@ impl MlsGroup {
                 log::error!("vc: load retention state to validate epoch_usage failed: {e:?}");
                 VirtualClientsError::StorageError
             })?;
-        if let Some(state) = state {
-            state.validate_epoch_usage(&declared)?;
-        }
+        // No bookkeeping means nothing can justify a declared epoch, so the
+        // commit is rejected rather than accepted unchecked.
+        let state = state.ok_or(VcRetentionError::MissingRetentionState)?;
+        state.validate_epoch_usage(&declared)?;
         Ok(Some(super::vc_retention::VcStagedDeclaration::new(
             author, declared,
         )))

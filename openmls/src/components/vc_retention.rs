@@ -36,6 +36,15 @@ pub enum VcRetentionError {
     /// declaration covers it, and it is not an assumed obligation.
     #[error("epoch_usage refers to the unretained derivation epoch {0:?}")]
     UnretainedEpoch(EpochId),
+    /// A commit declares its epoch usage, but the emulation group has no
+    /// retention bookkeeping to validate it against.
+    ///
+    /// Every emulation group initializes the bookkeeping where it becomes one,
+    /// so this means the local state is incomplete. Accepting the declaration
+    /// would install epochs no source justifies, so the commit is rejected
+    /// instead.
+    #[error("The emulation group has no retention state to validate epoch_usage against.")]
+    MissingRetentionState,
 }
 
 /// One entry of an emulation group's retained-epoch log, the draft's

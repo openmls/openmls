@@ -6684,6 +6684,43 @@ fn a_commit_declaring_an_unretained_epoch_is_rejected() {
     );
 }
 
+/// A declaration is rejected when the receiver has no retention state to check
+/// it against, rather than accepted unchecked.
+///
+/// Every emulation group starts its bookkeeping where it becomes one, so a
+/// missing state means the local state is incomplete. Validation has to fail
+/// closed there, otherwise a declaration installs epochs that no source
+/// justifies.
+#[openmls_test]
+fn a_declaration_is_rejected_without_retention_state() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+
+    // Drop the receiver's bookkeeping, which no ordinary path does.
+    provider_b
+        .storage()
+        .delete_vc_retention_state(emulator_b.group_id())
+        .expect("drop the retention state");
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+
+    let err = emulator_b
+        .process_message(&provider_b, commit.into_protocol_message().unwrap())
+        .expect_err("a declaration must not be accepted without a state to check it against");
+    assert!(
+        matches!(
+            &err,
+            ProcessMessageError::InvalidCommit(StageCommitError::VcRetention(
+                VcRetentionError::MissingRetentionState
+            ))
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
 /// A two-member emulation group in which the entry derivation epoch has left the
 /// baseline window and only `emulator_a`'s latest declaration, sourced from an
 /// application reference, still protects it. Returns both clients and that epoch.
