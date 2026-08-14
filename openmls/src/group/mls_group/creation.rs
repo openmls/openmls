@@ -674,6 +674,17 @@ impl StagedWelcome {
             .map_err(WelcomeError::StorageError)?;
         }
 
+        // The derivation epoch this Welcome was resolved through, if it was
+        // addressed to one of the virtual client's KeyPackages, and the
+        // KeyPackage whose retained material resolved it.
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_welcome_material = match self.key_material.inner() {
+            WelcomeKeyMaterialInner::KeyPackage(_) => None,
+            WelcomeKeyMaterialInner::VirtualClient(material) => {
+                Some((material.key_package_ref.clone(), material.epoch_id.clone()))
+            }
+        };
+
         let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
 
         let mut mls_group = MlsGroup {
@@ -700,9 +711,34 @@ impl StagedWelcome {
         // resize the store
         mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
 
+        // Bind the joined group's entry epoch to the derivation epoch the
+        // Welcome drew on, unless the joined group is the emulation group
+        // itself, which registers a derivation epoch of its own above. Every
+        // message the joined group sends or receives derives its reuse guard
+        // from the bound epoch, so the binding is written before the group and
+        // before the retained material below is consumed.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some((_key_package_ref, epoch_id)) = &vc_welcome_material {
+            if !mls_group.emulation_group {
+                install_vc_welcome_binding(provider.storage(), &mls_group, epoch_id)
+                    .map_err(WelcomeError::StorageError)?;
+            }
+        }
+
         mls_group
             .store(provider.storage())
             .map_err(WelcomeError::StorageError)?;
+
+        // The Welcome consumed the retained material, so it goes last: until
+        // here it is what protects the derivation epoch, and a Welcome that
+        // failed on the way can be processed again.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some((key_package_ref, _epoch_id)) = &vc_welcome_material {
+            provider
+                .storage()
+                .delete_retained_key_package_material(key_package_ref)
+                .map_err(WelcomeError::StorageError)?;
+        }
 
         Ok(mls_group)
     }
@@ -771,21 +807,14 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
             ));
         }
 
+        // The material is not consumed here. It is what protects the derivation
+        // epoch the joined group will need, so it goes in
+        // [`StagedWelcome::into_group`], once the binding that takes over that
+        // job is installed. A Welcome that fails before then can be retried.
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(material) =
             resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref)?
         {
-            provider
-                .storage()
-                .delete_retained_key_package_material(&hash_ref)
-                .map_err(|e| {
-                    use crate::components::vc_derivation_info::VirtualClientsError;
-
-                    log::error!(
-                        "vc: delete retained key package material in welcome failed: {e:?}"
-                    );
-                    VirtualClientsError::StorageError
-                })?;
             return Ok((
                 resumption_psk_store,
                 WelcomeKeyMaterial::with_vc_welcome_material(material),
@@ -794,6 +823,38 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
     }
 
     Err(WelcomeError::NoMatchingKeyPackage)
+}
+
+/// Bind the entry epoch of the higher-level group `group`, which a virtual
+/// client just joined through a Welcome, to the derivation epoch `epoch_id` the
+/// Welcome's retained KeyPackage material named.
+///
+/// Without this the joined group would hold no derivation epoch until its first
+/// merged commit installs one, while the material that named the epoch is
+/// consumed by the join. Every message the group sends or receives derives its
+/// reuse guard from the bound epoch, so an emulation-group commit in between
+/// could reap state the group still needs.
+///
+/// The binding's reference is taken before the binding itself, so a failure
+/// between the two leaves a reference nothing releases rather than a binding the
+/// reaper cannot see. Like [`MlsGroup::vc_join_at_creation`], this installs the
+/// group's first binding and releases nothing: there is no previous binding of
+/// this group to age out.
+#[cfg(feature = "virtual-clients-draft")]
+fn install_vc_welcome_binding<Storage: crate::storage::StorageProvider>(
+    storage: &Storage,
+    group: &MlsGroup,
+    epoch_id: &crate::components::vc_derivation_info::EpochId,
+) -> Result<(), Storage::Error> {
+    let group_id = group.group_id();
+    let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings =
+        storage.vc_emulation_bindings(group_id)?.unwrap_or_default();
+    // Keep one entry per retained message-secrets epoch plus the current one, as
+    // every other binding site does.
+    let max_entries = group.message_secrets_store.max_epochs.saturating_add(1);
+    bindings.insert(group.epoch(), epoch_id.clone(), max_entries);
+    crate::group::mls_group::vc_retention::take_vc_binding_ref(storage, group_id, epoch_id)?;
+    storage.write_vc_emulation_bindings(group_id, &bindings)
 }
 
 /// Try to derive virtual-client welcome material for `hash_ref`. Returns
