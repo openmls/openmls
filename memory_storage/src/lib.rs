@@ -874,7 +874,8 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         for proposal_ref in proposal_refs {
             // Delete all proposals.
             let key = serde_json::to_vec(&(group_id, proposal_ref))?;
-            values.remove(&key);
+            let storage_key = build_key_from_vec::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, key);
+            values.remove(&storage_key);
         }
 
         // Delete the proposal refs from the store.
