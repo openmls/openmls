@@ -616,16 +616,19 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         .unwrap_or_default();
     let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
     bindings.insert(mls_group.epoch(), epoch_id.clone(), max_entries);
-    provider
-        .storage()
-        .write_vc_emulation_bindings(&group_id, &bindings)
-        .map_err(NewGroupError::StorageError)?;
 
     // The binding holds the derivation epoch for as long as the new group is
     // bound to it, and the creation tracking holds it until every sibling was
     // seen committing in the group. Until then a sibling that has not processed
-    // the creation yet may still have to derive its leaf from this epoch.
+    // the creation yet may still have to derive its leaf from this epoch. Both
+    // references are taken before the state that holds them, so a failure in
+    // between leaves a reference nothing releases rather than a holder the
+    // reaper cannot see.
     vc_retention::take_vc_binding_ref(provider.storage(), &group_id, &epoch_id)
+        .map_err(NewGroupError::StorageError)?;
+    provider
+        .storage()
+        .write_vc_emulation_bindings(&group_id, &bindings)
         .map_err(NewGroupError::StorageError)?;
     vc_retention::initialize_vc_creation_tracking(
         provider.storage(),

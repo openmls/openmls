@@ -1161,22 +1161,24 @@ impl MlsGroup {
             epoch_id.clone(),
             max_entries,
         );
-        provider
-            .storage()
-            .write_vc_emulation_bindings(public_group.group_id(), &bindings)
-            .map_err(Error::StorageError)?;
         // The binding holds the derivation epoch for as long as this group is
-        // bound to it. This client does not track the creation: the path is
-        // handed the derivation epoch alone, so it cannot see the emulation
-        // group's member set. The sibling that created the group holds and
-        // declares the epoch until every sibling committed in the group, this one
-        // included.
+        // bound to it, and its reference is taken before the binding itself, so
+        // a failure in between leaves a reference nothing releases rather than a
+        // binding the reaper cannot see. This client does not track the
+        // creation: the path is handed the derivation epoch alone, so it cannot
+        // see the emulation group's member set. The sibling that created the
+        // group holds and declares the epoch until every sibling committed in
+        // the group, this one included.
         crate::group::mls_group::vc_retention::take_vc_binding_ref(
             provider.storage(),
             public_group.group_id(),
             &epoch_id,
         )
         .map_err(Error::StorageError)?;
+        provider
+            .storage()
+            .write_vc_emulation_bindings(public_group.group_id(), &bindings)
+            .map_err(Error::StorageError)?;
 
         let mls_group = MlsGroup {
             mls_group_config: join_config.clone(),

@@ -512,6 +512,17 @@ impl MlsGroup {
                 // with the message secrets they are needed for.
                 let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
                 let unbound = bindings.insert(staged_commit.epoch(), epoch_id.clone(), max_entries);
+                // A bound derivation epoch is in use as long as the binding
+                // lives, so that a delayed message from the bound epoch can
+                // still be deprotected. The reference is taken before the
+                // binding that holds it, so a failure in between leaves a
+                // reference nothing releases rather than a binding the reaper
+                // cannot see.
+                vc_retention::take_vc_binding_ref(provider.storage(), self.group_id(), &epoch_id)
+                    .map_err(|e| {
+                    log::error!("vc: take binding reference at merge failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
                 provider
                     .storage()
                     .write_vc_emulation_bindings(self.group_id(), &bindings)
@@ -519,13 +530,11 @@ impl MlsGroup {
                         log::error!("vc: persist emulation bindings at merge failed: {e:?}");
                         MergeCommitError::StorageError(e)
                     })?;
-                // A bound derivation epoch is in use as long as the binding
-                // lives, so that a delayed message from the bound epoch can
-                // still be deprotected. An epoch the insert aged out of the
-                // window is released again.
-                self.update_vc_binding_refs(provider.storage(), &epoch_id, &unbound)
+                // An epoch the insert aged out of the window is released once
+                // the binding row that no longer names it is persisted.
+                self.release_vc_binding_refs(provider.storage(), &unbound)
                     .map_err(|e| {
-                        log::error!("vc: update binding references at merge failed: {e:?}");
+                        log::error!("vc: release binding references at merge failed: {e:?}");
                         MergeCommitError::StorageError(e)
                     })?;
             }

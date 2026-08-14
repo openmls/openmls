@@ -155,7 +155,7 @@ pub(crate) fn update_vc_epoch_refs<Storage: StorageProvider>(
 ///
 /// Used where a group is created or joined with its first binding already
 /// written. Later bindings are diffed against the previous ones in
-/// [`MlsGroup::update_vc_binding_refs`].
+/// [`MlsGroup::release_vc_binding_refs`].
 pub(crate) fn take_vc_binding_ref<Storage: StorageProvider>(
     storage: &Storage,
     group_id: &GroupId,
@@ -169,6 +169,12 @@ pub(crate) fn take_vc_binding_ref<Storage: StorageProvider>(
 /// Start tracking the higher-level group `new_group_id`, which this client
 /// created or externally joined from the derivation epoch `epoch_id` as a
 /// virtual client of `emulation_group_id`.
+///
+/// The epoch's reference is taken before the tracking row that holds it, so a
+/// failure between the two leaves a reference nothing releases rather than a
+/// holder the reaper cannot see. A leaked reference retains an epoch too long,
+/// which the next reap of a released reference cleans up, while a missing one
+/// deletes state that is still needed.
 ///
 /// A sibling that has not processed the creation yet cannot hold a reference to
 /// `epoch_id` of its own, and it may still have to derive its leaf in the new
@@ -199,10 +205,10 @@ pub(crate) fn initialize_vc_creation_tracking<Storage: StorageProvider>(
         return Ok(());
     }
     let tracking = VcCreationTracking::new(epoch_id.clone(), outstanding);
-    storage.write_vc_creation_tracking(new_group_id, &tracking)?;
     update_vc_epoch_refs(storage, epoch_id, |refs| {
         refs.creations.insert(new_group_id.clone());
-    })
+    })?;
+    storage.write_vc_creation_tracking(new_group_id, &tracking)
 }
 
 /// Record the emulation-group leaves `leaves` as seen in `group_id`'s creation
@@ -546,13 +552,11 @@ impl MlsGroup {
     /// `unbound` comes straight off [`VcEmulationBindings::insert`], so an epoch
     /// bound at several of the group's epochs keeps its reference until the last
     /// of those bindings goes.
-    pub(crate) fn update_vc_binding_refs<Storage: StorageProvider>(
+    pub(crate) fn release_vc_binding_refs<Storage: StorageProvider>(
         &self,
         storage: &Storage,
-        bound: &EpochId,
         unbound: &[EpochId],
     ) -> Result<(), Storage::Error> {
-        take_vc_binding_ref(storage, self.group_id(), bound)?;
         let group_id = self.group_id();
         for epoch_id in unbound {
             update_vc_epoch_refs(storage, epoch_id, |refs| {
