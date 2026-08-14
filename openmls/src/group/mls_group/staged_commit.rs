@@ -346,20 +346,28 @@ impl MlsGroup {
         // is validated against the state the commit was built on before the
         // commit is accepted.
         #[cfg(feature = "virtual-clients-draft")]
-        let (marks_new_vc_derivation_epoch, vc_declaration) = if self.carries_vc_commit_data() {
-            let commit_data = parse_vc_commit_data(mls_content.authenticated_data())?;
-            let marks_new_epoch = commit_data
-                .as_ref()
-                .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
-            let declaration = self.validate_vc_epoch_usage(
-                provider.storage(),
-                sender_index,
-                commit_data.as_ref(),
-            )?;
-            (marks_new_epoch, declaration)
-        } else {
-            (false, None)
-        };
+        let (marks_new_vc_derivation_epoch, vc_declaration, vc_key_package_uploads) =
+            if self.carries_vc_commit_data() {
+                let commit_data = parse_vc_commit_data(mls_content.authenticated_data())?;
+                let marks_new_epoch = commit_data
+                    .as_ref()
+                    .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
+                // Kept for the merge to act on. Processing an upload consumes an
+                // operation-tree generation, which a staged commit that never
+                // applies must not do.
+                let uploads = commit_data
+                    .as_ref()
+                    .map(|commit_data| commit_data.key_package_uploads().cloned().collect())
+                    .unwrap_or_default();
+                let declaration = self.validate_vc_epoch_usage(
+                    provider.storage(),
+                    sender_index,
+                    commit_data.as_ref(),
+                )?;
+                (marks_new_epoch, declaration, uploads)
+            } else {
+                (false, None, Vec::new())
+            };
 
         // Unbundle the sibling-VC commit material: the per-commit operation
         // secret recreates the path, the emulation `epoch_id` is recorded on
@@ -654,6 +662,7 @@ impl MlsGroup {
             staged_commit.marks_new_vc_derivation_epoch = marks_new_vc_derivation_epoch;
             staged_commit.vc_declaration = vc_declaration;
             staged_commit.vc_sender_emulation_leaf = vc_sender_emulation_leaf;
+            staged_commit.vc_key_package_uploads = vc_key_package_uploads;
         }
 
         Ok(staged_commit)
@@ -784,6 +793,49 @@ impl MlsGroup {
             && (staged_commit.marks_new_vc_derivation_epoch || staged_commit.changes_membership())
     }
 
+    /// Process the KeyPackage batches a merged commit published, storing the
+    /// material this client needs to later join a higher-level group through one
+    /// of those KeyPackages.
+    ///
+    /// The draft has a recipient act on an upload at receipt, which is what makes
+    /// this part of the merge rather than something the application calls when it
+    /// gets around to it: until the material exists, nothing on this client
+    /// protects the derivation epoch the upload draws on, and an emulation-group
+    /// commit could reap the operation secret tree the upload needs.
+    ///
+    /// A batch this client published itself is skipped. Its KeyPackage bundles are
+    /// in storage already, its own pin on the epoch is separate, and deriving from
+    /// its own ratchet would consume the batch generation a second time. An upload
+    /// whose material is already stored is skipped as well, so an application that
+    /// received the same batch out of band and processed it before the commit
+    /// arrived does not turn the merge into a failure.
+    ///
+    /// Anything else that goes wrong fails the merge. The commit was
+    /// authenticated, so a batch this client cannot process means the sender and
+    /// this client disagree about the state they share, which is not something to
+    /// pass over silently.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn process_vc_commit_key_package_uploads<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+        uploads: &[crate::components::vc_derivation_info::KeyPackageUpload],
+    ) -> Result<(), crate::components::vc_derivation_info::VirtualClientsError> {
+        use crate::components::vc_derivation_info::{
+            process_vc_key_package_upload, vc_key_package_upload_is_processed,
+        };
+
+        for upload in uploads {
+            if upload.leaf_index == self.own_leaf_index() {
+                continue;
+            }
+            if vc_key_package_upload_is_processed(provider.storage(), upload)? {
+                continue;
+            }
+            process_vc_key_package_upload(provider, upload)?;
+        }
+        Ok(())
+    }
+
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
     /// from the previous epoch. The secret tree is returned if the Commit does not contain a self removal.
     ///
@@ -792,7 +844,8 @@ impl MlsGroup {
     pub(crate) fn merge_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
-        staged_commit: StagedCommit,
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        mut staged_commit: StagedCommit,
     ) -> Result<(), MergeCommitError<Provider::StorageError>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
@@ -809,6 +862,11 @@ impl MlsGroup {
         let vc_retention_input = (self.is_emulation_group()
             && matches!(staged_commit.state, StagedCommitState::GroupMember(_)))
         .then(|| super::vc_retention::VcRetentionMergeInput::new(&staged_commit));
+
+        // The KeyPackage batches the commit publishes, taken off the staged
+        // commit before the merge below consumes it.
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_key_package_uploads = std::mem::take(&mut staged_commit.vc_key_package_uploads);
 
         match staged_commit.state {
             StagedCommitState::PublicState(staged_state) => {
@@ -903,6 +961,16 @@ impl MlsGroup {
                         self.application_export_tree = Some(application_export_tree);
                     }
                 }
+
+                // The commit's KeyPackage uploads are processed here, where the
+                // commit is accepted and the epoch they draw on is still
+                // protected, and never at staging: a staged commit can be
+                // superseded or discarded, and processing it then would consume
+                // an operation-tree generation for a commit that never applied.
+                // It runs before the retention bookkeeping below, so the material
+                // this retains already protects the epoch when the reaper runs.
+                #[cfg(feature = "virtual-clients-draft")]
+                self.process_vc_commit_key_package_uploads(provider, &vc_key_package_uploads)?;
 
                 // Membership changes, a created derivation epoch and the commit's
                 // declaration all land in the retention bookkeeping, and what
@@ -1037,6 +1105,15 @@ pub struct StagedCommit {
     #[cfg(feature = "virtual-clients-draft")]
     #[serde(default)]
     pub(super) vc_declaration: Option<super::vc_retention::VcStagedDeclaration>,
+    /// The KeyPackage batches the commit's virtual-clients Safe AAD item
+    /// publishes, in wire order. Empty for a commit this client built itself: a
+    /// publisher has nothing to process about its own batch.
+    ///
+    /// Read off the item when the commit is staged and processed when it is
+    /// merged, which is why it is persisted with an own pending commit.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[serde(default)]
+    pub(super) vc_key_package_uploads: Vec<crate::components::vc_derivation_info::KeyPackageUpload>,
 }
 
 impl StagedCommit {
@@ -1060,6 +1137,8 @@ impl StagedCommit {
             marks_new_vc_derivation_epoch: false,
             #[cfg(feature = "virtual-clients-draft")]
             vc_declaration: None,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_key_package_uploads: Vec::new(),
         }
     }
 

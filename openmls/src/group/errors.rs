@@ -801,6 +801,11 @@ pub enum MergeCommitError<StorageError> {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     RegisterVcDerivationEpoch(#[from] crate::group::RegisterVcDerivationEpochError<StorageError>),
+    /// The commit publishes a batch of the virtual client's KeyPackages, and
+    /// processing that batch failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VcKeyPackageUpload(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }
 
 #[cfg(feature = "extensions-draft")]

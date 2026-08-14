@@ -6,14 +6,15 @@ use tls_codec::Serialize as _;
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
-    ciphersuite::Secret,
+    ciphersuite::{hash_ref::KeyPackageRef, Secret},
     component::{ComponentId, ComponentType, ComponentsList},
     components::{
         vc_commit_data::{VcEpochUsage, VirtualClientAction, VirtualClientCommitData},
         vc_derivation_info::{
-            load_vc_epoch_state_and_tree, register_vc_derivation_epoch, EpochId,
-            RegisteredVcDerivationEpoch, VcDerivationEpochParams, VcDerivationEpochState,
-            VcEmulationBindings, VirtualClientOperationType, VC_COMPONENT_ID,
+            load_vc_epoch_state_and_tree, register_vc_derivation_epoch, EpochId, KeyPackageUpload,
+            RegisteredVcDerivationEpoch, RetainedKeyPackageMaterial, VcDerivationEpochParams,
+            VcDerivationEpochState, VcEmulationBindings, VirtualClientOperationType,
+            VC_COMPONENT_ID,
         },
         vc_retention::VcEpochRefs,
     },
@@ -612,10 +613,41 @@ fn send_emulation_commit<P: OpenMlsProvider>(
     provider: &P,
     signer: &SignatureKeyPair,
 ) -> crate::framing::MlsMessageOut {
+    send_emulation_commit_inner(emulator_group, provider, signer, true, Vec::new())
+}
+
+/// Send a commit on `emulator_group` carrying `actions` in its virtual-clients
+/// Safe AAD item, without creating a derivation epoch, so the epoch the actions
+/// draw on stays the newest one.
+fn send_emulation_commit_with_actions<P: OpenMlsProvider>(
+    emulator_group: &mut MlsGroup,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    actions: Vec<VirtualClientAction>,
+) -> crate::framing::MlsMessageOut {
+    send_emulation_commit_inner(emulator_group, provider, signer, false, actions)
+}
+
+fn send_emulation_commit_inner<P: OpenMlsProvider>(
+    emulator_group: &mut MlsGroup,
+    provider: &P,
+    signer: &SignatureKeyPair,
+    new_derivation_epoch: bool,
+    actions: Vec<VirtualClientAction>,
+) -> crate::framing::MlsMessageOut {
+    if !actions.is_empty() {
+        let commit_data = VirtualClientCommitData::new(None, actions)
+            .expect("at most one new_derivation_epoch action");
+        emulator_group
+            .set_safe_aad(vec![commit_data
+                .to_safe_aad_item()
+                .expect("serialize the commit data")])
+            .expect("a single item is sorted and unique");
+    }
     let bundle = emulator_group
         .commit_builder()
         .force_self_update(true)
-        .derivation_epoch(true)
+        .derivation_epoch(new_derivation_epoch)
         .load_psks(provider.storage())
         .expect("load psks")
         .build(provider.rand(), provider.crypto(), signer, |_| true)
@@ -673,6 +705,283 @@ fn epoch_state_is_stored<P: OpenMlsProvider>(provider: &P, epoch_id: &EpochId) -
         .vc_derivation_epoch_state(epoch_id)
         .expect("read the derivation epoch state");
     state.is_some()
+}
+
+/// The material `provider` retains for the KeyPackage `key_package_ref`, read
+/// straight out of storage. `None` means the client cannot join a group through
+/// that KeyPackage.
+fn retained_material<P: OpenMlsProvider>(
+    provider: &P,
+    key_package_ref: &KeyPackageRef,
+) -> Option<RetainedKeyPackageMaterial> {
+    provider
+        .storage()
+        .retained_key_package_material(key_package_ref)
+        .expect("read the retained key package material")
+}
+
+/// Publish a batch of `count` virtual-client KeyPackages on `provider` from the
+/// newest derivation epoch of `emulator_group`, and assemble the upload that
+/// tells a sibling about them.
+///
+/// Returns the upload alongside the published references, in batch order.
+fn publish_vc_key_packages<P: OpenMlsProvider>(
+    provider: &P,
+    emulator_group: &MlsGroup,
+    vc_signer: &SignatureKeyPair,
+    vc_credential: crate::credentials::CredentialWithKey,
+    count: usize,
+) -> (KeyPackageUpload, Vec<KeyPackageRef>) {
+    use crate::components::vc_derivation_info::assemble_vc_key_package_upload;
+
+    let batch = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            GROUP_CIPHERSUITE,
+            provider,
+            vc_signer,
+            vc_credential,
+            emulator_group.group_id(),
+            count,
+        )
+        .expect("build the key package batch");
+    let infos: Vec<_> = batch
+        .key_packages
+        .into_iter()
+        .map(|(_bundle, info)| info)
+        .collect();
+    let key_package_refs = infos
+        .iter()
+        .map(|info| info.key_package_ref.clone())
+        .collect();
+    let upload =
+        assemble_vc_key_package_upload(provider.storage(), batch.epoch_id, batch.generation, infos)
+            .expect("assemble the upload");
+    (upload, key_package_refs)
+}
+
+/// Merging a commit that carries a KeyPackage upload leaves the recipient with
+/// the material for those KeyPackages, without the application processing the
+/// upload itself.
+///
+/// The draft has a recipient act on an upload at receipt. Anything later leaves a
+/// window in which nothing protects the epoch the upload draws on, so its
+/// operation secret tree can be reaped and the upload then fails for good.
+#[openmls_test::openmls_test]
+fn merging_a_commit_processes_its_key_package_uploads() {
+    let provider_a = &Provider::default();
+    let provider_b = &Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulators(provider_a, provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(provider_a, provider_b);
+    let epoch_id = newest_epoch(&emulator_a, provider_a);
+
+    let (upload, key_package_refs) =
+        publish_vc_key_packages(provider_a, &emulator_a, &vc_signer, vc_credential, 2);
+    assert_eq!(upload.epoch_id, epoch_id);
+    for key_package_ref in &key_package_refs {
+        assert!(
+            retained_material(provider_b, key_package_ref).is_none(),
+            "the sibling learns about the batch through the commit only"
+        );
+    }
+
+    let commit = send_emulation_commit_with_actions(
+        &mut emulator_a,
+        provider_a,
+        &signer_a,
+        vec![VirtualClientAction::KeyPackageUpload(upload)],
+    );
+    process_and_merge_commit(&mut emulator_b, provider_b, commit);
+
+    for (key_package_index, key_package_ref) in key_package_refs.iter().enumerate() {
+        let material = retained_material(provider_b, key_package_ref)
+            .expect("the merge must retain the material of every uploaded KeyPackage");
+        assert_eq!(material.epoch_id, epoch_id);
+        assert_eq!(material.leaf_index, emulator_a.own_leaf_index());
+        assert_eq!(material.key_package_index, key_package_index as u32);
+        assert_eq!(material.key_package_ciphersuite, GROUP_CIPHERSUITE);
+    }
+}
+
+/// Merging a commit that carries an upload already processed out of band changes
+/// nothing. The batch consumed one operation generation, which cannot be derived
+/// a second time, so a repeat has to be recognized rather than attempted.
+#[openmls_test::openmls_test]
+fn merging_an_already_processed_key_package_upload_is_idempotent() {
+    use crate::components::vc_derivation_info::process_vc_key_package_upload;
+
+    let provider_a = &Provider::default();
+    let provider_b = &Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulators(provider_a, provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(provider_a, provider_b);
+
+    let (upload, key_package_refs) =
+        publish_vc_key_packages(provider_a, &emulator_a, &vc_signer, vc_credential, 1);
+    let commit_upload = upload.clone();
+    process_vc_key_package_upload(provider_b, &upload).expect("process the upload out of band");
+    let before = retained_material(provider_b, &key_package_refs[0])
+        .expect("the out-of-band call retains the material");
+
+    let commit = send_emulation_commit_with_actions(
+        &mut emulator_a,
+        provider_a,
+        &signer_a,
+        vec![VirtualClientAction::KeyPackageUpload(commit_upload)],
+    );
+    process_and_merge_commit(&mut emulator_b, provider_b, commit);
+
+    let after = retained_material(provider_b, &key_package_refs[0])
+        .expect("the material must still be there");
+    assert_eq!(after.epoch_id, before.epoch_id);
+    assert_eq!(after.generation, before.generation);
+    assert_eq!(after.key_package_index, before.key_package_index);
+}
+
+/// Merging its own commit does not make a publisher process the batch it
+/// published. It retains no material for its own KeyPackages, and its ratchet
+/// keeps the generation the batch consumed.
+#[openmls_test::openmls_test]
+fn a_publisher_does_not_process_its_own_key_package_upload() {
+    let provider_a = &Provider::default();
+    let provider_b = &Provider::default();
+
+    let (mut emulator_a, signer_a, _emulator_b, _signer_b) =
+        sibling_emulators(provider_a, provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(provider_a, provider_b);
+
+    let (upload, key_package_refs) = publish_vc_key_packages(
+        provider_a,
+        &emulator_a,
+        &vc_signer,
+        vc_credential.clone(),
+        1,
+    );
+    assert_eq!(upload.generation, 0);
+    send_emulation_commit_with_actions(
+        &mut emulator_a,
+        provider_a,
+        &signer_a,
+        vec![VirtualClientAction::KeyPackageUpload(upload)],
+    );
+
+    assert!(
+        retained_material(provider_a, &key_package_refs[0]).is_none(),
+        "a publisher retains no material for its own KeyPackages"
+    );
+    let (next_upload, _next_refs) =
+        publish_vc_key_packages(provider_a, &emulator_a, &vc_signer, vc_credential, 1);
+    assert_eq!(
+        next_upload.generation, 1,
+        "the merge must not have consumed a second generation"
+    );
+}
+
+/// A client never processes an upload that names its own emulation leaf, whoever
+/// sent it. Deriving from its own ratchet would consume a generation it allocates
+/// for its own batches.
+#[openmls_test::openmls_test]
+fn a_client_skips_a_key_package_upload_naming_its_own_leaf() {
+    let provider_a = &Provider::default();
+    let provider_b = &Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulators(provider_a, provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(provider_a, provider_b);
+
+    // A genuine batch of the publisher's, with the recipient's leaf claimed as
+    // the uploader's. The recipient must leave its own ratchet alone rather than
+    // trust the claim.
+    let (mut upload, key_package_refs) = publish_vc_key_packages(
+        provider_a,
+        &emulator_a,
+        &vc_signer,
+        vc_credential.clone(),
+        1,
+    );
+    upload.leaf_index = emulator_b.own_leaf_index();
+    let commit = send_emulation_commit_with_actions(
+        &mut emulator_a,
+        provider_a,
+        &signer_a,
+        vec![VirtualClientAction::KeyPackageUpload(upload)],
+    );
+    process_and_merge_commit(&mut emulator_b, provider_b, commit);
+
+    assert!(
+        retained_material(provider_b, &key_package_refs[0]).is_none(),
+        "the recipient must not derive material from its own ratchet"
+    );
+    let (own_upload, _own_refs) =
+        publish_vc_key_packages(provider_b, &emulator_b, &vc_signer, vc_credential, 1);
+    assert_eq!(
+        own_upload.generation, 0,
+        "the skipped upload must not have consumed a generation"
+    );
+}
+
+/// A commit carrying a malformed upload fails the merge. The commit was
+/// authenticated, so a batch this client cannot process means the sender and this
+/// client disagree, which is not something to pass over silently.
+#[openmls_test::openmls_test]
+fn merging_a_commit_with_a_malformed_key_package_upload_fails() {
+    use crate::{
+        components::vc_derivation_info::{KeyPackageInfo, VirtualClientsError},
+        group::MergeCommitError,
+    };
+
+    let provider_a = &Provider::default();
+    let provider_b = &Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulators(provider_a, provider_b);
+    let epoch_id = newest_epoch(&emulator_a, provider_a);
+
+    // Two entries claiming the same position in the batch. Both would derive the
+    // same per-KeyPackage seed, so the batch cannot be processed at all.
+    let key_package_info = |name: &[u8]| KeyPackageInfo {
+        key_package_ref: KeyPackageRef::from_slice(name),
+        cipher_suite: GROUP_CIPHERSUITE,
+        key_package_index: 0,
+    };
+    let malformed = KeyPackageUpload {
+        epoch_id,
+        leaf_index: emulator_a.own_leaf_index(),
+        generation: 0,
+        key_package_info: vec![
+            key_package_info(b"first key package ref"),
+            key_package_info(b"second key package ref"),
+        ],
+    };
+
+    let commit = send_emulation_commit_with_actions(
+        &mut emulator_a,
+        provider_a,
+        &signer_a,
+        vec![VirtualClientAction::KeyPackageUpload(malformed)],
+    );
+    let processed = emulator_b
+        .process_message(
+            provider_b,
+            commit
+                .into_protocol_message()
+                .expect("commits are protocol messages"),
+        )
+        .expect("a malformed action does not stop the commit from being staged");
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("a commit must process into a staged commit");
+    };
+
+    assert_eq!(
+        emulator_b.merge_staged_commit(provider_b, *staged),
+        Err(MergeCommitError::VcKeyPackageUpload(
+            VirtualClientsError::DuplicateKeyPackageIndex(0)
+        ))
+    );
 }
 
 /// A virtual client welcomed into a higher-level group takes the reference to

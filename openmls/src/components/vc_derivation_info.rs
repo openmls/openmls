@@ -521,7 +521,9 @@ impl EpochId {
 ///
 /// [`HashReference`]: crate::ciphersuite::hash_ref::HashReference
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
-#[derive(Debug, PartialEq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
+)]
 pub struct KeyPackageInfo {
     /// Hash reference of the virtual client's KeyPackage.
     pub key_package_ref: KeyPackageRef,
@@ -553,7 +555,14 @@ pub struct KeyPackageInfo {
 /// consumed for the whole batch. `key_package_info` carries one
 /// [`KeyPackageInfo`] per uploaded KeyPackage, each with its index within the
 /// batch.
-#[derive(Debug, PartialEq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+///
+/// The upload is carried on a [`StagedCommit`] until the commit is merged, which
+/// is why it is serializable: a pending commit is persisted.
+///
+/// [`StagedCommit`]: crate::group::StagedCommit
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
+)]
 pub struct KeyPackageUpload {
     /// Derivation epoch the uploaded KeyPackages belong to.
     pub epoch_id: EpochId,
@@ -738,6 +747,43 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
             VirtualClientsError::StorageError
         })?;
     Ok(())
+}
+
+/// Whether `upload` was already processed on this client, so processing it again
+/// would try to derive its batch generation a second time.
+///
+/// The retained material of a KeyPackage records the `(epoch_id, leaf_index,
+/// generation)` its batch was derived from, so material matching the upload's
+/// triple means the generation is already spent on exactly this batch. Consumed
+/// generations cannot be derived again, so a repeat has to be recognized here
+/// rather than attempted: [`process_vc_key_package_upload`] would fail with
+/// [`VirtualClientsError::OperationGenerationConsumed`].
+///
+/// One matching entry is enough. The batch consumed a single generation, so an
+/// upload whose entries disagree about whether they were processed cannot be
+/// completed either way.
+pub(crate) fn vc_key_package_upload_is_processed<Storage: crate::storage::StorageProvider>(
+    storage: &Storage,
+    upload: &KeyPackageUpload,
+) -> Result<bool, VirtualClientsError> {
+    for info in &upload.key_package_info {
+        let material: Option<RetainedKeyPackageMaterial> = storage
+            .retained_key_package_material(&info.key_package_ref)
+            .map_err(|e| {
+                log::error!("vc: load retained key package material for an upload failed: {e:?}");
+                VirtualClientsError::StorageError
+            })?;
+        let Some(material) = material else {
+            continue;
+        };
+        if material.epoch_id == upload.epoch_id
+            && material.leaf_index == upload.leaf_index
+            && material.generation == upload.generation
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Material a sibling emulator derives to join a higher-level group via a
