@@ -543,6 +543,17 @@ impl StagedWelcome {
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
     ///
+    #[cfg_attr(
+        feature = "virtual-clients-draft",
+        doc = "A Welcome addressed to a virtual client's KeyPackage is the one\n\
+        exception. Its key material is derived from material retained for that\n\
+        KeyPackage, which is what protects the derivation epoch the joined group\n\
+        needs, so it is consumed by [`Self::into_group`] once the binding that\n\
+        takes over that job is installed. A staged welcome that is dropped or\n\
+        that fails on the way leaves the material in place, so a valid retry\n\
+        still works.\n"
+    )]
+    ///
     /// [`Welcome`]: crate::messages::Welcome
     pub fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,

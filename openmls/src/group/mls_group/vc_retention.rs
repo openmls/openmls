@@ -619,8 +619,8 @@ impl MlsGroup {
     /// welcomed again. Only the application knows, from the lifetime it published
     /// under and from what the delivery service still hands out.
     ///
-    /// An application that retires a KeyPackage by deleting it through
-    /// [`StorageProvider::delete_key_package`] has released both already, so this
+    /// An application that retires a KeyPackage by deleting it through the
+    /// storage provider's `delete_key_package` has released both already, so this
     /// call is for KeyPackages the application keeps in storage. It also runs the
     /// reap a release enables, which the provider call does not.
     ///
