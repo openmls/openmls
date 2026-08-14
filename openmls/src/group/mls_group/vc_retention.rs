@@ -277,8 +277,10 @@ pub(crate) fn release_vc_creation_tracking<Storage: StorageProvider>(
 /// creation: the siblings have to keep those, because they have work of this
 /// client's that is not on the wire yet.
 ///
-/// Two reference kinds stay out. Retained KeyPackage material is held by every
-/// current member anyway, since the upload rides in a commit all of them process.
+/// Two reference kinds stay out. An epoch a KeyPackage holds is held by every
+/// current member anyway, since the upload rides in a commit all of them process,
+/// whether a member published that KeyPackage or retained the material of a
+/// sibling's upload.
 /// A leaf binding only serves this client's decryption of traffic that was
 /// already delivered, which the application's ordering discipline has it process
 /// before it acts on a shrinking retention set, so no sibling needs to keep the
@@ -314,10 +316,12 @@ pub(crate) fn vc_declared_epochs<Storage: StorageProvider>(
 /// anymore, and drop it from the retained-epoch log.
 ///
 /// An epoch goes when the retention bookkeeping stopped protecting it, no
-/// higher-level group holds it through a [`VcEpochRefs`] entry, and no retained
-/// KeyPackage material was derived from it. Deleting the epoch's state also
-/// deletes its operation secret tree, so the client can no longer act on the
-/// epoch. Callers persist `state` afterwards.
+/// higher-level group holds it through a [`VcEpochRefs`] entry, and no
+/// KeyPackage of either source is still built from it: neither one this client
+/// published itself nor one a sibling uploaded and this client retained the
+/// material of. Deleting the epoch's state also deletes its operation secret
+/// tree, so the client can no longer act on the epoch. Callers persist `state`
+/// afterwards.
 pub(crate) fn reap_vc_derivation_epochs<Storage: StorageProvider>(
     storage: &Storage,
     state: &mut VcRetentionState,
@@ -332,7 +336,9 @@ pub(crate) fn reap_vc_derivation_epochs<Storage: StorageProvider>(
             Some(_) => storage.delete_vc_epoch_refs(&epoch_id)?,
             None => {}
         }
-        if storage.has_retained_key_package_material_for_epoch(&epoch_id)? {
+        if storage.has_vc_key_packages_for_epoch(&epoch_id)?
+            || storage.has_retained_key_package_material_for_epoch(&epoch_id)?
+        {
             continue;
         }
         storage.delete_vc_derivation_epoch_state(&epoch_id)?;
@@ -426,7 +432,8 @@ impl MlsGroup {
 
     /// Delete this group's state as an emulation group: the per-epoch state of
     /// every derivation epoch its retained-epoch log still holds, the KeyPackage
-    /// material retained from those epochs, the log itself, and the
+    /// material retained from those epochs, the epoch associations of the
+    /// KeyPackages this client published from them, the log itself, and the
     /// derivation-epoch registration record.
     ///
     /// Unlike the reaper, this deletes every retained epoch unconditionally,
@@ -438,7 +445,9 @@ impl MlsGroup {
     ///
     /// The retained KeyPackage material goes for the same reason. It is keyed by
     /// KeyPackage reference, so the log is the only way to reach it, and its seed
-    /// secret is usable without any of the epoch state deleted here.
+    /// secret is usable without any of the epoch state deleted here. The epoch
+    /// associations of the published KeyPackages are keyed by reference too, and
+    /// they protect epochs that no longer exist once this returns.
     fn tear_down_vc_emulation_state<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -450,6 +459,7 @@ impl MlsGroup {
                 storage.delete_vc_derivation_epoch_state(retained.epoch_id())?;
                 storage.delete_vc_epoch_refs(retained.epoch_id())?;
                 storage.delete_retained_key_package_material_for_epoch(retained.epoch_id())?;
+                storage.delete_vc_key_package_epochs_for_epoch(retained.epoch_id())?;
             }
         }
         storage.delete_registered_vc_derivation_epoch(group_id)?;
@@ -596,20 +606,28 @@ impl MlsGroup {
     }
 
     /// Tell OpenMLS that the virtual client's KeyPackages named by
-    /// `key_package_refs` have reached the end of their life, so the material
-    /// retained for them can go.
+    /// `key_package_refs` have reached the end of their life, so what they hold
+    /// of a derivation epoch can go.
     ///
-    /// This is the one signal that releases a derivation epoch held only by
-    /// KeyPackage material. That material is what lets a client derive the leaf
-    /// of a Welcome addressed to one of the virtual client's KeyPackages, so
-    /// OpenMLS cannot tell on its own when a published KeyPackage will never be
+    /// A virtual-client KeyPackage holds the epoch it was built from on both
+    /// sides, and this releases both. The client that published it holds the
+    /// epoch through the KeyPackage's epoch association, because joining from a
+    /// Welcome for that KeyPackage needs the epoch's state afterwards. Every
+    /// client that processed the upload holds the epoch through the material it
+    /// retained, which is what lets it derive the leaf of such a Welcome at all.
+    /// Neither side can tell on its own when a published KeyPackage will never be
     /// welcomed again. Only the application knows, from the lifetime it published
     /// under and from what the delivery service still hands out.
     ///
-    /// The material of a reference a Welcome consumed was deleted when that
-    /// Welcome was processed, so passing consumed references again is harmless.
-    /// Once the last material of a derivation epoch is gone, the epoch's state is
-    /// deleted unless something else still protects it.
+    /// An application that retires a KeyPackage by deleting it through
+    /// [`StorageProvider::delete_key_package`] has released both already, so this
+    /// call is for KeyPackages the application keeps in storage. It also runs the
+    /// reap a release enables, which the provider call does not.
+    ///
+    /// What a Welcome consumed was deleted when that Welcome was processed, so
+    /// passing consumed references again is harmless. Once the last KeyPackage of
+    /// a derivation epoch is gone, the epoch's state is deleted unless something
+    /// else still protects it.
     ///
     /// Fails with [`VcRetentionUpdateError::NotAnEmulationGroup`] unless this
     /// group is the virtual client's emulation group.
@@ -622,6 +640,9 @@ impl MlsGroup {
         for key_package_ref in key_package_refs {
             storage
                 .delete_retained_key_package_material(key_package_ref)
+                .map_err(VcRetentionUpdateError::Storage)?;
+            storage
+                .delete_vc_key_package_epoch(key_package_ref)
                 .map_err(VcRetentionUpdateError::Storage)?;
         }
         self.with_vc_retention_state(storage, |_state| Ok(()))

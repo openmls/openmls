@@ -176,9 +176,14 @@ impl VcKeyPackageBatchBuilder {
 
     /// Finalize the batch.
     ///
-    /// Persists the operation tree and the key packages. The operation is not atomic. On failure,
-    /// the generation should be considered as burned. Few orphaned key packages may be left in
-    /// storage.
+    /// Persists the operation tree, each KeyPackage's association with the
+    /// derivation epoch it was built from, and the key packages. The operation is
+    /// not atomic. On failure, the generation should be considered as burned. Few
+    /// orphaned key packages may be left in storage.
+    ///
+    /// The epoch association holds the derivation epoch for as long as a Welcome
+    /// for one of the KeyPackages could still arrive. Deleting the KeyPackage
+    /// releases it.
     pub fn finalize(
         self,
         provider: &impl OpenMlsProvider,
@@ -198,6 +203,18 @@ impl VcKeyPackageBatchBuilder {
                 log::error!("vc: persist advanced operation tree in build_vc_batch failed: {e:?}");
                 VirtualClientsError::StorageError
             })?;
+        // Every epoch association goes in before the KeyPackages become visible,
+        // so no published KeyPackage can be left without the epoch it needs to be
+        // welcomed from. A failure here fails the batch.
+        for (_, info) in &self.key_packages {
+            provider
+                .storage()
+                .write_vc_key_package_epoch(&info.key_package_ref, &self.epoch_id)
+                .map_err(|e| {
+                    log::error!("vc: persist key package epoch in build_vc_batch failed: {e:?}");
+                    VirtualClientsError::StorageError
+                })?;
+        }
         for (full_kp, info) in &self.key_packages {
             provider
                 .storage()

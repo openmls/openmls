@@ -29,9 +29,9 @@ use openmls::{
         },
     },
     prelude::{
-        test_utils::new_credential, ApplyAppDataUpdateError, Capabilities, LeafNode, LeafNodeIndex,
-        LeafNodeParameters, ProcessMessageError, ProcessedMessageContent, ProposalOrRefType,
-        ProposalType, ProtocolMessage, ValidationError,
+        test_utils::new_credential, ApplyAppDataUpdateError, Capabilities, KeyPackageRef, LeafNode,
+        LeafNodeIndex, LeafNodeParameters, ProcessMessageError, ProcessedMessageContent,
+        ProposalOrRefType, ProposalType, ProtocolMessage, ValidationError,
     },
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -5800,6 +5800,13 @@ fn assert_no_epoch_state_remains<P: OpenMlsProvider>(provider: &P, epoch_ids: &[
                 .expect("read retained key package material"),
             "the KeyPackage material retained from the epoch must be gone"
         );
+        assert!(
+            !provider
+                .storage()
+                .has_vc_key_packages_for_epoch(epoch_id)
+                .expect("read key package epoch associations"),
+            "the epoch associations of the KeyPackages published from it must be gone"
+        );
     }
 }
 
@@ -6884,6 +6891,13 @@ fn key_package_material_holds_an_epoch_until_end_of_life() {
     .expect("assemble upload");
     process_vc_key_package_upload(&provider_b, &upload).expect("process upload");
 
+    // The publishing side holds the epoch through the KeyPackage's own epoch
+    // association, which has its own test. Retire it here, so the sibling's
+    // retained material is the only thing left holding the epoch.
+    emulator_a
+        .vc_key_packages_end_of_life(provider_a.storage(), std::slice::from_ref(&key_package_ref))
+        .expect("the publisher retires its own key package");
+
     // Both members advance past the entry epoch, so nothing but the retained
     // material protects it.
     advance_emulation_group(
@@ -6910,6 +6924,233 @@ fn key_package_material_holds_an_epoch_until_end_of_life() {
 
     assert!(!epoch_state_is_stored(&provider_b, &entry_epoch_id));
     assert!(!retained_epoch_ids(&emulator_b, &provider_b).contains(&entry_epoch_id));
+}
+
+/// Publish `count` virtual-client KeyPackages on `provider` from the newest
+/// derivation epoch of `emulator_group`. Returns that epoch and the references of
+/// the published KeyPackages.
+///
+/// The KeyPackages and their derivation-epoch associations are in `provider`'s
+/// storage afterwards. No upload is assembled, so no sibling holds anything.
+fn publish_vc_key_packages<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider: &P,
+    emulator_group: &MlsGroup,
+    vc_signer: &SignatureKeyPair,
+    vc_credential: openmls::credentials::CredentialWithKey,
+    count: usize,
+) -> (EpochId, Vec<KeyPackageRef>) {
+    let batch = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            ciphersuite,
+            provider,
+            vc_signer,
+            vc_credential,
+            emulator_group.group_id(),
+            count,
+        )
+        .expect("build_vc_batch");
+    let key_package_refs = batch
+        .key_packages
+        .iter()
+        .map(|(_bundle, info)| info.key_package_ref.clone())
+        .collect();
+    (batch.epoch_id, key_package_refs)
+}
+
+/// A published virtual-client KeyPackage holds the derivation epoch it was built
+/// from on the client that published it, past the point where every other source
+/// released the epoch. A Welcome for that KeyPackage can still arrive, and joining
+/// from it needs the epoch's state. Retiring the last KeyPackage releases it.
+#[openmls_test]
+fn a_published_key_package_holds_its_derivation_epoch_on_the_publisher() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+    let entry_epoch_id = newest_epoch(&emulator_a, &provider_a);
+
+    let (epoch_id, key_package_refs) = publish_vc_key_packages(
+        ciphersuite,
+        &provider_a,
+        &emulator_a,
+        &vc_signer,
+        vc_credential,
+        2,
+    );
+    assert_eq!(epoch_id, entry_epoch_id);
+    for key_package_ref in &key_package_refs {
+        let stored: Option<EpochId> = provider_a
+            .storage()
+            .vc_key_package_epoch(key_package_ref)
+            .expect("read the key package's derivation epoch");
+        assert_eq!(stored.as_ref(), Some(&epoch_id));
+    }
+
+    // Both members advance past the entry epoch, so nothing but the published
+    // KeyPackages protects it.
+    advance_emulation_group(
+        &mut emulator_a,
+        &provider_a,
+        &signer_a,
+        &mut emulator_b,
+        &provider_b,
+        &signer_b,
+    );
+
+    assert!(
+        epoch_state_is_stored(&provider_a, &epoch_id),
+        "the published KeyPackages hold the epoch on the publisher"
+    );
+    assert!(retained_epoch_ids(&emulator_a, &provider_a).contains(&epoch_id));
+    assert!(
+        !epoch_state_is_stored(&provider_b, &epoch_id),
+        "the sibling published nothing and retained no material, so the epoch goes there"
+    );
+
+    emulator_a
+        .vc_key_packages_end_of_life(provider_a.storage(), &key_package_refs[..1])
+        .expect("the first key package reached end of life");
+    assert!(
+        epoch_state_is_stored(&provider_a, &epoch_id),
+        "the second KeyPackage still holds the epoch"
+    );
+
+    emulator_a
+        .vc_key_packages_end_of_life(provider_a.storage(), &key_package_refs[1..])
+        .expect("the second key package reached end of life");
+    assert!(!epoch_state_is_stored(&provider_a, &epoch_id));
+    assert!(!retained_epoch_ids(&emulator_a, &provider_a).contains(&epoch_id));
+}
+
+/// Deleting a published KeyPackage through the storage provider releases the
+/// derivation epoch it held, so the emulation group's next reap takes the epoch.
+/// Hooking the KeyPackage's lifecycle is what makes ordinary KeyPackage cleanup
+/// the retirement signal on the publishing side.
+#[openmls_test]
+fn deleting_a_published_key_package_releases_its_derivation_epoch() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+
+    let (epoch_id, key_package_refs) = publish_vc_key_packages(
+        ciphersuite,
+        &provider_a,
+        &emulator_a,
+        &vc_signer,
+        vc_credential,
+        1,
+    );
+    advance_emulation_group(
+        &mut emulator_a,
+        &provider_a,
+        &signer_a,
+        &mut emulator_b,
+        &provider_b,
+        &signer_b,
+    );
+    assert!(epoch_state_is_stored(&provider_a, &epoch_id));
+
+    provider_a
+        .storage()
+        .delete_key_package(&key_package_refs[0])
+        .expect("delete the published key package");
+    assert!(
+        epoch_state_is_stored(&provider_a, &epoch_id),
+        "the epoch is released, it goes at the next reap point"
+    );
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, false);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+
+    assert_epoch_reaped(
+        &epoch_id,
+        (&emulator_a, &provider_a),
+        (&emulator_b, &provider_b),
+    );
+}
+
+/// The epoch a client published KeyPackages from rides in no declaration. Every
+/// sibling that processes the upload holds the epoch as a local reference of its
+/// own, so there is nothing to tell them.
+#[openmls_test]
+fn a_published_key_package_epoch_is_not_declared() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+    let leaf_a = emulator_a.own_leaf_index();
+
+    let (epoch_id, _key_package_refs) = publish_vc_key_packages(
+        ciphersuite,
+        &provider_a,
+        &emulator_a,
+        &vc_signer,
+        vc_credential,
+        1,
+    );
+
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, false);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+
+    for (group, provider) in [(&emulator_a, &provider_a), (&emulator_b, &provider_b)] {
+        let declared = latest_declaration(group, provider, leaf_a)
+            .expect("the publisher declared its epoch usage");
+        assert!(
+            !declared.contains(&epoch_id),
+            "a KeyPackage's derivation epoch is held locally, never declared"
+        );
+        assert_eq!(declared, BTreeSet::new());
+    }
+}
+
+/// Tearing down an emulation group takes the derivation-epoch associations of the
+/// KeyPackages published from its epochs with it.
+///
+/// Those associations are keyed by KeyPackage reference, so the retained-epoch log
+/// is the only way to reach them, and they would otherwise protect epochs whose
+/// state the teardown already deleted.
+#[openmls_test]
+fn deleting_an_emulation_group_deletes_published_key_package_epochs() {
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, _signer_a, _emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let (vc_signer, vc_credential) = shared_vc_identity(ciphersuite, &provider_a, &provider_b);
+
+    let (epoch_id, _key_package_refs) = publish_vc_key_packages(
+        ciphersuite,
+        &provider_a,
+        &emulator_a,
+        &vc_signer,
+        vc_credential,
+        2,
+    );
+    assert!(
+        provider_a
+            .storage()
+            .has_vc_key_packages_for_epoch(&epoch_id)
+            .expect("read key package epoch associations"),
+        "the publisher's KeyPackages are associated with the epoch"
+    );
+    let retained = retained_epoch_ids(&emulator_a, &provider_a);
+    assert!(retained.contains(&epoch_id));
+
+    emulator_a
+        .delete(provider_a.storage())
+        .expect("delete the emulation group");
+
+    assert_no_epoch_state_remains(&provider_a, &retained);
 }
 
 /// Tearing down an emulation group takes the KeyPackage material retained from

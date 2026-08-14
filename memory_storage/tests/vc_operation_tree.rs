@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 struct TestEpochId(Vec<u8>);
 impl traits::VcEpochId<CURRENT_VERSION> for TestEpochId {}
 impl Key<CURRENT_VERSION> for TestEpochId {}
+impl Entity<CURRENT_VERSION> for TestEpochId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 struct TestOperationTree(Vec<u8>);
@@ -156,6 +157,73 @@ fn retained_material_is_deletable_per_epoch() {
     // Deleting an epoch that has no material is a no-op.
     storage
         .delete_retained_key_package_material_for_epoch(&epoch_id)
+        .unwrap();
+}
+
+/// A published KeyPackage's derivation-epoch association reports its epoch as
+/// having KeyPackages, per epoch, and is releasable by reference, by epoch, and
+/// through the KeyPackage's own deletion.
+#[test]
+fn key_package_epoch_associations_hold_an_epoch_per_reference() {
+    let storage = MemoryStorage::default();
+    let epoch_id = TestEpochId(b"PublishedFrom".to_vec());
+    let other_epoch_id = TestEpochId(b"OtherEpoch".to_vec());
+    let first_ref = TestKeyPackageRef(b"kp-ref-1".to_vec());
+    let second_ref = TestKeyPackageRef(b"kp-ref-2".to_vec());
+    let other_ref = TestKeyPackageRef(b"kp-ref-other".to_vec());
+
+    assert!(!storage.has_vc_key_packages_for_epoch(&epoch_id).unwrap());
+
+    for kp_ref in [&first_ref, &second_ref] {
+        storage
+            .write_vc_key_package_epoch(kp_ref, &epoch_id)
+            .unwrap();
+    }
+    storage
+        .write_vc_key_package_epoch(&other_ref, &other_epoch_id)
+        .unwrap();
+
+    let read: Option<TestEpochId> = storage.vc_key_package_epoch(&first_ref).unwrap();
+    assert_eq!(read, Some(epoch_id.clone()));
+    let read: Option<TestEpochId> = storage.vc_key_package_epoch(&other_ref).unwrap();
+    assert_eq!(read, Some(other_epoch_id.clone()));
+    assert!(storage.has_vc_key_packages_for_epoch(&epoch_id).unwrap());
+    assert!(storage
+        .has_vc_key_packages_for_epoch(&other_epoch_id)
+        .unwrap());
+
+    // One association goes by reference, the other one with the KeyPackage.
+    storage.delete_vc_key_package_epoch(&first_ref).unwrap();
+    let read: Option<TestEpochId> = storage.vc_key_package_epoch(&first_ref).unwrap();
+    assert_eq!(read, None);
+    assert!(
+        storage.has_vc_key_packages_for_epoch(&epoch_id).unwrap(),
+        "the second KeyPackage still holds the epoch"
+    );
+
+    storage.delete_key_package(&second_ref).unwrap();
+    assert!(!storage.has_vc_key_packages_for_epoch(&epoch_id).unwrap());
+    assert!(
+        storage
+            .has_vc_key_packages_for_epoch(&other_epoch_id)
+            .unwrap(),
+        "the other epoch keeps its association"
+    );
+
+    // Tearing down an emulation group deletes the associations of an epoch
+    // without enumerating the KeyPackage references.
+    storage
+        .delete_vc_key_package_epochs_for_epoch(&other_epoch_id)
+        .unwrap();
+    let read: Option<TestEpochId> = storage.vc_key_package_epoch(&other_ref).unwrap();
+    assert_eq!(read, None);
+    assert!(!storage
+        .has_vc_key_packages_for_epoch(&other_epoch_id)
+        .unwrap());
+
+    // Deleting an epoch that has no association is a no-op.
+    storage
+        .delete_vc_key_package_epochs_for_epoch(&other_epoch_id)
         .unwrap();
 }
 

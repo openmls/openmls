@@ -17,6 +17,7 @@ impl Key<CURRENT_VERSION> for TestGroupId {}
 struct TestEpochId(Vec<u8>);
 impl traits::VcEpochId<CURRENT_VERSION> for TestEpochId {}
 impl Key<CURRENT_VERSION> for TestEpochId {}
+impl Entity<CURRENT_VERSION> for TestEpochId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 struct TestRetentionState(Vec<u8>);

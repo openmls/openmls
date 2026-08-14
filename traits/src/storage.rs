@@ -265,6 +265,27 @@ pub trait StorageProvider<const VERSION: u16> {
         materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
     ) -> Result<(), Self::Error>;
 
+    /// Record the derivation epoch the virtual clients KeyPackage `hash_ref` was
+    /// built from, so the epoch stays retained while a Welcome for that
+    /// KeyPackage can still arrive. Joining from such a Welcome needs the
+    /// epoch's state.
+    ///
+    /// Written by the publishing client when it finalizes a batch of
+    /// virtual-client KeyPackages, before the KeyPackages themselves become
+    /// visible. The association is what an emulation group's epoch reaper
+    /// consults ([`Self::has_vc_key_packages_for_epoch`]), and it is deleted
+    /// with the KeyPackage (see [`Self::delete_key_package`]). A subsequent
+    /// write for the same reference replaces the stored epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_key_package_epoch<
+        KeyPackageRef: traits::HashReference<VERSION>,
+        EpochId: traits::VcEpochId<VERSION>,
+    >(
+        &self,
+        hash_ref: &KeyPackageRef,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
+
     /// Write the virtual clients retention state of the emulation group with
     /// the given id.
     ///
@@ -665,6 +686,37 @@ pub trait StorageProvider<const VERSION: u16> {
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error>;
 
+    /// Get the derivation epoch the virtual clients KeyPackage `hash_ref` was
+    /// built from (see [`Self::write_vc_key_package_epoch`]). Returns `None` for
+    /// a KeyPackage no virtual client published, and for one whose association
+    /// was deleted.
+    ///
+    /// The epoch id is read back as a stored value here, which is why
+    /// [`VcEpochId`](traits::VcEpochId) is an [`Entity`] as well as a [`Key`].
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_key_package_epoch<
+        KeyPackageRef: traits::HashReference<VERSION>,
+        EpochId: traits::VcEpochId<VERSION>,
+    >(
+        &self,
+        hash_ref: &KeyPackageRef,
+    ) -> Result<Option<EpochId>, Self::Error>;
+
+    /// Return `true` if a published virtual clients KeyPackage is still
+    /// associated with `epoch_id`.
+    ///
+    /// The publishing-side counterpart of
+    /// [`Self::has_retained_key_package_material_for_epoch`]: this one reports
+    /// the KeyPackages the client built from the epoch itself, the other one the
+    /// material it retained from a sibling's upload. OpenMLS consults both
+    /// before it deletes an epoch's state (see
+    /// [`Self::delete_vc_derivation_epoch_state`]).
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_vc_key_packages_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error>;
+
     /// Load the virtual clients retention state of the given emulation group
     /// (see [`Self::write_vc_retention_state`]). Returns `None` if the group is
     /// not an emulation group, or is one whose retention state was never
@@ -831,9 +883,15 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// Under the `virtual-clients-draft` feature, an implementation must also
     /// delete the retained virtual clients KeyPackage material stored for the
-    /// same reference (see [`Self::delete_retained_key_package_material`]).
-    /// Deleting non-existent material is a no-op, so this is safe for
-    /// KeyPackages that were never uploaded by a virtual client.
+    /// same reference (see [`Self::delete_retained_key_package_material`]) and
+    /// that reference's derivation-epoch association (see
+    /// [`Self::delete_vc_key_package_epoch`]). Deleting rows that are not stored
+    /// is a no-op, so this is safe for KeyPackages that no virtual client
+    /// published or uploaded.
+    ///
+    /// Both deletions release a derivation epoch, which makes ordinary
+    /// KeyPackage cleanup the point where a virtual client's KeyPackage stops
+    /// holding the epoch it was built from.
     fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
@@ -906,6 +964,29 @@ pub trait StorageProvider<const VERSION: u16> {
     /// separately and the application owns their lifetime.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete the derivation-epoch association of the given virtual clients
+    /// KeyPackage (see [`Self::write_vc_key_package_epoch`]). Called from
+    /// [`Self::delete_key_package`], and where the application retires a
+    /// KeyPackage it keeps in storage.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_key_package_epoch<KeyPackageRef: traits::HashReference<VERSION>>(
+        &self,
+        hash_ref: &KeyPackageRef,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete every association with the given derivation epoch. Called when an
+    /// emulation group is torn down and the epoch's state goes with it. Unlike
+    /// [`Self::delete_vc_key_package_epoch`] this does not need the individual
+    /// KeyPackage references, which the caller cannot enumerate.
+    ///
+    /// The KeyPackages themselves are not deleted. They are keyed separately and
+    /// the application owns their lifetime.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_key_package_epochs_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<(), Self::Error>;
@@ -993,8 +1074,6 @@ pub mod traits {
     pub trait LeafNode<const VERSION: u16>: Entity<VERSION> {}
     pub trait ApplicationExportTree<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
-    pub trait VcEpochId<const VERSION: u16>: Key<VERSION> {}
-    #[cfg(feature = "virtual-clients-draft")]
     pub trait VcDerivationEpochState<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcEmulationBindings<const VERSION: u16>: Entity<VERSION> {}
@@ -1013,6 +1092,10 @@ pub mod traits {
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}
+    /// A derivation epoch id keys the epoch's own state, and it is stored as a
+    /// value where a KeyPackage records the epoch it was built from.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEpochId<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}
 }
 // ANCHOR_END: traits
 

@@ -272,6 +272,8 @@ const RETAINED_KEY_PACKAGE_MATERIAL_LABEL: &[u8] = b"RetainedKeyPackageMaterial"
 #[cfg(feature = "virtual-clients-draft")]
 const RETAINED_KEY_PACKAGE_EPOCH_LABEL: &[u8] = b"RetainedKeyPackageEpoch";
 #[cfg(feature = "virtual-clients-draft")]
+const VC_KEY_PACKAGE_EPOCH_LABEL: &[u8] = b"VcKeyPackageEpoch";
+#[cfg(feature = "virtual-clients-draft")]
 const VC_RETENTION_STATE_LABEL: &[u8] = b"VcRetentionState";
 #[cfg(feature = "virtual-clients-draft")]
 const VC_EPOCH_REFS_LABEL: &[u8] = b"VcEpochRefs";
@@ -630,6 +632,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             let serialized_ref = serde_json::to_vec(&hash_ref)?;
             self.delete::<CURRENT_VERSION>(RETAINED_KEY_PACKAGE_MATERIAL_LABEL, &serialized_ref)?;
             self.delete::<CURRENT_VERSION>(RETAINED_KEY_PACKAGE_EPOCH_LABEL, &serialized_ref)?;
+            self.delete::<CURRENT_VERSION>(VC_KEY_PACKAGE_EPOCH_LABEL, &serialized_ref)?;
         }
         self.delete::<CURRENT_VERSION>(KEY_PACKAGE_LABEL, &serde_json::to_vec(&hash_ref)?)
     }
@@ -1321,6 +1324,73 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_key_package_epoch<
+        KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+    >(
+        &self,
+        hash_ref: &KeyPackageRef,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            VC_KEY_PACKAGE_EPOCH_LABEL,
+            &serde_json::to_vec(hash_ref)?,
+            serde_json::to_vec(epoch_id)?,
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_key_package_epoch<
+        KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+    >(
+        &self,
+        hash_ref: &KeyPackageRef,
+    ) -> Result<Option<EpochId>, Self::Error> {
+        self.read(VC_KEY_PACKAGE_EPOCH_LABEL, &serde_json::to_vec(hash_ref)?)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_vc_key_packages_for_epoch<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        let serialized_epoch_id = serde_json::to_vec(epoch_id)?;
+        let values = self.values.read().unwrap();
+        let associated = values
+            .iter()
+            .any(|(key, value)| is_vc_key_package_epoch(key) && value == &serialized_epoch_id);
+        Ok(associated)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_key_package_epoch<KeyPackageRef: traits::HashReference<CURRENT_VERSION>>(
+        &self,
+        hash_ref: &KeyPackageRef,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(VC_KEY_PACKAGE_EPOCH_LABEL, &serde_json::to_vec(hash_ref)?)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_key_package_epochs_for_epoch<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        let serialized_epoch_id = serde_json::to_vec(epoch_id)?;
+        let mut values = self.values.write().unwrap();
+        // Collect first, the removals below invalidate this iteration.
+        let association_keys: Vec<Vec<u8>> = values
+            .iter()
+            .filter(|(key, value)| is_vc_key_package_epoch(key) && *value == &serialized_epoch_id)
+            .map(|(key, _)| key.clone())
+            .collect();
+        for key in association_keys {
+            values.remove(&key);
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
     fn write_vc_retention_state<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         VcRetentionState: traits::VcRetentionState<CURRENT_VERSION>,
@@ -1459,6 +1529,13 @@ fn build_key_from_vec<const V: u16>(label: &[u8], key: Vec<u8>) -> Vec<u8> {
 #[cfg(feature = "virtual-clients-draft")]
 fn is_epoch_tag(storage_key: &[u8]) -> bool {
     storage_key.starts_with(RETAINED_KEY_PACKAGE_EPOCH_LABEL)
+}
+
+/// Whether a storage key belongs to a published KeyPackage's derivation-epoch
+/// association.
+#[cfg(feature = "virtual-clients-draft")]
+fn is_vc_key_package_epoch(storage_key: &[u8]) -> bool {
+    storage_key.starts_with(VC_KEY_PACKAGE_EPOCH_LABEL)
 }
 
 /// Build a key with version and label.

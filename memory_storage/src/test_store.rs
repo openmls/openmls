@@ -730,6 +730,53 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_key_package_epoch<
+        KeyPackageRef: traits::HashReference<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST>,
+    >(
+        &self,
+        _hash_ref: &KeyPackageRef,
+        _epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_key_package_epoch<
+        KeyPackageRef: traits::HashReference<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST>,
+    >(
+        &self,
+        _hash_ref: &KeyPackageRef,
+    ) -> Result<Option<EpochId>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_vc_key_packages_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_key_package_epoch<KeyPackageRef: traits::HashReference<V_TEST>>(
+        &self,
+        _hash_ref: &KeyPackageRef,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_key_package_epochs_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
     fn write_vc_retention_state<
         GroupId: traits::GroupId<V_TEST>,
         VcRetentionState: traits::VcRetentionState<V_TEST>,

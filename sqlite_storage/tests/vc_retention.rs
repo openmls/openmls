@@ -33,6 +33,7 @@ impl Key<1> for TestGroupId {}
 struct TestEpochId(Vec<u8>);
 impl traits::VcEpochId<1> for TestEpochId {}
 impl Key<1> for TestEpochId {}
+impl Entity<1> for TestEpochId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 struct TestRetentionState(Vec<u8>);

@@ -85,6 +85,7 @@ struct Data {
     vc_operation_tree: Table,
     retained_key_package_material: Table,
     retained_key_package_epoch: Table,
+    vc_key_package_epochs: Table,
     vc_retention_state: Table,
     vc_epoch_refs: Table,
     vc_creation_tracking: Table,
@@ -1109,6 +1110,27 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
+        fn vc_key_package_epoch<
+            KeyPackageRef: traits::HashReference<$version>,
+            EpochId: traits::VcEpochId<$version>,
+        >(
+            &self,
+            hash_ref: &KeyPackageRef,
+        ) -> Result<Option<EpochId>, $error> {
+            let data = self.0 .0.lock().unwrap();
+            read(hash_ref, &data.vc_key_package_epochs)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn has_vc_key_packages_for_epoch<EpochId: traits::VcEpochId<$version>>(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<bool, $error> {
+            let data = self.0 .0.lock().unwrap();
+            epoch_is_referenced(epoch_id, &data.vc_key_package_epochs)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
         fn vc_retention_state<
             GroupId: traits::GroupId<$version>,
             VcRetentionState: traits::VcRetentionState<$version>,
@@ -1234,6 +1256,19 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
+        fn write_vc_key_package_epoch<
+            KeyPackageRef: traits::HashReference<$version>,
+            EpochId: traits::VcEpochId<$version>,
+        >(
+            &self,
+            hash_ref: &KeyPackageRef,
+            epoch_id: &EpochId,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            write(hash_ref, epoch_id, &mut data.vc_key_package_epochs)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
         fn write_vc_retention_state<
             GroupId: traits::GroupId<$version>,
             VcRetentionState: traits::VcRetentionState<$version>,
@@ -1333,6 +1368,24 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
                 retained_key_package_material,
                 retained_key_package_epoch,
             )
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_vc_key_package_epoch<KeyPackageRef: traits::HashReference<$version>>(
+            &self,
+            hash_ref: &KeyPackageRef,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            delete(hash_ref, &mut data.vc_key_package_epochs)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_vc_key_package_epochs_for_epoch<EpochId: traits::VcEpochId<$version>>(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<(), $error> {
+            let mut data = self.0 .0.lock().unwrap();
+            delete_rows_tagged_with_epoch(epoch_id, &mut data.vc_key_package_epochs)
         }
 
         #[cfg(feature = "virtual-clients-draft")]
@@ -1598,6 +1651,22 @@ macro_rules! storage_helpers {
             Ok(epoch_tags.values().any(|value| value == &serialized))
         }
 
+        /// The keys of the rows that store `epoch_id` as their value, collected so
+        /// the caller can remove them while holding the table mutably.
+        #[cfg(feature = "virtual-clients-draft")]
+        fn keys_tagged_with_epoch<EpochId: Key<$version>>(
+            epoch_id: &EpochId,
+            epoch_tags: &Table,
+        ) -> Result<Vec<Vec<u8>>, $err> {
+            let serialized = $ser(epoch_id)?;
+
+            Ok(epoch_tags
+                .iter()
+                .filter(|(_, value)| *value == &serialized)
+                .map(|(ref_key, _)| ref_key.clone())
+                .collect())
+        }
+
         /// Deletes every retained key package material tagged with `epoch_id`.
         #[cfg(feature = "virtual-clients-draft")]
         fn delete_retained_for_epoch<EpochId: Key<$version>>(
@@ -1605,15 +1674,21 @@ macro_rules! storage_helpers {
             material_table: &mut Table,
             epoch_tags: &mut Table,
         ) -> Result<(), $err> {
-            let serialized = $ser(epoch_id)?;
-            // Collect first, the removals below borrow the table mutably.
-            let ref_keys: Vec<Vec<u8>> = epoch_tags
-                .iter()
-                .filter(|(_, value)| *value == &serialized)
-                .map(|(ref_key, _)| ref_key.clone())
-                .collect();
-            for ref_key in ref_keys {
+            for ref_key in keys_tagged_with_epoch(epoch_id, epoch_tags)? {
                 let _ = material_table.remove(&ref_key);
+                let _ = epoch_tags.remove(&ref_key);
+            }
+
+            Ok(())
+        }
+
+        /// Deletes every row of `epoch_tags` that points at `epoch_id`.
+        #[cfg(feature = "virtual-clients-draft")]
+        fn delete_rows_tagged_with_epoch<EpochId: Key<$version>>(
+            epoch_id: &EpochId,
+            epoch_tags: &mut Table,
+        ) -> Result<(), $err> {
+            for ref_key in keys_tagged_with_epoch(epoch_id, epoch_tags)? {
                 let _ = epoch_tags.remove(&ref_key);
             }
 

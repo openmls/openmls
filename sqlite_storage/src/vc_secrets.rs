@@ -189,6 +189,44 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
         )?;
         Ok(())
     }
+
+    pub(super) fn has_vc_key_packages_for_epoch<C: Codec>(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<bool, rusqlite::Error> {
+        let Self(epoch_id) = self;
+        let mut stmt = connection.prepare(
+            "SELECT EXISTS(
+                SELECT 1 FROM vc_key_package_epochs
+                WHERE epoch_id = ?1
+                    AND provider_version = ?2
+            )",
+        )?;
+        stmt.query_row(
+            params![
+                KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+            |row| row.get::<_, bool>(0),
+        )
+    }
+
+    pub(super) fn delete_vc_key_package_epochs_for_epoch<C: Codec>(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<(), rusqlite::Error> {
+        let Self(epoch_id) = self;
+        connection.execute(
+            "DELETE FROM vc_key_package_epochs
+            WHERE epoch_id = ?1
+                AND provider_version = ?2",
+            params![
+                KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+        )?;
+        Ok(())
+    }
 }
 
 /// Per-epoch bindings from a higher-level group to derivation epochs. One row
@@ -466,6 +504,74 @@ impl<KeyPackageRef: HashReferenceTrait<STORAGE_PROVIDER_VERSION>>
         let Self(key_package_ref) = self;
         connection.execute(
             "DELETE FROM vc_retained_key_package_material
+            WHERE key_package_ref = ?1
+                AND provider_version = ?2",
+            params![
+                KeyRefWrapper::<C, KeyPackageRef>(key_package_ref, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub(super) fn store_vc_key_package_epoch<
+        C: Codec,
+        EpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        connection: &rusqlite::Connection,
+        epoch_id: &EpochId,
+    ) -> Result<(), rusqlite::Error> {
+        let Self(key_package_ref) = self;
+        connection.execute(
+            "INSERT INTO vc_key_package_epochs (provider_version, key_package_ref, epoch_id)
+            VALUES (?1, ?2, ?3)
+            ON CONFLICT(key_package_ref) DO UPDATE SET
+                epoch_id = excluded.epoch_id,
+                provider_version = excluded.provider_version",
+            params![
+                STORAGE_PROVIDER_VERSION,
+                KeyRefWrapper::<C, KeyPackageRef>(key_package_ref, PhantomData),
+                KeyRefWrapper::<C, _>(epoch_id, PhantomData)
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub(super) fn load_vc_key_package_epoch<
+        C: Codec,
+        EpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<Option<EpochId>, rusqlite::Error> {
+        let Self(key_package_ref) = self;
+        let mut stmt = connection.prepare(
+            "SELECT epoch_id
+            FROM vc_key_package_epochs
+            WHERE key_package_ref = ?1
+                AND provider_version = ?2",
+        )?;
+        stmt.query_row(
+            params![
+                KeyRefWrapper::<C, KeyPackageRef>(key_package_ref, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+            |row| {
+                let EntityWrapper::<C, EpochId>(epoch_id, ..) = row.get(0)?;
+                Ok(epoch_id)
+            },
+        )
+        .optional()
+    }
+
+    pub(super) fn delete_vc_key_package_epoch<C: Codec>(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<(), rusqlite::Error> {
+        let Self(key_package_ref) = self;
+        connection.execute(
+            "DELETE FROM vc_key_package_epochs
             WHERE key_package_ref = ?1
                 AND provider_version = ?2",
             params![
