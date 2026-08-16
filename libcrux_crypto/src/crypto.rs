@@ -68,6 +68,10 @@ impl OpenMlsCrypto for CryptoProvider {
 
         match ciphersuite.signature_algorithm() {
             SignatureScheme::ED25519 => Ok(()),
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
+                Ok(())
+            }
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
@@ -75,7 +79,9 @@ impl OpenMlsCrypto for CryptoProvider {
             HashType::Sha2_256 | HashType::Sha2_384 | HashType::Sha2_512 => Ok(()),
         }?;
 
-        // The hpke-rs libcrux backend only implements these KEMs.
+        // The hpke-rs libcrux backend only implements these KEMs (pure ML-KEM
+        // needs its `draft-connolly-cfrg-hpke-mlkem` feature, which
+        // `draft-ietf-mls-pq-ciphersuites` enables).
         match ciphersuite.hpke_kem_algorithm() {
             HpkeKemType::DhKemP256 | HpkeKemType::DhKem25519 => Ok(()),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
@@ -84,9 +90,7 @@ impl OpenMlsCrypto for CryptoProvider {
                 Err(CryptoError::UnsupportedCiphersuite)
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            HpkeKemType::MlKem768 | HpkeKemType::MlKem1024 => {
-                Err(CryptoError::UnsupportedCiphersuite)
-            }
+            HpkeKemType::MlKem768 | HpkeKemType::MlKem1024 => Ok(()),
         }?;
 
         match ciphersuite.hpke_aead_algorithm() {
@@ -105,6 +109,12 @@ impl OpenMlsCrypto for CryptoProvider {
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
             // TODO: enable
             //Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         ]
@@ -251,6 +261,15 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     fn signature_key_gen(&self, alg: SignatureScheme) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        if let Some(mldsa) = ml_dsa::Variant::from_scheme(alg) {
+            let mut seed = [0u8; libcrux_ml_dsa::KEY_GENERATION_RANDOMNESS_SIZE];
+            self.fill_random(&mut seed)?;
+            let pk = mldsa.verification_key_from_seed(seed);
+            // Same wire format as the RustCrypto provider: the private key is
+            // the 32-byte seed, the public key is the encoded verification key.
+            return Ok((seed.to_vec(), pk));
+        }
         if !matches!(alg, SignatureScheme::ED25519) {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
@@ -287,6 +306,10 @@ impl OpenMlsCrypto for CryptoProvider {
         pk: &[u8],
         signature: &[u8],
     ) -> Result<(), CryptoError> {
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        if let Some(mldsa) = ml_dsa::Variant::from_scheme(alg) {
+            return mldsa.verify(pk, data, signature);
+        }
         if !matches!(alg, SignatureScheme::ED25519) {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
@@ -301,6 +324,15 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     fn sign(&self, alg: SignatureScheme, data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        if let Some(mldsa) = ml_dsa::Variant::from_scheme(alg) {
+            let seed = <[u8; libcrux_ml_dsa::KEY_GENERATION_RANDOMNESS_SIZE]>::try_from(key)
+                .map_err(|_| CryptoError::InvalidLength)?;
+            // Hedged signing (FIPS 204 §3.4): fresh randomness per signature.
+            let mut rnd = [0u8; libcrux_ml_dsa::SIGNING_RANDOMNESS_SIZE];
+            self.fill_random(&mut rnd)?;
+            return mldsa.sign(seed, data, rnd);
+        }
         if !matches!(alg, SignatureScheme::ED25519) {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
@@ -648,6 +680,120 @@ mod tests {
                 b"plaintext",
                 "{ciphersuite:?}: hpke round trip"
             );
+        }
+    }
+}
+
+/// ML-DSA (FIPS 204) glue over `libcrux-ml-dsa`.
+///
+/// Wire format matches the RustCrypto provider so keys and signatures
+/// interoperate across providers: private key = 32-byte key-generation seed,
+/// public key = encoded verification key, empty signing context.
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+mod ml_dsa {
+    use libcrux_ml_dsa::{
+        ml_dsa_44, ml_dsa_65, ml_dsa_87, KEY_GENERATION_RANDOMNESS_SIZE, SIGNING_RANDOMNESS_SIZE,
+    };
+    use openmls_traits::types::{CryptoError, SignatureScheme};
+
+    /// The context string is always empty for MLS signatures.
+    const CONTEXT: &[u8] = &[];
+
+    #[derive(Clone, Copy)]
+    pub(super) enum Variant {
+        MlDsa44,
+        MlDsa65,
+        MlDsa87,
+    }
+
+    /// Generates `key_gen`, `sign` and `verify` for one parameter set, since
+    /// libcrux exposes each variant as its own module with distinct fixed-size
+    /// key/signature types.
+    macro_rules! variant_fns {
+        ($module:ident, $key_gen:ident, $sign:ident, $verify:ident) => {
+            fn $key_gen(seed: [u8; KEY_GENERATION_RANDOMNESS_SIZE]) -> Vec<u8> {
+                $module::generate_key_pair(seed)
+                    .verification_key
+                    .as_slice()
+                    .to_vec()
+            }
+
+            fn $sign(
+                seed: [u8; KEY_GENERATION_RANDOMNESS_SIZE],
+                data: &[u8],
+                randomness: [u8; SIGNING_RANDOMNESS_SIZE],
+            ) -> Result<Vec<u8>, CryptoError> {
+                let key_pair = $module::generate_key_pair(seed);
+                $module::sign(&key_pair.signing_key, data, CONTEXT, randomness)
+                    .map(|sig| sig.as_slice().to_vec())
+                    .map_err(|_| CryptoError::SigningError)
+            }
+
+            fn $verify(pk: &[u8], data: &[u8], signature: &[u8]) -> Result<(), CryptoError> {
+                let pk = pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let signature = signature
+                    .try_into()
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                $module::verify(
+                    &libcrux_ml_dsa::MLDSAVerificationKey::new(pk),
+                    data,
+                    CONTEXT,
+                    &libcrux_ml_dsa::MLDSASignature::new(signature),
+                )
+                .map_err(|_| CryptoError::InvalidSignature)
+            }
+        };
+    }
+
+    variant_fns!(ml_dsa_44, key_gen_44, sign_44, verify_44);
+    variant_fns!(ml_dsa_65, key_gen_65, sign_65, verify_65);
+    variant_fns!(ml_dsa_87, key_gen_87, sign_87, verify_87);
+
+    impl Variant {
+        pub(super) fn from_scheme(alg: SignatureScheme) -> Option<Self> {
+            match alg {
+                SignatureScheme::MLDSA44 => Some(Self::MlDsa44),
+                SignatureScheme::MLDSA65 => Some(Self::MlDsa65),
+                SignatureScheme::MLDSA87 => Some(Self::MlDsa87),
+                _ => None,
+            }
+        }
+
+        pub(super) fn verification_key_from_seed(
+            self,
+            seed: [u8; KEY_GENERATION_RANDOMNESS_SIZE],
+        ) -> Vec<u8> {
+            match self {
+                Self::MlDsa44 => key_gen_44(seed),
+                Self::MlDsa65 => key_gen_65(seed),
+                Self::MlDsa87 => key_gen_87(seed),
+            }
+        }
+
+        pub(super) fn sign(
+            self,
+            seed: [u8; KEY_GENERATION_RANDOMNESS_SIZE],
+            data: &[u8],
+            randomness: [u8; SIGNING_RANDOMNESS_SIZE],
+        ) -> Result<Vec<u8>, CryptoError> {
+            match self {
+                Self::MlDsa44 => sign_44(seed, data, randomness),
+                Self::MlDsa65 => sign_65(seed, data, randomness),
+                Self::MlDsa87 => sign_87(seed, data, randomness),
+            }
+        }
+
+        pub(super) fn verify(
+            self,
+            pk: &[u8],
+            data: &[u8],
+            signature: &[u8],
+        ) -> Result<(), CryptoError> {
+            match self {
+                Self::MlDsa44 => verify_44(pk, data, signature),
+                Self::MlDsa65 => verify_65(pk, data, signature),
+                Self::MlDsa87 => verify_87(pk, data, signature),
+            }
         }
     }
 }

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- [#2170](https://github.com/openmls/openmls/pull/2170): ML-DSA-44/65/87 signatures via `libcrux-ml-dsa`, and pure ML-KEM KEMs via `hpke-rs-libcrux`'s `draft-connolly-cfrg-hpke-mlkem`, so the ML-DSA ciphersuites from `draft-ietf-mls-pq-ciphersuites` are now supported by the libcrux provider (behind the `draft-ietf-mls-pq-ciphersuites` feature flag). Key and signature encodings match the RustCrypto provider.
+
 ## 0.4.0 (2026-08-03)
 
 ### Added
