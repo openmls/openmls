@@ -2,11 +2,16 @@
 //!
 //! An implementation of the basic credential from the MLS spec.
 //!
-//! For now this credential uses only RustCrypto.
+//! [`SignatureKeyPair::new`] and the [`Signer`] impl on [`SignatureKeyPair`]
+//! use RustCrypto directly. To generate and sign through an
+//! [`OpenMlsCrypto`] provider instead (e.g. to use the libcrux backend for
+//! every signature operation), use [`SignatureKeyPair::generate`] and
+//! [`SignatureKeyPair::signer`].
 
 use std::fmt::Debug;
 
 use openmls_traits::{
+    crypto::OpenMlsCrypto,
     signatures::{Signer, SignerError},
     storage::{self, StorageProvider, CURRENT_VERSION},
     types::{CryptoError, SignatureScheme},
@@ -130,6 +135,31 @@ impl Signer for SignatureKeyPair {
     }
 }
 
+/// A [`Signer`] that signs with a [`SignatureKeyPair`] through an
+/// [`OpenMlsCrypto`] provider.
+///
+/// Obtained via [`SignatureKeyPair::signer`].
+pub struct ProviderSigner<'a, C: OpenMlsCrypto> {
+    key_pair: &'a SignatureKeyPair,
+    crypto: &'a C,
+}
+
+impl<C: OpenMlsCrypto> Signer for ProviderSigner<'_, C> {
+    fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, SignerError> {
+        self.crypto
+            .sign(
+                self.key_pair.signature_scheme,
+                payload,
+                self.key_pair.private.as_slice(),
+            )
+            .map_err(|_| SignerError::SigningError)
+    }
+
+    fn signature_scheme(&self) -> SignatureScheme {
+        self.key_pair.signature_scheme
+    }
+}
+
 /// Compute the ID for a [`Signature`] in the key store.
 fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {
     const LABEL: &[u8; 22] = b"RustCryptoSignatureKey";
@@ -197,6 +227,33 @@ impl SignatureKeyPair {
             public,
             signature_scheme,
         })
+    }
+
+    /// Generates a fresh signature key pair for `signature_scheme` using the
+    /// crypto provider.
+    ///
+    /// The provider decides which schemes it supports and produces the same
+    /// key encoding as [`SignatureKeyPair::new`], so the result can be stored,
+    /// read back and used with either [`Signer`] impl.
+    pub fn generate(
+        crypto: &impl OpenMlsCrypto,
+        signature_scheme: SignatureScheme,
+    ) -> Result<Self, CryptoError> {
+        let (private, public) = crypto.signature_key_gen(signature_scheme)?;
+        Ok(Self {
+            private: private.into(),
+            public,
+            signature_scheme,
+        })
+    }
+
+    /// A [`Signer`] for this key pair that signs through the crypto provider
+    /// instead of RustCrypto.
+    pub fn signer<'a, C: OpenMlsCrypto>(&'a self, crypto: &'a C) -> ProviderSigner<'a, C> {
+        ProviderSigner {
+            key_pair: self,
+            crypto,
+        }
     }
 
     /// Create a new signature key pair from the raw keys.
