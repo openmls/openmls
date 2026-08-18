@@ -11,13 +11,23 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_libcrux_crypt
 readme = "Readme.md"
 
 [dependencies]
-libcrux-aead = { version = "0.0.9" }
-libcrux-ed25519 = { version = "0.0.9", features = ["rand"] }
-libcrux-hkdf = { version = "0.0.8" }
-libcrux-sha2 = { version = "0.0.8" }
-libcrux-hmac = { version = "0.0.8" }
-libcrux-hmac-drbg = { version = "0.0.1", features = ["rand"] }
-libcrux-traits = { version = "0.0.8" }
+# All libcrux-* and hpke-rs-* crates below are pinned to the same
+# `franziskus/fallible-rng` branch/commit of the `celabshq/libcrux` monorepo.
+# They must stay on the same git source: Cargo treats a crate fetched from two
+# different revs as two distinct types, so e.g. `libcrux-traits` pulled from
+# one rev and `libcrux-p256` (which depends on `libcrux-traits`) from another
+# would fail to resolve their shared trait impls.
+libcrux-aead = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng" }
+libcrux-ed25519 = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng", features = [
+    "rand",
+] }
+libcrux-hkdf = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng" }
+libcrux-sha2 = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng" }
+libcrux-hmac = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng" }
+libcrux-hmac-drbg = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng", features = [
+    "rand",
+] }
+libcrux-traits = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng" }
 
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
@@ -25,20 +35,26 @@ openmls_memory_storage = { workspace = true }
 rand = "0.10"
 tls_codec.workspace = true
 
-hpke-rs = { git = "https://github.com/celabshq/libcrux", rev = "ccfca6a411c87d4370b2aad2a13a59202ad97687", package = "hpke-rs", features = [
+hpke-rs = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng", package = "hpke-rs", features = [
     "hazmat",
     "serialization",
 ] }
-hpke-rs-crypto = { git = "https://github.com/celabshq/libcrux", rev = "ccfca6a411c87d4370b2aad2a13a59202ad97687", package = "hpke-rs-crypto" }
-hpke-rs-libcrux = { git = "https://github.com/celabshq/libcrux", rev = "ccfca6a411c87d4370b2aad2a13a59202ad97687", package = "hpke-rs-libcrux" }
+hpke-rs-crypto = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng", package = "hpke-rs-crypto" }
+hpke-rs-libcrux = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng", package = "hpke-rs-libcrux" }
 
 # ECDSA P-256 signing (there is no libcrux P-384 signing crate yet, so
 # ciphersuites requiring P-384 signatures are not implemented; see Readme.md).
-libcrux-p256 = { version = "0.0.8" }
-libcrux-ecdsa = { version = "0.0.8", features = ["rand"] }
+#
+# This branch adds fallible-`CryptoRng`-friendly key generation and signing
+# APIs, plus native DER encode/decode for P-256 signatures, which lets this
+# crate avoid a hand-rolled DER codec and RNG-panic workaround.
+libcrux-p256 = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng" }
+libcrux-ecdsa = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng", features = [
+    "rand",
+] }
 
 # ML-DSA-44/65/87 signing.
-libcrux-ml-dsa = { version = "0.0.10" }
+libcrux-ml-dsa = { git = "https://github.com/celabshq/libcrux", branch = "franziskus/fallible-rng" }
 
 # FF1-AES128 backing for the virtual-clients-draft reuse-guard PRP.
 # libcrux has no FF1 implementation, so this provider also uses the

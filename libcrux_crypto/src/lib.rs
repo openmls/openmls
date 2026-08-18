@@ -1,8 +1,6 @@
 use openmls_traits::{types::CryptoError, OpenMlsProvider};
 
 mod crypto;
-#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-mod ecdsa_der;
 #[cfg(feature = "virtual-clients-draft")]
 mod ff1;
 mod rand;

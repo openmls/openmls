@@ -404,7 +404,7 @@ pub(super) fn default_versions() -> Vec<ProtocolVersion> {
     vec![ProtocolVersion::Mls10]
 }
 
-pub(super) fn deault_ciphersuites() -> Vec<Ciphersuite> {
+pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
     #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     let pq = vec![
         Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
@@ -417,6 +417,7 @@ pub(super) fn deault_ciphersuites() -> Vec<Ciphersuite> {
         Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44,
         Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
         Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
+        Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
     ];
 
     #[allow(unused_mut)]
