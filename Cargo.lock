@@ -2588,6 +2588,8 @@ version = "0.6.0-rc.1"
 dependencies = [
  "ed25519-dalek",
  "ml-dsa",
+ "openmls_libcrux_crypto",
+ "openmls_rust_crypto",
  "openmls_traits",
  "p256",
  "p384",
