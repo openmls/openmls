@@ -46,6 +46,7 @@ draft-ietf-mls-pq-ciphersuites = [
     "openmls_memory_storage/draft-ietf-mls-pq-ciphersuites",
     "dep:libcrux-ml-dsa",
     "hpke-rs-libcrux/draft-connolly-cfrg-hpke-mlkem",
+    "openmls_rust_crypto/draft-ietf-mls-pq-ciphersuites",
 ]
 virtual-clients-draft = [
     "extensions-draft",
@@ -57,4 +58,4 @@ virtual-clients-draft = [
 targeted-messages-draft = ["openmls_traits/targeted-messages-draft"]
 
 [dev-dependencies]
-openmls_rust_crypto = { workspace = true, features = ["draft-ietf-mls-pq-ciphersuites"] }
+openmls_rust_crypto = { workspace = true }
