@@ -475,3 +475,34 @@ fn test_grease_injection_in_groups_via_with_grease() {
         "with_grease() should add a GREASE credential"
     );
 }
+
+/// A KeyPackage generated with Cisco's mlspp (<https://github.com/cisco/mlspp>),
+/// taken from <https://github.com/openmls/openmls/issues/2156>. It carries
+/// GREASE extension 0x8A8A in `KeyPackage.extensions` and 0x4A4A in
+/// `LeafNode.extensions`, both listed in the leaf node capabilities.
+#[test]
+fn test_mlspp_key_package_with_grease_extensions_validates() {
+    use base64::{engine::general_purpose, Engine};
+    use openmls::prelude::tls_codec::Deserialize as _;
+
+    const MLSPP_KEY_PACKAGE: &str = "AAEABQABAAEgYy4COfvC/iouTT8qF4VgcVfgyKb3hColTcqem8FVyW0gFguUpDuSLZVKAR6u/sZ0Mw70+/CLlWpEga/Ey+lu8GEgqMxyAzg/BldGAdYr/BqpcdyWuaJd/mcy02KTBtmrS6wAAQtjbGllbnRfMl9pZAIAAQ4AATo6AAIAAwAEAAUABgSKikpKAtraCjo6AAEAAv4A/wABAAAAAAAAAAD//////////wZKSgMQK+BAQF7MDrBfiiW90n87xjd1NuTI3RQeOvGvb3/cl+hNb+aZ98nB4tE2Es/J1Eja4MfREPahuniYDkgeJdGcNilTywIDiooAQEDmxlDXAclxqFv+qBIUoRE7fWEP1jVzuoGFV/U2l6WHSmzJb0paNLsM2xHT7FBO6E4QKaBIHWffNT3JQzE6mucH";
+
+    let bytes = general_purpose::STANDARD
+        .decode(MLSPP_KEY_PACKAGE)
+        .expect("failed to base64-decode the mlspp key package");
+
+    let key_package = MlsMessageIn::tls_deserialize(&mut bytes.as_slice())
+        .expect("failed to deserialize the mlspp key package")
+        .into_keypackage()
+        .expect("the message is not a key package");
+
+    let provider = OpenMlsRustCrypto::default();
+    let key_package_in: KeyPackageIn = key_package.into();
+    let result = key_package_in.validate(provider.crypto(), ProtocolVersion::Mls10);
+
+    assert!(
+        result.is_ok(),
+        "key package from mlspp must validate, got {:?}",
+        result.err()
+    );
+}

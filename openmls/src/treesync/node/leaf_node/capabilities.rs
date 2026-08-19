@@ -514,4 +514,23 @@ mod tests {
             .collect();
         assert_eq!(capabilities.ciphersuites(), expected.as_slice());
     }
+
+    /// A GREASE extension is stored as `Extension::Unknown`, but the matching
+    /// capabilities entry is an `ExtensionType::Grease`. The two must match.
+    #[test]
+    fn grease_extension_is_supported_via_capabilities() {
+        use crate::extensions::{Extension, Extensions, UnknownExtension};
+
+        const GREASE: u16 = 0x8A8A;
+        let capabilities = Capabilities::builder()
+            .extensions(vec![ExtensionType::Grease(GREASE)])
+            .build();
+
+        let extension = Extension::Unknown(GREASE, UnknownExtension(vec![0xca, 0xfe]));
+        assert!(capabilities.contains_extension(extension.extension_type()));
+
+        let extensions: Extensions<crate::treesync::LeafNode> =
+            Extensions::single(extension).expect("failed to create extensions list");
+        assert!(capabilities.contains_extensions(&extensions));
+    }
 }

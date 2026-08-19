@@ -276,6 +276,8 @@ mod tests {
                 extension,
                 Extension::Unknown(u16::from(extension_type), UnknownExtension(payload.clone()))
             );
+            // A decoded extension reports the type it was encoded with.
+            assert_eq!(extension.extension_type(), extension_type);
             assert_eq!(extension.tls_serialize_detached().unwrap(), serialized);
         }
     }

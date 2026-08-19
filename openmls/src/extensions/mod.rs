@@ -165,26 +165,27 @@ impl ExtensionType {
     //  https://validation.openmls.tech/#valn1601
     pub(crate) fn is_valid_in_leaf_node(self) -> bool {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => false,
-            ExtensionType::Unknown(_) | ExtensionType::ApplicationId => true,
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::ApplicationId => {
+                true
+            }
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
     }
     pub(crate) fn is_valid_in_group_info(self) -> Option<bool> {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => Some(false),
             ExtensionType::RatchetTree | ExtensionType::ExternalPub => Some(true),
-            ExtensionType::Unknown(_) => None,
+            // GREASE takes the same path as any other unknown type.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => None,
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => Some(true),
         }
@@ -192,13 +193,14 @@ impl ExtensionType {
 
     pub(crate) fn is_valid_in_key_package(self) -> bool {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::RatchetTree
+            ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => false,
-            ExtensionType::Unknown(_) | ExtensionType::LastResort => true,
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::LastResort => {
+                true
+            }
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
@@ -208,6 +210,11 @@ impl ExtensionType {
         match self {
             ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
+            // RFC 9420 Section 13.5 tells senders not to put GREASE values
+            // here, but this check also runs on deserialization, so GREASE is
+            // treated like any other unknown type. Rejecting extensions the
+            // group does not support is left to the capability checks.
+            | ExtensionType::Grease(_)
             | ExtensionType::Unknown(_) => true,
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
@@ -715,10 +722,12 @@ impl<T> Extensions<T> {
         let extension_type: ExtensionType = extension_type_id.into();
 
         match extension_type {
-            ExtensionType::Unknown(_) => self.find_by_type(extension_type).and_then(|e| match e {
-                Extension::Unknown(_, e) => Some(e),
-                _ => None,
-            }),
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => {
+                self.find_by_type(extension_type).and_then(|e| match e {
+                    Extension::Unknown(_, e) => Some(e),
+                    _ => None,
+                })
+            }
             _ => None,
         }
     }
@@ -815,6 +824,12 @@ impl Extension {
             #[cfg(feature = "extensions-draft")]
             Extension::AppDataDictionary(_) => ExtensionType::AppDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
+            // Classify GREASE values the same way `ExtensionType::from` does.
+            // Otherwise the same value does not compare equal to the entry in
+            // the capabilities list.
+            Extension::Unknown(kind, _) if crate::grease::is_grease_value(*kind) => {
+                ExtensionType::Grease(*kind)
+            }
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }

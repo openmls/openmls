@@ -73,6 +73,36 @@ let capabilities = Capabilities::builder()
     .build();
 ```
 
+### As Extensions
+
+RFC 9420 Section 13.5 also lists `LeafNode.extensions`, `KeyPackage.extensions` and `GroupInfo.extensions` as fields that can carry GREASE values. `GroupContext.extensions` is not on that list, and GREASE values must not be sent there.
+
+GREASE has its own `ExtensionType::Grease` variant, but the `Extension` enum has no matching one, so a GREASE extension is carried as `Extension::Unknown`:
+
+```rust
+use openmls::prelude::*;
+
+let grease = Extensions::single(Extension::Unknown(
+    0x1A1A,
+    UnknownExtension(vec![0xde, 0xad]),
+))
+.unwrap();
+
+let key_package = KeyPackage::builder()
+    .leaf_node_capabilities(
+        Capabilities::builder()
+            .extensions(vec![ExtensionType::Grease(0x1A1A)])
+            .build(),
+    )
+    .leaf_node_extensions(grease)
+    .build(ciphersuite, &provider, &signer, credential_with_key)
+    .unwrap();
+```
+
+`Extension::extension_type()` reports such an extension as `ExtensionType::Grease`, so it compares equal to the matching capabilities entry.
+
+**Every GREASE value in `LeafNode.extensions` also has to be listed in `LeafNode.capabilities.extensions`**, as in the example above. This is the normal rule for non-default extension types, and a leaf node that breaks it is rejected with `LeafNodeValidationError::UnsupportedExtensions`. The other direction is fine, so capabilities may list extensions the leaf node does not use.
+
 ### Injecting Random GREASE Values
 
 The easiest way to add GREASE values is using the `with_grease()` method on `Capabilities` or `CapabilitiesBuilder`:
