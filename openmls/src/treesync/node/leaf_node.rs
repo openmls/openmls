@@ -516,8 +516,7 @@ impl LeafNode {
     ) -> Result<(), LeafNodeValidationError> {
         let mut required = extensions.iter().filter(|e| !e.is_default()).peekable();
 
-        // Most groups require no non-default extensions. Skip building the
-        // lookup set for them.
+        // Skip building the lookup if there are no non-default extensions.
         if required.peek().is_none() {
             return Ok(());
         }
