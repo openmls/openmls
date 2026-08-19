@@ -67,14 +67,14 @@ impl EncryptionKey {
 
 #[cfg(feature = "targeted-messages-draft")]
 impl EncryptionKey {
-    pub(crate) fn encrypt_with_label_psk(
+    pub(crate) fn seal_psk(
         &self,
         params: hpke::PskEncryptParams,
         aad: &[u8],
         plaintext: &[u8],
         crypto: &impl OpenMlsCrypto,
     ) -> Result<HpkeCiphertext, LibraryError> {
-        hpke::encrypt_with_label_psk(self.as_slice(), params, aad, plaintext, crypto)
+        hpke::seal_psk(self.as_slice(), params, aad, plaintext, crypto)
     }
 }
 
@@ -143,14 +143,14 @@ impl EncryptionPrivateKey {
     }
 
     #[cfg(feature = "targeted-messages-draft")]
-    pub(crate) fn decrypt_with_label_psk_aad(
+    pub(crate) fn open_psk(
         &self,
         params: hpke::PskEncryptParams,
         aad: &[u8],
         ciphertext: &HpkeCiphertext,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<Vec<u8>, hpke::Error> {
-        hpke::decrypt_with_label_psk_aad(&self.key, params, aad, ciphertext, crypto)
+        hpke::open_psk(&self.key, params, aad, ciphertext, crypto)
     }
 }
 

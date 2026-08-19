@@ -2,7 +2,7 @@
 
 use openmls_test::openmls_test;
 use openmls_traits::{storage::StorageProvider as _, types::HpkeCiphertext};
-use tls_codec::{DeserializeBytes as _, Serialize as TlsSerializeTrait};
+use tls_codec::{DeserializeBytes as _, Serialize as TlsSerializeTrait, VLByteSlice};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -11,8 +11,9 @@ use crate::{
     targeted_messages::{
         derive_sender_auth_data_key_nonce, derive_sender_auth_data_secret,
         derive_targeted_message_psk, ProcessTargetedMessageError, SenderAuthDataAAD,
-        TargetedMessageContent, TargetedMessageContextData, TargetedMessageGroupContext,
-        TargetedMessageIn, TargetedMessagePskId, TargetedMessageSenderAuthData,
+        TargetedMessageContent, TargetedMessageContext, TargetedMessageContextData,
+        TargetedMessageGroupContext, TargetedMessageIn, TargetedMessagePskId,
+        TargetedMessageSenderAuthData,
     },
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
@@ -74,13 +75,15 @@ fn decrypt_targeted_message_content_independently(
     let psk_id_bytes = TargetedMessagePskId::new(ctx.group_id, ctx.epoch)
         .tls_serialize_detached()
         .expect("Failed to serialize PSK ID");
-    let context_data = TargetedMessageContextData {
-        recipient_leaf_index: group.own_leaf_index().u32(),
-        sender_leaf_index: sender_auth_data.sender_leaf_index,
-    };
-    let context_data_bytes = context_data
-        .tls_serialize_detached()
-        .expect("Failed to serialize context data");
+    let info = TargetedMessageContext {
+        label: VLByteSlice(super::TARGETED_MESSAGE_DATA_LABEL.as_bytes()),
+        context: TargetedMessageContextData {
+            recipient_leaf_index: group.own_leaf_index().u32(),
+            sender_leaf_index: sender_auth_data.sender_leaf_index,
+        },
+    }
+    .tls_serialize_detached()
+    .expect("Failed to serialize HPKE info");
 
     let epoch_keypairs = provider
         .storage()
@@ -105,10 +108,9 @@ fn decrypt_targeted_message_content_independently(
     };
     let content_bytes = own_keypair
         .private_key()
-        .decrypt_with_label_psk_aad(
+        .open_psk(
             crate::ciphersuite::hpke::PskEncryptParams {
-                label: super::TARGETED_MESSAGE_DATA_LABEL,
-                context: &context_data_bytes,
+                info: &info,
                 psk: &psk,
                 psk_id: &psk_id_bytes,
                 ciphersuite: ctx.ciphersuite,

@@ -46,7 +46,7 @@ const TARGETED_MESSAGE_EXPORTER_LABEL: &str = "targeted message";
 const PSK_SUBLABEL: &str = "psk";
 const SENDER_AUTH_DATA_SECRET_SUBLABEL: &str = "sender auth data secret";
 const TARGETED_MESSAGE_TBS_LABEL: &str = "TargetedMessageTBS";
-const TARGETED_MESSAGE_DATA_LABEL: &str = "TargetedMessageData";
+const TARGETED_MESSAGE_DATA_LABEL: &str = "MLS 1.0 TargetedMessageData";
 const PSK_LABEL: &str = "MLS 1.0 targeted message psk";
 
 /// A targeted message as defined in draft-ietf-mls-targeted-messages.
@@ -296,6 +296,36 @@ struct TargetedMessageContextData {
     sender_leaf_index: u32,
 }
 
+/// HPKE info for the targeted message encryption.
+///
+/// ```text
+/// struct {
+///   opaque label<V> = "MLS 1.0 TargetedMessageData";
+///   TargetedMessageContextData context;
+/// } TargetedMessageContext;
+/// ```
+#[derive(TlsSerialize, TlsSize)]
+struct TargetedMessageContext<'a> {
+    label: VLByteSlice<'a>,
+    context: TargetedMessageContextData,
+}
+
+/// Serialize the HPKE info for the targeted message content encryption.
+fn targeted_message_hpke_info(
+    recipient_leaf_index: u32,
+    sender_leaf_index: u32,
+) -> Result<Vec<u8>, LibraryError> {
+    TargetedMessageContext {
+        label: VLByteSlice(TARGETED_MESSAGE_DATA_LABEL.as_bytes()),
+        context: TargetedMessageContextData {
+            recipient_leaf_index,
+            sender_leaf_index,
+        },
+    }
+    .tls_serialize_detached()
+    .map_err(LibraryError::missing_bound_check)
+}
+
 /// PSK ID for the targeted message HPKE PSK mode.
 ///
 /// ```text
@@ -523,18 +553,11 @@ pub(crate) fn create_targeted_message(
         .serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
 
-    let context_data = TargetedMessageContextData {
-        recipient_leaf_index: recipient_leaf_index.u32(),
-        sender_leaf_index: sender_leaf_index.u32(),
-    };
-    let context_data_bytes = context_data
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)?;
+    let info = targeted_message_hpke_info(recipient_leaf_index.u32(), sender_leaf_index.u32())?;
 
-    let hpke_ct = recipient_encryption_key.encrypt_with_label_psk(
+    let hpke_ct = recipient_encryption_key.seal_psk(
         crate::ciphersuite::hpke::PskEncryptParams {
-            label: TARGETED_MESSAGE_DATA_LABEL,
-            context: &context_data_bytes,
+            info: &info,
             psk: &psk,
             psk_id: &psk_id_bytes,
             ciphersuite: ctx.ciphersuite,
@@ -740,13 +763,8 @@ pub(crate) fn process_targeted_message<StorageError>(
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
 
-    let context_data = TargetedMessageContextData {
-        recipient_leaf_index: own_leaf_index.u32(),
-        sender_leaf_index: sender_auth_data.sender_leaf_index,
-    };
-    let context_data_bytes = context_data
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)?;
+    let info =
+        targeted_message_hpke_info(own_leaf_index.u32(), sender_auth_data.sender_leaf_index)?;
 
     let hpke_ciphertext = HpkeCiphertext {
         kem_output: sender_auth_data.kem_output.as_slice().to_vec().into(),
@@ -754,10 +772,9 @@ pub(crate) fn process_targeted_message<StorageError>(
     };
 
     let content_bytes = own_encryption_private_key
-        .decrypt_with_label_psk_aad(
+        .open_psk(
             crate::ciphersuite::hpke::PskEncryptParams {
-                label: TARGETED_MESSAGE_DATA_LABEL,
-                context: &context_data_bytes,
+                info: &info,
                 psk: &psk,
                 psk_id: &psk_id_bytes,
                 ciphersuite: ctx.ciphersuite,
