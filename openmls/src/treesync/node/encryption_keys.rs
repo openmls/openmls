@@ -67,23 +67,14 @@ impl EncryptionKey {
 
 #[cfg(feature = "targeted-messages-draft")]
 impl EncryptionKey {
-    pub(crate) fn encrypt_with_label_psk_resolved_aad<F>(
+    pub(crate) fn encrypt_with_label_psk(
         &self,
         params: hpke::PskEncryptParams,
+        aad: &[u8],
         plaintext: &[u8],
         crypto: &impl OpenMlsCrypto,
-        aad_builder: F,
-    ) -> Result<HpkeCiphertext, LibraryError>
-    where
-        F: FnOnce(&[u8]) -> Result<Vec<u8>, LibraryError>,
-    {
-        hpke::encrypt_with_label_psk_resolved_aad(
-            self.as_slice(),
-            params,
-            plaintext,
-            crypto,
-            aad_builder,
-        )
+    ) -> Result<HpkeCiphertext, LibraryError> {
+        hpke::encrypt_with_label_psk(self.as_slice(), params, aad, plaintext, crypto)
     }
 }
 

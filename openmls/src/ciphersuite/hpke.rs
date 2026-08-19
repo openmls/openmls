@@ -45,8 +45,6 @@ use super::LABEL_PREFIX;
 
 #[cfg(feature = "targeted-messages-draft")]
 use crate::error::LibraryError;
-#[cfg(feature = "targeted-messages-draft")]
-use openmls_traits::crypto::HpkeSealPskResolvedAadError;
 
 #[cfg(feature = "extensions-draft")]
 use crate::component::{ComponentId, ComponentOperationLabel};
@@ -273,7 +271,7 @@ pub fn safe_decrypt_with_label(
     decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
 }
 
-/// Parameters shared by [`encrypt_with_label_psk_resolved_aad`] and
+/// Parameters shared by [`encrypt_with_label_psk`] and
 /// [`decrypt_with_label_psk_aad`]: the label and context that make up the HPKE
 /// info, and the PSK material for the HPKE PSK mode.
 #[cfg(feature = "targeted-messages-draft")]
@@ -286,33 +284,27 @@ pub(crate) struct PskEncryptParams<'a> {
 }
 
 #[cfg(feature = "targeted-messages-draft")]
-pub(crate) fn encrypt_with_label_psk_resolved_aad<F>(
+pub(crate) fn encrypt_with_label_psk(
     public_key: &[u8],
     params: PskEncryptParams,
+    aad: &[u8],
     plaintext: &[u8],
     crypto: &impl OpenMlsCrypto,
-    aad_builder: F,
-) -> Result<HpkeCiphertext, LibraryError>
-where
-    F: FnOnce(&[u8]) -> Result<Vec<u8>, LibraryError>,
-{
+) -> Result<HpkeCiphertext, LibraryError> {
     let info = EncryptContext::new(params.label, params.context.into())
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
     crypto
-        .hpke_seal_psk_resolved_aad(
+        .hpke_seal_psk(
             params.ciphersuite.hpke_config(),
             public_key,
             &info,
+            aad,
             plaintext,
             params.psk,
             params.psk_id,
-            aad_builder,
         )
-        .map_err(|e| match e {
-            HpkeSealPskResolvedAadError::CryptoError(e) => LibraryError::unexpected_crypto_error(e),
-            HpkeSealPskResolvedAadError::AadBuildError(e) => e,
-        })
+        .map_err(LibraryError::unexpected_crypto_error)
 }
 
 #[cfg(feature = "targeted-messages-draft")]

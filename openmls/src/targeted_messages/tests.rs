@@ -2,7 +2,7 @@
 
 use openmls_test::openmls_test;
 use openmls_traits::{storage::StorageProvider as _, types::HpkeCiphertext};
-use tls_codec::{DeserializeBytes as _, Serialize as TlsSerializeTrait, VLByteSlice};
+use tls_codec::{DeserializeBytes as _, Serialize as TlsSerializeTrait};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -11,8 +11,8 @@ use crate::{
     targeted_messages::{
         derive_sender_auth_data_key_nonce, derive_sender_auth_data_secret,
         derive_targeted_message_psk, ProcessTargetedMessageError, SenderAuthDataAAD,
-        TargetedMessageContent, TargetedMessageGroupContext, TargetedMessageIn,
-        TargetedMessagePskId, TargetedMessageSenderAuthData, TargetedMessageTBM,
+        TargetedMessageContent, TargetedMessageContextData, TargetedMessageGroupContext,
+        TargetedMessageIn, TargetedMessagePskId, TargetedMessageSenderAuthData,
     },
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
@@ -27,7 +27,7 @@ fn extract_targeted_message_in(msg: &crate::framing::MlsMessageOut) -> TargetedM
         .expect("Not a targeted message")
 }
 
-fn decrypt_targeted_message_content_with_real_tbm(
+fn decrypt_targeted_message_content_independently(
     provider: &impl crate::storage::OpenMlsProvider,
     group: &crate::group::MlsGroup,
     message: &TargetedMessageIn,
@@ -74,17 +74,13 @@ fn decrypt_targeted_message_content_with_real_tbm(
     let psk_id_bytes = TargetedMessagePskId::new(ctx.group_id, ctx.epoch)
         .tls_serialize_detached()
         .expect("Failed to serialize PSK ID");
-    let tbm = TargetedMessageTBM {
-        group_id: ctx.group_id,
-        epoch: ctx.epoch,
+    let context_data = TargetedMessageContextData {
         recipient_leaf_index: group.own_leaf_index().u32(),
-        authenticated_data: VLByteSlice(message.authenticated_data.as_slice()),
         sender_leaf_index: sender_auth_data.sender_leaf_index,
-        kem_output: VLByteSlice(sender_auth_data.kem_output.as_slice()),
     };
-    let tbm_bytes = tbm
+    let context_data_bytes = context_data
         .tls_serialize_detached()
-        .expect("Failed to serialize TBM");
+        .expect("Failed to serialize context data");
 
     let epoch_keypairs = provider
         .storage()
@@ -112,16 +108,16 @@ fn decrypt_targeted_message_content_with_real_tbm(
         .decrypt_with_label_psk_aad(
             crate::ciphersuite::hpke::PskEncryptParams {
                 label: super::TARGETED_MESSAGE_DATA_LABEL,
-                context: &[],
+                context: &context_data_bytes,
                 psk: &psk,
                 psk_id: &psk_id_bytes,
                 ciphersuite: ctx.ciphersuite,
             },
-            &tbm_bytes,
+            message.authenticated_data.as_slice(),
             &hpke_ciphertext,
             provider.crypto(),
         )
-        .expect("Failed to decrypt content with the real TBM");
+        .expect("Failed to decrypt content with independently derived inputs");
 
     TargetedMessageContent::deserialize_detached(&content_bytes)
         .expect("Failed to deserialize targeted message content")
@@ -298,7 +294,7 @@ fn targeted_message_empty_payload() {
 }
 
 #[openmls_test]
-fn targeted_message_uses_real_sender_auth_data_in_tbm() {
+fn targeted_message_decrypts_with_independently_derived_inputs() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
 
@@ -317,7 +313,7 @@ fn targeted_message_uses_real_sender_auth_data_in_tbm() {
 
     let targeted_in = extract_targeted_message_in(&mls_msg_out);
     let content =
-        decrypt_targeted_message_content_with_real_tbm(bob_provider, &bob_group, &targeted_in);
+        decrypt_targeted_message_content_independently(bob_provider, &bob_group, &targeted_in);
 
     assert_eq!(content.application_data(), payload);
 }
