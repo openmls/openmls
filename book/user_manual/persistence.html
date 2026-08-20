@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b4168491.js";
+            window.path_to_searchindex_js = "../searchindex-0de2e9f7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d3aff166.js"></script>
@@ -182,6 +182,14 @@ as well as the <code>GroupId</code> of the group to be loaded. For this to work,
 must have been written to the provider previously.</p>
 <h2 id="forward-secrecy-considerations"><a class="header" href="#forward-secrecy-considerations">Forward-Secrecy Considerations</a></h2>
 <p>OpenMLS uses the <code>StorageProvider</code> to store sensitive key material. To achieve forward-secrecy (i.e. to prevent an adversary from decrypting messages sent in the past if a client is compromised), OpenMLS frequently deletes previously used key material through calls to the <code>StorageProvider</code>. <code>StorageProvider</code> implementations must thus take care to ensure that values deleted through any of the <code>delete_</code> functions of the trait are irrevocably deleted and that no copies are kept.</p>
+<h2 id="integrity-considerations"><a class="header" href="#integrity-considerations">Integrity Considerations</a></h2>
+<p>OpenMLS treats the <code>StorageProvider</code> as trusted. Persisted group state
+carries invariants that OpenMLS does not check again when it reads that state
+back.</p>
+<p>An adversary that can modify stored group state is therefore outside of
+OpenMLS’s threat model Applications that need to cover this case should protect
+the storage backend itself, for example with authenticated encryption or a
+platform keystore.</p>
 
                     </main>
 
