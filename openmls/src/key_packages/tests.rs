@@ -1,7 +1,7 @@
 use crate::{prelude::ExtensionTypeNotValidInLeafNodeError, test_utils::*};
 use openmls_basic_credential::SignatureKeyPair;
 
-use tls_codec::Deserialize;
+use tls_codec::{Deserialize, Serialize};
 
 use crate::{extensions::errors::*, extensions::*, key_packages::*, storage::OpenMlsProvider};
 
@@ -189,6 +189,77 @@ fn key_package_validation() {
 
     // Expect an invalid init/encryption key error
     assert_eq!(err, KeyPackageVerifyError::InitKeyEqualsEncryptionKey);
+}
+
+/// Validation of a key package that carries many distinct extensions and
+/// advertises a long capabilities list must succeed.
+///
+/// The capabilities list starts with padding entries that are never looked up,
+/// so a linear scan per extension would do the full quadratic amount of work
+/// here. The check uses a set lookup instead.
+#[openmls_test::openmls_test]
+fn key_package_validation_with_many_extensions() {
+    // Distinct extension types for the key package. The range avoids the
+    // registered types and the GREASE values.
+    const FIRST_TYPE: u16 = 0xf000;
+    const EXTENSION_COUNT: u16 = 1000;
+    // Padding type for the capabilities list. It is not among the key package
+    // extensions, so it is never looked up.
+    const PADDING_TYPE: u16 = 0x0fff;
+    const PADDING_COUNT: usize = 50_000;
+
+    let provider = &Provider::default();
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+    let extension_types: Vec<u16> = (FIRST_TYPE..FIRST_TYPE + EXTENSION_COUNT).collect();
+
+    let key_package_extensions = Extensions::try_from(
+        extension_types
+            .iter()
+            .map(|extension_type| Extension::Unknown(*extension_type, UnknownExtension(vec![])))
+            .collect::<Vec<_>>(),
+    )
+    .expect("unknown extensions are valid in key packages");
+
+    let mut capability_extensions = vec![ExtensionType::Unknown(PADDING_TYPE); PADDING_COUNT];
+    capability_extensions.extend(
+        extension_types
+            .iter()
+            .map(|extension_type| ExtensionType::Unknown(*extension_type)),
+    );
+
+    let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(Capabilities::new(
+            None,
+            Some(&[ciphersuite]),
+            Some(&capability_extensions),
+            None,
+            None,
+        ))
+        .key_package_extensions(key_package_extensions)
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential,
+            },
+        )
+        .expect("failed to build the key package");
+
+    let serialized = key_package
+        .key_package()
+        .tls_serialize_detached()
+        .expect("failed to serialize the key package");
+
+    let key_package_in =
+        KeyPackageIn::tls_deserialize_exact(&serialized).expect("failed to parse the key package");
+
+    key_package_in
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .expect("validation should accept supported extensions");
 }
 
 /// Test that a key package is correctly built with a last resort extension when
