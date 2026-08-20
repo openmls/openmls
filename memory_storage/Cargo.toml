@@ -18,7 +18,7 @@ serde_json = "1.0"
 serde = { workspace = true, features = ["derive"] }
 log = { version = "0.4" }
 hex = { version = "0.4", features = ["serde"], optional = true }
-base64 = { version = "0.22", optional = true }
+base64 = { version = "0.23", optional = true }
 
 [features]
 test-utils = ["hex", "openmls_traits/test-utils"] # Enable test utilites
