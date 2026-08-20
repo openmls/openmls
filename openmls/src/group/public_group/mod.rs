@@ -241,7 +241,7 @@ impl PublicGroup {
                                     .parent(*intermediate_index) {
                                     // The list of unmerged leaves is sorted,
                                     // which UnmergedLeaves enforces when it is
-                                    // deserialized.
+                                    // deserialized from the wire.
                                     if intermediate_node
                                         .unmerged_leaves()
                                         .binary_search(leaf_index)
