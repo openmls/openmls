@@ -1,5 +1,5 @@
 use crate::{
-    binary_tree::LeafNodeIndex,
+    binary_tree::{array_representation::direct_path, LeafNodeIndex},
     framing::{
         public_message_in::PublicMessageIn, MlsMessageIn, MlsMessageOut, ProcessedMessage,
         ProcessedMessageContent, ProtocolMessage, Sender,
@@ -458,4 +458,160 @@ fn old_messages_with_blank_leaves() {
         .group
         .process_message(provider, app_in.try_into_protocol_message().unwrap())
         .expect("Alice failed to process David's message after Bob was removed");
+}
+
+/// Joins a group from a ratchet tree that contains a parent node whose unmerged
+/// leaf sits more than one level below it, with a non-blank intermediate node in
+/// between. That is the shape that makes `PublicGroup::from_ratchet_tree` look
+/// up leaves in the unmerged leaf lists of intermediate nodes.
+#[openmls_test::openmls_test]
+fn external_join_with_nested_unmerged_leaves() {
+    // A tree of 16 leaves is the smallest one in which an unmerged leaf can
+    // have a non-blank intermediate node between itself and a parent node that
+    // lists it. The nodes directly above a blank leaf stay blank, because they
+    // are filtered out of every update path.
+    const NAMES: [&str; 16] = [
+        "m00", "m01", "m02", "m03", "m04", "m05", "m06", "m07", "m08", "m09", "m10", "m11", "m12",
+        "m13", "m14", "m15",
+    ];
+
+    let parties: Vec<CorePartyState<Provider>> =
+        NAMES.iter().map(|name| CorePartyState::new(name)).collect();
+    let newcomer_party = CorePartyState::<Provider>::new("newcomer");
+
+    let mut pre_groups = parties
+        .iter()
+        .map(|party| party.generate_pre_group(ciphersuite));
+    let creator_pre_group = pre_groups.next().unwrap();
+    let addees = pre_groups.collect();
+    let newcomer_pre_group = newcomer_party.generate_pre_group(ciphersuite);
+
+    let mls_group_create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"nested unmerged leaves");
+    let mut group_state =
+        GroupState::new_from_party(group_id, creator_pre_group, mls_group_create_config).unwrap();
+
+    // The member at leaf 0 fills the tree, so that the leaves 0 to 15 are all
+    // in use.
+    group_state
+        .add_member(AddMemberConfig {
+            adder: NAMES[0],
+            addees,
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add members");
+
+    // The member at leaf 0 removes the one at leaf 5, which blanks leaf 5 and
+    // its direct path.
+    let commit = {
+        let [committer] = group_state.members_mut(&[NAMES[0]]);
+        committer
+            .build_commit_and_stage(|builder| builder.propose_removals(vec![LeafNodeIndex::new(5)]))
+            .unwrap()
+    };
+    group_state.untrack_member(NAMES[5]);
+    group_state
+        .deliver_and_apply_if(commit.into_commit().into(), |m| {
+            m.party.core_state.name != NAMES[0]
+        })
+        .unwrap();
+    {
+        let [committer] = group_state.members_mut(&[NAMES[0]]);
+        committer
+            .group
+            .merge_pending_commit(&committer.party.core_state.provider)
+            .unwrap();
+    }
+
+    // The member at leaf 6 refreshes its direct path. That re-populates the
+    // parents of the leaves 4 to 7 and of the leaves 0 to 7, both of which are
+    // above the blank leaf 5.
+    let commit = {
+        let [committer] = group_state.members_mut(&[NAMES[6]]);
+        committer
+            .build_commit_and_stage(|builder| builder.force_self_update(true))
+            .unwrap()
+    };
+    group_state
+        .deliver_and_apply_if(commit.into_commit().into(), |m| {
+            m.party.core_state.name != NAMES[6]
+        })
+        .unwrap();
+    {
+        let [committer] = group_state.members_mut(&[NAMES[6]]);
+        committer
+            .group
+            .merge_pending_commit(&committer.party.core_state.provider)
+            .unwrap();
+    }
+
+    // The member at leaf 8 adds the newcomer, who takes the blank leaf 5. The
+    // newcomer becomes an unmerged leaf of the two parent nodes above it that
+    // the committer does not refresh.
+    group_state
+        .add_member(AddMemberConfig {
+            adder: NAMES[8],
+            addees: vec![newcomer_pre_group],
+            join_config: mls_group_join_config,
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let (ratchet_tree, verifiable_group_info) = {
+        let [member] = group_state.members_mut(&[NAMES[0]]);
+        let provider = &member.party.core_state.provider;
+        let verifiable_group_info = member
+            .group
+            .export_group_info(provider.crypto(), &member.party.signer, false)
+            .unwrap()
+            .into_verifiable_group_info()
+            .unwrap();
+
+        (member.group.export_ratchet_tree(), verifiable_group_info)
+    };
+
+    let public_provider = &Provider::default();
+    let (public_group, _group_info) = PublicGroup::from_external(
+        public_provider.crypto(),
+        public_provider.storage(),
+        ratchet_tree.into(),
+        verifiable_group_info,
+        ProposalStore::new(),
+    )
+    .expect("Could not join the group from the ratchet tree");
+
+    // Check that the tree has the shape we set out to build, i.e. that the
+    // validation above did look at intermediate nodes. Also check the sorting
+    // invariant of the unmerged leaf lists, which that lookup relies on.
+    let treesync = public_group.treesync();
+    let mut intermediate_nodes = 0;
+    for (parent_index, parent_node) in treesync.full_parents() {
+        let unmerged_leaves = parent_node.unmerged_leaves();
+        assert!(
+            unmerged_leaves.windows(2).all(|pair| pair[0] < pair[1]),
+            "unmerged leaves are not sorted: {unmerged_leaves:?}"
+        );
+
+        for leaf_index in unmerged_leaves {
+            let path = direct_path(*leaf_index, treesync.tree_size());
+            let parent_offset = path
+                .iter()
+                .position(|index| index == &parent_index)
+                .unwrap();
+
+            for intermediate_index in &path[..parent_offset] {
+                if let Some(intermediate_node) = treesync.parent(*intermediate_index) {
+                    assert!(intermediate_node.unmerged_leaves().contains(leaf_index));
+                    intermediate_nodes += 1;
+                }
+            }
+        }
+    }
+    assert!(
+        intermediate_nodes > 0,
+        "the tree has no non-blank intermediate node between an unmerged leaf and its parent"
+    );
 }
