@@ -97,7 +97,6 @@ use super::HandshakeConfirmationData;
 
 #[derive(Debug)]
 struct ExternalCommitInfo {
-    aad: Vec<u8>,
     /// The authoritative credential and signature key for the external
     /// committer's leaf. `build_internal` folds it into the leaf node
     /// parameters and rejects parameters that pin a different credential.
@@ -120,6 +119,9 @@ pub struct Initial {
     leaf_node_parameters: LeafNodeParameters,
     external_commit_info: Option<ExternalCommitInfo>,
 
+    /// The bare AAD to use for this commit. If it is set, the one from the group is ignored and left untouched.
+    bare_aad: Option<Vec<u8>>,
+
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
@@ -133,6 +135,7 @@ impl Default for Initial {
             leaf_node_parameters: LeafNodeParameters::default(),
             own_proposals: vec![],
             external_commit_info: None,
+            bare_aad: None,
         }
     }
 }
@@ -151,6 +154,9 @@ pub struct LoadedPsks {
 
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
+
+    /// The AAD to use for this commit. If it is set, the one from the group is ignored and left untouched.
+    bare_aad: Option<Vec<u8>>,
 
     #[cfg(feature = "extensions-draft")]
     app_data_dictionary_updates: Option<AppDataUpdates>,
@@ -372,6 +378,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// self-update takes place.
     pub fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
         self.stage.leaf_node_parameters = leaf_node_parameters;
+        self
+    }
+
+    /// The AAD to use for this commit. If it is set, the one from the group is ignored and left untouched.
+    pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
+        self.stage.bare_aad = Some(aad);
         self
     }
 
@@ -610,6 +622,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         force_self_update: stage.force_self_update,
                         leaf_node_parameters: stage.leaf_node_parameters,
                         consume_proposal_store: stage.consume_proposal_store,
+                        bare_aad: stage.bare_aad,
                         group_info_config,
                         external_commit_info: stage.external_commit_info,
                         #[cfg(feature = "extensions-draft")]
@@ -1029,31 +1042,33 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             path: path_computation_result.encrypted_path,
         };
 
-        let (outgoing_aad, wire_format): (Vec<u8>, WireFormat) =
-            match &cur_stage.external_commit_info {
-                None => (
-                    group.outgoing_authenticated_data()?,
-                    group.outgoing_wire_format(),
-                ),
-                Some(ExternalCommitInfo { aad, .. }) => {
-                    // The spec requires the SafeAAD prefix even with zero items
-                    // when the target GroupContext has `safe_aad` present, so a
-                    // bare `aad` would be rejected by SafeAAD-aware receivers.
-                    // The joining group carries no application-staged items, so
-                    // the prefix is empty unless the builder staged the
-                    // virtual-clients marker.
-                    #[cfg(feature = "extensions-draft")]
-                    let aad_bytes = if group.context().safe_aad_required() {
-                        crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, aad)
-                            .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
-                    } else {
-                        aad.clone()
-                    };
-                    #[cfg(not(feature = "extensions-draft"))]
-                    let aad_bytes = aad.clone();
-                    (aad_bytes, WireFormat::PublicMessage)
-                }
+        let wire_format = if cur_stage.external_commit_info.is_some() {
+            WireFormat::PublicMessage
+        } else {
+            group.outgoing_wire_format()
+        };
+
+        let outgoing_aad = if let Some(aad) = cur_stage.bare_aad {
+            // The spec requires the SafeAAD prefix even with zero items
+            // when the target GroupContext has `safe_aad` present, so a
+            // bare `aad` would be rejected by SafeAAD-aware receivers.
+            // The joining group carries no application-staged items, so
+            // the prefix is empty unless the builder staged the
+            // virtual-clients marker.
+            #[cfg(feature = "extensions-draft")]
+            let aad_bytes = if group.context().safe_aad_required() {
+                crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, &aad)
+                    .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
+            } else {
+                aad.clone()
             };
+
+            #[cfg(not(feature = "extensions-draft"))]
+            let aad_bytes = aad.clone();
+            aad_bytes
+        } else {
+            group.outgoing_authenticated_data()?
+        };
 
         let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
