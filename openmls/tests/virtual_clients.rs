@@ -5882,9 +5882,7 @@ fn malformed_vc_commit_data_is_rejected_by_emulation_group() {
 /// keeps the rest of the application's commit data intact.
 #[openmls_test]
 fn app_staged_vc_marker_refreshes_vc_derivation_epoch() {
-    use openmls::components::vc_commit_data::{
-        VcEpochUsage, VirtualClientAction, VirtualClientCommitData,
-    };
+    use openmls::components::vc_commit_data::{VirtualClientAction, VirtualClientCommitData};
 
     let provider_a = Provider::default();
     let provider_b = Provider::default();
@@ -5895,11 +5893,8 @@ fn app_staged_vc_marker_refreshes_vc_derivation_epoch() {
 
     // The application stages the marker itself and does not call
     // `new_derivation_epoch`.
-    let commit_data = VirtualClientCommitData::new(
-        Some(VcEpochUsage::new([before.clone()]).expect("epoch ids must serialize")),
-        vec![VirtualClientAction::NewDerivationEpoch],
-    )
-    .expect("one new_derivation_epoch action is valid");
+    let commit_data = VirtualClientCommitData::new(vec![VirtualClientAction::NewDerivationEpoch])
+        .expect("one new_derivation_epoch action is valid");
     emulator_a
         .set_safe_aad(vec![commit_data
             .to_safe_aad_item()

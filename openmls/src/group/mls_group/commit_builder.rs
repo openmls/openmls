@@ -1414,7 +1414,7 @@ fn stage_vc_new_derivation_epoch(group: &mut MlsGroup) -> Result<(), CreateCommi
     }
 
     let mut commit_data = staged_vc_commit_data(group)?
-        .map_or_else(|| VirtualClientCommitData::new(None, Vec::new()), Ok)?;
+        .map_or_else(|| VirtualClientCommitData::new(Vec::new()), Ok)?;
     commit_data.require_new_derivation_epoch();
     group.safe_aad.upsert(commit_data.to_safe_aad_item()?);
     Ok(())
