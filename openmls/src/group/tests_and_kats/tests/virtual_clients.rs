@@ -6,7 +6,7 @@ use crate::{
     ciphersuite::Secret,
     component::{ComponentId, ComponentType, ComponentsList},
     components::{
-        vc_commit_data::{VcEpochUsage, VirtualClientAction, VirtualClientCommitData},
+        vc_commit_data::{VirtualClientAction, VirtualClientCommitData},
         vc_derivation_info::{
             load_vc_epoch_state_and_tree, register_vc_derivation_epoch, EpochId,
             RegisteredVcDerivationEpoch, VcDerivationEpochParams, VirtualClientOperationType,
@@ -383,16 +383,8 @@ fn vc_commit_data_travels_in_commit_safe_aad() {
     let (mut alice_group, mut bob_group, alice_signer) =
         safe_aad_group_pair(alice_provider, bob_provider);
 
-    let epoch_usage = VcEpochUsage::new([
-        EpochId::new(b"second declared epoch".to_vec()),
-        EpochId::new(b"first declared epoch".to_vec()),
-    ])
-    .expect("epoch ids must serialize");
-    let commit_data = VirtualClientCommitData::new(
-        Some(epoch_usage),
-        vec![VirtualClientAction::NewDerivationEpoch],
-    )
-    .expect("one new_derivation_epoch action is valid");
+    let commit_data = VirtualClientCommitData::new(vec![VirtualClientAction::NewDerivationEpoch])
+        .expect("one new_derivation_epoch action is valid");
 
     alice_group
         .set_safe_aad(vec![commit_data
