@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `PublicGroup::validate_key_package_for_add`, which checks whether a single `KeyPackage` is eligible to be added to the group without building a commit. Applications adding several members at once can use it to filter out candidates that a commit would reject, and to report which candidate was rejected and why. Uniqueness of the signature, init and encryption keys is not covered, since it can only be decided for a full set of proposals.
 - [#1972](https://github.com/openmls/openmls/pull/1972): Add APIs for time-based deletion of past epoch secrets, and for setting the past epoch deletion policy for an `MlsGroup`.
 - [#2010](https://github.com/openmls/openmls/pull/2010): Added `MlsGroup::propose_self_update_with_new_signer`, a variant of `propose_self_update` that stages an `Update` proposal carrying a new signature key.
 - [#2084](https://github.com/openmls/openmls/pull/2084): Added the `ProcessedMessageContent::OwnPendingCommit` variant, returned when processing a Commit authored by this client that matches the group's pending commit. Callers should merge the pending commit via `MlsGroup::merge_pending_commit()`.
