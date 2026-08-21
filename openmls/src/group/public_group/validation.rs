@@ -20,6 +20,7 @@ use crate::{
         proposal_store::ProposalQueue,
         GroupContextExtensionsProposalValidationError, Member,
     },
+    key_packages::KeyPackage,
     messages::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
         Commit,
@@ -367,6 +368,55 @@ impl PublicGroup {
             })
     }
 
+    /// Checks whether `key_package` is eligible to be added to this group
+    ///
+    /// This runs the checks that a commit with an Add proposal for
+    /// `key_package` performs on that key package alone:
+    ///
+    /// - the ciphersuite and the protocol version match the group,
+    /// - the leaf node supports all extensions in the group context,
+    /// - the leaf node is valid for this group, which covers its capabilities,
+    ///   the required capabilities of the group, mutual support of the
+    ///   credential types in use with the existing members, and the lifetime of
+    ///   the leaf node.
+    ///
+    /// Checks that concern a set of proposals as a whole are not covered. In
+    /// particular the signature key, the init key and the encryption key of the
+    /// added member have to be unique among the group members and the other
+    /// proposals in the commit, which can only be decided once all proposals are
+    /// known. Passing this check therefore does not guarantee that a commit
+    /// adding `key_package` can be built.
+    pub fn validate_key_package_for_add(
+        &self,
+        key_package: &KeyPackage,
+    ) -> Result<(), ProposalValidationError> {
+        // ValSem105: Check if ciphersuite and version of the group are correct:
+        // https://validation.openmls.tech/#valn0201
+        if key_package.ciphersuite() != self.ciphersuite()
+            || key_package.protocol_version() != self.version()
+        {
+            return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
+        }
+
+        // Check that the leaf node of the added key package supports all extensions in the group
+        // context.
+        // https://validation.openmls.tech/#valn0502
+        let added_leaf_supports_all_group_context_extensions =
+            self.group_context().extensions().iter().all(|extension| {
+                key_package
+                    .leaf_node()
+                    .supports_extension(&extension.extension_type())
+            });
+        if !added_leaf_supports_all_group_context_extensions {
+            return Err(ProposalValidationError::InsufficientCapabilities);
+        }
+
+        // https://validation.openmls.tech/#valn0202
+        self.validate_leaf_node(key_package.leaf_node())?;
+
+        Ok(())
+    }
+
     /// Validate Add proposals. This function implements the following checks:
     ///  - ValSem105: Add Proposal: Ciphersuite & protocol version must match the group
     pub(crate) fn validate_add_proposals(
@@ -378,31 +428,7 @@ impl PublicGroup {
         // We do the key package validation checks here inline
         // https://validation.openmls.tech/#valn0501
         for add_proposal in add_proposals {
-            // ValSem105: Check if ciphersuite and version of the group are correct:
-            // https://validation.openmls.tech/#valn0201
-            if add_proposal.add_proposal().key_package().ciphersuite() != self.ciphersuite()
-                || add_proposal.add_proposal().key_package().protocol_version() != self.version()
-            {
-                return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
-            }
-
-            // Check that the leaf node of the added key package supports all extensions in the group
-            // context.
-            // https://validation.openmls.tech/#valn0502
-            let added_leaf_supports_all_group_context_extensions =
-                self.group_context().extensions().iter().all(|extension| {
-                    add_proposal
-                        .add_proposal()
-                        .key_package
-                        .leaf_node()
-                        .supports_extension(&extension.extension_type())
-                });
-            if !added_leaf_supports_all_group_context_extensions {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // https://validation.openmls.tech/#valn0202
-            self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
+            self.validate_key_package_for_add(add_proposal.add_proposal().key_package())?;
         }
         Ok(())
     }
