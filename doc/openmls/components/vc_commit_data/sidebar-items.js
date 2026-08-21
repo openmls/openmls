@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["VcCommitDataError","VirtualClientAction"],"struct":["VcEpochReference","VcEpochUsage","VirtualClientCommitData"]};
+window.SIDEBAR_ITEMS = {"enum":["VcCommitDataError","VirtualClientAction"],"struct":["VirtualClientCommitData"]};
