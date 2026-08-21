@@ -1,7 +1,7 @@
 //! This module tests the validation of commits as defined in
 //! https://book.openmls.tech/message_validation.html#commit-message-validation
 
-use openmls_traits::{prelude::*, signatures::Signer, types::Ciphersuite};
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
 

@@ -11,7 +11,7 @@ use openmls_traits::crypto::OpenMlsCrypto;
 
 use openmls_traits::types::Ciphersuite;
 
-use crate::ciphersuite::{AeadNonce, *};
+use crate::ciphersuite::AeadNonce;
 #[cfg(feature = "virtual-clients-draft")]
 use crate::tree::dual_use_ratchet::DualUseRatchet;
 use crate::tree::secret_tree::*;
