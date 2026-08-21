@@ -376,10 +376,9 @@ impl PublicGroup {
     /// - the ciphersuite and the protocol version match the group,
     /// - the leaf node supports all extensions in the group context,
     /// - the leaf node is valid for this group, which covers its capabilities,
-    ///   the required capabilities of the group, and mutual support of the
-    ///   credential types in use with the existing members.
-    ///
-    /// `validate_lifetimes` determines whether the lifetime of the leaf node is verified.
+    ///   the required capabilities of the group, mutual support of the
+    ///   credential types in use with the existing members, and the lifetime of
+    ///   the leaf node.
     ///
     /// Checks that concern a set of proposals as a whole are not covered. In
     /// particular the signature key, the init key and the encryption key of the
@@ -390,7 +389,6 @@ impl PublicGroup {
     pub fn validate_key_package_for_add(
         &self,
         key_package: &KeyPackage,
-        validate_lifetimes: LeafNodeLifetimePolicy,
     ) -> Result<(), ProposalValidationError> {
         // ValSem105: Check if ciphersuite and version of the group are correct:
         // https://validation.openmls.tech/#valn0201
@@ -414,7 +412,7 @@ impl PublicGroup {
         }
 
         // https://validation.openmls.tech/#valn0202
-        self.validate_leaf_node_inner(key_package.leaf_node(), validate_lifetimes)?;
+        self.validate_leaf_node(key_package.leaf_node())?;
 
         Ok(())
     }
