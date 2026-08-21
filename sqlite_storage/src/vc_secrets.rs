@@ -172,11 +172,33 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
             |row| row.get::<_, bool>(0),
         )
     }
+
+    pub(super) fn has_vc_emulation_binding_for_epoch<C: Codec>(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<bool, rusqlite::Error> {
+        let Self(epoch_id) = self;
+        let mut stmt = connection.prepare(
+            "SELECT EXISTS(
+                SELECT 1 FROM vc_emulation_binding_epochs
+                WHERE epoch_id = ?1
+                    AND provider_version = ?2
+            )",
+        )?;
+        stmt.query_row(
+            params![
+                KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+            |row| row.get::<_, bool>(0),
+        )
+    }
 }
 
 /// Per-epoch bindings from a higher-level group to derivation epochs. One row
-/// per higher-level group, holding the serialized binding record. Written on
-/// every commit merge.
+/// per higher-level group, holding the serialized binding record, plus one row
+/// per bound derivation epoch in `vc_emulation_binding_epochs` so the record
+/// can be queried by epoch. Written on every commit merge.
 pub(super) struct StorableEmulationBindingRef<
     'a,
     VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>,
@@ -188,10 +210,12 @@ impl<'a, VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>>
     pub(super) fn store_vc_emulation_bindings<
         C: Codec,
         GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>,
+        EpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         connection: &rusqlite::Connection,
         group_id: &GroupId,
+        bound_epochs: &[EpochId],
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
             "INSERT INTO vc_emulation_bindings (provider_version, group_id, bindings)
@@ -205,6 +229,31 @@ impl<'a, VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>>
                 EntityRefWrapper::<C, _>(self.0, PhantomData)
             ],
         )?;
+        // The record above replaces the previous one wholesale, so the
+        // projection is rebuilt rather than added to. That also drops the
+        // epochs whose bindings just aged out of the record.
+        connection.execute(
+            "DELETE FROM vc_emulation_binding_epochs
+            WHERE group_id = ?1
+                AND provider_version = ?2",
+            params![
+                KeyRefWrapper::<C, _>(group_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+        )?;
+        for epoch_id in bound_epochs {
+            connection.execute(
+                "INSERT INTO vc_emulation_binding_epochs (provider_version, group_id, epoch_id)
+                VALUES (?1, ?2, ?3)
+                ON CONFLICT(group_id, epoch_id) DO UPDATE SET
+                    provider_version = excluded.provider_version",
+                params![
+                    STORAGE_PROVIDER_VERSION,
+                    KeyRefWrapper::<C, _>(group_id, PhantomData),
+                    KeyRefWrapper::<C, _>(epoch_id, PhantomData)
+                ],
+            )?;
+        }
         Ok(())
     }
 }
@@ -244,6 +293,15 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
         let Self(group_id) = self;
         connection.execute(
             "DELETE FROM vc_emulation_bindings
+            WHERE group_id = ?1
+                AND provider_version = ?2",
+            params![
+                KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+        )?;
+        connection.execute(
+            "DELETE FROM vc_emulation_binding_epochs
             WHERE group_id = ?1
                 AND provider_version = ?2",
             params![

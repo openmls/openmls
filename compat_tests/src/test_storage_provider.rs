@@ -81,6 +81,7 @@ struct Data {
     // virtual-clients-draft
     vc_derivation_epoch_state: Table,
     vc_emulation_bindings: Table,
+    vc_emulation_binding_epochs: Table,
     registered_vc_derivation_epoch: Table,
     vc_operation_tree: Table,
     retained_key_package_material: Table,
@@ -1106,6 +1107,15 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         }
 
         #[cfg(feature = "virtual-clients-draft")]
+        fn has_vc_emulation_binding_for_epoch<EpochId: traits::VcEpochId<$version>>(
+            &self,
+            epoch_id: &EpochId,
+        ) -> Result<bool, $error> {
+            let data = self.0 .0.lock().unwrap();
+            epoch_has_emulation_binding(epoch_id, &data.vc_emulation_binding_epochs)
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
         fn write_vc_derivation_epoch_state<
             EpochId: traits::VcEpochId<$version>,
             VcDerivationEpochState: traits::VcDerivationEpochState<$version>,
@@ -1126,13 +1136,16 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
         fn write_vc_emulation_bindings<
             GroupId: traits::GroupId<$version>,
             VcEmulationBindings: traits::VcEmulationBindings<$version>,
+            EpochId: traits::VcEpochId<$version>,
         >(
             &self,
             group_id: &GroupId,
             bindings: &VcEmulationBindings,
+            bound_epochs: &[EpochId],
         ) -> Result<(), $error> {
             let mut data = self.0 .0.lock().unwrap();
-            write(group_id, bindings, &mut data.vc_emulation_bindings)
+            write(group_id, bindings, &mut data.vc_emulation_bindings)?;
+            write_bound_epochs(group_id, bound_epochs, &mut data.vc_emulation_binding_epochs)
         }
 
         #[cfg(feature = "virtual-clients-draft")]
@@ -1204,6 +1217,7 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
                 vc_derivation_epoch_state,
                 vc_operation_tree,
                 retained_key_package_epoch,
+                vc_emulation_binding_epochs,
                 ..
             } = &mut *data;
             delete_vc_state_if_unreferenced(
@@ -1211,6 +1225,7 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
                 vc_derivation_epoch_state,
                 vc_operation_tree,
                 retained_key_package_epoch,
+                vc_emulation_binding_epochs,
             )
         }
 
@@ -1220,7 +1235,8 @@ macro_rules! impl_storage_provider_virtual_clients_draft {
             group_id: &GroupId,
         ) -> Result<(), $error> {
             let mut data = self.0 .0.lock().unwrap();
-            delete(group_id, &mut data.vc_emulation_bindings)
+            delete(group_id, &mut data.vc_emulation_bindings)?;
+            delete(group_id, &mut data.vc_emulation_binding_epochs)
         }
 
         #[cfg(feature = "virtual-clients-draft")]
@@ -1478,6 +1494,41 @@ macro_rules! storage_helpers {
             Ok(epoch_tags.values().any(|value| value == &serialized))
         }
 
+        /// Replaces the list of derivation epochs a group's emulation bindings
+        /// bind. The binding record is opaque, so the list is what makes the
+        /// bindings queryable by epoch.
+        #[cfg(feature = "virtual-clients-draft")]
+        fn write_bound_epochs<GroupId: Key<$version>, EpochId: Key<$version>>(
+            group_id: &GroupId,
+            bound_epochs: &[EpochId],
+            bound_epoch_lists: &mut Table,
+        ) -> Result<(), $err> {
+            let mut serialized_epochs = Vec::with_capacity(bound_epochs.len());
+            for epoch_id in bound_epochs {
+                serialized_epochs.push($ser(epoch_id)?);
+            }
+            let _ = bound_epoch_lists.insert($ser(group_id)?, $ser(&serialized_epochs)?);
+
+            Ok(())
+        }
+
+        /// Whether the emulation bindings of any group still bind `epoch_id`.
+        #[cfg(feature = "virtual-clients-draft")]
+        fn epoch_has_emulation_binding<EpochId: Key<$version>>(
+            epoch_id: &EpochId,
+            bound_epoch_lists: &Table,
+        ) -> Result<bool, $err> {
+            let serialized = $ser(epoch_id)?;
+            for value in bound_epoch_lists.values() {
+                let bound_epochs: Vec<Vec<u8>> = $de(value)?;
+                if bound_epochs.contains(&serialized) {
+                    return Ok(true);
+                }
+            }
+
+            Ok(false)
+        }
+
         /// Writes an advanced operation tree together with the retained key package
         /// material it produced, tagging each material with its epoch.
         #[cfg(feature = "virtual-clients-draft")]
@@ -1506,16 +1557,21 @@ macro_rules! storage_helpers {
         }
 
         /// Deletes the derivation epoch state and operation tree for
-        /// `epoch_id` if no retained key package material still references it.
+        /// `epoch_id` if neither retained key package material nor the
+        /// emulation bindings of a group still reference it.
         #[cfg(feature = "virtual-clients-draft")]
         fn delete_vc_state_if_unreferenced<EpochId: Key<$version>>(
             epoch_id: &EpochId,
             epoch_states: &mut Table,
             operation_trees: &mut Table,
             epoch_tags: &Table,
+            bound_epoch_lists: &Table,
         ) -> Result<bool, $err> {
             let serialized = $ser(epoch_id)?;
             if epoch_tags.values().any(|value| value == &serialized) {
+                return Ok(false);
+            }
+            if epoch_has_emulation_binding(epoch_id, bound_epoch_lists)? {
                 return Ok(false);
             }
             let _ = epoch_states.remove(&serialized);

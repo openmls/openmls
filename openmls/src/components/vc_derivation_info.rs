@@ -1005,6 +1005,22 @@ impl VcEmulationBindings {
         None
     }
 
+    /// The derivation epochs this record binds, without duplicates and in
+    /// order of first appearance. A derivation epoch stays bound while the
+    /// virtual-client LeafNode it produced is active, so the same epoch id
+    /// usually appears under several higher-level epochs. Storage providers
+    /// index this list by epoch to keep a bound epoch's state from being
+    /// deleted, and an index cannot take the same epoch twice.
+    pub fn bound_epoch_ids(&self) -> Vec<EpochId> {
+        let mut epoch_ids = Vec::with_capacity(self.bindings.len());
+        for (_, epoch_id) in &self.bindings {
+            if !epoch_ids.contains(epoch_id) {
+                epoch_ids.push(epoch_id.clone());
+            }
+        }
+        epoch_ids
+    }
+
     /// Record `epoch_id` as the binding for `epoch`, keeping at most
     /// `max_entries` entries by dropping the oldest ones.
     pub(crate) fn insert(
@@ -1073,6 +1089,12 @@ impl EpochEncryptionKey {
 /// secret tree and keyed by [`EpochId`]. Bundles everything the library needs
 /// to emit a VC commit for this epoch and to XOR application message nonces
 /// with deterministic reuse guards.
+///
+/// This is the local storage encoding, not the draft's wire struct of the same
+/// name. The draft's version carries the `epoch_id` and the operation secret
+/// tree as fields, both of which are stored separately here and keyed by
+/// [`EpochId`], and calls the leaf count `leaf_count` rather than
+/// `emulation_group_size`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VcDerivationEpochState {
     /// The registering client's leaf index in the emulation group at

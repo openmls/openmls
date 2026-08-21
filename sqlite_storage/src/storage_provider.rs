@@ -777,10 +777,12 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error> {
         // The application should call this within a transaction so the liveness
-        // check and the deletions apply atomically and a material stored
-        // concurrently cannot be orphaned.
+        // checks and the deletions apply atomically and a material or binding
+        // stored concurrently cannot be orphaned.
         if StorableKeyRef(epoch_id)
             .has_retained_key_package_material_for_epoch::<C>(self.connection.borrow())?
+            || StorableKeyRef(epoch_id)
+                .has_vc_emulation_binding_for_epoch::<C>(self.connection.borrow())?
         {
             return Ok(false);
         }
@@ -793,13 +795,19 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     fn write_vc_emulation_bindings<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         VcEmulationBindings: traits::VcEmulationBindings<STORAGE_PROVIDER_VERSION>,
+        EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         group_id: &GroupId,
         bindings: &VcEmulationBindings,
+        bound_epochs: &[EpochId],
     ) -> Result<(), Self::Error> {
         crate::vc_secrets::StorableEmulationBindingRef(bindings)
-            .store_vc_emulation_bindings::<C, _>(self.connection.borrow(), group_id)
+            .store_vc_emulation_bindings::<C, _, _>(
+                self.connection.borrow(),
+                group_id,
+                bound_epochs,
+            )
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -934,6 +942,14 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     ) -> Result<bool, Self::Error> {
         StorableKeyRef(epoch_id)
             .has_retained_key_package_material_for_epoch::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_vc_emulation_binding_for_epoch<EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        StorableKeyRef(epoch_id).has_vc_emulation_binding_for_epoch::<C>(self.connection.borrow())
     }
 
     #[cfg(feature = "virtual-clients-draft")]
