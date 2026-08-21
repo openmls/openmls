@@ -517,7 +517,11 @@ impl MlsGroup {
                 bindings.insert(staged_commit.epoch(), epoch_id, max_entries);
                 provider
                     .storage()
-                    .write_vc_emulation_bindings(self.group_id(), &bindings)
+                    .write_vc_emulation_bindings(
+                        self.group_id(),
+                        &bindings,
+                        &bindings.bound_epoch_ids(),
+                    )
                     .map_err(|e| {
                         log::error!("vc: persist emulation bindings at merge failed: {e:?}");
                         MergeCommitError::StorageError(e)

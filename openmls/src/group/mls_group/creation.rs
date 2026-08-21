@@ -1151,7 +1151,11 @@ impl MlsGroup {
         bindings.insert(public_group.group_context().epoch(), epoch_id, max_entries);
         provider
             .storage()
-            .write_vc_emulation_bindings(public_group.group_id(), &bindings)
+            .write_vc_emulation_bindings(
+                public_group.group_id(),
+                &bindings,
+                &bindings.bound_epoch_ids(),
+            )
             .map_err(Error::StorageError)?;
 
         let mls_group = MlsGroup {

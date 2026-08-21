@@ -194,14 +194,24 @@ pub trait StorageProvider<const VERSION: u16> {
     /// group and prunes its own entries in lockstep with the group's
     /// message-secrets retention. A subsequent write replaces any previously
     /// stored record.
+    ///
+    /// `bound_epochs` lists the distinct derivation epochs the record binds.
+    /// It is passed separately from the opaque record so that an
+    /// implementation can keep a projection from epoch to bound group and
+    /// answer the epoch-liveness query
+    /// ([`Self::has_vc_emulation_binding_for_epoch`]). The record is always
+    /// written whole, so an implementation must replace this group's
+    /// projection with `bound_epochs` rather than add to it.
     #[cfg(feature = "virtual-clients-draft")]
     fn write_vc_emulation_bindings<
         GroupId: traits::GroupId<VERSION>,
         VcEmulationBindings: traits::VcEmulationBindings<VERSION>,
+        EpochId: traits::VcEpochId<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         bindings: &VcEmulationBindings,
+        bound_epochs: &[EpochId],
     ) -> Result<(), Self::Error>;
 
     /// Record the derivation epoch an emulation group registered for its
@@ -597,6 +607,21 @@ pub trait StorageProvider<const VERSION: u16> {
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error>;
 
+    /// Return `true` if the emulation bindings of any higher-level group still
+    /// reference `epoch_id`. Used to keep a derivation epoch's state alive
+    /// while a group bound to it can still protect and deprotect messages
+    /// (see [`Self::delete_vc_derivation_epoch_state_if_unreferenced`]).
+    ///
+    /// The answer is derived from the `bound_epochs` of the last
+    /// [`Self::write_vc_emulation_bindings`] call per group, so a group whose
+    /// bindings were written by an older version of this trait is not
+    /// represented.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_vc_emulation_binding_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error>;
+
     //
     //     ---    deleters for group state    ---
     //
@@ -725,7 +750,8 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// Under the `virtual-clients-draft` feature, an implementation must also
     /// delete the retained virtual clients KeyPackage material stored for the
-    /// same reference (see [`Self::delete_retained_key_package_material`]).
+    /// same reference (see `delete_retained_key_package_material`, which only
+    /// exists under that feature).
     /// Deleting non-existent material is a no-op, so this is safe for
     /// KeyPackages that were never uploaded by a virtual client.
     fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
@@ -751,25 +777,26 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Delete all per-epoch state for the given derivation epoch (both the
     /// derivation epoch state and the Virtual Client Operation Secret Tree),
-    /// but only if no retained virtual clients KeyPackage material still
-    /// references it.
+    /// but only if nothing still references it.
+    ///
+    /// Two liveness sources are checked: retained virtual clients KeyPackage
+    /// material ([`Self::has_retained_key_package_material_for_epoch`]) and
+    /// the emulation bindings of higher-level groups
+    /// ([`Self::has_vc_emulation_binding_for_epoch`]).
     ///
     /// Returns `Ok(true)` if the epoch state was deleted, and `Ok(false)` if
-    /// it was kept because retained material still references the epoch. The
-    /// liveness check and the deletion belong together. Providers do not open
-    /// their own transaction, so an application using a transactional provider
-    /// (such as SQLite) should call this within a transaction, so a material
-    /// stored concurrently cannot be orphaned by a deletion that already
-    /// observed the epoch as unreferenced. The in-memory provider holds its
-    /// write lock across both.
+    /// it was kept because something still references the epoch.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_derivation_epoch_state_if_unreferenced<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error>;
 
-    /// Remove the per-epoch emulation bindings of the given group. Called
-    /// when the group is being deleted.
+    /// Remove the per-epoch emulation bindings of the given group, together
+    /// with the group's entries in the epoch projection that backs
+    /// [`Self::has_vc_emulation_binding_for_epoch`]. Called when the group is
+    /// being deleted. Once the group is gone, its bindings no longer keep any
+    /// derivation epoch alive.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_emulation_bindings<GroupId: traits::GroupId<VERSION>>(
         &self,

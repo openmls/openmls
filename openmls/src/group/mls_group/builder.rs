@@ -608,7 +608,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     bindings.insert(mls_group.epoch(), epoch_id, max_entries);
     provider
         .storage()
-        .write_vc_emulation_bindings(&group_id, &bindings)
+        .write_vc_emulation_bindings(&group_id, &bindings, &bindings.bound_epoch_ids())
         .map_err(NewGroupError::StorageError)?;
 
     mls_group

@@ -33,6 +33,63 @@ struct TestDerivationState(Vec<u8>);
 impl traits::VcDerivationEpochState<CURRENT_VERSION> for TestDerivationState {}
 impl Entity<CURRENT_VERSION> for TestDerivationState {}
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+struct TestGroupId(Vec<u8>);
+impl traits::GroupId<CURRENT_VERSION> for TestGroupId {}
+impl Key<CURRENT_VERSION> for TestGroupId {}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+struct TestEmulationBindings(Vec<u8>);
+impl traits::VcEmulationBindings<CURRENT_VERSION> for TestEmulationBindings {}
+impl Entity<CURRENT_VERSION> for TestEmulationBindings {}
+
+/// A group bound to a derivation epoch keeps that epoch's state alive, and
+/// dropping the group's bindings releases it.
+#[test]
+fn emulation_binding_keeps_epoch_state_alive() {
+    let storage = MemoryStorage::default();
+    let epoch_id = TestEpochId(b"BoundEpoch".to_vec());
+    let group_id = TestGroupId(b"group".to_vec());
+
+    storage
+        .write_vc_derivation_epoch_state(&epoch_id, &TestDerivationState(b"state".to_vec()))
+        .unwrap();
+    assert!(!storage
+        .has_vc_emulation_binding_for_epoch(&epoch_id)
+        .unwrap());
+
+    storage
+        .write_vc_emulation_bindings(
+            &group_id,
+            &TestEmulationBindings(b"bindings".to_vec()),
+            std::slice::from_ref(&epoch_id),
+        )
+        .unwrap();
+    assert!(storage
+        .has_vc_emulation_binding_for_epoch(&epoch_id)
+        .unwrap());
+
+    // No retained material references the epoch, so the binding alone has to
+    // keep the state.
+    assert!(!storage
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .unwrap());
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
+    assert!(read_state.is_some());
+
+    storage.delete_vc_emulation_bindings(&group_id).unwrap();
+    assert!(!storage
+        .has_vc_emulation_binding_for_epoch(&epoch_id)
+        .unwrap());
+    assert!(storage
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .unwrap());
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
+    assert!(read_state.is_none());
+}
+
 /// A batch write stores the operation tree and the retained material, the
 /// material ties the epoch into liveness, and the guarded delete keeps the
 /// epoch state while material references it but removes it afterwards.
