@@ -515,9 +515,8 @@ impl MlsGroup {
                 // with the message secrets they are needed for.
                 let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
                 bindings.insert(staged_commit.epoch(), epoch_id, max_entries);
-                provider
-                    .storage()
-                    .write_vc_emulation_bindings(self.group_id(), &bindings)
+                bindings
+                    .store(provider.storage(), self.group_id())
                     .map_err(|e| {
                         log::error!("vc: persist emulation bindings at merge failed: {e:?}");
                         MergeCommitError::StorageError(e)

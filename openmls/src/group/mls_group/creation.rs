@@ -1400,9 +1400,8 @@ impl MlsGroup {
             .unwrap_or_default();
         let max_entries = message_secrets_store.max_epochs.saturating_add(1);
         bindings.insert(public_group.group_context().epoch(), epoch_id, max_entries);
-        provider
-            .storage()
-            .write_vc_emulation_bindings(public_group.group_id(), &bindings)
+        bindings
+            .store(provider.storage(), public_group.group_id())
             .map_err(Error::StorageError)?;
 
         let mls_group = MlsGroup {

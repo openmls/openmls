@@ -688,9 +688,8 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         .unwrap_or_default();
     let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
     bindings.insert(mls_group.epoch(), epoch_id, max_entries);
-    provider
-        .storage()
-        .write_vc_emulation_bindings(&group_id, &bindings)
+    bindings
+        .store(provider.storage(), &group_id)
         .map_err(NewGroupError::StorageError)?;
 
     mls_group

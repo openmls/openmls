@@ -459,9 +459,12 @@ The implementation tracks the draft but does not yet cover everything in it:
   sequence of operations the code already supports.
 - VC Update proposals are not implemented. Only commits and external commits
   emit virtual-client leaves.
-- The `VirtualClientAction` coordination channel over SafeAAD (the draft's
-  `external_join` and `key_package_upload` actions) is not implemented. The
-  transport of the KeyPackage upload is left entirely to the application.
+- The `key_package_upload` action is carried and parsed, but nothing acts on it
+  automatically. The application decides whether to attach it to an
+  emulation-group commit, reads it back with
+  `ProcessedMessage::vc_commit_data()`, and calls
+  `process_vc_key_package_upload` itself. Only the `new_derivation_epoch` action
+  is acted on by the library.
 - Per-epoch state for dead derivation epochs is not garbage collected
   automatically.
 

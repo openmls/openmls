@@ -968,7 +968,7 @@ pub(crate) fn register_vc_derivation_epoch<
             RegisterVcDerivationEpochError::Storage(e)
         })?;
     storage
-        .write_registered_vc_derivation_epoch(group_id, &registered)
+        .write_registered_vc_derivation_epoch(group_id, &registered, &registered.epoch_id)
         .map_err(|e| {
             log::error!("vc: record newest derivation epoch at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
@@ -1003,6 +1003,31 @@ impl VcEmulationBindings {
             }
         }
         None
+    }
+
+    /// The derivation epochs this record binds, without duplicates and in
+    /// order of first appearance. A derivation epoch stays bound while the
+    /// virtual-client LeafNode it produced is active, so the same epoch id
+    /// usually appears under several higher-level epochs.
+    pub fn bound_epoch_ids(&self) -> Vec<EpochId> {
+        let mut epoch_ids = Vec::with_capacity(self.bindings.len());
+        for (_, epoch_id) in &self.bindings {
+            if !epoch_ids.contains(epoch_id) {
+                epoch_ids.push(epoch_id.clone());
+            }
+        }
+        epoch_ids
+    }
+
+    /// Persist this record for `group_id`, together with the derivation epochs
+    /// it binds. Storage keeps the state of a bound epoch alive, so the two
+    /// have to be written from the same record.
+    pub(crate) fn store<Storage: crate::storage::StorageProvider>(
+        &self,
+        storage: &Storage,
+        group_id: &GroupId,
+    ) -> Result<(), Storage::Error> {
+        storage.write_vc_emulation_bindings(group_id, self, &self.bound_epoch_ids())
     }
 
     /// Record `epoch_id` as the binding for `epoch`, keeping at most
@@ -1073,6 +1098,12 @@ impl EpochEncryptionKey {
 /// secret tree and keyed by [`EpochId`]. Bundles everything the library needs
 /// to emit a VC commit for this epoch and to XOR application message nonces
 /// with deterministic reuse guards.
+///
+/// This is the local storage encoding, not the draft's wire struct of the same
+/// name. The draft's version carries the `epoch_id` and the operation secret
+/// tree as fields, both of which are stored separately here and keyed by
+/// [`EpochId`], and calls the leaf count `leaf_count` rather than
+/// `emulation_group_size`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VcDerivationEpochState {
     /// The registering client's leaf index in the emulation group at

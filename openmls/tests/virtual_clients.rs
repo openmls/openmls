@@ -3431,14 +3431,53 @@ fn bound_group_fails_closed_when_derivation_state_missing_on_send() {
 
     let epoch_id = newest_epoch(&emulator_group, &provider);
     let _commit_msg = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
+
+    // The group's binding keeps the epoch state alive, so the guarded delete
+    // refuses while the binding is stored.
+    let bindings: VcEmulationBindings = provider
+        .storage()
+        .vc_emulation_bindings(alice_group.group_id())
+        .expect("read emulation bindings")
+        .expect("the VC commit bound the group");
+    assert!(!provider
+        .storage()
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .expect("guarded delete while bound"));
+
+    // Drop the binding. The emulator group's registration record alone still
+    // keeps the epoch state alive.
+    provider
+        .storage()
+        .delete_vc_emulation_bindings(alice_group.group_id())
+        .expect("drop emulation bindings");
+    assert!(!provider
+        .storage()
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .expect("guarded delete while registered"));
+
+    // Drop the registration too, delete the state, then put the binding back.
+    // That leaves the group bound to an epoch whose state is gone, which is
+    // the situation a corrupted or partially restored store can produce.
+    provider
+        .storage()
+        .delete_registered_vc_derivation_epoch(emulator_group.group_id())
+        .expect("drop registered derivation epoch");
     let deleted = provider
         .storage()
         .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
         .expect("delete derivation epoch state");
     assert!(
         deleted,
-        "no retained material, so the epoch state is deleted"
+        "nothing references the epoch, so the epoch state is deleted"
     );
+    provider
+        .storage()
+        .write_vc_emulation_bindings(
+            alice_group.group_id(),
+            &bindings,
+            &bindings.bound_epoch_ids(),
+        )
+        .expect("restore emulation bindings");
 
     let err = alice_group
         .create_message(&provider, &alice_signer, b"must not send")
