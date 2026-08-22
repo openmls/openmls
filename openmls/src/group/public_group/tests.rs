@@ -459,3 +459,102 @@ fn old_messages_with_blank_leaves() {
         .process_message(provider, app_in.try_into_protocol_message().unwrap())
         .expect("Alice failed to process David's message after Bob was removed");
 }
+
+// Out-of-range `unmerged_leaves` must be rejected, not passed to `direct_path`, which is only
+// defined for `leaf_index.u32() < size.leaf_count()`
+#[openmls_test::openmls_test]
+fn public_group_rejects_out_of_range_unmerged_leaf() {
+    use crate::test_utils::frankenstein::{FrankenNode, FrankenRatchetTreeExtension};
+    use crate::treesync::RatchetTreeIn;
+    use tls_codec::{Deserialize as _, Serialize as _};
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let public_provider = &Provider::default();
+
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, alice_provider);
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, bob_provider);
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .build();
+
+    let mut alice_group = MlsGroup::new_with_group_id(
+        alice_provider,
+        &alice_signer,
+        &mls_group_create_config,
+        GroupId::from_slice(b"Unmerged Leaf Test"),
+        alice_credential_with_key,
+    )
+    .expect("Could not create group.");
+
+    // Add Bob so the tree has a populated parent node.
+    alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            core::slice::from_ref(bob_kpb.key_package()),
+        )
+        .expect("Could not add member.");
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("Could not merge commit.");
+
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, false)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    let ratchet_tree_in: RatchetTreeIn = alice_group.export_ratchet_tree().into();
+    let leaf_count = 2u32; // Alice + Bob
+
+    // Both are a TLS vector of optional nodes, so they share a wire encoding.
+    let bytes = ratchet_tree_in.tls_serialize_detached().unwrap();
+    let franken = FrankenRatchetTreeExtension::tls_deserialize(&mut bytes.as_slice())
+        .expect("Could not view the ratchet tree as franken nodes.");
+
+    // `leaf_count` is the first invalid value; `u32::MAX` also overflows `to_tree_index`.
+    for bogus_leaf in [leaf_count, 100, u32::MAX] {
+        let mut tampered = franken.clone();
+        let mut patched_any = false;
+        for node in tampered.ratchet_tree.iter_mut() {
+            if let Some(FrankenNode::ParentNode(parent)) = node {
+                // A single entry is trivially sorted, so it passes the NotSorted check.
+                parent.unmerged_leaves = vec![bogus_leaf];
+                patched_any = true;
+            }
+        }
+        assert!(
+            patched_any,
+            "test setup is wrong: the tree has no non-blank parent node to tamper with"
+        );
+
+        let tampered_bytes = tampered.tls_serialize_detached().unwrap();
+
+        // Rejection at either boundary is fine: indices above `MAX_LEAF` fail to deserialize,
+        // the rest are caught against the tree size. What must not happen is acceptance, a
+        // panic, or divergence.
+        let Ok(tampered_tree) = RatchetTreeIn::tls_deserialize(&mut tampered_bytes.as_slice())
+        else {
+            continue;
+        };
+
+        let result = PublicGroup::from_external(
+            public_provider.crypto(),
+            public_provider.storage(),
+            tampered_tree,
+            verifiable_group_info.clone(),
+            ProposalStore::new(),
+        );
+
+        assert!(
+            result.is_err(),
+            "accepted a ratchet tree with unmerged leaf {bogus_leaf} outside a \
+             {leaf_count}-leaf tree"
+        );
+    }
+}
