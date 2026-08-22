@@ -1,0 +1,13 @@
+name = "Openmls"
+version = "0.1.0"
+defaultTargets = ["Openmls"]
+
+[[lean_lib]]
+name = "Openmls"
+roots = ["Openmls"]
+
+[[require]]
+name = "hax"
+git = "https://github.com/cryspen/hax"
+rev = "7e43f8a44b00c62f3cd2d11be0a2dd98cf6a309b"
+subDir = "hax-lib/proof-libs/lean"

@@ -17,3 +17,7 @@ fuzz/artifacts
 
 # AI
 .cursor/
+
+# Proofs
+*.lake/
+*.llbc
