@@ -72,6 +72,8 @@ impl LeafNodeIndex {
 #[attributes]
 impl LeafNodeIndex {
     /// Create a new `LeafNodeIndex` from a `u32`.
+    #[requires(index <= MAX_LEAF)]
+    #[ensures(|r| r.valid())]
     pub fn new(index: u32) -> Self {
         LeafNodeIndex(index)
     }
@@ -88,12 +90,14 @@ impl LeafNodeIndex {
 
     /// Return the index as a TreeNodeIndex value.
     #[requires(self.valid())]
+    #[ensures(|r| r <= MAX_TREE_INDEX && r % 2 == 0)]
     fn to_tree_index(self) -> u32 {
         self.0 * 2
     }
 
     /// Warning: Only use when the node index represents a leaf node
-    #[requires(node_index % 2 == 0)]
+    #[requires(node_index % 2 == 0 && node_index <= MAX_TREE_INDEX)]
+    #[ensures(|r| r.valid())]
     fn from_tree_index(node_index: u32) -> Self {
         debug_assert!(node_index.is_multiple_of(2));
         LeafNodeIndex(node_index / 2)
@@ -116,6 +120,8 @@ impl ParentNodeIndex {
 #[attributes]
 impl ParentNodeIndex {
     /// Create a new `ParentNodeIndex` from a `u32`.
+    #[requires(index <= MAX_PARENT)]
+    #[ensures(|r| r.valid())]
     pub(crate) fn new(index: u32) -> Self {
         ParentNodeIndex(index)
     }
@@ -131,12 +137,14 @@ impl ParentNodeIndex {
 
     /// Return the index as a TreeNodeIndex value.
     #[requires(self.valid())]
+    #[ensures(|r| r < MAX_TREE_INDEX && r % 2 == 1)]
     fn to_tree_index(self) -> u32 {
         self.0 * 2 + 1
     }
 
     /// Warning: Only use when the node index represents a parent node
-    #[requires(node_index % 2 == 1)]
+    #[requires(node_index % 2 == 1 && node_index <= MAX_TREE_INDEX)]
+    #[ensures(|r| r.valid())]
     fn from_tree_index(node_index: u32) -> Self {
         debug_assert!(node_index > 0);
         debug_assert!(node_index % 2 == 1);
@@ -458,13 +466,15 @@ pub(crate) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<Pare
 /// Copath of a leaf node.
 #[requires(size.valid() && leaf_index.u32() < size.leaf_count())]
 pub(crate) fn copath(leaf_index: LeafNodeIndex, size: TreeSize) -> Vec<TreeNodeIndex> {
+    let mut direct_path = direct_path(leaf_index, size);
+    if direct_path.is_empty() {
+        // The leaf is the root: its copath is empty.
+        return vec![];
+    }
+    // Remove the root
+    direct_path.pop();
     // Start with leaf
     let mut full_path = vec![TreeNodeIndex::Leaf(leaf_index)];
-    let mut direct_path = direct_path(leaf_index, size);
-    if !direct_path.is_empty() {
-        // Remove root
-        direct_path.pop();
-    }
     full_path.append(
         &mut direct_path
             .iter()
@@ -478,6 +488,7 @@ pub(crate) fn copath(leaf_index: LeafNodeIndex, size: TreeSize) -> Vec<TreeNodeI
 /// Common ancestor of two leaf nodes, aka the node where their direct paths
 /// intersect.
 #[requires(x.valid() && y.valid() && x.u32() != y.u32())]
+#[ensures(|r| r.valid())]
 pub(super) fn lowest_common_ancestor(x: LeafNodeIndex, y: LeafNodeIndex) -> ParentNodeIndex {
     let x = x.to_tree_index();
     let y = y.to_tree_index();
@@ -511,14 +522,18 @@ pub(crate) fn common_direct_path(
     x_path.reverse();
     y_path.reverse();
 
-    let mut common_path = vec![];
-
-    for (x, y) in x_path.iter().zip(y_path.iter()) {
-        if x == y {
-            common_path.push(*x);
+    let len = core::cmp::min(x_path.len(), y_path.len());
+    let mut common_path = Vec::with_capacity(len);
+    let mut i = 0;
+    while i < len {
+        let xi = x_path[i];
+        let yi = y_path[i];
+        if xi == yi {
+            common_path.push(xi);
         } else {
             break;
         }
+        i += 1;
     }
 
     common_path.reverse();
