@@ -549,9 +549,8 @@ pub(crate) fn node_width(n: usize) -> usize {
     }
 }
 
-#[requires(node_index.valid())]
 pub(crate) fn is_node_in_tree(node_index: TreeNodeIndex, size: TreeSize) -> bool {
-    node_index.u32() < size.u32()
+    node_index.valid() && node_index.u32() < size.u32()
 }
 
 #[test]
@@ -572,6 +571,17 @@ fn test_node_not_in_tree() {
         assert!(!is_node_in_tree(
             TreeNodeIndex::new(test.0),
             TreeSize::new(test.1)
+        ));
+    }
+}
+
+#[test]
+fn test_node_not_in_tree_wrapping() {
+    let tests = [1u32 << 31, u32::MAX];
+    for leaf in tests.iter() {
+        assert!(!is_node_in_tree(
+            TreeNodeIndex::Leaf(LeafNodeIndex::new(*leaf)),
+            TreeSize::new(3)
         ));
     }
 }
