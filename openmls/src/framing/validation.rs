@@ -35,10 +35,18 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
-    component::ComponentId, framing::safe_aad::SafeAad, messages::proposals_in::ProposalOrRefIn,
+    component::ComponentId,
+    framing::safe_aad::SafeAad,
+    group::{
+        errors::StageCommitError,
+        mls_group::{errors::ResolveAppDataCommitError, processing::UnresolvedAppDataCommit},
+    },
 };
+
+#[cfg(feature = "virtual-clients-draft")]
+use crate::components::vc_commit_data::{VcCommitDataError, VirtualClientCommitData};
 
 use super::{
     mls_auth_content::AuthenticatedContent,
@@ -47,6 +55,34 @@ use super::{
     public_message_in::PublicMessageIn,
     *,
 };
+
+/// Result of decrypting an inbound PrivateMessage: either content this client
+/// can process further, or a message this client authored itself, which it
+/// cannot decrypt.
+#[derive(Debug)]
+pub(crate) enum InboundDecryptionResult {
+    /// A message from another sender or from a sibling emulator client (with
+    /// the `virtual-clients-draft` feature), decrypted and ready for parsing.
+    Decrypted(DecryptedMessage),
+    /// A private message whose sender data claims this client's own leaf.
+    /// Carries the plaintext framing fields needed to build the
+    /// [`ProcessedMessage`], since the content itself cannot be decrypted.
+    OwnPrivateMessage {
+        epoch: GroupEpoch,
+        authenticated_data: Vec<u8>,
+    },
+}
+
+impl InboundDecryptionResult {
+    /// Returns the decrypted message, or `None` for an own private message.
+    #[cfg(test)]
+    pub(crate) fn into_decrypted(self) -> Option<DecryptedMessage> {
+        match self {
+            Self::Decrypted(message) => Some(message),
+            Self::OwnPrivateMessage { .. } => None,
+        }
+    }
+}
 
 /// Intermediate message that can be constructed either from a public message or from private message.
 /// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.
@@ -113,7 +149,7 @@ impl DecryptedMessage {
         #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<
             &crate::framing::private_message::EmulatorReuseGuardCtx<'_>,
         >,
-    ) -> Result<Self, ValidationError> {
+    ) -> Result<InboundDecryptionResult, ValidationError> {
         // This will be refactored with #265.
         let ciphersuite = group.ciphersuite();
         // TODO: #819 The old leaves should not be needed any more.
@@ -122,21 +158,43 @@ impl DecryptedMessage {
             .message_secrets_and_leaves(ciphertext.epoch())
             .map_err(MessageDecryptionError::SecretTreeError)?;
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
-        // Check if we are the sender. With the `virtual-clients` feature,
-        // decrypting own messages is allowed, so we skip this check
+        let own_sender = sender_data.leaf_index == group.own_leaf_index();
+        // If we are the sender, the content cannot be decrypted and the
+        // signature cannot be verified: the own sender ratchet only produces
+        // encryption keys. Return early before touching any ratchet state so
+        // no decryption counter is consumed and no spurious "generation out
+        // of bounds" error is logged for an own echo.
+        //
+        // With the `virtual-clients-draft` feature, own-leaf messages are only
+        // decryptable when there is an emulator context for this epoch: a
+        // sibling emulator client shares the leaf, and the dual-use ratchet
+        // retains the secrets of unconfirmed own sends. In that case we still
+        // attempt decryption below, and only its failure surfaces the message
+        // as an own private message.
+        //
+        // Without an emulator context the group does not use virtual clients
+        // (which is the case for the emulation group) so an own message is
+        // unambiguously our own echo and we short-circuit just like the non-VC
+        // path.
         #[cfg(not(feature = "virtual-clients-draft"))]
-        if sender_data.leaf_index == group.own_leaf_index() {
-            return Err(ValidationError::CannotDecryptOwnMessage);
+        let short_circuit_own = own_sender;
+        #[cfg(feature = "virtual-clients-draft")]
+        let short_circuit_own = own_sender && emulator_ctx.is_none();
+        if short_circuit_own {
+            return Ok(InboundDecryptionResult::OwnPrivateMessage {
+                epoch: ciphertext.epoch(),
+                authenticated_data: ciphertext.aad().to_vec(),
+            });
         }
         #[cfg(feature = "virtual-clients-draft")]
         let effective_emulator_ctx = match emulator_ctx {
-            Some(ctx) if sender_data.leaf_index == group.own_leaf_index() => Some(ctx),
+            Some(ctx) if own_sender => Some(ctx),
             _ => None,
         };
         let message_secrets = group
             .message_secrets_for_epoch_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let decrypted = ciphertext.to_verifiable_content(
+        let decrypt_result = ciphertext.to_verifiable_content(
             ciphersuite,
             crypto,
             message_secrets,
@@ -145,12 +203,14 @@ impl DecryptedMessage {
             sender_data,
             #[cfg(feature = "virtual-clients-draft")]
             effective_emulator_ctx,
-        )?;
+        );
+        let decrypted = decrypt_result?;
         Self::from_verifiable_content(
             decrypted.verifiable,
             #[cfg(feature = "virtual-clients-draft")]
             decrypted.emulator_sender_leaf_index,
         )
+        .map(InboundDecryptionResult::Decrypted)
     }
 
     // Internal constructor function. Does the following checks:
@@ -323,12 +383,6 @@ impl UnverifiedMessage {
             emulator_sender_leaf_index: self.emulator_sender_leaf_index,
         })
     }
-
-    /// Get the proposals of the commit, if it is one. If not, return `None`.
-    #[cfg(feature = "extensions-draft-08")]
-    pub fn committed_proposals(&self) -> Option<&[ProposalOrRefIn]> {
-        self.verifiable_content.committed_proposals()
-    }
 }
 
 /// A message that has passed all syntax and semantics checks.
@@ -345,11 +399,11 @@ pub struct ProcessedMessage {
     emulator_sender_leaf_index: Option<LeafNodeIndex>,
     /// Parsed Safe AAD prefix, populated only when the message's GroupContext
     /// required Safe AAD framing. `None` otherwise.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     safe_aad: Option<SafeAad>,
     /// Length in bytes of the Safe AAD prefix at the start of
     /// `authenticated_data`. Zero when [`Self::safe_aad`] is `None`.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     safe_aad_prefix_len: usize,
 }
 
@@ -373,11 +427,31 @@ impl ProcessedMessage {
             credential,
             #[cfg(feature = "virtual-clients-draft")]
             emulator_sender_leaf_index,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             safe_aad: None,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             safe_aad_prefix_len: 0,
         }
+    }
+
+    /// Swaps an [`ProcessedMessageContent::UnresolvedAppDataCommit`] for the
+    /// [`StagedCommit`] produced by `stage`, keeping all other fields (sender,
+    /// credential, authenticated data, Safe AAD state) intact.
+    ///
+    /// Returns an error if the content is not an unresolved app data commit;
+    /// the message is consumed either way.
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) fn resolve_app_data_commit(
+        mut self,
+        stage: impl FnOnce(UnresolvedAppDataCommit) -> Result<StagedCommit, StageCommitError>,
+    ) -> Result<Self, ResolveAppDataCommitError> {
+        let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) = self.content
+        else {
+            return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
+        };
+        let staged_commit = stage(*unresolved_commit)?;
+        self.content = ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
+        Ok(self)
     }
 
     /// Parse the Safe AAD prefix at the start of `authenticated_data` and
@@ -385,7 +459,7 @@ impl ProcessedMessage {
     /// group's GroupContext requires Safe AAD framing. Otherwise, `safe_aad`
     /// stays `None` and `authenticated_data` is the caller-supplied bytes
     /// untouched.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn try_attach_safe_aad(&mut self) -> Result<(), crate::framing::SafeAadError> {
         let (safe_aad, prefix_len) =
             crate::framing::safe_aad::parse_authenticated_data_prefix(&self.authenticated_data)?;
@@ -396,22 +470,37 @@ impl ProcessedMessage {
 
     /// Returns the parsed Safe AAD struct, or `None` if Safe AAD was not
     /// active for the group this message belongs to.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_aad(&self) -> Option<&SafeAad> {
         self.safe_aad.as_ref()
     }
 
     /// Look up a Safe AAD item by [`ComponentId`].
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_aad_item(&self, component_id: crate::component::ComponentId) -> Option<&[u8]> {
         self.safe_aad
             .as_ref()
             .and_then(|safe_aad| safe_aad.get(component_id))
     }
 
+    /// Parse the virtual-clients commit data from this message's Safe AAD.
+    ///
+    /// Returns `Ok(None)` when the message carries no Safe AAD item under
+    /// [`VC_COMPONENT_ID`], which includes the case where Safe AAD was not
+    /// active for the group.
+    ///
+    /// [`VC_COMPONENT_ID`]: crate::components::vc_derivation_info::VC_COMPONENT_ID
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_commit_data(&self) -> Result<Option<VirtualClientCommitData>, VcCommitDataError> {
+        let Some(safe_aad) = self.safe_aad.as_ref() else {
+            return Ok(None);
+        };
+        VirtualClientCommitData::from_safe_aad(safe_aad)
+    }
+
     /// Returns the bytes of `authenticated_data` after any Safe AAD prefix.
     /// Equal to [`Self::aad`] when no Safe AAD prefix is present.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn tail_aad(&self) -> &[u8] {
         &self.authenticated_data[self.safe_aad_prefix_len..]
     }
@@ -460,7 +549,7 @@ impl ProcessedMessage {
 
     /// Safely export a value if the content of the processed message is a
     /// [`StagedCommit`].
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_export_secret<Crypto: OpenMlsCrypto>(
         &mut self,
         crypto: &Crypto,
@@ -508,6 +597,82 @@ pub enum ProcessedMessageContent {
     /// the commit should be merged into the group's state using
     /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
     StagedCommitMessage(Box<StagedCommit>),
+    /// A Commit authored by this client that it got fanned out by the delivery
+    /// service, matching the group's pending commit.
+    ///
+    /// This is returned instead of
+    /// [`StagedCommitMessage`](Self::StagedCommitMessage) when the processed
+    /// Commit was created by this client and matches the group's pending commit.
+    /// Since this client already holds the corresponding pending commit, the
+    /// incoming Commit is not staged. To apply it, merge the pending commit
+    /// using
+    /// [`MlsGroup::merge_pending_commit()`](crate::group::mls_group::MlsGroup::merge_pending_commit()).
+    /// An own Commit that does not match the pending commit is instead returned
+    /// as a [`StagedCommitMessage`](Self::StagedCommitMessage) (if it has no
+    /// UpdatePath) or rejected (if it has an UpdatePath we cannot decrypt).
+    ///
+    /// The match against the pending commit is established by comparing the
+    /// confirmation tag of the incoming Commit against the one stored with the
+    /// pending commit. The message signature has already been verified, which
+    /// authenticates the Commit as ours, and a matching confirmation tag binds
+    /// the confirmed transcript hash of the new epoch. We do not otherwise
+    /// compare the contents of the incoming Commit against the pending commit,
+    /// and the incoming Commit's state is never adopted.
+    ///
+    /// This is only produced for Commits framed as
+    /// [`PublicMessage`](crate::framing::MlsMessageBodyIn::PublicMessage). A
+    /// Commit framed as a
+    /// [`PrivateMessage`](crate::framing::MlsMessageBodyIn::PrivateMessage)
+    /// cannot be decrypted by its own author and instead surfaces as
+    /// [`OwnPrivateMessage`](Self::OwnPrivateMessage). The exception is the
+    /// `virtual-clients-draft` feature, where an own private Commit whose
+    /// encryption secret is still retained (not yet confirmed) decrypts and
+    /// can produce this variant as well. Under that feature the pending-commit
+    /// match is checked before any sibling-commit (virtual clients) material is
+    /// loaded, so an own Commit fanned back by the delivery service surfaces as
+    /// `OwnPendingCommit` without consuming an operation-secret generation from
+    /// the derivation epoch's operation secret tree.
+    OwnPendingCommit,
+    /// A PrivateMessage whose sender data claims this client's own leaf index,
+    /// i.e. a message this client authored that the delivery service fanned
+    /// back.
+    ///
+    /// The content cannot be decrypted (the own sender ratchet is
+    /// encryption-only) and the signature cannot be verified.
+    ///
+    /// Applications should treat this variant as a hint to skip the message.
+    /// The content type of the incoming message (application/proposal/commit)
+    /// is available via `ProtocolMessage::content_type()` before processing,
+    /// and is unauthenticated plaintext in the PrivateMessage framing.
+    ///
+    /// With the `virtual-clients-draft` feature, own-leaf messages are
+    /// decryptable while their secrets are retained: unconfirmed own sends
+    /// and messages from sibling emulator clients decrypt and process
+    /// normally. This variant is then only returned in groups that do not
+    /// use virtual clients (no derivation epoch state registered for the
+    /// message's epoch), when decryption of an own message fails, e.g. because
+    /// the send was already confirmed via
+    /// `MlsGroup::confirm_application_message()`.
+    OwnPrivateMessage,
+    /// A Commit message covering AppDataUpdate proposals.
+    ///
+    /// The proposals carry diffs in an application-defined format, so the
+    /// commit cannot be staged before the application has interpreted them and
+    /// computed the resulting dictionary entries. Inspect the proposals via
+    /// [`UnresolvedAppDataCommit::app_data_update_proposals()`], compute the
+    /// updates with the help of
+    /// [`MlsGroup::app_data_dictionary_updater()`](crate::group::mls_group::MlsGroup::app_data_dictionary_updater)
+    /// and resume staging via
+    /// [`MlsGroup::stage_app_data_commit()`](crate::group::mls_group::MlsGroup::stage_app_data_commit).
+    ///
+    /// This variant is likewise returned by
+    /// [`PublicGroup::process_message()`](crate::group::public_group::PublicGroup::process_message),
+    /// where the updates are computed with
+    /// [`PublicGroup::app_data_dictionary_updater()`](crate::group::public_group::PublicGroup::app_data_dictionary_updater)
+    /// and staging resumes via
+    /// [`PublicGroup::stage_app_data_commit()`](crate::group::public_group::PublicGroup::stage_app_data_commit).
+    #[cfg(feature = "extensions-draft")]
+    UnresolvedAppDataCommit(Box<UnresolvedAppDataCommit>),
 }
 
 /// Application message received through a [ProcessedMessage].

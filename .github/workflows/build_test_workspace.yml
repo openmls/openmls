@@ -4,17 +4,7 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - '**/*.md'
-      - 'book/**'
-      - 'LICENSE*'
-      - '.gitignore'
   pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'book/**'
-      - 'LICENSE*'
-      - '.gitignore'
   workflow_dispatch:
 
 concurrency:
@@ -40,7 +30,7 @@ jobs:
       - name: Install dependencies
         if: matrix.os == 'macos-latest'
         run: brew install protobuf
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -54,7 +44,7 @@ jobs:
           cargo test --workspace --all-targets --exclude=openmls --exclude openmls-fuzz
       - name: Build workspace with experimental features
         run: |
-          cargo build --workspace -F extensions-draft-08,draft-ietf-mls-pq-ciphersuites --all-targets --exclude openmls-fuzz
+          cargo build --workspace -F extensions-draft,draft-ietf-mls-pq-ciphersuites --all-targets --exclude openmls-fuzz
       - name: Test workspace with experimental features
         run: |
-          cargo test --workspace -F extensions-draft-08,draft-ietf-mls-pq-ciphersuites --all-targets --exclude=openmls --exclude openmls-fuzz
+          cargo test --workspace -F extensions-draft,draft-ietf-mls-pq-ciphersuites --all-targets --exclude=openmls --exclude openmls-fuzz

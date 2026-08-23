@@ -33,27 +33,6 @@ pub struct MlsMessageOut {
 /// `public_message`, `private_message`, etc., we don't use the
 /// `wire_format` field. This prevents inconsistent assignments
 /// where `wire_format` contradicts the variant given in `body`.
-///
-/// ```c
-/// // draft-ietf-mls-protocol-17
-/// struct {
-///     // ... continued from [MlsMessage] ...
-///
-///     WireFormat wire_format;
-///     select (MLSMessage.wire_format) {
-///         case mls_plaintext:
-///             PublicMessage plaintext;
-///         case mls_ciphertext:
-///             PrivateMessage ciphertext;
-///         case mls_welcome:
-///             Welcome welcome;
-///         case mls_group_info:
-///             GroupInfo group_info;
-///         case mls_key_package:
-///             KeyPackage key_package;
-///     }
-/// } MLSMessage;
-/// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, serde::Serialize, serde::Deserialize)]
 #[repr(u16)]
 pub enum MlsMessageBodyOut {
@@ -77,6 +56,12 @@ pub enum MlsMessageBodyOut {
     #[tls_codec(discriminant = 5)]
     #[allow(dead_code)]
     KeyPackage(KeyPackage),
+
+    /// Targeted message (draft-ietf-mls-targeted-messages)
+    #[cfg(feature = "targeted-messages-draft")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
+    #[tls_codec(discriminant = 6)]
+    TargetedMessage(crate::targeted_messages::TargetedMessage),
 }
 
 impl From<PublicMessage> for MlsMessageOut {
@@ -120,6 +105,17 @@ impl From<KeyPackageBundle> for MlsMessageOut {
         Self {
             version: key_package.key_package().protocol_version(),
             body: MlsMessageBodyOut::KeyPackage(key_package.key_package),
+        }
+    }
+}
+
+#[cfg(feature = "targeted-messages-draft")]
+#[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
+impl From<crate::targeted_messages::TargetedMessage> for MlsMessageOut {
+    fn from(targeted_message: crate::targeted_messages::TargetedMessage) -> Self {
+        Self {
+            version: ProtocolVersion::default(),
+            body: MlsMessageBodyOut::TargetedMessage(targeted_message),
         }
     }
 }
@@ -203,6 +199,8 @@ impl From<MlsMessageBodyOut> for MlsMessageBodyIn {
                 MlsMessageBodyIn::GroupInfo(gi.into_verifiable_group_info())
             }
             MlsMessageBodyOut::KeyPackage(kp) => MlsMessageBodyIn::KeyPackage(kp.into()),
+            #[cfg(feature = "targeted-messages-draft")]
+            MlsMessageBodyOut::TargetedMessage(tm) => MlsMessageBodyIn::TargetedMessage(tm.into()),
         }
     }
 }
@@ -230,6 +228,8 @@ impl From<MlsMessageIn> for MlsMessageOut {
             MlsMessageBodyIn::KeyPackage(kp) => MlsMessageBodyOut::KeyPackage(kp.into()),
             MlsMessageBodyIn::PublicMessage(pm) => MlsMessageBodyOut::PublicMessage(pm.into()),
             MlsMessageBodyIn::PrivateMessage(pm) => MlsMessageBodyOut::PrivateMessage(pm.into()),
+            #[cfg(feature = "targeted-messages-draft")]
+            MlsMessageBodyIn::TargetedMessage(tm) => MlsMessageBodyOut::TargetedMessage(tm.into()),
         };
         Self { version, body }
     }

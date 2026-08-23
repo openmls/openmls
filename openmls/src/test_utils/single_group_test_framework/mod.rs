@@ -230,6 +230,14 @@ impl<Provider: OpenMlsProvider> MemberState<'_, Provider> {
             ProcessedMessageContent::StagedCommitMessage(m) => self
                 .group
                 .merge_staged_commit(&self.party.core_state.provider, *m)?,
+            ProcessedMessageContent::OwnPendingCommit => self
+                .group
+                .merge_pending_commit(&self.party.core_state.provider)?,
+            // Own PrivateMessages echoed by the DS cannot be decrypted, so skip
+            // them.
+            ProcessedMessageContent::OwnPrivateMessage => {}
+            #[cfg(feature = "extensions-draft")]
+            ProcessedMessageContent::UnresolvedAppDataCommit(_) => todo!(),
         };
 
         Ok(())

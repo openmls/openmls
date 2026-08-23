@@ -27,7 +27,7 @@ use super::PublicGroupDiff;
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) enum CommitType {
-    External(CredentialWithKey),
+    External,
     Member,
 }
 
@@ -57,50 +57,62 @@ impl PublicGroupDiff<'_> {
     ) -> Result<PathComputationResult, CreateCommitError> {
         let ciphersuite = self.group_context().ciphersuite();
 
-        let leaf_node_params = if let CommitType::External(credential_with_key) = commit_type {
-            let capabilities = match leaf_node_params.capabilities() {
-                Some(c) => c.to_owned(),
-                None => Capabilities::default(),
-            };
+        let leaf_node_params = match commit_type {
+            CommitType::External => {
+                // An external committer has no leaf to fall back on, so the
+                // credential must come with the leaf node parameters. The
+                // commit builder sets it from the credential passed to the
+                // external commit builder.
+                let credential_with_key = leaf_node_params
+                    .credential_with_key()
+                    .cloned()
+                    .ok_or(CreateCommitError::MissingCredential)?;
 
-            let extensions = match leaf_node_params.extensions() {
-                Some(e) => e.to_owned(),
-                None => Extensions::default(),
-            };
+                let capabilities = match leaf_node_params.capabilities() {
+                    Some(c) => c.to_owned(),
+                    None => Capabilities::default(),
+                };
 
-            UpdateLeafNodeParams {
-                credential_with_key: credential_with_key.clone(),
-                capabilities,
-                extensions,
+                let extensions = match leaf_node_params.extensions() {
+                    Some(e) => e.to_owned(),
+                    None => Extensions::default(),
+                };
+
+                UpdateLeafNodeParams {
+                    credential_with_key,
+                    capabilities,
+                    extensions,
+                }
             }
-        } else {
-            let leaf = self
-                .diff
-                .leaf(leaf_index)
-                .ok_or_else(|| LibraryError::custom("Couldn't find own leaf"))?;
+            CommitType::Member => {
+                let leaf = self
+                    .diff
+                    .leaf(leaf_index)
+                    .ok_or_else(|| LibraryError::custom("Couldn't find own leaf"))?;
 
-            let credential_with_key = match leaf_node_params.credential_with_key() {
-                Some(cwk) => cwk.to_owned(),
-                None => CredentialWithKey {
-                    credential: leaf.credential().clone(),
-                    signature_key: leaf.signature_key().clone(),
-                },
-            };
+                let credential_with_key = match leaf_node_params.credential_with_key() {
+                    Some(cwk) => cwk.to_owned(),
+                    None => CredentialWithKey {
+                        credential: leaf.credential().clone(),
+                        signature_key: leaf.signature_key().clone(),
+                    },
+                };
 
-            let capabilities = match leaf_node_params.capabilities() {
-                Some(c) => c.to_owned(),
-                None => leaf.capabilities().clone(),
-            };
+                let capabilities = match leaf_node_params.capabilities() {
+                    Some(c) => c.to_owned(),
+                    None => leaf.capabilities().clone(),
+                };
 
-            let extensions = match leaf_node_params.extensions() {
-                Some(e) => e.to_owned(),
-                None => leaf.extensions().clone(),
-            };
+                let extensions = match leaf_node_params.extensions() {
+                    Some(e) => e.to_owned(),
+                    None => leaf.extensions().clone(),
+                };
 
-            UpdateLeafNodeParams {
-                credential_with_key,
-                capabilities,
-                extensions,
+                UpdateLeafNodeParams {
+                    credential_with_key,
+                    capabilities,
+                    extensions,
+                }
             }
         };
 

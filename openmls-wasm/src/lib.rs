@@ -242,6 +242,8 @@ impl Group {
             openmls::framing::MlsMessageBodyIn::Welcome(_) => todo!(),
             openmls::framing::MlsMessageBodyIn::GroupInfo(_) => todo!(),
             openmls::framing::MlsMessageBodyIn::KeyPackage(_) => todo!(),
+            #[cfg(feature = "targeted-messages-draft")]
+            openmls::framing::MlsMessageBodyIn::TargetedMessage(_) => todo!(),
         };
 
         match msg.into_content() {
@@ -258,6 +260,17 @@ impl Group {
                 self.mls_group
                     .merge_staged_commit(provider.as_mut(), *staged_commit)?;
                 Ok(vec![])
+            }
+            openmls::framing::ProcessedMessageContent::OwnPendingCommit => {
+                self.mls_group.merge_pending_commit(provider.as_mut())?;
+                Ok(vec![])
+            }
+            // Own PrivateMessages echoed by the DS cannot be decrypted, so skip
+            // them.
+            openmls::framing::ProcessedMessageContent::OwnPrivateMessage => Ok(vec![]),
+            #[cfg(feature = "extensions-draft")]
+            openmls::framing::ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+                unimplemented!("openmls-wasm does not support AppDataUpdate proposals")
             }
         }
     }

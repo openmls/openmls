@@ -118,14 +118,14 @@ impl MemoryStorage {
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
         // fetch value from db, falling back to an empty list if doens't exist
-        let list_bytes = values.entry(storage_key).or_insert(b"[]".to_vec());
+        let list_bytes = values.entry(storage_key).or_insert_with(|| b"[]".to_vec());
 
         // parse old value and push new data
         let mut list: Vec<Vec<u8>> = serde_json::from_slice(list_bytes)?;
         list.push(value);
 
         // write back, reusing the old buffer
-        list_bytes.truncate(0);
+        list_bytes.clear();
         serde_json::to_writer(list_bytes, &list)?;
 
         Ok(())
@@ -145,7 +145,7 @@ impl MemoryStorage {
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
         // fetch value from db, falling back to an empty list if doens't exist
-        let list_bytes = values.entry(storage_key).or_insert(b"[]".to_vec());
+        let list_bytes = values.entry(storage_key).or_insert_with(|| b"[]".to_vec());
 
         // parse old value, find value to delete and remove it from list
         let mut list: Vec<Vec<u8>> = serde_json::from_slice(list_bytes)?;
@@ -154,7 +154,7 @@ impl MemoryStorage {
         }
 
         // write back, reusing the old buffer
-        list_bytes.truncate(0);
+        list_bytes.clear();
         serde_json::to_writer(list_bytes, &list)?;
 
         Ok(())
@@ -257,12 +257,14 @@ const EPOCH_KEY_PAIRS_LABEL: &[u8] = b"EpochKeyPairs";
 // related to PublicGroup
 const TREE_LABEL: &[u8] = b"Tree";
 const GROUP_CONTEXT_LABEL: &[u8] = b"GroupContext";
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 const APPLICATION_EXPORT_TREE_LABEL: &[u8] = b"ApplicationExportTree";
 #[cfg(feature = "virtual-clients-draft")]
-const VC_EMULATION_EPOCH_STATE_LABEL: &[u8] = b"VcEmulationEpochState";
+const VC_DERIVATION_EPOCH_STATE_LABEL: &[u8] = b"VcDerivationEpochState";
 #[cfg(feature = "virtual-clients-draft")]
 const VC_EMULATION_BINDING_LABEL: &[u8] = b"VcEmulationBinding";
+#[cfg(feature = "virtual-clients-draft")]
+const REGISTERED_VC_DERIVATION_EPOCH_LABEL: &[u8] = b"RegisteredVcDerivationEpoch";
 #[cfg(feature = "virtual-clients-draft")]
 const VC_OPERATION_TREE_LABEL: &[u8] = b"VcOperationTree";
 #[cfg(feature = "virtual-clients-draft")]
@@ -994,7 +996,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         self.delete::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, &key)
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
@@ -1010,7 +1012,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn application_export_tree<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
@@ -1029,7 +1031,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         Ok(value)
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<CURRENT_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<CURRENT_VERSION>,
@@ -1044,31 +1046,31 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_emulation_epoch_state<
+    fn write_vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<CURRENT_VERSION>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<CURRENT_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-        vc_emulation_epoch_state: &VcEmulationEpochState,
+        vc_derivation_epoch_state: &VcDerivationEpochState,
     ) -> Result<(), Self::Error> {
         self.write::<CURRENT_VERSION>(
-            VC_EMULATION_EPOCH_STATE_LABEL,
+            VC_DERIVATION_EPOCH_STATE_LABEL,
             &serde_json::to_vec(epoch_id).unwrap(),
-            serde_json::to_vec(vc_emulation_epoch_state).unwrap(),
+            serde_json::to_vec(vc_derivation_epoch_state).unwrap(),
         )
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_epoch_state<
+    fn vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<CURRENT_VERSION>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<CURRENT_VERSION>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<CURRENT_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
+    ) -> Result<Option<VcDerivationEpochState>, Self::Error> {
         let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_EMULATION_EPOCH_STATE_LABEL, epoch_id);
+        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_DERIVATION_EPOCH_STATE_LABEL, epoch_id);
         let Some(value) = values.get(&key) else {
             return Ok(None);
         };
@@ -1076,7 +1078,9 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_state_if_unreferenced<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
+    fn delete_vc_derivation_epoch_state_if_unreferenced<
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+    >(
         &self,
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error> {
@@ -1091,7 +1095,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             return Ok(false);
         }
         let state_key = build_key_from_vec::<CURRENT_VERSION>(
-            VC_EMULATION_EPOCH_STATE_LABEL,
+            VC_DERIVATION_EPOCH_STATE_LABEL,
             serialized_epoch_id.clone(),
         );
         let tree_key =
@@ -1140,6 +1144,50 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     ) -> Result<(), Self::Error> {
         self.delete::<CURRENT_VERSION>(
             VC_EMULATION_BINDING_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_registered_vc_derivation_epoch<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        registered: &RegisteredVcDerivationEpoch,
+    ) -> Result<(), Self::Error> {
+        self.write::<CURRENT_VERSION>(
+            REGISTERED_VC_DERIVATION_EPOCH_LABEL,
+            &serde_json::to_vec(group_id).unwrap(),
+            serde_json::to_vec(registered).unwrap(),
+        )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn registered_vc_derivation_epoch<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<RegisteredVcDerivationEpoch>, Self::Error> {
+        let values = self.values.read().unwrap();
+        let key =
+            build_key::<CURRENT_VERSION, &GroupId>(REGISTERED_VC_DERIVATION_EPOCH_LABEL, group_id);
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        Ok(serde_json::from_slice(value).unwrap())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_registered_vc_derivation_epoch<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        self.delete::<CURRENT_VERSION>(
+            REGISTERED_VC_DERIVATION_EPOCH_LABEL,
             &serde_json::to_vec(group_id).unwrap(),
         )
     }

@@ -364,6 +364,8 @@ pub fn run_test_vector(
                     #[cfg(feature = "virtual-clients-draft")]
                     None,
                 )
+                .unwrap()
+                .into_decrypted()
                 .unwrap();
 
             let processed_unverified_message = group

@@ -6,23 +6,27 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{
-    DeserializeBytes, Serialize as _, Size as _, TlsDeserializeBytes, TlsSerialize, TlsSize,
-    VLBytes,
+    DeserializeBytes, SecretVLByteVec, Serialize as _, Size as _, TlsDeserializeBytes,
+    TlsSerialize, TlsSize, VLByteSlice, VLByteVec,
 };
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::{hash_ref::KeyPackageRef, Secret},
+    components::vc_operation_tree::OperationSecretTree,
+    group::{mls_group::errors::RegisterVcDerivationEpochError, GroupEpoch, GroupId},
+    key_packages::InitKey,
     messages::PathSecret,
+    schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
     treesync::node::encryption_keys::EncryptionKeyPair,
 };
 
 /// Component ID under which the virtual-clients derivation info is carried in
 /// the leaf node's `app_data_dictionary` extension.
 ///
-/// `0x0006` is the value the draft suggests for IANA registration, which is
-/// still pending.
-pub const VC_COMPONENT_ID: u16 = 0x0006;
+/// `0x667A` is the temporary, random value until the draft is further along the
+/// publication process.
+pub const VC_COMPONENT_ID: u16 = 0x667A;
 
 // Operation-secret child labels. Each child is derived from the per-operation
 // secret produced by the per-epoch operation secret tree. `Encryption Key`
@@ -33,12 +37,18 @@ pub const VC_COMPONENT_ID: u16 = 0x0006;
 const ENCRYPTION_KEY_LABEL: &str = "Encryption Key";
 const PATH_GENERATION_LABEL: &str = "Path Generation";
 const INIT_KEY_LABEL: &str = "Init Key";
-/// `ExpandWithLabel` label for the per-KeyPackage seed secret derived from a
+/// `ImportSecret` label for the per-KeyPackage seed secret derived from a
 /// `key_package` operation secret (mls-virtual-clients draft, batch KeyPackage
 /// derivation). One operation secret covers a batch of KeyPackages, and each
-/// KeyPackage's seed is expanded from it using the KeyPackage's index as the
-/// context.
-const KEY_PACKAGE_SEED_LABEL: &str = "key package seed";
+/// KeyPackage's seed is imported from it using the KeyPackage's ciphersuite
+/// and index as the context.
+const KEY_PACKAGE_SEED_LABEL: &str = "vc key package seed";
+/// `ImportSecret` label for `target_operation_secret` of a `leaf_node`:
+/// imports operation secret into the higher-level group's ciphersuite.
+const TARGET_OPERATION_LABEL: &str = "vc target operation";
+/// `DeriveSecret` label for the epoch-0 `epoch_secret` a group creator derives
+/// from its KeyPackage seed secret (mls-virtual-clients draft, group creation).
+const GROUP_CREATION_LABEL: &str = "Group Creation";
 
 /// `ExpandWithLabel` label for the [`DerivationInfoTbe`] AEAD key derived
 /// from the per-epoch [`EpochEncryptionKey`].
@@ -54,6 +64,10 @@ const EPOCH_BASE_SECRET_LABEL: &str = "Base Secret";
 const REUSE_GUARD_LABEL: &str = "Reuse Guard";
 /// `DeriveSecret` label for [`GenerationIdSecret`].
 const GENERATION_ID_LABEL: &str = "Generation ID Secret";
+/// `ExpandWithLabel` label for a [`GenerationId`] derived from a
+/// [`GenerationIdSecret`] over a serialized [`PrivateMessageContext`]
+/// (mls-virtual-clients draft, generation-ID section).
+const GENERATION_ID_EXPAND_LABEL: &str = "generation id";
 /// `ExpandWithLabel` label for the 16-byte FF1 PRP key derived from a
 /// [`ReuseGuardSecret`] (mls-virtual-clients draft, Reuse Guard section).
 const REUSE_GUARD_PRP_KEY_LABEL: &str = "reuse guard";
@@ -74,10 +88,15 @@ pub enum VirtualClientsError {
     /// epoch.
     #[error("No virtual-clients operation secret tree for this epoch.")]
     MissingOperationTree,
-    /// No virtual-clients `EmulationEpochState` was registered for this
+    /// No virtual-clients `VcDerivationEpochState` was registered for this
     /// epoch, or it has been deleted.
-    #[error("No virtual-clients emulation-epoch state for this epoch.")]
-    MissingEmulationEpochState,
+    #[error("No virtual-clients derivation-epoch state for this epoch.")]
+    MissingDerivationEpochState,
+    /// No derivation epoch is registered for the group a new virtual-client
+    /// operation was resolved against. The operation requires that group to be
+    /// an emulation group with a registered derivation epoch.
+    #[error("No derivation epoch is registered for the group.")]
+    NoDerivationEpoch,
     /// Loading or storing virtual-clients state via the storage provider
     /// failed.
     #[error("Virtual-clients storage error")]
@@ -142,21 +161,11 @@ pub enum VirtualClientsError {
     DuplicateKeyPackageRef,
 }
 
-/// Per-emulation-epoch root secret. Sourced internally by
-/// [`MlsGroup::register_vc_emulation_epoch`] from the emulation group's
-/// `safe_export_secret(VC_COMPONENT_ID)`.
-///
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
-#[derive(Serialize, Deserialize)]
+/// Per-derivation-epoch root secret. Sourced internally from the emulation
+/// group's `safe_export_secret(VC_COMPONENT_ID)` when a derivation epoch is
+/// registered.
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EmulatorEpochSecret(Secret);
-
-impl std::fmt::Debug for EmulatorEpochSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EmulatorEpochSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl EmulatorEpochSecret {
     /// Construct an `EmulatorEpochSecret` from raw bytes. Bytes are
@@ -199,7 +208,7 @@ impl EmulatorEpochSecret {
             .derive_secret(crypto, ciphersuite, EPOCH_BASE_SECRET_LABEL)?)
     }
 
-    /// Derive the per-emulation-epoch [`ReuseGuardSecret`].
+    /// Derive the per-derivation-epoch [`ReuseGuardSecret`].
     pub(crate) fn derive_reuse_guard_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -211,7 +220,7 @@ impl EmulatorEpochSecret {
         Ok(ReuseGuardSecret(secret))
     }
 
-    /// Derive the per-emulation-epoch [`GenerationIdSecret`].
+    /// Derive the per-derivation-epoch [`GenerationIdSecret`].
     pub(crate) fn derive_generation_id_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -224,19 +233,11 @@ impl EmulatorEpochSecret {
     }
 }
 
-/// Per-emulation-epoch secret used to derive the FF1 PRP key for
+/// Per-derivation-epoch secret used to derive the FF1 PRP key for
 /// `reuse_guard` values sent by this virtual client. Derived from
 /// [`EmulatorEpochSecret`] via [`EmulatorEpochSecret::derive_reuse_guard_secret`].
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct ReuseGuardSecret(Secret);
-
-impl std::fmt::Debug for ReuseGuardSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ReuseGuardSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl ReuseGuardSecret {
     /// Test-only constructor from raw bytes.
@@ -253,7 +254,7 @@ impl ReuseGuardSecret {
     /// ```
     ///
     /// `ciphersuite` is the emulation group's ciphersuite, stored on
-    /// [`EmulationEpochState`].
+    /// [`VcDerivationEpochState`].
     pub(crate) fn derive_prp_key(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -276,23 +277,109 @@ impl ReuseGuardSecret {
     }
 }
 
-/// Per-emulation-epoch secret used to derive generation IDs for DS
+/// Per-derivation-epoch secret used to derive generation IDs for DS
 /// collision detection (mls-virtual-clients draft, "Coordinating ratchet
 /// generations with the DS" section). Derived from [`EmulatorEpochSecret`]
 /// via [`EmulatorEpochSecret::derive_generation_id_secret`].
-///
-/// Derived and persisted now so the per-epoch state is complete, but not yet
-/// consumed: the `generation_id` derivation and its `PrivateMessageContext`
-/// input land in a follow-up PR. It is stored here so older emulation epochs
-/// remain usable once that path exists.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct GenerationIdSecret(Secret);
 
-impl std::fmt::Debug for GenerationIdSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GenerationIdSecret")
-            .field("secret", &"<redacted>")
-            .finish()
+impl GenerationIdSecret {
+    /// Derive the [`GenerationId`] for a message sent with the given
+    /// [`PrivateMessageContext`]:
+    ///
+    /// ```text
+    /// generation_id = ExpandWithLabel(generation_id_secret, "generation id",
+    ///                                 PrivateMessageContext, Kdf.Nh)
+    /// ```
+    ///
+    /// `ciphersuite` is the emulation group's ciphersuite, the same one the
+    /// `generation_id_secret` was derived under.
+    fn derive_generation_id(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        context: &PrivateMessageContext<'_>,
+    ) -> Result<GenerationId, VirtualClientsError> {
+        let context_bytes = context.tls_serialize_detached()?;
+        let generation_id = self.0.kdf_expand_label(
+            crypto,
+            ciphersuite,
+            GENERATION_ID_EXPAND_LABEL,
+            &context_bytes,
+            ciphersuite.hash_length(),
+        )?;
+        Ok(GenerationId(generation_id.as_slice().to_vec().into()))
+    }
+}
+
+/// Which ratchet a `PrivateMessageContext` refers to
+/// (mls-virtual-clients draft `RatchetType`):
+///
+/// ```text
+/// enum {
+///   reserved(0),
+///   application(1),
+///   handshake(2),
+///   (255)
+/// } RatchetType
+/// ```
+///
+/// [`Application`](Self::Application) covers application messages, and
+/// [`Handshake`](Self::Handshake) covers proposals and commits framed as
+/// PrivateMessages in a higher-level group. Both draw a generation ID from
+/// their respective per-leaf ratchet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, TlsSize, TlsSerialize)]
+#[repr(u8)]
+pub enum RatchetType {
+    /// The per-leaf application-message ratchet.
+    Application = 1,
+    /// The per-leaf handshake-message ratchet.
+    Handshake = 2,
+}
+
+/// Context a [`GenerationId`] is derived over (mls-virtual-clients draft):
+///
+/// ```text
+/// struct {
+///   opaque group_id<V>;
+///   uint64 epoch;
+///   uint32 generation;
+///   RatchetType ratchet_type;
+/// } PrivateMessageContext
+/// ```
+///
+/// `group_id` and `epoch` identify the higher-level group and its epoch at
+/// the time the message is sent, `generation` is the ratchet generation used
+/// for encryption, and `ratchet_type` distinguishes the application and
+/// handshake ratchets. Only ever serialized as a derivation context, never
+/// parsed back, so it borrows its `group_id` and needs serialization only.
+#[derive(Debug, TlsSize, TlsSerialize)]
+pub(crate) struct PrivateMessageContext<'a> {
+    group_id: VLByteSlice<'a>,
+    epoch: u64,
+    generation: u32,
+    ratchet_type: RatchetType,
+}
+
+/// A per-message generation ID a virtual client attaches to a fanned-out
+/// PrivateMessage so a strongly-consistent DS can detect generation
+/// collisions between siblings, per higher-level group, per higher-level
+/// group epoch, and per ratchet type (mls-virtual-clients draft).
+///
+/// Derived from the derivation epoch's `GenerationIdSecret` over a
+/// `PrivateMessageContext`. The value is opaque to the application: it is
+/// produced by [`MlsGroup::create_unconfirmed_message`] and handed to the DS,
+/// which compares it for equality across siblings.
+///
+/// [`MlsGroup::create_unconfirmed_message`]: crate::group::MlsGroup::create_unconfirmed_message
+#[derive(Debug, Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+pub struct GenerationId(VLByteVec);
+
+impl GenerationId {
+    /// The raw generation-ID bytes the application hands to the DS.
+    pub fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
     }
 }
 
@@ -314,7 +401,7 @@ impl std::fmt::Debug for GenerationIdSecret {
 #[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub(crate) struct DerivationInfo {
     epoch_id: EpochId,
-    ciphertext: VLBytes,
+    ciphertext: VLByteVec,
 }
 
 impl DerivationInfo {
@@ -379,16 +466,26 @@ impl DerivationInfo {
     }
 }
 
-/// Identifier of an emulation epoch's registered virtual-clients state.
+/// Identifier of a derivation epoch's registered virtual-clients state.
 /// Derived deterministically from the emulation group's
-/// `safe_export_secret(VC_COMPONENT_ID)` by
-/// [`MlsGroup::register_vc_emulation_epoch`].
-///
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
+/// `safe_export_secret(VC_COMPONENT_ID)`, so every emulator client of a virtual
+/// client arrives at the same value for a given derivation epoch.
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
 )]
-pub struct EpochId(VLBytes);
+pub struct EpochId(VLByteVec);
+
+impl EpochId {
+    /// Create an epoch ID from raw bytes.
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes.into())
+    }
+
+    /// The raw epoch-ID bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
 
 /// Wire struct a virtual client hands to a sibling so the sibling can fetch
 /// and process the matching KeyPackage (mls-virtual-clients draft):
@@ -396,6 +493,7 @@ pub struct EpochId(VLBytes);
 /// ```text
 /// struct {
 ///   opaque key_package_ref<V>;
+///   CipherSuite cipher_suite;
 ///   uint32 key_package_index;
 /// } KeyPackageInfo
 /// ```
@@ -408,16 +506,18 @@ pub struct EpochId(VLBytes);
 ///
 /// [`HashReference`]: crate::ciphersuite::hash_ref::HashReference
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
-#[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+#[derive(Debug, PartialEq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub struct KeyPackageInfo {
     /// Hash reference of the virtual client's KeyPackage.
     pub key_package_ref: KeyPackageRef,
+    /// Ciphersuite of the virtual client's KeyPackage.
+    pub cipher_suite: Ciphersuite,
     /// Position of this KeyPackage within the operation batch.
     pub key_package_index: u32,
 }
 
 /// Wire struct a virtual client uploads to a sibling so the sibling learns
-/// about the KeyPackages the virtual client published for an emulation epoch
+/// about the KeyPackages the virtual client published for a derivation epoch
 /// (mls-virtual-clients draft):
 ///
 /// ```text
@@ -429,7 +529,7 @@ pub struct KeyPackageInfo {
 /// } KeyPackageUpload
 /// ```
 ///
-/// `epoch_id` identifies the emulation epoch the KeyPackages belong to.
+/// `epoch_id` identifies the derivation epoch the KeyPackages belong to.
 /// `leaf_index` is the uploading client's emulation-group leaf index at that
 /// epoch. The receiver stores this leaf index: the KeyPackage operation
 /// secret was allocated from the uploader's per-leaf ratchet, so a sibling
@@ -438,9 +538,9 @@ pub struct KeyPackageInfo {
 /// consumed for the whole batch. `key_package_info` carries one
 /// [`KeyPackageInfo`] per uploaded KeyPackage, each with its index within the
 /// batch.
-#[derive(Debug, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+#[derive(Debug, PartialEq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 pub struct KeyPackageUpload {
-    /// Emulation epoch the uploaded KeyPackages belong to.
+    /// Derivation epoch the uploaded KeyPackages belong to.
     pub epoch_id: EpochId,
     /// Uploading client's emulation-group leaf index at that epoch.
     pub leaf_index: LeafNodeIndex,
@@ -453,7 +553,7 @@ pub struct KeyPackageUpload {
 /// Per-`KeyPackageRef` material a sibling retains when it processes a
 /// [`KeyPackageUpload`]. It captures what the Welcome path needs to later
 /// rederive the KeyPackage's init and leaf-encryption keys without touching
-/// the operation tree: the per-KeyPackage seed secret, plus the emulation
+/// the operation tree: the per-KeyPackage seed secret, plus the derivation
 /// epoch, leaf index, generation, and batch index used to validate the leaf
 /// found in the ratchet tree.
 ///
@@ -464,13 +564,15 @@ pub struct KeyPackageUpload {
 /// generation is consumed once and each seed is stored alongside its index.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RetainedKeyPackageMaterial {
-    /// Emulation epoch the KeyPackage belongs to.
+    /// Derivation epoch the KeyPackage belongs to.
     pub epoch_id: EpochId,
     /// Uploader's emulation-group leaf index, identifying the operation
     /// ratchet the batch generation was allocated from.
     pub leaf_index: LeafNodeIndex,
     /// Operation-ratchet generation consumed for the whole batch.
     pub generation: u32,
+    /// Ciphersuite of the KeyPackage.
+    pub key_package_ciphersuite: Ciphersuite,
     /// Position of this KeyPackage within the batch.
     pub key_package_index: u32,
     /// Per-KeyPackage seed secret from which the init and leaf-encryption keys
@@ -505,14 +607,19 @@ fn validate_key_package_infos(infos: &[KeyPackageInfo]) -> Result<(), VirtualCli
 
 /// Build a [`KeyPackageUpload`] for `epoch_id` from a batch's `generation` and
 /// its [`KeyPackageInfo`] entries, filling `leaf_index` from the
-/// [`EmulationEpochState`] stored for that epoch.
+/// [`VcDerivationEpochState`] stored for that epoch.
 ///
 /// The virtual client calls this after building a batch of KeyPackages with
 /// [`KeyPackageBuilder::build_vc_batch`] to assemble the message it hands to
 /// its sibling. `generation` is the single `key_package` operation generation
 /// the batch consumed.
 ///
-/// Returns [`VirtualClientsError::MissingEmulationEpochState`] if no state is
+/// This describes a completed operation rather than starting a new one, so it
+/// takes the epoch explicitly. Pass the `epoch_id` and `generation` the batch
+/// reports, not a freshly resolved epoch: the emulation group may have moved on
+/// to a newer derivation epoch since the batch was built.
+///
+/// Returns [`VirtualClientsError::MissingDerivationEpochState`] if no state is
 /// registered for `epoch_id`.
 ///
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
@@ -523,13 +630,13 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
     key_package_info: Vec<KeyPackageInfo>,
 ) -> Result<KeyPackageUpload, VirtualClientsError> {
     validate_key_package_infos(&key_package_info)?;
-    let state: EmulationEpochState = storage
-        .vc_emulation_epoch_state(&epoch_id)
+    let state: VcDerivationEpochState = storage
+        .vc_derivation_epoch_state(&epoch_id)
         .map_err(|e| {
-            log::error!("vc: load emulation epoch state in assemble upload failed: {e:?}");
+            log::error!("vc: load derivation epoch state in assemble upload failed: {e:?}");
             VirtualClientsError::StorageError
         })?
-        .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+        .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     Ok(KeyPackageUpload {
         epoch_id,
         leaf_index: state.leaf_index,
@@ -546,12 +653,12 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
 /// per [`KeyPackageInfo`] (keyed by the info's [`KeyPackageRef`]) in a single
 /// atomic batch write.
 ///
-/// The operation secret and the per-index seeds are derived under the
-/// emulation ciphersuite (the operation tree's ciphersuite). The init and
-/// leaf-encryption keys are later derived from each seed under the KeyPackage's
-/// own ciphersuite at Welcome time. The operation secret is dropped once all
-/// seeds are derived. The batch generation is consumed in the tree exactly
-/// once.
+/// The batch operation secret is derived under the emulation ciphersuite (the
+/// operation tree's ciphersuite). Each per-KeyPackage seed is imported from
+/// it into the ciphersuite the upload names for this KeyPackage. The init and
+/// leaf-encryption keys are later derived from each seed under the same
+/// ciphersuite at Welcome time. The operation secret is dropped once all seeds
+/// are derived. The batch generation is consumed in the tree exactly once.
 pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
     provider: &Provider,
     upload: &KeyPackageUpload,
@@ -564,13 +671,13 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
     let storage = provider.storage();
     let crypto = provider.crypto();
 
-    let state: EmulationEpochState = storage
-        .vc_emulation_epoch_state(&upload.epoch_id)
+    let state: VcDerivationEpochState = storage
+        .vc_derivation_epoch_state(&upload.epoch_id)
         .map_err(|e| {
-            log::error!("vc: load emulation epoch state in process upload failed: {e:?}");
+            log::error!("vc: load derivation epoch state in process upload failed: {e:?}");
             VirtualClientsError::StorageError
         })?
-        .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+        .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     let mut operation_tree: OperationSecretTree = storage
         .vc_operation_tree(&upload.epoch_id)
         .map_err(|e| {
@@ -595,13 +702,14 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
     for info in &upload.key_package_info {
         let key_package_seed_secret = operation_secret.derive_key_package_seed_secret(
             crypto,
-            emulation_ciphersuite,
+            info.cipher_suite,
             info.key_package_index,
         )?;
         let material = RetainedKeyPackageMaterial {
             epoch_id: upload.epoch_id.clone(),
             leaf_index: upload.leaf_index,
             generation: upload.generation,
+            key_package_ciphersuite: info.cipher_suite,
             key_package_index: info.key_package_index,
             key_package_seed_secret,
         };
@@ -631,7 +739,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
 pub(crate) struct VcWelcomeMaterial {
     /// The [`KeyPackageRef`] the welcome's encrypted group secrets addressed.
     pub(crate) key_package_ref: KeyPackageRef,
-    /// Emulation epoch the KeyPackage belongs to.
+    /// Derivation epoch the KeyPackage belongs to.
     pub(crate) epoch_id: EpochId,
     /// Uploader's emulation-group leaf index, identifying the operation
     /// ratchet the batch generation was allocated from.
@@ -643,16 +751,237 @@ pub(crate) struct VcWelcomeMaterial {
     /// Init private key derived from the seed, used to decrypt the encrypted
     /// group secrets.
     pub(crate) init_private_key: openmls_traits::types::HpkePrivateKey,
+    /// Init key the welcome encrypted group secrets are encrypted with.
+    pub(crate) init_key: InitKey,
     /// Leaf encryption keypair derived from the seed, used as the joiner's
     /// leaf keypair.
     pub(crate) encryption_keypair: EncryptionKeyPair,
+}
+
+/// The newest derivation epoch of an emulation group, and the group epoch it
+/// was sourced from. All virtual-client operations of the group resolve to this
+/// derivation epoch, which may be older than the group's current epoch.
+///
+/// The group epoch is retained so that a repeated registration for the same
+/// group epoch returns the existing [`EpochId`] instead of consuming the
+/// forward-secure exporter again (the exporter is punctured by the first
+/// registration and cannot be re-evaluated).
+///
+/// Not folded into [`VcEmulationBindings`]: bindings are per higher-level group
+/// and are carried forward to the new epoch when a merged commit installs no
+/// virtual-client leaf, so they cannot say which derivation epoch is newest.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub(crate) struct RegisteredVcDerivationEpoch {
+    /// The emulation group's own epoch at registration time.
+    pub(crate) group_epoch: crate::group::GroupEpoch,
+    /// The derivation epoch id derived by that registration.
+    pub(crate) epoch_id: EpochId,
+}
+
+/// The newest derivation epoch registered for the emulation group
+/// `emulation_group_id`, or `None` if none was registered yet.
+///
+/// Reads the registration record, so the result reflects the emulation group's
+/// state at the time of the call.
+pub(crate) fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
+    storage: &Storage,
+    emulation_group_id: &GroupId,
+) -> Result<Option<EpochId>, Storage::Error> {
+    let registered: Option<RegisteredVcDerivationEpoch> =
+        storage.registered_vc_derivation_epoch(emulation_group_id)?;
+    Ok(registered.map(|registered| registered.epoch_id))
+}
+
+/// Resolve the derivation epoch a new virtual-client operation must use: the
+/// newest one registered for the emulation group `emulation_group_id`.
+///
+/// The draft requires every new operation to use the newest derivation epoch of
+/// the acting client's current emulation-group state, so the epoch is never a
+/// parameter of an operation. An operation carried by a commit that itself
+/// creates a new derivation epoch still resolves against the commit's input
+/// state, because the new epoch is only registered when that commit is merged.
+///
+/// Returns [`VirtualClientsError::NoDerivationEpoch`] when no derivation epoch
+/// is registered, which is the case for every group that is not an emulation
+/// group.
+pub(crate) fn require_newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
+    storage: &Storage,
+    emulation_group_id: &GroupId,
+) -> Result<EpochId, VirtualClientsError> {
+    newest_vc_derivation_epoch(storage, emulation_group_id)
+        .map_err(|e| {
+            log::error!("vc: load newest derivation epoch for a new operation failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?
+        .ok_or(VirtualClientsError::NoDerivationEpoch)
+}
+
+/// The emulation-group coordinates of the group epoch a derivation epoch is
+/// registered for. All values describe the *target* epoch, which for a merge is
+/// the epoch the commit moves the group into, not the one it is merged from.
+pub(crate) struct VcDerivationEpochParams<'a> {
+    /// Group id of the emulation group.
+    pub(crate) group_id: &'a GroupId,
+    /// Ciphersuite of the emulation group.
+    pub(crate) ciphersuite: Ciphersuite,
+    /// The emulation group's epoch this derivation epoch is sourced from.
+    pub(crate) group_epoch: GroupEpoch,
+    /// The registering client's own leaf index in the emulation group.
+    pub(crate) own_leaf_index: LeafNodeIndex,
+    /// Number of leaves in the emulation group's ratchet tree.
+    pub(crate) tree_size: TreeSize,
+}
+
+impl<'a> VcDerivationEpochParams<'a> {
+    /// Read the coordinates off the emulation group's public state. The caller
+    /// supplies `own_leaf_index`, which the public state does not carry.
+    ///
+    /// For a merge, pass the state after the staged diff was merged, so the
+    /// coordinates describe the epoch the commit moves the group into.
+    pub(crate) fn for_public_group(
+        public_group: &'a crate::group::PublicGroup,
+        own_leaf_index: LeafNodeIndex,
+    ) -> Self {
+        Self {
+            group_id: public_group.group_id(),
+            ciphersuite: public_group.ciphersuite(),
+            group_epoch: public_group.group_context().epoch(),
+            own_leaf_index,
+            tree_size: public_group.tree_size(),
+        }
+    }
+}
+
+/// Derive and persist the virtual-clients derivation-epoch state for one epoch
+/// of an emulation group.
+///
+/// Sources the per-derivation-epoch root secret by puncturing `export_tree`
+/// under [`VC_COMPONENT_ID`], derives the [`EpochId`], the AEAD key, the epoch
+/// base secret and the reuse-guard and generation-id secrets, builds the
+/// per-epoch operation secret tree (sized like the emulation group's ratchet
+/// tree), and persists the tree, the per-epoch state and the
+/// newest-derivation-epoch record. Returns the derived [`EpochId`].
+///
+/// The caller owns `export_tree` and is responsible for persisting it after
+/// this call, so that the puncture is not lost. A `None` export tree fails with
+/// [`RegisterVcDerivationEpochError::MissingApplicationExportTree`]: merging
+/// without registering would silently keep the old derivation epoch active,
+/// which breaks the post-compromise guarantees of a membership change.
+///
+/// A registration consumes the forward-secure exporter, so it can derive
+/// state at most once per group epoch. A repeated call for an
+/// already-registered group epoch returns the recorded [`EpochId`] and leaves
+/// the persisted operation secret tree untouched. The repeat still punctures
+/// `export_tree` when it is handed a fresh, unpunctured tree for that epoch,
+/// as a retried Welcome join does. Without the puncture the caller would
+/// persist a tree that can re-derive the consumed secret. A record for the
+/// same group epoch whose [`EpochId`] does not match the tree belongs to a
+/// group instance that was never fully stored, for example a crashed group
+/// creation under a recycled group id, and is overwritten.
+pub(crate) fn register_vc_derivation_epoch<
+    Crypto: OpenMlsCrypto,
+    Storage: crate::storage::StorageProvider,
+>(
+    crypto: &Crypto,
+    storage: &Storage,
+    export_tree: Option<&mut ApplicationExportTree>,
+    params: VcDerivationEpochParams<'_>,
+) -> Result<EpochId, RegisterVcDerivationEpochError<Storage::Error>> {
+    let VcDerivationEpochParams {
+        group_id,
+        ciphersuite,
+        group_epoch,
+        own_leaf_index,
+        tree_size,
+    } = params;
+    let export_tree =
+        export_tree.ok_or(RegisterVcDerivationEpochError::MissingApplicationExportTree)?;
+
+    let registered: Option<RegisteredVcDerivationEpoch> = storage
+        .registered_vc_derivation_epoch(group_id)
+        .map_err(|e| {
+            log::error!("vc: load newest derivation epoch before registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+
+    // Puncture before consulting the record. A repeat for a registered epoch
+    // can hold a fresh, unpunctured tree, and returning early on the record
+    // alone would let the caller persist that tree with the consumed secret
+    // still derivable.
+    let bytes = match export_tree.safe_export_secret(crypto, ciphersuite, VC_COMPONENT_ID) {
+        Ok(bytes) => bytes,
+        Err(ApplicationExportTreeError::PuncturedInput) => {
+            // The tree in hand is already consumed, so this is an in-process
+            // repeat of a completed registration and the record must agree.
+            if let Some(registered) = &registered {
+                if registered.group_epoch == group_epoch {
+                    return Ok(registered.epoch_id.clone());
+                }
+            }
+            return Err(RegisterVcDerivationEpochError::ApplicationExportTree(
+                ApplicationExportTreeError::PuncturedInput,
+            ));
+        }
+        Err(e) => return Err(e.into()),
+    };
+    let emulator_epoch_secret = EmulatorEpochSecret::new(bytes.as_slice());
+    let epoch_id = emulator_epoch_secret.derive_epoch_id(crypto, ciphersuite)?;
+    if let Some(registered) = registered {
+        if registered.group_epoch == group_epoch && registered.epoch_id == epoch_id {
+            // A retry with identical key material, for example a Welcome join
+            // that crashed after registration. The per-epoch state is already
+            // persisted, only the fresh tree needed puncturing.
+            return Ok(registered.epoch_id);
+        }
+    }
+    let epoch_encryption_key =
+        emulator_epoch_secret.derive_epoch_encryption_key(crypto, ciphersuite)?;
+    let epoch_base_secret = emulator_epoch_secret.derive_epoch_base_secret(crypto, ciphersuite)?;
+    let reuse_guard_secret =
+        emulator_epoch_secret.derive_reuse_guard_secret(crypto, ciphersuite)?;
+    let generation_id_secret =
+        emulator_epoch_secret.derive_generation_id_secret(crypto, ciphersuite)?;
+    let operation_tree = OperationSecretTree::new(epoch_base_secret, tree_size);
+    let state = VcDerivationEpochState::new(
+        own_leaf_index,
+        epoch_encryption_key,
+        reuse_guard_secret,
+        generation_id_secret,
+        tree_size,
+        ciphersuite,
+    );
+    let registered = RegisteredVcDerivationEpoch {
+        group_epoch,
+        epoch_id,
+    };
+
+    storage
+        .write_vc_operation_tree(&registered.epoch_id, &operation_tree)
+        .map_err(|e| {
+            log::error!("vc: persist operation tree at registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+    storage
+        .write_vc_derivation_epoch_state(&registered.epoch_id, &state)
+        .map_err(|e| {
+            log::error!("vc: persist derivation epoch state at registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+    storage
+        .write_registered_vc_derivation_epoch(group_id, &registered)
+        .map_err(|e| {
+            log::error!("vc: record newest derivation epoch at registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+
+    Ok(registered.epoch_id)
 }
 
 /// Per-higher-level-group record of which emulation-group epoch produced the
 /// virtual-client LeafNode that was active at each recent epoch of that
 /// group.
 ///
-/// Reuse guards must be resolved with the emulation epoch that was bound at
+/// Reuse guards must be resolved with the derivation epoch that was bound at
 /// the higher-level epoch a message was sent in, not the latest one: a
 /// delayed PrivateMessage from a past higher-level epoch has to be
 /// deprotected with the state that was active then. Entries are written at
@@ -666,7 +995,7 @@ pub struct VcEmulationBindings {
 }
 
 impl VcEmulationBindings {
-    /// Look up the emulation epoch bound at the given higher-level epoch.
+    /// Look up the derivation epoch bound at the given higher-level epoch.
     pub fn get(&self, epoch: crate::group::GroupEpoch) -> Option<&EpochId> {
         for (bound_epoch, epoch_id) in &self.bindings {
             if *bound_epoch == epoch {
@@ -708,19 +1037,9 @@ impl VcEmulationBindings {
 /// LeafNode carrying the derivation info. Every operation produces a fresh
 /// leaf encryption key, so each wrap uses a distinct key-nonce pair.
 /// Derived from the emulation group's `safe_export_secret(VC_COMPONENT_ID)`
-/// by [`MlsGroup::register_vc_emulation_epoch`].
-///
-/// [`MlsGroup::register_vc_emulation_epoch`]: crate::group::MlsGroup::register_vc_emulation_epoch
-#[derive(Serialize, Deserialize)]
+/// when the derivation epoch is registered.
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EpochEncryptionKey(Secret);
-
-impl std::fmt::Debug for EpochEncryptionKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EpochEncryptionKey")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl EpochEncryptionKey {
     /// Derive the AEAD key and nonce for one [`DerivationInfoTbe`] wrap,
@@ -750,24 +1069,20 @@ impl EpochEncryptionKey {
     }
 }
 
-/// Per-emulation-epoch state persisted by
-/// [`MlsGroup::register_vc_emulation_epoch`] alongside the per-epoch
-/// operation secret tree, keyed by [`EpochId`]. Bundles everything the
-/// library needs to emit a VC commit for this epoch and to XOR application
-/// message nonces with deterministic reuse guards.
-///
-/// [`MlsGroup::register_vc_emulation_epoch`]:
-///     crate::group::MlsGroup::register_vc_emulation_epoch
+/// Per-derivation-epoch state, persisted alongside the per-epoch operation
+/// secret tree and keyed by [`EpochId`]. Bundles everything the library needs
+/// to emit a VC commit for this epoch and to XOR application message nonces
+/// with deterministic reuse guards.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct EmulationEpochState {
+pub struct VcDerivationEpochState {
     /// The registering client's leaf index in the emulation group at
     /// registration time. Sent in `DerivationInfoTbe` and used as the
     /// sender's `leaf_index_e` in the reuse-guard derivation.
     pub(crate) leaf_index: LeafNodeIndex,
     pub(crate) epoch_encryption_key: EpochEncryptionKey,
     pub(crate) reuse_guard_secret: ReuseGuardSecret,
-    /// Stored now but not yet read. The generation-ID derivation that
-    /// consumes it is deferred to a follow-up PR (see [`GenerationIdSecret`]).
+    /// Used to derive the per-message [`GenerationId`] handed to the DS, via
+    /// [`VcDerivationEpochState::derive_generation_id`].
     pub(crate) generation_id_secret: GenerationIdSecret,
     /// Number of leaves `N_e` in the emulation group at registration time.
     pub(crate) emulation_group_size: TreeSize,
@@ -776,7 +1091,7 @@ pub struct EmulationEpochState {
     pub(crate) emulation_ciphersuite: Ciphersuite,
 }
 
-impl EmulationEpochState {
+impl VcDerivationEpochState {
     pub(crate) fn new(
         leaf_index: LeafNodeIndex,
         epoch_encryption_key: EpochEncryptionKey,
@@ -805,6 +1120,29 @@ impl EmulationEpochState {
         )
     }
 
+    /// Derive the [`GenerationId`] for an application message sent in
+    /// `group_id` at `epoch` with ratchet `generation`. The
+    /// [`PrivateMessageContext`] is assembled from these inputs and the
+    /// derivation epoch's [`GenerationIdSecret`], using the emulation group's
+    /// ciphersuite.
+    pub(crate) fn derive_generation_id(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        group_id: &GroupId,
+        epoch: GroupEpoch,
+        generation: u32,
+        ratchet_type: RatchetType,
+    ) -> Result<GenerationId, VirtualClientsError> {
+        let context = PrivateMessageContext {
+            group_id: VLByteSlice(group_id.as_slice()),
+            epoch: epoch.as_u64(),
+            generation,
+            ratchet_type,
+        };
+        self.generation_id_secret
+            .derive_generation_id(crypto, self.emulation_ciphersuite, &context)
+    }
+
     /// Borrow the per-message inputs the framing layer needs to derive
     /// the PRP key and pick `x` for a reuse guard.
     pub(crate) fn reuse_guard_inputs(&self) -> crate::framing::EmulatorReuseGuardCtx<'_> {
@@ -824,21 +1162,34 @@ impl EmulationEpochState {
 /// from the same per-epoch state.
 ///
 /// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OperationSecret(Secret);
-
-impl std::fmt::Debug for OperationSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("OperationSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl From<Secret> for OperationSecret {
     fn from(secret: Secret) -> Self {
         Self(secret)
     }
+}
+
+/// Imports a secret from the emulation group's ciphersuite to the target ciphersuite.
+///
+/// The import MUST be performed even when the emulation group and target use the same ciphersuite.
+fn import_secret(
+    crypto: &impl OpenMlsCrypto,
+    target_ciphersuite: Ciphersuite,
+    source_secret: &Secret,
+    label: &str,
+    context: &[u8],
+) -> Result<Secret, CryptoError> {
+    let salt = Secret::from_slice(&[]);
+    let target_prk = salt.hkdf_extract(crypto, target_ciphersuite, source_secret)?;
+    target_prk.kdf_expand_label(
+        crypto,
+        target_ciphersuite,
+        label,
+        context,
+        target_ciphersuite.hash_length(),
+    )
 }
 
 impl OperationSecret {
@@ -848,35 +1199,49 @@ impl OperationSecret {
         self.0.as_slice()
     }
 
-    pub(crate) fn derive_encryption_key_secret(
+    /// Derive the `target_operation_secret` of a `leaf_node` operation: this
+    /// operation secret imported into the higher-level group's ciphersuite:
+    ///
+    /// ```text
+    /// target_operation_secret = ImportSecret(operation_secret,
+    ///                                        "vc target operation",
+    ///                                        TargetOperationContext)
+    /// ```
+    ///
+    /// The context binds the target ciphersuite and the higher-level group's
+    /// `group_id`, so one operation secret yields independent path material
+    /// per target group. The commit path's encryption-key and path-generation
+    /// secrets are derived from the returned [`TargetOperationSecret`], not
+    /// from the operation secret directly. The committing emulator and the
+    /// sibling recreating the commit derive the same value.
+    pub(crate) fn derive_target_operation_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
-    ) -> Result<EncryptionKeySecret, VirtualClientsError> {
-        let encryption_key_secret =
-            self.0
-                .derive_secret(crypto, ciphersuite, ENCRYPTION_KEY_LABEL)?;
-        Ok(EncryptionKeySecret(encryption_key_secret))
-    }
-
-    pub(crate) fn derive_path_generation_secret(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
-    ) -> Result<PathGenerationSecret, VirtualClientsError> {
-        let path_generation_secret =
-            self.0
-                .derive_secret(crypto, ciphersuite, PATH_GENERATION_LABEL)?;
-        Ok(PathGenerationSecret(path_generation_secret))
+        target_ciphersuite: Ciphersuite,
+        group_id: &GroupId,
+    ) -> Result<TargetOperationSecret, VirtualClientsError> {
+        let context = TargetOperationContext {
+            cipher_suite: target_ciphersuite,
+            group_id: VLByteSlice(group_id.as_slice()),
+        }
+        .tls_serialize_detached()?;
+        let secret = import_secret(
+            crypto,
+            target_ciphersuite,
+            &self.0,
+            TARGET_OPERATION_LABEL,
+            &context,
+        )?;
+        Ok(TargetOperationSecret(secret))
     }
 
     /// Derive the per-KeyPackage seed secret for the KeyPackage at
     /// `key_package_index` within this operation's batch:
     ///
     /// ```text
-    /// key_package_seed_secret = ExpandWithLabel(operation_secret,
-    ///                                           "key package seed",
-    ///                                           KeyPackageSeedContext, Kdf.Nh)
+    /// key_package_seed_secret = ImportSecret(operation_secret,
+    ///                                        "vc key package seed",
+    ///                                        KeyPackageSeedContext)
     /// ```
     ///
     /// The KeyPackage's init and leaf-encryption keys are then derived from the
@@ -886,16 +1251,20 @@ impl OperationSecret {
     pub(crate) fn derive_key_package_seed_secret(
         &self,
         crypto: &impl OpenMlsCrypto,
-        ciphersuite: Ciphersuite,
+        target_ciphersuite: Ciphersuite,
         key_package_index: u32,
     ) -> Result<KeyPackageSeedSecret, VirtualClientsError> {
-        let context = KeyPackageSeedContext { key_package_index }.tls_serialize_detached()?;
-        let seed = self.0.kdf_expand_label(
+        let context = KeyPackageSeedContext {
+            cipher_suite: target_ciphersuite,
+            key_package_index,
+        }
+        .tls_serialize_detached()?;
+        let seed = import_secret(
             crypto,
-            ciphersuite,
+            target_ciphersuite,
+            &self.0,
             KEY_PACKAGE_SEED_LABEL,
             &context,
-            ciphersuite.hash_length(),
         )?;
         Ok(KeyPackageSeedSecret(seed))
     }
@@ -906,6 +1275,7 @@ impl OperationSecret {
 ///
 /// ```text
 /// struct {
+///   CipherSuite cipher_suite;
 ///   uint32 key_package_index;
 /// } KeyPackageSeedContext
 /// ```
@@ -914,6 +1284,7 @@ impl OperationSecret {
 /// needs serialization only.
 #[derive(Debug, TlsSize, TlsSerialize)]
 struct KeyPackageSeedContext {
+    cipher_suite: Ciphersuite,
     key_package_index: u32,
 }
 
@@ -923,16 +1294,8 @@ struct KeyPackageSeedContext {
 /// `key_package` operation's batch. Persisted in [`RetainedKeyPackageMaterial`]
 /// so the Welcome path can rederive the keys without re-walking the operation
 /// tree.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct KeyPackageSeedSecret(Secret);
-
-impl std::fmt::Debug for KeyPackageSeedSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("KeyPackageSeedSecret")
-            .field("secret", &"<redacted>")
-            .finish()
-    }
-}
 
 impl KeyPackageSeedSecret {
     pub(crate) fn derive_init_key_secret(
@@ -953,6 +1316,26 @@ impl KeyPackageSeedSecret {
             self.0
                 .derive_secret(crypto, ciphersuite, ENCRYPTION_KEY_LABEL)?;
         Ok(EncryptionKeySecret(encryption_key_secret))
+    }
+
+    /// Derive the epoch-0 `epoch_secret` for a virtual-client-created group:
+    ///
+    /// ```text
+    /// epoch_secret = DeriveSecret(key_package_seed_secret, "Group Creation")
+    /// ```
+    ///
+    /// `ciphersuite` is the created (higher-level) group's ciphersuite, under
+    /// which the resulting `epoch_secret` seeds the epoch key schedule. Both
+    /// the creator and a reconstructing sibling derive it from the same seed,
+    /// so the epoch secret never travels on the wire.
+    pub(crate) fn derive_group_creation_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+    ) -> Result<Secret, VirtualClientsError> {
+        Ok(self
+            .0
+            .derive_secret(crypto, ciphersuite, GROUP_CREATION_LABEL)?)
     }
 }
 
@@ -1019,6 +1402,99 @@ pub enum VirtualClientOperationType {
     Application = 3,
 }
 
+/// The external init secret carried by an external-commit LeafNode's
+/// `DerivationInfoTBE` (mls-virtual-clients draft):
+///
+/// ```text
+/// struct { opaque init_secret<V>; } ExternalInitSecret;
+/// ```
+///
+/// It is the `init_secret` produced by external initialization
+/// ({{Section 8.3 of RFC9420}}). A sibling emulator client processing the
+/// external commit uses it as the new epoch's external init secret instead of
+/// decapsulating from the previous epoch's `external_secret`, which it may not
+/// hold.
+#[derive(Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+pub(crate) struct ExternalInitSecret(SecretVLByteVec);
+
+impl std::fmt::Debug for ExternalInitSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExternalInitSecret")
+            .field("init_secret", &"<redacted>")
+            .finish()
+    }
+}
+
+impl ExternalInitSecret {
+    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+        Self(bytes.to_vec().into())
+    }
+
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
+
+/// ```text
+/// struct {
+///   CipherSuite cipher_suite;
+///   opaque group_id<V>;
+/// } TargetOperationContext
+/// ```
+#[derive(Debug, TlsSize, TlsSerialize)]
+struct TargetOperationContext<'a> {
+    cipher_suite: Ciphersuite,
+    group_id: VLByteSlice<'a>,
+}
+
+/// A leaf node operation secret imported into the higher-level group's ciphersuite.
+///
+/// Must be immediately deleted after the encryption key/path generation secrets are derived.
+#[derive(Debug)]
+pub(crate) struct TargetOperationSecret(Secret);
+
+impl TargetOperationSecret {
+    pub(crate) fn derive_encryption_key_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+    ) -> Result<EncryptionKeySecret, VirtualClientsError> {
+        let encryption_key_secret =
+            self.0
+                .derive_secret(crypto, ciphersuite, ENCRYPTION_KEY_LABEL)?;
+        Ok(EncryptionKeySecret(encryption_key_secret))
+    }
+
+    pub(crate) fn derive_path_generation_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+    ) -> Result<PathGenerationSecret, VirtualClientsError> {
+        let path_generation_secret =
+            self.0
+                .derive_secret(crypto, ciphersuite, PATH_GENERATION_LABEL)?;
+        Ok(PathGenerationSecret(path_generation_secret))
+    }
+}
+
+/// What a receiver derives from a sibling virtual client's commit in order to
+/// recreate it: the emulation `epoch_id` the commit binds to, the per-commit
+/// `operation_secret` the path is rederived from, and, for an external commit,
+/// the carried `external_init_secret` (`None` for a regular commit).
+///
+/// Produced by `MlsGroup::load_vc_commit_material` and threaded into commit
+/// staging as a single `Option`: either all three are present (a sibling VC
+/// commit) or none are.
+#[derive(Debug)]
+pub(crate) struct VcCommitMaterial {
+    /// Derivation epoch the commit's derivation info references.
+    pub(crate) epoch_id: EpochId,
+    /// Per-commit operation secret the receiver rederives the path from.
+    pub(crate) operation_secret: OperationSecret,
+    /// External init secret carried by an external commit, `None` otherwise.
+    pub(crate) external_init_secret: Option<ExternalInitSecret>,
+}
+
 /// AEAD plaintext attached to the leaf via the VC component
 /// (mls-virtual-clients draft):
 ///
@@ -1027,9 +1503,9 @@ pub enum VirtualClientOperationType {
 ///   uint32 leaf_index;
 ///   uint32 generation;
 ///   select (LeafNode.leaf_node_source) {
-///     case key_package:  uint32 key_package_index;
-///     case update:
-///     case commit:       struct{};
+///     case key_package: uint32 key_package_index;
+///     case update:      struct{};
+///     case commit:      optional<ExternalInitSecret> external_init_secret;
 ///   };
 /// } DerivationInfoTBE
 /// ```
@@ -1039,13 +1515,20 @@ pub enum VirtualClientOperationType {
 /// `generation` is the operation-ratchet generation the sender consumed for
 /// this operation. `key_package_index`, present only for the `KeyPackage`
 /// variant, is the KeyPackage's position within its `key_package` operation
-/// batch.
+/// batch. `external_init_secret`, present only for the commit variant, carries
+/// the external init secret of an external commit (`Some`) and is absent
+/// (`None`) for a regular commit.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum DerivationInfoTbe {
-    /// Carried by `update` and `commit` leaves. No `key_package_index`.
+    /// Carried by `update` and `commit` leaves. No `key_package_index`. The
+    /// codec treats the `LeafNode` operation type as the `commit` case (the
+    /// only LeafNode-source leaf emitted today). `update`-proposal leaves are
+    /// deferred and would need their own (field-less) codec branch.
     LeafNode {
         leaf_index: LeafNodeIndex,
         generation: u32,
+        /// `Some` for an external commit, `None` for a regular commit.
+        external_init_secret: Option<ExternalInitSecret>,
     },
     /// Carried by `key_package` leaves. Adds the position within the batch.
     KeyPackage {
@@ -1070,6 +1553,18 @@ impl DerivationInfoTbe {
         }
     }
 
+    /// The external init secret carried by an external-commit LeafNode, if any.
+    /// Always `None` for `KeyPackage` and for regular (non-external) commits.
+    pub(crate) fn external_init_secret(&self) -> Option<&ExternalInitSecret> {
+        match self {
+            Self::LeafNode {
+                external_init_secret,
+                ..
+            } => external_init_secret.as_ref(),
+            Self::KeyPackage { .. } => None,
+        }
+    }
+
     /// Serialize the variant's fields in order, with no variant tag, matching
     /// the `DerivationInfoTBE` select. The TLS derive macros cannot express a
     /// tagless select, so this codec is written by hand.
@@ -1078,12 +1573,16 @@ impl DerivationInfoTbe {
             Self::LeafNode {
                 leaf_index,
                 generation,
+                external_init_secret,
             } => {
                 let mut out = Vec::with_capacity(
-                    leaf_index.tls_serialized_len() + generation.tls_serialized_len(),
+                    leaf_index.tls_serialized_len()
+                        + generation.tls_serialized_len()
+                        + external_init_secret.tls_serialized_len(),
                 );
                 leaf_index.tls_serialize(&mut out)?;
                 generation.tls_serialize(&mut out)?;
+                external_init_secret.tls_serialize(&mut out)?;
                 Ok(out)
             }
             Self::KeyPackage {
@@ -1115,33 +1614,77 @@ impl DerivationInfoTbe {
     ) -> Result<Self, VirtualClientsError> {
         let (leaf_index, rest) = LeafNodeIndex::tls_deserialize_bytes(bytes)?;
         let (generation, rest) = u32::tls_deserialize_bytes(rest)?;
-        let tbe = match operation_type {
+        let (tbe, rest) = match operation_type {
             VirtualClientOperationType::KeyPackage => {
                 let (key_package_index, rest) = u32::tls_deserialize_bytes(rest)?;
-                if !rest.is_empty() {
-                    return Err(VirtualClientsError::DerivationInfoMalformed);
-                }
-                Self::KeyPackage {
-                    leaf_index,
-                    generation,
-                    key_package_index,
-                }
+                (
+                    Self::KeyPackage {
+                        leaf_index,
+                        generation,
+                        key_package_index,
+                    },
+                    rest,
+                )
             }
+            // The `LeafNode` operation type is the `commit` case: it carries an
+            // `optional<ExternalInitSecret>`. (`update`-proposal leaves are
+            // deferred and would decode a field-less body instead.)
             VirtualClientOperationType::LeafNode => {
-                if !rest.is_empty() {
-                    return Err(VirtualClientsError::DerivationInfoMalformed);
-                }
-                Self::LeafNode {
-                    leaf_index,
-                    generation,
-                }
+                let (external_init_secret, rest) =
+                    Option::<ExternalInitSecret>::tls_deserialize_bytes(rest)?;
+                (
+                    Self::LeafNode {
+                        leaf_index,
+                        generation,
+                        external_init_secret,
+                    },
+                    rest,
+                )
             }
             VirtualClientOperationType::Application => {
                 return Err(VirtualClientsError::DerivationInfoMalformed);
             }
         };
+        if !rest.is_empty() {
+            return Err(VirtualClientsError::DerivationInfoMalformed);
+        }
         Ok(tbe)
     }
+}
+
+/// Load the [`VcDerivationEpochState`] and [`OperationSecretTree`] for `epoch_id`,
+/// mapping a missing entry to the matching `Missing*` error. Callers convert the
+/// returned [`VirtualClientsError`] into their own error type.
+///
+/// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
+pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
+    provider: &Provider,
+    epoch_id: &EpochId,
+) -> Result<
+    (
+        VcDerivationEpochState,
+        crate::components::vc_operation_tree::OperationSecretTree,
+    ),
+    VirtualClientsError,
+> {
+    use openmls_traits::storage::StorageProvider as _;
+
+    let storage = provider.storage();
+    let state = storage
+        .vc_derivation_epoch_state(epoch_id)
+        .map_err(|e| {
+            log::error!("vc: load derivation epoch state failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?
+        .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
+    let operation_tree = storage
+        .vc_operation_tree(epoch_id)
+        .map_err(|e| {
+            log::error!("vc: load operation tree failed: {e:?}");
+            VirtualClientsError::StorageError
+        })?
+        .ok_or(VirtualClientsError::MissingOperationTree)?;
+    Ok((state, operation_tree))
 }
 
 /// Verify that the effective leaf about to carry a VC derivation-info entry
@@ -1264,7 +1807,7 @@ mod tests {
 
     const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
-    /// Register a full `EmulationEpochState` and a matching
+    /// Register a full `VcDerivationEpochState` and a matching
     /// `OperationSecretTree` for a fresh epoch, returning the derived
     /// `EpochId` and the leaf index it was registered with.
     fn register_epoch_state(provider: &OpenMlsRustCrypto, leaf_index: LeafNodeIndex) -> EpochId {
@@ -1292,7 +1835,7 @@ mod tests {
             .derive_epoch_base_secret(provider.crypto(), CIPHERSUITE)
             .expect("derive epoch base secret");
         let emulation_group_size = TreeSize::new(2);
-        let state = EmulationEpochState::new(
+        let state = VcDerivationEpochState::new(
             leaf_index,
             epoch_encryption_key,
             reuse_guard_secret,
@@ -1300,12 +1843,12 @@ mod tests {
             emulation_group_size,
             CIPHERSUITE,
         );
-        <MemoryStorage as StorageProvider<CURRENT_VERSION>>::write_vc_emulation_epoch_state(
+        <MemoryStorage as StorageProvider<CURRENT_VERSION>>::write_vc_derivation_epoch_state(
             provider.storage(),
             &epoch_id,
             &state,
         )
-        .expect("write emulation epoch state");
+        .expect("write derivation epoch state");
         let operation_tree = OperationSecretTree::new(epoch_base_secret, emulation_group_size);
         <MemoryStorage as StorageProvider<CURRENT_VERSION>>::write_vc_operation_tree(
             provider.storage(),
@@ -1317,7 +1860,7 @@ mod tests {
     }
 
     /// The assembly helper fills `leaf_index` from the registered
-    /// `EmulationEpochState` for the epoch.
+    /// `VcDerivationEpochState` for the epoch.
     #[test]
     fn assemble_upload_reads_leaf_index_from_state() {
         let provider = OpenMlsRustCrypto::default();
@@ -1326,10 +1869,12 @@ mod tests {
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
             },
         ];
@@ -1344,14 +1889,14 @@ mod tests {
     }
 
     /// Assembling for an unregistered epoch fails with
-    /// `MissingEmulationEpochState`.
+    /// `MissingDerivationEpochState`.
     #[test]
     fn assemble_upload_without_state_fails() {
         let provider = OpenMlsRustCrypto::default();
         let epoch_id = EpochId(b"unregistered-epoch".to_vec().into());
         let err = assemble_vc_key_package_upload(provider.storage(), epoch_id, 0, Vec::new())
             .expect_err("assemble must fail without registered state");
-        assert_eq!(err, VirtualClientsError::MissingEmulationEpochState);
+        assert_eq!(err, VirtualClientsError::MissingDerivationEpochState);
     }
 
     /// `process_vc_key_package_upload` stores one material entry per info,
@@ -1371,10 +1916,12 @@ mod tests {
             key_package_info: vec![
                 KeyPackageInfo {
                     key_package_ref: ref_a.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
                 },
             ],
@@ -1393,6 +1940,7 @@ mod tests {
         assert_eq!(material_a.leaf_index, leaf_index);
         assert_eq!(material_a.generation, 0);
         assert_eq!(material_a.key_package_index, 0);
+        assert_eq!(material_a.key_package_ciphersuite, CIPHERSUITE);
 
         let material_b: RetainedKeyPackageMaterial = <MemoryStorage as StorageProvider<
             CURRENT_VERSION,
@@ -1405,6 +1953,7 @@ mod tests {
         assert_eq!(material_b.leaf_index, leaf_index);
         assert_eq!(material_b.generation, 0);
         assert_eq!(material_b.key_package_index, 1);
+        assert_eq!(material_b.key_package_ciphersuite, CIPHERSUITE);
     }
 
     /// `delete_key_package` removes the associated retained VC material.
@@ -1420,6 +1969,7 @@ mod tests {
             generation: 0,
             key_package_info: vec![KeyPackageInfo {
                 key_package_ref: kp_ref.clone(),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
             }],
         };
@@ -1483,21 +2033,29 @@ mod tests {
         let leaf_node_tbe = DerivationInfoTbe::LeafNode {
             leaf_index: LeafNodeIndex::new(7),
             generation: 3,
+            external_init_secret: None,
+        };
+        let external_commit_tbe = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: Some(ExternalInitSecret::from_slice(b"external init secret")),
         };
 
-        // The leaf_node form omits the trailing key_package_index, so its
-        // plaintext is exactly four bytes shorter.
+        // The key_package form carries the trailing key_package_index (u32),
+        // while the leaf_node (commit) form carries an absent
+        // optional<ExternalInitSecret> (one presence octet).
         let key_package_bytes = key_package_tbe
             .tls_serialize_detached()
             .expect("serialize key package tbe");
         let leaf_node_bytes = leaf_node_tbe
             .tls_serialize_detached()
             .expect("serialize leaf node tbe");
-        assert_eq!(key_package_bytes.len(), leaf_node_bytes.len() + 4);
+        assert_eq!(key_package_bytes.len(), leaf_node_bytes.len() + 3);
 
         for (original, operation_type) in [
             (key_package_tbe, VirtualClientOperationType::KeyPackage),
             (leaf_node_tbe, VirtualClientOperationType::LeafNode),
+            (external_commit_tbe, VirtualClientOperationType::LeafNode),
         ] {
             let derivation_info = DerivationInfo::encrypt(
                 provider.crypto(),
@@ -1522,6 +2080,96 @@ mod tests {
         }
     }
 
+    /// Pin the serialized `DerivationInfoTBE` layout to the spec's select,
+    /// byte for byte: `uint32 leaf_index`, `uint32 generation`, then the
+    /// `key_package_index` (key_package case) or the
+    /// `optional<ExternalInitSecret>` (commit case) with nothing trailing.
+    /// Catches conventions drift that the roundtrip test cannot see.
+    #[test]
+    fn derivation_info_tbe_wire_format_matches_spec() {
+        let absent = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: None,
+        }
+        .tls_serialize_detached()
+        .expect("serialize");
+        assert_eq!(
+            absent,
+            [0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x00]
+        );
+
+        let present = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: Some(ExternalInitSecret::from_slice(b"init")),
+        }
+        .tls_serialize_detached()
+        .expect("serialize");
+        assert_eq!(
+            present,
+            [0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x01, 0x04, b'i', b'n', b'i', b't']
+        );
+
+        let key_package = DerivationInfoTbe::KeyPackage {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            key_package_index: 5,
+        }
+        .tls_serialize_detached()
+        .expect("serialize");
+        assert_eq!(
+            key_package,
+            [0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x05]
+        );
+    }
+
+    /// The TBE plaintext must be consumed exactly. A trailing octet, which is
+    /// what a peer implementing the superseded draft revision with its
+    /// trailing `optional<GroupCreationSecret>` would produce, is rejected
+    /// for both variants.
+    #[test]
+    fn derivation_info_tbe_rejects_trailing_data() {
+        let variants = [
+            (
+                DerivationInfoTbe::LeafNode {
+                    leaf_index: LeafNodeIndex::new(7),
+                    generation: 3,
+                    external_init_secret: None,
+                },
+                VirtualClientOperationType::LeafNode,
+            ),
+            (
+                DerivationInfoTbe::KeyPackage {
+                    leaf_index: LeafNodeIndex::new(7),
+                    generation: 3,
+                    key_package_index: 5,
+                },
+                VirtualClientOperationType::KeyPackage,
+            ),
+        ];
+        for (tbe, operation_type) in variants {
+            let mut bytes = tbe.tls_serialize_detached().expect("serialize");
+            bytes.push(0x00);
+            let result = DerivationInfoTbe::deserialize_for_operation(&bytes, operation_type);
+            assert_eq!(result, Err(VirtualClientsError::DerivationInfoMalformed));
+        }
+    }
+
+    /// Debug output of the TBE must not leak the carried init secret.
+    #[test]
+    fn external_init_secret_debug_is_redacted() {
+        let tbe = DerivationInfoTbe::LeafNode {
+            leaf_index: LeafNodeIndex::new(7),
+            generation: 3,
+            external_init_secret: Some(ExternalInitSecret::from_slice(b"very secret bytes")),
+        };
+        let debug = format!("{tbe:?}");
+        assert!(debug.contains("<redacted>"));
+        assert!(!debug.contains("secret bytes"));
+        assert!(!debug.to_lowercase().contains("76657279"));
+    }
+
     /// Decryption must fail when the leaf encryption key used as the
     /// key/nonce derivation context does not match the one used for
     /// encryption. This is what binds the derivation info to the leaf
@@ -1534,6 +2182,7 @@ mod tests {
         let tbe = DerivationInfoTbe::LeafNode {
             leaf_index: LeafNodeIndex::new(1),
             generation: 0,
+            external_init_secret: None,
         };
         let derivation_info = DerivationInfo::encrypt(
             provider.crypto(),
@@ -1613,6 +2262,136 @@ mod tests {
         );
     }
 
+    /// The per-KeyPackage seed is imported into the target ciphersuite: the
+    /// same operation secret and index yield different seeds for different
+    /// target ciphersuites, because the target ciphersuite is bound into the
+    /// `KeyPackageSeedContext` and the import runs under the target's KDF.
+    #[test]
+    fn key_package_seed_binds_target_ciphersuite() {
+        let provider = OpenMlsRustCrypto::default();
+        let operation_secret = OperationSecret::from(Secret::from_slice(
+            &provider
+                .rand()
+                .random_vec(CIPHERSUITE.hash_length())
+                .expect("randomness"),
+        ));
+        // Same KDF hash (SHA-256) as `CIPHERSUITE`, so the two seeds have
+        // equal length and differ only through the ciphersuite binding.
+        let other_ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+
+        let seed = operation_secret
+            .derive_key_package_seed_secret(provider.crypto(), CIPHERSUITE, 0)
+            .expect("derive seed");
+        let seed_other_suite = operation_secret
+            .derive_key_package_seed_secret(provider.crypto(), other_ciphersuite, 0)
+            .expect("derive seed under other target ciphersuite");
+
+        assert_ne!(seed.0.as_slice(), seed_other_suite.0.as_slice());
+    }
+
+    /// The `target_operation_secret` of a `leaf_node` operation is
+    /// deterministic and binds both the target ciphersuite and the
+    /// higher-level group's id; the encryption and path-generation secrets
+    /// derived from it are label-separated.
+    #[test]
+    fn target_operation_secret_binds_ciphersuite_and_group_id() {
+        let provider = OpenMlsRustCrypto::default();
+        let operation_secret = OperationSecret::from(Secret::from_slice(
+            &provider
+                .rand()
+                .random_vec(CIPHERSUITE.hash_length())
+                .expect("randomness"),
+        ));
+        let group_id = GroupId::from_slice(b"group-a");
+        let other_ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+
+        let target = operation_secret
+            .derive_target_operation_secret(provider.crypto(), CIPHERSUITE, &group_id)
+            .expect("derive target operation secret");
+        let target_again = operation_secret
+            .derive_target_operation_secret(provider.crypto(), CIPHERSUITE, &group_id)
+            .expect("derive target operation secret again");
+        let target_other_group = operation_secret
+            .derive_target_operation_secret(
+                provider.crypto(),
+                CIPHERSUITE,
+                &GroupId::from_slice(b"group-b"),
+            )
+            .expect("derive target operation secret for other group");
+        let target_other_suite = operation_secret
+            .derive_target_operation_secret(provider.crypto(), other_ciphersuite, &group_id)
+            .expect("derive target operation secret under other target ciphersuite");
+
+        // Same inputs derive deterministically.
+        assert_eq!(target.0.as_slice(), target_again.0.as_slice());
+        // A different group id or a different target ciphersuite derives a
+        // distinct secret.
+        assert_ne!(target.0.as_slice(), target_other_group.0.as_slice());
+        assert_ne!(target.0.as_slice(), target_other_suite.0.as_slice());
+
+        // Encryption and path-generation secrets from one target operation
+        // secret are label-separated.
+        let encryption_key_secret = target
+            .derive_encryption_key_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive encryption key secret");
+        let path_generation_secret = target
+            .derive_path_generation_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive path generation secret");
+        assert_ne!(
+            encryption_key_secret.0.as_slice(),
+            path_generation_secret.0.as_slice()
+        );
+    }
+
+    /// The group-creation epoch secret is deterministic for a given seed,
+    /// distinct across seeds, and label-separated from the encryption key
+    /// secret derived from the same seed.
+    #[test]
+    fn group_creation_secret_derivation_is_deterministic_and_label_separated() {
+        let provider = OpenMlsRustCrypto::default();
+        let operation_secret = OperationSecret::from(Secret::from_slice(
+            &provider
+                .rand()
+                .random_vec(CIPHERSUITE.hash_length())
+                .expect("randomness"),
+        ));
+
+        let seed_zero = operation_secret
+            .derive_key_package_seed_secret(provider.crypto(), CIPHERSUITE, 0)
+            .expect("derive seed 0");
+        let seed_one = operation_secret
+            .derive_key_package_seed_secret(provider.crypto(), CIPHERSUITE, 1)
+            .expect("derive seed 1");
+
+        let epoch_secret_zero = seed_zero
+            .derive_group_creation_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive group creation secret 0");
+        let epoch_secret_zero_again = seed_zero
+            .derive_group_creation_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive group creation secret 0 again");
+        let epoch_secret_one = seed_one
+            .derive_group_creation_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive group creation secret 1");
+
+        // Same seed derives deterministically.
+        assert_eq!(
+            epoch_secret_zero.as_slice(),
+            epoch_secret_zero_again.as_slice()
+        );
+        // Different seeds derive distinct epoch secrets.
+        assert_ne!(epoch_secret_zero.as_slice(), epoch_secret_one.as_slice());
+
+        // The epoch secret is label-separated from the encryption key secret
+        // derived from the same seed.
+        let encryption_key_secret = seed_zero
+            .derive_encryption_key_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive encryption key 0");
+        assert_ne!(
+            epoch_secret_zero.as_slice(),
+            encryption_key_secret.0.as_slice()
+        );
+    }
+
     /// A repeated `key_package_index` is rejected with
     /// `DuplicateKeyPackageIndex` carrying the offending index.
     #[test]
@@ -1620,10 +2399,12 @@ mod tests {
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
             },
         ];
@@ -1637,10 +2418,12 @@ mod tests {
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
             },
         ];
@@ -1654,10 +2437,12 @@ mod tests {
         let infos = vec![
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
+                cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
             },
         ];
@@ -1682,10 +2467,12 @@ mod tests {
             key_package_info: vec![
                 KeyPackageInfo {
                     key_package_ref: ref_a.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
                 },
             ],
@@ -1701,10 +2488,12 @@ mod tests {
             key_package_info: vec![
                 KeyPackageInfo {
                     key_package_ref: ref_a.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
+                    cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
                 },
             ],
@@ -1731,5 +2520,92 @@ mod tests {
         .expect("read material b")
         .expect("material b present");
         assert_eq!(material_b.key_package_index, 1);
+    }
+
+    /// Build a `VcDerivationEpochState` from raw emulator-epoch-secret
+    /// bytes, so two siblings sharing the same bytes can be compared.
+    fn state_from_secret_bytes(
+        provider: &OpenMlsRustCrypto,
+        secret_bytes: &[u8],
+        leaf_index: LeafNodeIndex,
+    ) -> VcDerivationEpochState {
+        let emulator = EmulatorEpochSecret::new(secret_bytes);
+        let epoch_encryption_key = emulator
+            .derive_epoch_encryption_key(provider.crypto(), CIPHERSUITE)
+            .expect("derive epoch encryption key");
+        let reuse_guard_secret = emulator
+            .derive_reuse_guard_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive reuse guard secret");
+        let generation_id_secret = emulator
+            .derive_generation_id_secret(provider.crypto(), CIPHERSUITE)
+            .expect("derive generation id secret");
+        VcDerivationEpochState::new(
+            leaf_index,
+            epoch_encryption_key,
+            reuse_guard_secret,
+            generation_id_secret,
+            TreeSize::new(2),
+            CIPHERSUITE,
+        )
+    }
+
+    /// The generation ID is deterministic for fixed inputs, changes when any
+    /// `PrivateMessageContext` field changes, and two siblings that share the
+    /// same emulator epoch secret derive the same value (so a DS can compare
+    /// them for equality across siblings).
+    #[test]
+    fn generation_id_is_deterministic_and_context_sensitive() {
+        let provider = OpenMlsRustCrypto::default();
+        let secret_bytes = provider
+            .rand()
+            .random_vec(CIPHERSUITE.hash_length())
+            .expect("randomness");
+        let state = state_from_secret_bytes(&provider, &secret_bytes, LeafNodeIndex::new(0));
+
+        let group_id = GroupId::from_slice(b"higher-level-group");
+        let epoch = GroupEpoch::from(7);
+        let derive = |group_id: &GroupId, epoch, generation, ratchet_type| {
+            state
+                .derive_generation_id(provider.crypto(), group_id, epoch, generation, ratchet_type)
+                .expect("derive generation id")
+        };
+
+        let base = derive(&group_id, epoch, 3, RatchetType::Application);
+        // The generation ID is `Kdf.Nh` bytes long.
+        assert_eq!(base.as_slice().len(), CIPHERSUITE.hash_length());
+        // Deterministic for fixed inputs.
+        assert_eq!(base, derive(&group_id, epoch, 3, RatchetType::Application));
+        // Sensitive to the generation, the epoch, the group id, and the
+        // ratchet type.
+        assert_ne!(base, derive(&group_id, epoch, 4, RatchetType::Application));
+        assert_ne!(
+            base,
+            derive(&group_id, GroupEpoch::from(8), 3, RatchetType::Application)
+        );
+        assert_ne!(
+            base,
+            derive(
+                &GroupId::from_slice(b"other-group"),
+                epoch,
+                3,
+                RatchetType::Application
+            )
+        );
+        assert_ne!(base, derive(&group_id, epoch, 3, RatchetType::Handshake));
+
+        // A sibling sharing the same emulator epoch secret derives the same
+        // generation ID, even from a different leaf index: the leaf index is
+        // not part of the PrivateMessageContext.
+        let sibling = state_from_secret_bytes(&provider, &secret_bytes, LeafNodeIndex::new(5));
+        let sibling_id = sibling
+            .derive_generation_id(
+                provider.crypto(),
+                &group_id,
+                epoch,
+                3,
+                RatchetType::Application,
+            )
+            .expect("sibling derive generation id");
+        assert_eq!(base, sibling_id);
     }
 }

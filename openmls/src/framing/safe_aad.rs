@@ -128,6 +128,19 @@ impl SafeAad {
             .map(|index| self.aad_items[index].data())
     }
 
+    /// Insert `item`, replacing any item already tagged with its
+    /// [`ComponentId`]. The sorted-unique invariant is maintained.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn upsert(&mut self, item: SafeAadItem) {
+        match self
+            .aad_items
+            .binary_search_by_key(&item.component_id(), SafeAadItem::component_id)
+        {
+            Ok(index) => self.aad_items[index] = item,
+            Err(index) => self.aad_items.insert(index, item),
+        }
+    }
+
     /// Returns true if there are no items.
     pub fn is_empty(&self) -> bool {
         self.aad_items.is_empty()
@@ -302,6 +315,32 @@ mod tests {
         assert_eq!(safe_aad.get(5), None);
         assert_eq!(safe_aad.get(1), Some(b"a".as_slice()));
         assert_eq!(safe_aad.get(10), Some(b"b".as_slice()));
+    }
+
+    /// `upsert` has to keep the list sorted and free of duplicates, since
+    /// [`SafeAad::get`] binary-searches it and serialization would otherwise
+    /// emit bytes the parser rejects.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[test]
+    fn upsert_inserts_and_replaces_in_order() {
+        let mut safe_aad = SafeAad::from_items(vec![item(1, b"a"), item(10, b"c")]).unwrap();
+
+        safe_aad.upsert(item(5, b"b"));
+        safe_aad.upsert(item(20, b"d"));
+        safe_aad.upsert(item(0, b"first"));
+        // An existing component id is replaced rather than duplicated.
+        safe_aad.upsert(item(10, b"replaced"));
+
+        let ids: Vec<ComponentId> = safe_aad
+            .items()
+            .iter()
+            .map(SafeAadItem::component_id)
+            .collect();
+        assert_eq!(ids, vec![0, 1, 5, 10, 20]);
+        assert_eq!(safe_aad.get(10), Some(b"replaced".as_slice()));
+
+        let bytes = safe_aad.tls_serialize_detached().unwrap();
+        assert_eq!(SafeAad::tls_deserialize_exact(&bytes).unwrap(), safe_aad);
     }
 
     #[test]

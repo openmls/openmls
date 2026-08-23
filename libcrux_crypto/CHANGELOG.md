@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0 (2026-08-03)
+
+### Added
+
+- [#2046](https://github.com/openmls/openmls/pull/2046): Added PQ ciphersuite support, behind the `draft-ietf-mls-pq-ciphersuites` feature flag.
+- [#2028](https://github.com/openmls/openmls/pull/2028): Added support for targeted messages, behind the `targeted-messages-draft` feature flag.
+
+### Changed
+
+- [#2060](https://github.com/openmls/openmls/pull/2060): Renamed the `extensions-draft-08` feature flag to `extensions-draft`. This is an unstable/draft feature that was never part of a stable release, but note it if you already depend on `extensions-draft-08` directly.
+
+### Fixed
+
+- [#2139](https://github.com/openmls/openmls/pull/2139): The libcrux crypto provider rejected some ciphersuites it actually supports.
+
 ## 0.3.1 (2026-02-13)
 
 ### Changed

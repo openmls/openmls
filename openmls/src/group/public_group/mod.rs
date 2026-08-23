@@ -65,8 +65,16 @@ pub(crate) mod staged_commit;
 mod tests;
 mod validation;
 
+#[cfg(feature = "migration-import")]
+mod migration_import;
+
 /// This struct holds all public values of an MLS group.
 #[derive(Debug)]
+#[cfg_attr(feature = "migration-import", derive(serde::Deserialize))]
+#[cfg_attr(
+    all(feature = "test-utils", feature = "migration-import"),
+    derive(serde::Serialize)
+)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq, Clone))]
 pub struct PublicGroup {
     treesync: TreeSync,
@@ -147,6 +155,9 @@ impl PublicGroup {
         validate_lifetimes: LeafNodeLifetimePolicy,
     ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>> {
         let ciphersuite = verifiable_group_info.ciphersuite();
+        crypto
+            .supports(ciphersuite)
+            .map_err(|_| CreationFromExternalError::UnsupportedCiphersuite(ciphersuite))?;
 
         let group_id = verifiable_group_info.group_id();
         let ratchet_tree = ratchet_tree
@@ -228,7 +239,14 @@ impl PublicGroup {
                                 // None would be blank, and we don't care about those
                                 if let Some(intermediate_node) = treesync
                                     .parent(*intermediate_index) {
-                                    if !intermediate_node.unmerged_leaves().contains(leaf_index) {
+                                    // The list of unmerged leaves is sorted,
+                                    // which UnmergedLeaves enforces when it is
+                                    // deserialized from the wire.
+                                    if intermediate_node
+                                        .unmerged_leaves()
+                                        .binary_search(leaf_index)
+                                        .is_err()
+                                    {
                                         return Err(CreationFromExternalError::<StorageError>::IntermediateNodeMissingUnmergedLeaf);
                                     }
                                 }

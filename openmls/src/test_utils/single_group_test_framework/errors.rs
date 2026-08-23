@@ -22,6 +22,7 @@ pub enum TestError<StorageError> {
     Welcome(#[from] WelcomeError<StorageError>),
     ProtocolMessage(#[from] ProtocolMessageError),
     MergeCommit(#[from] MergeCommitError<StorageError>),
+    MergePendingCommit(#[from] MergePendingCommitError<StorageError>),
     CommitToPendingProposals(#[from] CommitToPendingProposalsError<StorageError>),
     NoSuchMember,
 }

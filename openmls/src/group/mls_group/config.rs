@@ -264,6 +264,11 @@ pub struct MlsGroupCreateConfig {
     pub(crate) group_context_extensions: Extensions<GroupContext>,
     /// List of initial leaf node extensions
     pub(crate) leaf_node_extensions: Extensions<LeafNode>,
+    /// Flag marking the created group as an emulation group of a virtual
+    /// client. Only consulted at group creation, the group keeps the flag
+    /// itself afterwards.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) emulation_group: bool,
 }
 
 impl Default for MlsGroupCreateConfig {
@@ -275,6 +280,8 @@ impl Default for MlsGroupCreateConfig {
             join_config: MlsGroupJoinConfig::default(),
             group_context_extensions: Extensions::default(),
             leaf_node_extensions: Extensions::default(),
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: false,
         }
     }
 }
@@ -422,6 +429,13 @@ impl MlsGroupCreateConfig {
         self.ciphersuite
     }
 
+    /// Returns whether groups created with this config are emulation groups of
+    /// a virtual client. See [`MlsGroupCreateConfigBuilder::emulation_group`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(&self) -> bool {
+        self.emulation_group
+    }
+
     #[cfg(any(feature = "test-utils", test))]
     pub fn test_default(ciphersuite: Ciphersuite) -> Self {
         Self::builder()
@@ -518,6 +532,41 @@ impl MlsGroupCreateConfigBuilder {
     /// Sets the `capabilities` of the group creator's leaf node.
     pub fn capabilities(mut self, capabilities: Capabilities) -> Self {
         self.config.capabilities = capabilities;
+        self
+    }
+
+    /// Marks the group as an emulation group of a virtual client.
+    ///
+    /// This is the application's declaration that the group's members are the
+    /// emulator clients of one virtual client. It is local state, nothing about
+    /// it travels on the wire, and every member of an emulation group has to
+    /// set it. Members that join by Welcome set it on the
+    /// [`StagedWelcome`](crate::group::StagedWelcome) instead, and members that
+    /// join by external commit on the
+    /// [`ExternalCommitBuilder`](crate::group::ExternalCommitBuilder).
+    ///
+    /// An emulation group derives the virtual client's secrets from its
+    /// derivation epochs. The initial epoch is a derivation epoch, and so is
+    /// the output epoch of every commit that changes membership or that carries
+    /// a `new_derivation_epoch` action in its virtual-clients Safe AAD item
+    /// (see [`CommitBuilder::derivation_epoch`]). OpenMLS derives and
+    /// persists the derivation-epoch state itself at group creation, at a
+    /// Welcome join, and when such a commit is merged. Applications should wrap
+    /// every merge in a storage transaction. A merge performs several storage
+    /// writes even without virtual clients, and derivation-epoch registration
+    /// adds more.
+    ///
+    /// Use [`MlsGroup::newest_vc_derivation_epoch`] to look up the derivation
+    /// epoch that virtual-client operations resolve to. It may be older than
+    /// the group's current epoch.
+    ///
+    /// Groups without this flag never write virtual-clients state.
+    ///
+    /// [`CommitBuilder::derivation_epoch`]: crate::group::CommitBuilder::derivation_epoch
+    /// [`MlsGroup::newest_vc_derivation_epoch`]: crate::group::MlsGroup::newest_vc_derivation_epoch
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(mut self, emulation_group: bool) -> Self {
+        self.config.emulation_group = emulation_group;
         self
     }
 

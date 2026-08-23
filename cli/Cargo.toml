@@ -5,6 +5,14 @@ authors = ["OpenMLS Authors"]
 edition = "2021"
 publish = false
 
+[features]
+# Forward feature to openmls and the storage backend.
+extensions-draft = [
+    "openmls/extensions-draft",
+    "openmls/extensions-draft-test-dependencies",
+    "openmls_memory_storage/extensions-draft",
+]
+
 [dependencies]
 url = "2.2"
 reqwest = { version = "0.13", features = ["blocking", "json"] }

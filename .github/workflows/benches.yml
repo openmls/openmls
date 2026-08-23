@@ -28,13 +28,13 @@ jobs:
   benchmarks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Benchmarks
-        run: cargo bench -p openmls --verbose
+        run: cargo bench -p openmls --verbose --features=libcrux-provider
 
       - name: Large groups
         run: |

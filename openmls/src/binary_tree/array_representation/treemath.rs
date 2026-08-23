@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
-pub(crate) const MAX_TREE_SIZE: u32 = 1 << 30;
+pub(crate) const MAX_TREE_SIZE: u32 = (1 << 30) - 1;
 pub(crate) const MIN_TREE_SIZE: u32 = 1;
 
 /// LeafNodeIndex references a leaf node in a tree.
@@ -194,7 +194,7 @@ impl TreeSize {
     }
 
     /// Creates a new `TreeSize` from a specific leaf count
-    #[cfg(any(feature = "test-utils", feature = "extensions-draft-08", test))]
+    #[cfg(any(feature = "test-utils", feature = "extensions-draft", test))]
     pub(crate) fn from_leaf_count(leaf_count: u32) -> Self {
         TreeSize::new(leaf_count * 2)
     }
@@ -280,15 +280,8 @@ fn log2(x: u32) -> usize {
 }
 
 pub fn level(index: u32) -> usize {
-    let x = index;
-    if (x & 0x01) == 0 {
-        return 0;
-    }
-    let mut k = 0;
-    while ((x >> k) & 0x01) == 1 {
-        k += 1;
-    }
-    k
+    // The cast is always valid, as there is at most 32 trailing ones
+    index.trailing_ones() as usize
 }
 
 pub(crate) fn root(size: TreeSize) -> TreeNodeIndex {

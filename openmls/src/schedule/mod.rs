@@ -132,15 +132,15 @@ use crate::{
 
 // Public
 pub mod errors;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub(crate) mod pprf;
 pub mod psk;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub use pprf::PprfError;
 
 // Crate
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub(crate) mod application_export_tree;
 pub(crate) mod message_secrets;
 
@@ -350,7 +350,7 @@ impl InitSecret {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(any(feature = "test-utils", test, feature = "virtual-clients-draft"))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -419,7 +419,7 @@ pub(crate) struct KeySchedule {
 
 pub(crate) struct EpochSecretsResult {
     pub(crate) epoch_secrets: EpochSecrets,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) application_exporter: ApplicationExportSecret,
 }
 
@@ -530,7 +530,7 @@ impl KeySchedule {
         };
 
         let res = EpochSecretsResult {
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter: ApplicationExportSecret::new(crypto, ciphersuite, &epoch_secret)?,
             epoch_secrets: EpochSecrets::new(crypto, ciphersuite, epoch_secret)?,
         };
@@ -740,6 +740,14 @@ impl ExporterSecret {
         self.secret.as_slice()
     }
 
+    // Only used for KATs of the Targeted Messages feature
+    #[cfg(all(feature = "targeted-messages-draft", test))]
+    pub(crate) fn from_slice(bytes: &[u8]) -> Self {
+        Self {
+            secret: Secret::from_slice(bytes),
+        }
+    }
+
     /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
     /// it can be used outside of OpenMLS. This function is made available for
     /// use from the outside through [`MlsGroup::export_secret`].
@@ -764,14 +772,14 @@ impl ExporterSecret {
 /// A secret that we can derive secrets from, that are used outside of OpenMLS.
 /// In contrast to `[ExporterSecret]`, the `[ApplicationExportSecret]` is not
 /// persisted. It can be deleted after use to achieve forward secrecy.
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(PartialEq))]
 pub struct ApplicationExportSecret {
     secret: Secret,
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl ApplicationExportSecret {
     /// Derive an `ExporterSecret` from an `EpochSecret`.
     fn new(
@@ -1126,7 +1134,6 @@ impl EpochSecrets {
     }
 
     /// Exporter secret
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
         &self.exporter_secret
     }
@@ -1214,6 +1221,24 @@ impl EpochSecrets {
         let mut epoch_secrets = Self::new(crypto, ciphersuite, epoch_secret)?;
         epoch_secrets.init_secret = init_secret;
         Ok(epoch_secrets)
+    }
+
+    /// Initialize the `EpochSecrets` from a given `epoch_secret`, rather than
+    /// deriving it through the joiner key schedule. Both the creator and a
+    /// reconstructing sibling of a virtual-client-created group use this to
+    /// initialize the epoch-0 state from the `epoch_secret` each derives from
+    /// the creator's KeyPackage seed secret. The `epoch_secret` stays in a
+    /// zeroizing [`Secret`] end to end.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn from_epoch_secret(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        epoch_secret: Secret,
+    ) -> Result<Self, CryptoError> {
+        let epoch_secret = EpochSecret {
+            secret: epoch_secret,
+        };
+        Self::new(crypto, ciphersuite, epoch_secret)
     }
 
     /// Splits `EpochSecrets` into two different categories:

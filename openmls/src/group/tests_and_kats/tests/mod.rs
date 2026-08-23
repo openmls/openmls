@@ -1,9 +1,9 @@
 //! Unit tests for the core group
 
 mod aad;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 mod app_data_update_proposal_validation;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 mod safe_aad;
 
 mod capabilities_check;
@@ -24,4 +24,10 @@ mod key_package_in;
 mod past_secrets;
 mod proposal_validation;
 mod remove_operation;
+mod unsupported_ciphersuite;
+#[cfg(all(
+    feature = "virtual-clients-draft",
+    feature = "draft-ietf-mls-pq-ciphersuites"
+))]
+mod virtual_clients;
 mod wire_format_policy;

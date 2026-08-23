@@ -42,7 +42,7 @@ fn test_psks() {
     };
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[openmls_test::openmls_test]
 fn test_application_psks() {
     use tls_codec::{Deserialize as _, Serialize as _};

@@ -79,7 +79,7 @@ impl PrivateComponentId {
     }
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[repr(u16)]
 /// The type of a Component ID
 pub enum ComponentType {
@@ -212,7 +212,7 @@ impl From<ComponentType> for ComponentId {
 ///     ComponentID component_ids<V>;
 /// } ComponentsList;
 /// ```
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(
     PartialEq,
     Eq,
@@ -230,7 +230,7 @@ pub struct ComponentsList {
     component_ids: Vec<ComponentId>,
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl ComponentsList {
     /// Create a new [`ComponentsList`] from a vector of [`ComponentId`]s.
     pub fn new(component_ids: Vec<ComponentId>) -> Self {

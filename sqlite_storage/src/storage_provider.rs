@@ -699,7 +699,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         StorablePskIdRef(psk_id).delete::<C>(self.connection.borrow())
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
@@ -715,7 +715,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn application_export_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
@@ -730,7 +730,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<STORAGE_PROVIDER_VERSION>,
@@ -745,32 +745,32 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_emulation_epoch_state<
+    fn write_vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<STORAGE_PROVIDER_VERSION>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-        vc_emulation_epoch_state: &VcEmulationEpochState,
+        vc_derivation_epoch_state: &VcDerivationEpochState,
     ) -> Result<(), Self::Error> {
-        StorableVcSecretRef(vc_emulation_epoch_state)
-            .store_vc_emulation_epoch_state::<C, _>(self.connection.borrow(), epoch_id)
+        StorableVcSecretRef(vc_derivation_epoch_state)
+            .store_vc_derivation_epoch_state::<C, _>(self.connection.borrow(), epoch_id)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_epoch_state<
+    fn vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<STORAGE_PROVIDER_VERSION>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
+    ) -> Result<Option<VcDerivationEpochState>, Self::Error> {
         StorableKeyRef(epoch_id)
-            .load_vc_emulation_epoch_state::<C, VcEmulationEpochState>(self.connection.borrow())
+            .load_vc_derivation_epoch_state::<C, VcDerivationEpochState>(self.connection.borrow())
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_state_if_unreferenced<
+    fn delete_vc_derivation_epoch_state_if_unreferenced<
         EpochId: traits::VcEpochId<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
@@ -784,7 +784,7 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         {
             return Ok(false);
         }
-        StorableKeyRef(epoch_id).delete_vc_emulation_epoch_state::<C>(self.connection.borrow())?;
+        StorableKeyRef(epoch_id).delete_vc_derivation_epoch_state::<C>(self.connection.borrow())?;
         StorableKeyRef(epoch_id).delete_vc_operation_tree::<C>(self.connection.borrow())?;
         Ok(true)
     }
@@ -820,6 +820,42 @@ impl<C: Codec, ConnectionRef: Borrow<Connection>> StorageProvider<STORAGE_PROVID
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         StorableKeyRef(group_id).delete_vc_emulation_bindings::<C>(self.connection.borrow())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_registered_vc_derivation_epoch<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        registered: &RegisteredVcDerivationEpoch,
+    ) -> Result<(), Self::Error> {
+        crate::vc_secrets::StorableRegisteredVcDerivationEpochRef(registered)
+            .store_registered_vc_derivation_epoch::<C, _>(self.connection.borrow(), group_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn registered_vc_derivation_epoch<
+        GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Option<RegisteredVcDerivationEpoch>, Self::Error> {
+        StorableKeyRef(group_id)
+            .load_registered_vc_derivation_epoch::<C, RegisteredVcDerivationEpoch>(
+                self.connection.borrow(),
+            )
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_registered_vc_derivation_epoch<GroupId: traits::GroupId<STORAGE_PROVIDER_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        StorableKeyRef(group_id)
+            .delete_registered_vc_derivation_epoch::<C>(self.connection.borrow())
     }
 
     #[cfg(feature = "virtual-clients-draft")]

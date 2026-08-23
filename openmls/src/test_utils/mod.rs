@@ -28,6 +28,7 @@ use crate::{
 };
 
 pub mod frankenstein;
+pub mod restricted_provider;
 pub mod storage_state;
 pub mod test_framework;
 

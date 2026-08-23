@@ -25,7 +25,7 @@ use crate::{
         MlsGroupStateError, OutgoingWireFormatPolicy, PublicGroup, RatchetTreeExtension,
         RequiredCapabilitiesExtension, SetPastEpochDeletionPolicyError, StagedCommit,
     },
-    key_packages::KeyPackageBundle,
+    key_packages::{InitKey, KeyPackageBundle},
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
         proposals::*,
@@ -47,13 +47,20 @@ use openmls_traits::{
     crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _, types::Ciphersuite,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
 // Private
 mod application;
 mod exporting;
 mod updates;
+
+#[cfg(feature = "migration-import")]
+pub(crate) mod migration_import;
+
+#[cfg(feature = "virtual-clients-draft")]
+pub use application::UnconfirmedMessage;
+pub use proposal::Propose;
 
 use config::*;
 
@@ -70,8 +77,11 @@ pub(crate) mod proposal;
 pub(crate) mod proposal_store;
 pub(crate) mod staged_commit;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub(crate) mod app_ephemeral;
+
+#[cfg(feature = "targeted-messages-draft")]
+mod targeted_messages;
 
 // Tests
 #[cfg(test)]
@@ -226,6 +236,11 @@ pub enum MlsGroupState {
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
 /// more information.
 #[derive(Debug)]
+#[cfg_attr(feature = "migration-import", derive(serde::Deserialize))]
+#[cfg_attr(
+    all(feature = "migration-import", feature = "test-utils"),
+    derive(serde::Serialize)
+)]
 #[cfg_attr(feature = "test-utils", derive(Clone, PartialEq))]
 pub struct MlsGroup {
     /// The group configuration. See [`MlsGroupJoinConfig`] for more information.
@@ -256,7 +271,14 @@ pub struct MlsGroup {
     // Safe AAD items to attach to the next outgoing message. Ephemeral, reset
     // alongside `aad`. Only consulted when the group's GroupContext requires
     // Safe AAD framing.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
+    // Migration bridge:
+    // absent from older serializations, so default it to empty on import — it is
+    // ephemeral, so a freshly migrated group has nothing staged anyway.
+    #[cfg_attr(
+        feature = "migration-import",
+        serde(default = "crate::framing::SafeAad::empty")
+    )]
     safe_aad: SafeAad,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
@@ -264,8 +286,20 @@ pub struct MlsGroup {
     /// The state of the Application Exporter. See the MLS Extensions Draft 08
     /// for more information. This is `None` if an old OpenMLS group state was
     /// loaded and has not yet merged a commit.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
+    // Migration bridge (see the note on the struct): absent when migrating in a
+    // group from a version that did not have `extensions-draft`, so default it to
+    // `None` on import — it initializes on the next merged commit.
+    #[cfg_attr(feature = "migration-import", serde(default))]
     application_export_tree: Option<ApplicationExportTree>,
+    /// Whether this group is an emulation group of a virtual client. Not
+    /// persisted on its own: [`MlsGroup::load`] recovers it from the presence of
+    /// the group's derivation-epoch registration record.
+    #[cfg(feature = "virtual-clients-draft")]
+    // Migration bridge (see the note on the struct): a group migrated in from a
+    // version without `virtual-clients-draft` is never an emulation group.
+    #[cfg_attr(feature = "migration-import", serde(default))]
+    emulation_group: bool,
 }
 
 impl MlsGroup {
@@ -282,8 +316,19 @@ impl MlsGroup {
         storage: &Storage,
         mls_group_config: &MlsGroupJoinConfig,
     ) -> Result<(), Storage::Error> {
+        let policy_changed = self.mls_group_config.past_epoch_deletion_policy()
+            != mls_group_config.past_epoch_deletion_policy();
+
         self.mls_group_config = mls_group_config.clone();
-        storage.write_mls_join_config(self.group_id(), mls_group_config)
+        storage.write_mls_join_config(self.group_id(), mls_group_config)?;
+
+        if policy_changed {
+            // Resize the store to adhere to the new policy.
+            self.resize_message_secrets_store(mls_group_config.past_epoch_deletion_policy());
+            storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+        }
+
+        Ok(())
     }
 
     /// Sets the additional authenticated data (AAD) for the next outgoing
@@ -308,7 +353,7 @@ impl MlsGroup {
     /// is produced.
     ///
     /// [`ComponentId`]: crate::component::ComponentId
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn set_safe_aad(&mut self, items: Vec<SafeAadItem>) -> Result<(), SafeAadError> {
         self.safe_aad = SafeAad::from_items(items)?;
         Ok(())
@@ -316,7 +361,7 @@ impl MlsGroup {
 
     /// Returns the currently staged Safe AAD items for the next outgoing
     /// message.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn safe_aad_items(&self) -> &[SafeAadItem] {
         self.safe_aad.items()
     }
@@ -472,8 +517,15 @@ impl MlsGroup {
         let mls_group_config = storage.mls_group_join_config(group_id)?;
         let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
         let group_state = storage.group_state(group_id)?;
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = storage.application_export_tree(group_id)?;
+        // A group has a derivation-epoch registration record for exactly as long
+        // as it is an emulation group. The record is written by the initial
+        // registration at creation or Welcome join and removed by `delete`.
+        #[cfg(feature = "virtual-clients-draft")]
+        let emulation_group =
+            crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, group_id)?
+                .is_some();
 
         let build = || -> Option<Self> {
             Some(Self {
@@ -485,11 +537,13 @@ impl MlsGroup {
                 mls_group_config: mls_group_config?,
                 own_leaf_nodes,
                 aad: vec![],
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 safe_aad: SafeAad::empty(),
                 group_state: group_state?,
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 application_export_tree,
+                #[cfg(feature = "virtual-clients-draft")]
+                emulation_group,
             })
         };
 
@@ -513,15 +567,18 @@ impl MlsGroup {
         storage.delete_group_state(self.group_id())?;
         storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
-        // Drop this group's emulation-epoch bindings. `EmulationEpochState`
-        // and the operation secret tree are keyed on the emulation epoch
-        // and may still be referenced by other higher-level groups, so
-        // they're not deleted here.
+        // Drop this group's derivation-epoch bindings and its registration
+        // record. `VcDerivationEpochState` and the operation secret tree are
+        // keyed on the derivation epoch and may still be referenced by other
+        // higher-level groups, so they're not deleted here.
         #[cfg(feature = "virtual-clients-draft")]
-        storage.delete_vc_emulation_bindings(self.group_id())?;
+        {
+            storage.delete_vc_emulation_bindings(self.group_id())?;
+            storage.delete_registered_vc_derivation_epoch(self.group_id())?;
+        }
 
         self.proposal_store_mut().empty();
         storage.delete_encryption_epoch_key_pairs(
@@ -541,20 +598,20 @@ impl MlsGroup {
     }
 }
 
-/// Error resolving the [`EmulationEpochState`] bound to a group at a given
-/// epoch via [`MlsGroup::vc_emulation_state_at_epoch`]. Callers map it to
+/// Error resolving the [`VcDerivationEpochState`] bound to a group at a given
+/// epoch via [`MlsGroup::vc_derivation_state_at_epoch`]. Callers map it to
 /// their own error type.
 ///
-/// [`EmulationEpochState`]: crate::components::vc_derivation_info::EmulationEpochState
+/// [`VcDerivationEpochState`]: crate::components::vc_derivation_info::VcDerivationEpochState
 #[cfg(feature = "virtual-clients-draft")]
 #[derive(thiserror::Error, Debug, PartialEq, Clone)]
-pub(crate) enum VcEmulationStateError<StorageError> {
-    /// Reading the binding or the emulation-epoch state from storage failed.
-    #[error("Error reading the binding or emulation-epoch state from storage: {0}")]
+pub(crate) enum VcDerivationStateError<StorageError> {
+    /// Reading the binding or the derivation-epoch state from storage failed.
+    #[error("Error reading the binding or derivation-epoch state from storage: {0}")]
     Storage(StorageError),
-    /// The group is bound to an emulation epoch, but its state is missing.
-    #[error("The group is bound to an emulation epoch, but its state is missing.")]
-    MissingEmulationEpochState,
+    /// The group is bound to a derivation epoch, but its state is missing.
+    #[error("The group is bound to a derivation epoch, but its state is missing.")]
+    MissingDerivationEpochState,
 }
 
 // Crate-public functions
@@ -696,36 +753,70 @@ impl MlsGroup {
         .map_err(|e| e.into())
     }
 
-    /// Load the [`EmulationEpochState`] this group is bound to at `epoch`, if
-    /// any. Returns `None` when the group has no virtual-clients binding for
+    /// Load the [`VcDerivationEpochState`] this group is bound to at `epoch`,
+    /// if any. Returns `None` when the group has no virtual-clients binding for
     /// that epoch. The binding is resolved at the epoch a message was sent in,
     /// so a delayed message from a past epoch deprotects with the state that
     /// was bound then, not the latest one.
     ///
-    /// [`EmulationEpochState`]: crate::components::vc_derivation_info::EmulationEpochState
+    /// [`VcDerivationEpochState`]: crate::components::vc_derivation_info::VcDerivationEpochState
     #[cfg(feature = "virtual-clients-draft")]
-    pub(crate) fn vc_emulation_state_at_epoch<Storage: StorageProvider>(
+    pub(crate) fn vc_derivation_state_at_epoch<Storage: StorageProvider>(
         &self,
         storage: &Storage,
         epoch: GroupEpoch,
     ) -> Result<
-        Option<crate::components::vc_derivation_info::EmulationEpochState>,
-        VcEmulationStateError<Storage::Error>,
+        Option<crate::components::vc_derivation_info::VcDerivationEpochState>,
+        VcDerivationStateError<Storage::Error>,
     > {
         let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> = storage
             .vc_emulation_bindings(self.group_id())
-            .map_err(VcEmulationStateError::Storage)?;
+            .map_err(VcDerivationStateError::Storage)?;
         let Some(epoch_id) = bindings.and_then(|bindings| bindings.get(epoch).cloned()) else {
             return Ok(None);
         };
         let state = storage
-            .vc_emulation_epoch_state(&epoch_id)
-            .map_err(VcEmulationStateError::Storage)?
+            .vc_derivation_epoch_state(&epoch_id)
+            .map_err(VcDerivationStateError::Storage)?
             .ok_or_else(|| {
-                log::error!("vc: group is bound to emulation epoch, but state is missing");
-                VcEmulationStateError::MissingEmulationEpochState
+                log::error!("vc: group is bound to derivation epoch, but state is missing");
+                VcDerivationStateError::MissingDerivationEpochState
             })?;
         Ok(Some(state))
+    }
+
+    /// Returns whether this group is an emulation group of a virtual client.
+    ///
+    /// The flag is set when the application creates the group as an emulation
+    /// group or joins one, and it is restored from storage when the group is
+    /// loaded. See [`MlsGroupCreateConfigBuilder::emulation_group`].
+    ///
+    /// [`MlsGroupCreateConfigBuilder::emulation_group`]: crate::group::MlsGroupCreateConfigBuilder::emulation_group
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn is_emulation_group(&self) -> bool {
+        self.emulation_group
+    }
+
+    /// Returns the [`EpochId`] of the newest derivation epoch of this emulation
+    /// group, or `None` if none was registered yet.
+    ///
+    /// All virtual-client operations resolve to this derivation epoch. It is
+    /// sourced from the newest group epoch that was a derivation epoch, which
+    /// may be older than the group's current epoch: only commits that change
+    /// membership or that carry a `new_derivation_epoch` action create one.
+    ///
+    /// The sender-side operation entry points take the emulation group and
+    /// resolve the epoch themselves, so this getter is for inspection only.
+    ///
+    /// Returns `None` for groups that are not emulation groups.
+    ///
+    /// [`EpochId`]: crate::components::vc_derivation_info::EpochId
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn newest_vc_derivation_epoch<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
+        crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, self.group_id())
     }
 
     // Encrypt an AuthenticatedContent into an PrivateMessage
@@ -736,22 +827,22 @@ impl MlsGroup {
     ) -> Result<EncryptionOutput, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
 
-        // If this group is bound to an emulation epoch at its current epoch,
+        // If this group is bound to a derivation epoch at its current epoch,
         // load the state so the framing layer can derive a deterministic
         // reuse guard.
         #[cfg(feature = "virtual-clients-draft")]
-        let emulation_state = self
-            .vc_emulation_state_at_epoch(provider.storage(), self.epoch())
+        let derivation_state = self
+            .vc_derivation_state_at_epoch(provider.storage(), self.epoch())
             .map_err(|e| match e {
-                VcEmulationStateError::Storage(e) => MessageEncryptionError::StorageError(e),
-                VcEmulationStateError::MissingEmulationEpochState => {
+                VcDerivationStateError::Storage(e) => MessageEncryptionError::StorageError(e),
+                VcDerivationStateError::MissingDerivationEpochState => {
                     MessageEncryptionError::VirtualClientsError(
-                        crate::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState,
+                        crate::components::vc_derivation_info::VirtualClientsError::MissingDerivationEpochState,
                     )
                 }
             })?;
         #[cfg(feature = "virtual-clients-draft")]
-        let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> = emulation_state
+        let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> = derivation_state
             .as_ref()
             .map(|state| state.reuse_guard_inputs());
 
@@ -765,6 +856,33 @@ impl MlsGroup {
             #[cfg(feature = "virtual-clients-draft")]
             emulator_ctx.as_ref(),
         )?;
+
+        // When the group is bound to a derivation epoch, derive the generation
+        // ID the application hands to the DS to detect generation collisions
+        // between siblings. Application content draws it from the application
+        // ratchet, proposals and commits from the handshake ratchet.
+        #[cfg(feature = "virtual-clients-draft")]
+        let msg = {
+            use crate::components::vc_derivation_info::RatchetType;
+            let mut msg = msg;
+            if let Some(state) = &derivation_state {
+                let ratchet_type = match public_message.content().content_type() {
+                    ContentType::Application => RatchetType::Application,
+                    ContentType::Proposal | ContentType::Commit => RatchetType::Handshake,
+                };
+                let generation_id = state
+                    .derive_generation_id(
+                        provider.crypto(),
+                        self.group_id(),
+                        self.epoch(),
+                        msg.generation,
+                        ratchet_type,
+                    )
+                    .map_err(MessageEncryptionError::VirtualClientsError)?;
+                msg.generation_id = Some(generation_id);
+            }
+            msg
+        };
 
         provider
             .storage()
@@ -785,11 +903,11 @@ impl MlsGroup {
     /// Callers borrow the returned buffer into a [`FramingParameters`] for the
     /// duration of message construction.
     pub(crate) fn outgoing_authenticated_data(&self) -> Result<Vec<u8>, LibraryError> {
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         {
             self.assembled_authenticated_data()
         }
-        #[cfg(not(feature = "extensions-draft-08"))]
+        #[cfg(not(feature = "extensions-draft"))]
         {
             Ok(self.aad.clone())
         }
@@ -799,7 +917,7 @@ impl MlsGroup {
     /// message. When the GroupContext requires Safe AAD framing, the result is
     /// the TLS serialization of the staged [`SafeAad`] followed by the bytes of
     /// `self.aad`. Otherwise, the result is `self.aad` unchanged.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn assembled_authenticated_data(&self) -> Result<Vec<u8>, LibraryError> {
         if !self.context().safe_aad_required() {
             return Ok(self.aad.clone());
@@ -850,7 +968,7 @@ impl MlsGroup {
     #[inline]
     pub(crate) fn reset_aad(&mut self) {
         self.aad.clear();
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         {
             self.safe_aad = SafeAad::empty();
         }
@@ -860,6 +978,44 @@ impl MlsGroup {
     pub fn public_group(&self) -> &PublicGroup {
         &self.public_group
     }
+}
+
+/// Bookkeeping a virtual client needs to confirm a handshake message
+/// (proposal or commit) that was framed as a PrivateMessage.
+///
+/// Pass `epoch` and `generation` to [`MlsGroup::confirm_handshake_message`]
+/// once the DS has accepted the message, to delete the retained handshake
+/// secret. `generation_id` is present when the group is bound to a derivation
+/// epoch and is attached to the fanned-out message so a strongly-consistent DS
+/// can detect generation collisions between siblings; it is `None` otherwise.
+///
+/// [`MlsGroup::confirm_handshake_message`]: crate::group::MlsGroup::confirm_handshake_message
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Debug, Clone)]
+pub struct HandshakeConfirmationData {
+    /// The epoch the message was encrypted in, which is the epoch before a
+    /// commit is merged.
+    pub epoch: GroupEpoch,
+    /// The handshake-ratchet generation used for encryption.
+    pub generation: u32,
+    /// The [`GenerationId`] to attach to the fanned-out message, present when
+    /// the group is bound to a derivation epoch and `None` otherwise.
+    ///
+    /// [`GenerationId`]: crate::components::vc_derivation_info::GenerationId
+    pub generation_id: Option<crate::components::vc_derivation_info::GenerationId>,
+}
+
+/// Result of framing an [`AuthenticatedContent`] handshake message into an
+/// [`MlsMessageOut`]. Mirrors the cfg-gated field pattern of
+/// [`EncryptionOutput`]: with the `virtual-clients-draft` feature it also
+/// carries the [`HandshakeConfirmationData`] for a ciphertext-framed message
+/// (`None` when the message was framed as a plaintext PublicMessage).
+///
+/// [`EncryptionOutput`]: crate::framing::EncryptionOutput
+pub(crate) struct HandshakeFramingOutput {
+    pub(crate) message: MlsMessageOut,
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) confirmation: Option<HandshakeConfirmationData>,
 }
 
 // Private methods of MlsGroup
@@ -943,7 +1099,7 @@ impl MlsGroup {
         storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
         storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
         storage.write_group_state(self.group_id(), &self.group_state)?;
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         if let Some(application_export_tree) = &self.application_export_tree {
             storage.write_application_export_tree(self.group_id(), application_export_tree)?;
         }
@@ -958,8 +1114,8 @@ impl MlsGroup {
         &mut self,
         mls_auth_content: AuthenticatedContent,
         provider: &impl OpenMlsProvider,
-    ) -> Result<MlsMessageOut, LibraryError> {
-        let msg = match self.configuration().wire_format_policy().outgoing() {
+    ) -> Result<HandshakeFramingOutput, LibraryError> {
+        let output = match self.configuration().wire_format_policy().outgoing() {
             OutgoingWireFormatPolicy::AlwaysPlaintext => {
                 let mut plaintext: PublicMessage = mls_auth_content.into();
                 // Set the membership tag only if the sender type is `Member`.
@@ -971,21 +1127,38 @@ impl MlsGroup {
                         self.message_secrets().serialized_context(),
                     )?;
                 }
-                plaintext.into()
+                HandshakeFramingOutput {
+                    message: plaintext.into(),
+                    #[cfg(feature = "virtual-clients-draft")]
+                    confirmation: None,
+                }
             }
             OutgoingWireFormatPolicy::AlwaysCiphertext => {
-                // Decrypting own handshake messages is not supported yet with
-                // the `virtual-clients` feature, so the generation is unused.
-                let EncryptionOutput {
-                    private_message, ..
-                } = self
+                // A ciphertext-framed handshake message ties its confirmation
+                // to the epoch it was encrypted in, which is the current epoch
+                // at framing time, before a commit is merged.
+                #[cfg(feature = "virtual-clients-draft")]
+                let epoch = self.epoch();
+                let encryption_output = self
                     .encrypt(mls_auth_content, provider)
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
-                MlsMessageOut::from_private_message(private_message, self.version())
+                let message = MlsMessageOut::from_private_message(
+                    encryption_output.private_message,
+                    self.version(),
+                );
+                HandshakeFramingOutput {
+                    message,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    confirmation: Some(HandshakeConfirmationData {
+                        epoch,
+                        generation: encryption_output.generation,
+                        generation_id: encryption_output.generation_id,
+                    }),
+                }
             }
         };
-        Ok(msg)
+        Ok(output)
     }
 
     /// Check if the group is operational. Throws an error if the group is
@@ -1114,11 +1287,18 @@ impl MlsGroup {
                     self.group_state, other.group_state
                 ));
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             if self.application_export_tree != other.application_export_tree {
                 diagnostics.push(format!(
                     "application_export_tree:\n  Current: {:?}\n  Loaded:  {:?}",
                     self.application_export_tree, other.application_export_tree
+                ));
+            }
+            #[cfg(feature = "virtual-clients-draft")]
+            if self.emulation_group != other.emulation_group {
+                diagnostics.push(format!(
+                    "emulation_group:\n  Current: {:?}\n  Loaded:  {:?}",
+                    self.emulation_group, other.emulation_group
                 ));
             }
 
@@ -1157,7 +1337,7 @@ pub struct StagedWelcome {
 
     /// A secret that is not stored as part of the [`MlsGroup`] after the group is created.
     /// It can be used by the application to derive forward secure secrets.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     application_export_secret: ApplicationExportSecret,
 
     /// Resumption psk store. This is where the resumption psks are kept in a rollover list.
@@ -1171,6 +1351,11 @@ pub struct StagedWelcome {
 
     /// If we got a path secret, these are the derived path keys.
     path_keypairs: Option<Vec<EncryptionKeyPair>>,
+
+    /// Whether to join the group as an emulation group of a virtual client. Set
+    /// by [`Self::emulation_group`].
+    #[cfg(feature = "virtual-clients-draft")]
+    emulation_group: bool,
 }
 
 /// A `Welcome` message that has been processed but not staged yet.
@@ -1187,74 +1372,114 @@ pub struct ProcessedWelcome {
     // building the group.
     ciphersuite: Ciphersuite,
     group_secrets: GroupSecrets,
-    key_schedule: crate::schedule::KeySchedule,
+    epoch_secrets: crate::schedule::EpochSecretsResult,
     verifiable_group_info: crate::messages::group_info::VerifiableGroupInfo,
     resumption_psk_store: crate::schedule::psk::store::ResumptionPskStore,
     key_material: WelcomeKeyMaterial,
 }
 
 /// The key material a client uses to process a [`Welcome`] message.
+#[derive(Debug)]
+pub struct WelcomeKeyMaterial {
+    inner: WelcomeKeyMaterialInner,
+}
+
+/// The inner data of a [`WelcomeKeyMaterial`].
 ///
 /// A regular member holds a local [`KeyPackageBundle`]. A sibling emulator
 /// joining a higher-level group as a virtual client has no local bundle: it
 /// derives the init and leaf-encryption keys from the operation secret tree of
-/// the emulation epoch the KeyPackage belongs to.
+/// the derivation epoch the KeyPackage belongs to.
 ///
 /// [`Welcome`]: crate::messages::Welcome
 #[derive(Debug)]
-pub(crate) enum WelcomeKeyMaterial {
+pub(crate) enum WelcomeKeyMaterialInner {
     /// A locally stored [`KeyPackageBundle`]. Boxed to keep the enum small,
     /// since the virtual-client variant is much smaller.
     KeyPackage(Box<KeyPackageBundle>),
-    /// Virtual-client material derived from an emulation epoch's operation
+    /// Virtual-client material derived from a derivation epoch's operation
     /// secret tree.
     #[cfg(feature = "virtual-clients-draft")]
     VirtualClient(crate::components::vc_derivation_info::VcWelcomeMaterial),
 }
 
 impl WelcomeKeyMaterial {
+    /// Create a new [`WelcomeKeyMaterial`] from a [`KeyPackageBundle`].
+    pub(crate) fn with_key_package_bundle(key_package: KeyPackageBundle) -> Self {
+        Self {
+            inner: WelcomeKeyMaterialInner::KeyPackage(Box::new(key_package)),
+        }
+    }
+
+    /// Create a new [`WelcomeKeyMaterial`] from a [`VcWelcomeMaterial`].
+    ///
+    /// [`VcWelcomeMaterial`]: crate::components::vc_derivation_info::VcWelcomeMaterial
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn with_vc_welcome_material(
+        material: crate::components::vc_derivation_info::VcWelcomeMaterial,
+    ) -> Self {
+        Self {
+            inner: WelcomeKeyMaterialInner::VirtualClient(material),
+        }
+    }
+
+    pub(crate) fn inner(&self) -> &WelcomeKeyMaterialInner {
+        &self.inner
+    }
+
     /// The [`KeyPackageRef`] addressed by the welcome's encrypted group
     /// secrets. The bundle computes it from its KeyPackage, the virtual-client
     /// material carries the ref it was matched on.
     ///
     /// [`KeyPackageRef`]: crate::ciphersuite::hash_ref::KeyPackageRef
-    fn key_package_ref(
+    pub fn key_package_ref(
         &self,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<crate::ciphersuite::hash_ref::KeyPackageRef, LibraryError> {
-        match self {
-            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.key_package().hash_ref(crypto),
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => bundle.key_package().hash_ref(crypto),
             #[cfg(feature = "virtual-clients-draft")]
-            WelcomeKeyMaterial::VirtualClient(material) => Ok(material.key_package_ref.clone()),
+            WelcomeKeyMaterialInner::VirtualClient(material) => {
+                Ok(material.key_package_ref.clone())
+            }
         }
     }
 
     /// The init private key used to decrypt the encrypted group secrets.
-    fn init_private_key(&self) -> &crate::ciphersuite::HpkePrivateKey {
-        match self {
-            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.init_private_key(),
+    pub fn init_private_key(&self) -> &crate::ciphersuite::HpkePrivateKey {
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => bundle.init_private_key(),
             #[cfg(feature = "virtual-clients-draft")]
-            WelcomeKeyMaterial::VirtualClient(material) => &material.init_private_key,
+            WelcomeKeyMaterialInner::VirtualClient(material) => &material.init_private_key,
+        }
+    }
+
+    /// The public init key the encrypted group secrets are encrypted to.
+    pub fn hpke_init_key(&self) -> &InitKey {
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => bundle.key_package().hpke_init_key(),
+            #[cfg(feature = "virtual-clients-draft")]
+            WelcomeKeyMaterialInner::VirtualClient(material) => &material.init_key,
         }
     }
 
     /// The local [`KeyPackageBundle`] on the regular path, or `None` on the
     /// virtual-client path. Checks that only apply when there is a local
     /// KeyPackage to compare against branch on this.
-    fn key_package_bundle(&self) -> Option<&KeyPackageBundle> {
-        match self {
-            WelcomeKeyMaterial::KeyPackage(bundle) => Some(bundle),
+    pub fn key_package_bundle(&self) -> Option<&KeyPackageBundle> {
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => Some(bundle),
             #[cfg(feature = "virtual-clients-draft")]
-            WelcomeKeyMaterial::VirtualClient(_) => None,
+            WelcomeKeyMaterialInner::VirtualClient(_) => None,
         }
     }
 
     /// The joiner's leaf encryption keypair.
     fn encryption_key_pair(&self) -> EncryptionKeyPair {
-        match self {
-            WelcomeKeyMaterial::KeyPackage(bundle) => bundle.encryption_key_pair(),
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(bundle) => bundle.encryption_key_pair(),
             #[cfg(feature = "virtual-clients-draft")]
-            WelcomeKeyMaterial::VirtualClient(material) => material.encryption_keypair.clone(),
+            WelcomeKeyMaterialInner::VirtualClient(material) => material.encryption_keypair.clone(),
         }
     }
 }

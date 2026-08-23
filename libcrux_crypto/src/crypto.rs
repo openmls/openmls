@@ -1,32 +1,62 @@
 use hpke_rs_libcrux::HpkeLibcrux;
 
-use std::sync::{Mutex, MutexGuard};
+use std::sync::Mutex;
 
+#[cfg(feature = "targeted-messages-draft")]
+use openmls_traits::crypto::HpkeSealPskResolvedAadError;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
     HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
 };
 
-use rand::{rngs::OsRng, rngs::ReseedingRng, CryptoRng, RngCore};
-use rand_chacha::ChaCha20Core;
+use libcrux_hmac_drbg::{HmacDrbgSha256, MAX_GENERATE_BYTES};
+use rand::rngs::SysRng;
 
 use tls_codec::SecretVLBytes;
 
+/// Application-specific personalization string mixed into the HMAC-DRBG seed.
+const PERSONALIZATION: &[u8] = b"openmls-libcrux-hmac-drbg-v1";
+
 /// The libcrux-backed cryptography provider for OpenMLS
 pub struct CryptoProvider {
-    pub(super) rng: Mutex<ReseedingRng<ChaCha20Core, OsRng>>,
+    pub(super) rng: Mutex<HmacDrbgSha256>,
 }
 
 impl CryptoProvider {
     /// Instantiate a libcrux-based CryptoProvider
     pub fn new() -> Result<Self, CryptoError> {
-        let reseeding_rng = ReseedingRng::<ChaCha20Core, _>::new(0x100000000, OsRng)
+        // Seed the HMAC-DRBG from the operating system's entropy source.
+        let drbg = HmacDrbgSha256::new_from_sys_rng(PERSONALIZATION)
             .map_err(|_| CryptoError::InsufficientRandomness)?;
 
         Ok(Self {
-            rng: Mutex::new(reseeding_rng),
+            rng: Mutex::new(drbg),
         })
+    }
+
+    /// Fill `out` with fresh randomness from the HMAC-DRBG.
+    ///
+    /// Reseeds from the operating system's entropy source when the DRBG's
+    /// reseed interval is reached, and splits requests larger than
+    /// [`MAX_GENERATE_BYTES`] into multiple `generate` calls. Any failure to
+    /// obtain OS entropy for a reseed is propagated rather than panicking.
+    pub(super) fn fill_random(&self, out: &mut [u8]) -> Result<(), CryptoError> {
+        let mut drbg = self
+            .rng
+            .lock()
+            .map_err(|_| CryptoError::CryptoLibraryError)?;
+
+        for chunk in out.chunks_mut(MAX_GENERATE_BYTES) {
+            if drbg.needs_reseed() {
+                drbg.reseed_from_rng(&mut SysRng, &[])
+                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+            }
+            drbg.generate(chunk, &[])
+                .map_err(|_| CryptoError::InsufficientRandomness)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -45,9 +75,25 @@ impl OpenMlsCrypto for CryptoProvider {
             HashType::Sha2_256 | HashType::Sha2_384 | HashType::Sha2_512 => Ok(()),
         }?;
 
+        // The hpke-rs libcrux backend only implements these KEMs.
+        match ciphersuite.hpke_kem_algorithm() {
+            HpkeKemType::DhKemP256 | HpkeKemType::DhKem25519 => Ok(()),
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            HpkeKemType::XWingKemDraft6 => Ok(()),
+            HpkeKemType::DhKemP384 | HpkeKemType::DhKemP521 | HpkeKemType::DhKem448 => {
+                Err(CryptoError::UnsupportedCiphersuite)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            HpkeKemType::MlKem768 | HpkeKemType::MlKem1024 => {
+                Err(CryptoError::UnsupportedCiphersuite)
+            }
+        }?;
+
         match ciphersuite.hpke_aead_algorithm() {
-            HpkeAeadType::ChaCha20Poly1305 => Ok(()),
-            _ => Err(CryptoError::UnsupportedCiphersuite),
+            HpkeAeadType::AesGcm128
+            | HpkeAeadType::AesGcm256
+            | HpkeAeadType::ChaCha20Poly1305
+            | HpkeAeadType::Export => Ok(()),
         }?;
 
         Ok(())
@@ -209,20 +255,29 @@ impl OpenMlsCrypto for CryptoProvider {
             return Err(CryptoError::UnsupportedSignatureScheme);
         }
 
-        let mut rng = self
-            .rng
-            .lock()
-            .map_err(|_| CryptoError::CryptoLibraryError)
-            .map(GuardedRng)?;
+        // Ed25519 key generation is just sampling a non-zero 32-byte secret and
+        // deriving the public point. We do it here (rather than via
+        // `libcrux_ed25519::generate_key_pair`, which requires an infallible
+        // `CryptoRng`) so that a DRBG reseed failure is propagated as an error.
+        const LIMIT: usize = 100;
+        let mut sk = [0u8; 32];
+        let mut found = false;
+        for _ in 0..LIMIT {
+            self.fill_random(&mut sk)?;
+            // Reject the all-zero secret key.
+            if sk.iter().any(|&b| b != 0) {
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            return Err(CryptoError::SigningError);
+        }
 
-        libcrux_ed25519::generate_key_pair(&mut rng)
-            .map_err(|_| CryptoError::SigningError)
-            .map(|(signing_key, verification_key)| {
-                (
-                    signing_key.into_bytes().to_vec(),
-                    verification_key.into_bytes().to_vec(),
-                )
-            })
+        let mut pk = [0u8; 32];
+        libcrux_ed25519::secret_to_public(&mut pk, &sk);
+
+        Ok((sk.to_vec(), pk.to_vec()))
     }
 
     fn verify_signature(
@@ -376,6 +431,68 @@ impl OpenMlsCrypto for CryptoProvider {
         })
     }
 
+    #[cfg(feature = "targeted-messages-draft")]
+    fn hpke_open_psk(
+        &self,
+        config: HpkeConfig,
+        input: &HpkeCiphertext,
+        sk_r: &[u8],
+        info: &[u8],
+        aad: &[u8],
+        psk: &[u8],
+        psk_id: &[u8],
+    ) -> Result<Vec<u8>, CryptoError> {
+        hpke_psk_from_config(config)
+            .open(
+                input.kem_output.as_slice(),
+                &sk_r.into(),
+                info,
+                aad,
+                input.ciphertext.as_slice(),
+                Some(psk),
+                Some(psk_id),
+                None,
+            )
+            .map_err(|_| CryptoError::HpkeDecryptionError)
+    }
+
+    #[cfg(feature = "targeted-messages-draft")]
+    fn hpke_seal_psk_resolved_aad<F, E>(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        ptxt: &[u8],
+        psk: &[u8],
+        psk_id: &[u8],
+        aad_builder: F,
+    ) -> Result<HpkeCiphertext, HpkeSealPskResolvedAadError<E>>
+    where
+        F: FnOnce(&[u8]) -> Result<Vec<u8>, E>,
+    {
+        let mut hpke = hpke_psk_from_config(config);
+        // Split the single-shot seal into setup and seal so the AAD can be built
+        // from the KEM output. The setup and seal must share the same context.
+        let (kem_output, mut context) = hpke
+            .setup_sender(&pk_r.into(), info, Some(psk), Some(psk_id), None)
+            .map_err(|_| HpkeSealPskResolvedAadError::CryptoError(CryptoError::SenderSetupError))?;
+        let aad = aad_builder(kem_output.as_slice())
+            .map_err(HpkeSealPskResolvedAadError::AadBuildError)?;
+        let ciphertext = context.seal(&aad, ptxt).map_err(|e| match e {
+            hpke_rs::HpkeError::InvalidInput => {
+                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InvalidLength)
+            }
+            hpke_rs::HpkeError::InsufficientRandomness => {
+                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InsufficientRandomness)
+            }
+            _ => HpkeSealPskResolvedAadError::CryptoError(CryptoError::HpkeEncryptionError),
+        })?;
+        Ok(HpkeCiphertext {
+            kem_output: kem_output.into(),
+            ciphertext: ciphertext.into(),
+        })
+    }
+
     #[cfg(feature = "virtual-clients-draft")]
     fn ff1_aes128_encrypt(&self, key: &[u8; 16], plaintext: u32) -> Result<u32, CryptoError> {
         crate::ff1::encrypt(key, plaintext)
@@ -393,6 +510,15 @@ fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
     let aead = hpke_aead(config.2);
 
     hpke_rs::Hpke::new(hpke_rs::Mode::Base, kem, kdf, aead)
+}
+
+#[cfg(feature = "targeted-messages-draft")]
+fn hpke_psk_from_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
+    let kem = hpke_kem(config.0);
+    let kdf = hpke_kdf(config.1);
+    let aead = hpke_aead(config.2);
+
+    hpke_rs::Hpke::new(hpke_rs::Mode::Psk, kem, kdf, aead)
 }
 
 fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs_crypto::types::KdfAlgorithm {
@@ -452,20 +578,76 @@ fn aead_alg(alg_type: AeadType) -> libcrux_aead::Aead {
     }
 }
 
-struct GuardedRng<'a, Rng: RngCore>(MutexGuard<'a, Rng>);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl<Rng: RngCore> RngCore for GuardedRng<'_, Rng> {
-    fn next_u32(&mut self) -> u32 {
-        self.0.next_u32()
+    #[test]
+    fn advertised_ciphersuites_are_supported() {
+        let provider = CryptoProvider::new().unwrap();
+        for ciphersuite in provider.supported_ciphersuites() {
+            assert!(
+                provider.supports(ciphersuite).is_ok(),
+                "{ciphersuite:?} is advertised by supported_ciphersuites() \
+                 but rejected by supports()"
+            );
+        }
     }
 
-    fn next_u64(&mut self) -> u64 {
-        self.0.next_u64()
-    }
+    #[test]
+    fn advertised_ciphersuites_actually_work() {
+        let provider = CryptoProvider::new().unwrap();
+        for ciphersuite in provider.supported_ciphersuites() {
+            let key = vec![0u8; ciphersuite.aead_key_length()];
+            let nonce = vec![0u8; ciphersuite.aead_nonce_length()];
+            let ciphertext = provider
+                .aead_encrypt(
+                    ciphersuite.aead_algorithm(),
+                    &key,
+                    b"plaintext",
+                    &nonce,
+                    b"aad",
+                )
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: aead_encrypt failed: {e:?}"));
+            let plaintext = provider
+                .aead_decrypt(
+                    ciphersuite.aead_algorithm(),
+                    &key,
+                    &ciphertext,
+                    &nonce,
+                    b"aad",
+                )
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: aead_decrypt failed: {e:?}"));
+            assert_eq!(plaintext, b"plaintext", "{ciphersuite:?}: aead round trip");
 
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.0.fill_bytes(dest)
+            let mut ikm = vec![0u8; ciphersuite.hash_length()];
+            provider.fill_random(&mut ikm).unwrap();
+            let key_pair = provider
+                .derive_hpke_keypair(ciphersuite.hpke_config(), &ikm)
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: derive_hpke_keypair failed: {e:?}"));
+            let sealed = provider
+                .hpke_seal(
+                    ciphersuite.hpke_config(),
+                    &key_pair.public,
+                    b"info",
+                    b"aad",
+                    b"plaintext",
+                )
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: hpke_seal failed: {e:?}"));
+            let opened = provider
+                .hpke_open(
+                    ciphersuite.hpke_config(),
+                    &sealed,
+                    &key_pair.private,
+                    b"info",
+                    b"aad",
+                )
+                .unwrap_or_else(|e| panic!("{ciphersuite:?}: hpke_open failed: {e:?}"));
+            assert_eq!(
+                opened.as_slice(),
+                b"plaintext",
+                "{ciphersuite:?}: hpke round trip"
+            );
+        }
     }
 }
-
-impl<Rng: RngCore + CryptoRng> CryptoRng for GuardedRng<'_, Rng> {}

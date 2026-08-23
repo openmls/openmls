@@ -29,9 +29,9 @@ impl traits::RetainedKeyPackageMaterial<CURRENT_VERSION> for TestRetainedMateria
 impl Entity<CURRENT_VERSION> for TestRetainedMaterial {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-struct TestEmulationState(Vec<u8>);
-impl traits::VcEmulationEpochState<CURRENT_VERSION> for TestEmulationState {}
-impl Entity<CURRENT_VERSION> for TestEmulationState {}
+struct TestDerivationState(Vec<u8>);
+impl traits::VcDerivationEpochState<CURRENT_VERSION> for TestDerivationState {}
+impl Entity<CURRENT_VERSION> for TestDerivationState {}
 
 /// A batch write stores the operation tree and the retained material, the
 /// material ties the epoch into liveness, and the guarded delete keeps the
@@ -43,10 +43,10 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
     let other_epoch_id = TestEpochId(b"OtherEpoch".to_vec());
     let kp_ref = TestKeyPackageRef(b"kp-ref".to_vec());
 
-    // Register the emulation epoch state so the guarded delete has something to
-    // remove. The operation tree is written by the batch below.
+    // Register the derivation epoch state so the guarded delete has
+    // something to remove. The operation tree is written by the batch below.
     storage
-        .write_vc_emulation_epoch_state(&epoch_id, &TestEmulationState(b"state".to_vec()))
+        .write_vc_derivation_epoch_state(&epoch_id, &TestDerivationState(b"state".to_vec()))
         .unwrap();
 
     // No retained material yet.
@@ -82,10 +82,10 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
     // While material references the epoch the guarded delete is a no-op and the
     // epoch state and tree stay readable.
     assert!(!storage
-        .delete_vc_emulation_state_if_unreferenced(&epoch_id)
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
         .unwrap());
-    let read_state: Option<TestEmulationState> =
-        storage.vc_emulation_epoch_state(&epoch_id).unwrap();
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
     assert!(read_state.is_some());
     let read_tree: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
     assert!(read_tree.is_some());
@@ -99,10 +99,10 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
         .has_retained_key_package_material_for_epoch(&epoch_id)
         .unwrap());
     assert!(storage
-        .delete_vc_emulation_state_if_unreferenced(&epoch_id)
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
         .unwrap());
-    let read_state: Option<TestEmulationState> =
-        storage.vc_emulation_epoch_state(&epoch_id).unwrap();
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
     assert!(read_state.is_none());
     let read_tree: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
     assert!(read_tree.is_none());
@@ -138,10 +138,10 @@ fn operation_tree_read_write_delete() {
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&other_epoch_id).unwrap();
     assert_eq!(read, None);
 
-    // Deleting the emulation state removes the operation tree too. No retained
-    // material references this epoch, so the deletion goes through.
+    // Deleting the derivation epoch state removes the operation tree too. No
+    // retained material references this epoch, so the deletion goes through.
     let deleted = storage
-        .delete_vc_emulation_state_if_unreferenced(&epoch_id)
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
         .unwrap();
     assert!(deleted);
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();

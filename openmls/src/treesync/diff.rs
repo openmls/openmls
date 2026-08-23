@@ -358,7 +358,7 @@ impl TreeSyncDiff<'_> {
         // don't do that, calculating the direct path might fail. It's important
         // to not do anything with the value of that leaf until it has been
         // replaced.
-        if let CommitType::External(_) = commit_type {
+        if matches!(commit_type, CommitType::External) {
             let leaf_node = LeafNode::new_placeholder();
             self.add_leaf(leaf_node)?;
         }

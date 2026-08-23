@@ -422,7 +422,7 @@ impl User {
                                     None
                                 }
                             });
-                        user_id.unwrap_or("".to_owned()).as_bytes().to_vec()
+                        user_id.unwrap_or_default().into_bytes()
                     }
                 };
                 let conversation_message = ConversationMessage::new(
@@ -469,6 +469,18 @@ impl User {
                     Err(e) => return Err(e.to_string()),
                 }
                 None
+            }
+            ProcessedMessageContent::OwnPendingCommit => {
+                if let Err(e) = mls_group.merge_pending_commit(&self.provider) {
+                    return Err(e.to_string());
+                }
+                None
+            }
+            // Own PrivateMessages echoed by the DS cannot be decrypted; skip them.
+            ProcessedMessageContent::OwnPrivateMessage => None,
+            #[cfg(feature = "extensions-draft")]
+            ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+                unimplemented!("the cli does not support AppDataUpdate proposals")
             }
         };
         Ok((PostUpdateActions::None, None, message_out))

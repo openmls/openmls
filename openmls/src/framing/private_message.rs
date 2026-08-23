@@ -37,6 +37,15 @@ pub(crate) struct EncryptionOutput {
     pub(crate) generation: Generation,
     /// The resulting encrypted message.
     pub(crate) private_message: PrivateMessage,
+    /// The [`GenerationId`] for this message when the group is bound to a
+    /// derivation epoch, `None` otherwise. Derived by [`MlsGroup::encrypt`]
+    /// once the ratchet generation is known, since `encrypt_content` does not
+    /// hold the derivation-epoch state.
+    ///
+    /// [`GenerationId`]: crate::components::vc_derivation_info::GenerationId
+    /// [`MlsGroup::encrypt`]: crate::group::MlsGroup::encrypt
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) generation_id: Option<crate::components::vc_derivation_info::GenerationId>,
 }
 
 /// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
@@ -229,7 +238,7 @@ impl PrivateMessage {
             // Even in tests we want to use the real sender index, so we have a key to encrypt.
             .secret_for_encryption(ciphersuite, crypto, sender_index, secret_type)?;
         // Derive the reuse guard deterministically when the group is
-        // bound to an emulation epoch, otherwise sample at random.
+        // bound to a derivation epoch, otherwise sample at random.
         #[cfg(feature = "virtual-clients-draft")]
         let reuse_guard: ReuseGuard = if let Some(ctx) = emulator_ctx {
             ReuseGuard::for_emulator_sender(
@@ -331,6 +340,8 @@ impl PrivateMessage {
         Ok(EncryptionOutput {
             generation,
             private_message,
+            #[cfg(feature = "virtual-clients-draft")]
+            generation_id: None,
         })
     }
 

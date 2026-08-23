@@ -267,11 +267,21 @@ fn staged_welcome_export_secret_matches_created_group() {
         )
         .expect("error adding Bob");
 
-    // 6. Bob stages the Welcome
+    // 6. Bob processes the Welcome
     let welcome = welcome_msg.into_welcome().unwrap();
-    let staged_welcome =
-        StagedWelcome::new_from_welcome(&bob_party.provider, &join_config, welcome, None)
-            .expect("error staging welcome");
+
+    let processed_welcome =
+        ProcessedWelcome::new_from_welcome(&bob_party.provider, &join_config, welcome)
+            .expect("error processing welcome");
+
+    // === Capture values from StagedWelcome ===
+    let processed_export = processed_welcome
+        .export_secret(bob_party.provider.crypto(), "test-label", b"ctx", 32)
+        .unwrap();
+
+    let staged_welcome = processed_welcome
+        .into_staged_welcome(&bob_party.provider, None)
+        .expect("error staging welcome");
 
     // === Capture values from StagedWelcome ===
     let staged_export = staged_welcome
@@ -284,6 +294,7 @@ fn staged_welcome_export_secret_matches_created_group() {
         .expect("error creating group");
 
     // === Verify staged values match group values ===
+    assert_eq!(processed_export, staged_export);
     assert_eq!(
         staged_export,
         bob_group

@@ -71,6 +71,20 @@ impl DualUsePastSecret {
     }
 }
 
+impl From<RatchetSecret> for DualUseRatchet {
+    /// Promotes a plain [`RatchetSecret`] (the state of an `EncryptionRatchet`
+    /// persisted before the `virtual-clients-draft` feature was enabled) into
+    /// a fresh [`DualUseRatchet`] with no past secrets. This is used to
+    /// upgrade own ratchets deserialized from state written by a build
+    /// without the feature.
+    fn from(ratchet_head: RatchetSecret) -> Self {
+        Self {
+            past_secrets: BTreeMap::new(),
+            ratchet_head,
+        }
+    }
+}
+
 impl DualUseRatchet {
     pub(crate) fn new(secret: Secret) -> Self {
         Self {

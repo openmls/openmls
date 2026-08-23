@@ -529,7 +529,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -541,7 +541,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -552,7 +552,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -564,30 +564,30 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_emulation_epoch_state<
+    fn write_vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<V_TEST>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<V_TEST>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<V_TEST>,
     >(
         &self,
         _epoch_id: &EpochId,
-        _vc_emulation_epoch_state: &VcEmulationEpochState,
+        _vc_derivation_epoch_state: &VcDerivationEpochState,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_epoch_state<
+    fn vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<V_TEST>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<V_TEST>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<V_TEST>,
     >(
         &self,
         _epoch_id: &EpochId,
-    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
+    ) -> Result<Option<VcDerivationEpochState>, Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_state_if_unreferenced<EpochId: traits::VcEpochId<V_TEST>>(
+    fn delete_vc_derivation_epoch_state_if_unreferenced<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
     ) -> Result<bool, Self::Error> {
@@ -619,6 +619,37 @@ impl StorageProvider<V_TEST> for MemoryStorage {
 
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_emulation_bindings<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_registered_vc_derivation_epoch<
+        GroupId: traits::GroupId<V_TEST>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _registered: &RegisteredVcDerivationEpoch,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn registered_vc_derivation_epoch<
+        GroupId: traits::GroupId<V_TEST>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<Option<RegisteredVcDerivationEpoch>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_registered_vc_derivation_epoch<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {

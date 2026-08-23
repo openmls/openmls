@@ -27,7 +27,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::component::ComponentId;
 
 /// ## MLS Proposal Types
@@ -104,10 +104,10 @@ pub enum ProposalType {
     // AppAck = 7,
     #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
     SelfRemove,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 11)]
     AppEphemeral,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 12)]
     AppDataUpdate,
     #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 10)]
@@ -129,7 +129,7 @@ impl ProposalType {
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
             ProposalType::SelfRemove | ProposalType::Grease(_) | ProposalType::Custom(_) => false,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalType::AppEphemeral | ProposalType::AppDataUpdate => false,
         }
     }
@@ -176,8 +176,7 @@ impl DeserializeBytes for ProposalType {
     {
         let mut bytes_ref = bytes;
         let proposal_type = ProposalType::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[proposal_type.tls_serialized_len()..];
-        Ok((proposal_type, remainder))
+        Ok((proposal_type, bytes_ref))
     }
 }
 
@@ -205,9 +204,9 @@ impl From<u16> for ProposalType {
             5 => ProposalType::Reinit,
             6 => ProposalType::ExternalInit,
             7 => ProposalType::GroupContextExtensions,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             8 => ProposalType::AppDataUpdate,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             0x0009 => ProposalType::AppEphemeral,
             0x000a => ProposalType::SelfRemove,
             other if crate::grease::is_grease_value(other) => ProposalType::Grease(other),
@@ -226,9 +225,9 @@ impl From<ProposalType> for u16 {
             ProposalType::Reinit => 5,
             ProposalType::ExternalInit => 6,
             ProposalType::GroupContextExtensions => 7,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalType::AppDataUpdate => 8,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ProposalType::AppEphemeral => 0x0009,
             ProposalType::SelfRemove => 0x000a,
             ProposalType::Grease(id) => id,
@@ -286,13 +285,13 @@ pub enum Proposal {
     GroupContextExtensions(Box<GroupContextExtensionProposal>),
     // AppAck = 7,
     // # Extensions
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 10)]
     AppDataUpdate(Box<AppDataUpdateProposal>),
     // A SelfRemove proposal is an empty struct.
     #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
     SelfRemove,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 11)]
     AppEphemeral(Box<AppEphemeralProposal>),
     #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 9)]
@@ -351,10 +350,10 @@ impl Proposal {
             Proposal::ReInit(_) => ProposalType::Reinit,
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Proposal::AppDataUpdate(_) => ProposalType::AppDataUpdate,
             Proposal::SelfRemove => ProposalType::SelfRemove,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Proposal::AppEphemeral(_) => ProposalType::AppEphemeral,
             Proposal::Custom(custom) => ProposalType::Custom(custom.proposal_type.to_owned()),
         }
@@ -609,7 +608,7 @@ impl From<Vec<u8>> for ExternalInitProposal {
     }
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 /// AppAck object.
 ///
 /// This is not yet supported.
@@ -628,7 +627,7 @@ pub struct AppAck {
     received_ranges: Vec<MessageRange>,
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 /// AppEphemeral proposal.
 #[derive(
     Debug,
@@ -648,7 +647,7 @@ pub struct AppEphemeralProposal {
     data: VLBytes,
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl AppEphemeralProposal {
     /// Create a new [`AppEphemeralProposal`].
     pub fn new(component_id: ComponentId, data: Vec<u8>) -> Self {
@@ -883,9 +882,9 @@ pub(crate) struct MessageRange {
     last_generation: u32,
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 mod app_data_update;
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub use app_data_update::*;
 
 /// A custom proposal with semantics to be implemented by the application.

@@ -79,6 +79,55 @@ impl From<AuthenticatedContentIn> for PublicMessageIn {
     }
 }
 
+#[cfg(feature = "extensions-draft")]
+impl PublicMessageIn {
+    /// Returns the [`AppEphemeralProposal`]s for `component_id` that this
+    /// commit message carries by value, in the order they appear in the
+    /// commit. Returns an empty vector if the message is not a commit.
+    ///
+    /// This reads the deserialized message directly and requires no group
+    /// state. A client that receives an external commit for a group it is not
+    /// yet a member of can use it to inspect attached application data before
+    /// deciding how to proceed with the join.
+    ///
+    /// The returned data is unauthenticated. Neither the signature nor the
+    /// sender of the message has been checked at this point, so callers must
+    /// treat the data as untrusted until the commit has been verified against
+    /// the group, for example by processing it and reading the proposals from
+    /// the resulting [`StagedCommit`].
+    ///
+    /// [`AppEphemeralProposal`]: crate::messages::proposals::AppEphemeralProposal
+    /// [`StagedCommit`]: crate::group::StagedCommit
+    pub fn unverified_app_ephemeral_proposals(
+        &self,
+        component_id: crate::component::ComponentId,
+    ) -> Vec<&crate::messages::proposals::AppEphemeralProposal> {
+        use crate::{
+            framing::mls_content_in::FramedContentBodyIn,
+            messages::proposals_in::{ProposalIn, ProposalOrRefIn},
+        };
+
+        let FramedContentBodyIn::Commit(commit) = &self.content.body else {
+            return vec![];
+        };
+        commit
+            .unverified_proposals()
+            .iter()
+            .filter_map(|proposal_or_ref| match proposal_or_ref {
+                ProposalOrRefIn::Proposal(proposal) => match proposal.as_ref() {
+                    ProposalIn::AppEphemeral(app_ephemeral)
+                        if app_ephemeral.component_id() == component_id =>
+                    {
+                        Some(app_ephemeral.as_ref())
+                    }
+                    _ => None,
+                },
+                ProposalOrRefIn::Reference(_) => None,
+            })
+            .collect()
+    }
+}
+
 impl PublicMessageIn {
     /// Build an [`PublicMessageIn`].
     pub(crate) fn new(
@@ -244,8 +293,7 @@ impl DeserializeBytes for PublicMessageIn {
     {
         let mut bytes_ref = bytes;
         let message = PublicMessageIn::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[message.tls_serialized_len()..];
-        Ok((message, remainder))
+        Ok((message, bytes_ref))
     }
 }
 

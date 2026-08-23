@@ -9,10 +9,15 @@
 
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 
+/// Bundle used to import a group exported from a previous OpenMLS version. See
+/// [`GroupMigrationBundle::store`].
+#[cfg(feature = "migration-import")]
+pub use crate::group::migration_import::GroupMigrationBundle;
+
 use crate::binary_tree::LeafNodeIndex;
 use crate::group::proposal_store::QueuedProposal;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
@@ -146,16 +151,17 @@ impl traits::PskId<CURRENT_VERSION> for Psk {}
 impl Entity<CURRENT_VERSION> for PskBundle {}
 impl traits::PskBundle<CURRENT_VERSION> for PskBundle {}
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl Entity<CURRENT_VERSION> for ApplicationExportTree {}
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl traits::ApplicationExportTree<CURRENT_VERSION> for ApplicationExportTree {}
 
 #[cfg(feature = "virtual-clients-draft")]
 mod virtual_clients_storage {
     use super::*;
     use crate::components::vc_derivation_info::{
-        EmulationEpochState, EpochId, RetainedKeyPackageMaterial, VcEmulationBindings,
+        EpochId, RegisteredVcDerivationEpoch, RetainedKeyPackageMaterial, VcDerivationEpochState,
+        VcEmulationBindings,
     };
     use crate::components::vc_operation_tree::OperationSecretTree;
 
@@ -164,11 +170,14 @@ mod virtual_clients_storage {
     impl Entity<CURRENT_VERSION> for EpochId {}
     impl traits::VcEpochId<CURRENT_VERSION> for EpochId {}
 
-    impl Entity<CURRENT_VERSION> for EmulationEpochState {}
-    impl traits::VcEmulationEpochState<CURRENT_VERSION> for EmulationEpochState {}
+    impl Entity<CURRENT_VERSION> for VcDerivationEpochState {}
+    impl traits::VcDerivationEpochState<CURRENT_VERSION> for VcDerivationEpochState {}
 
     impl Entity<CURRENT_VERSION> for VcEmulationBindings {}
     impl traits::VcEmulationBindings<CURRENT_VERSION> for VcEmulationBindings {}
+
+    impl Entity<CURRENT_VERSION> for RegisteredVcDerivationEpoch {}
+    impl traits::RegisteredVcDerivationEpoch<CURRENT_VERSION> for RegisteredVcDerivationEpoch {}
 
     impl Entity<CURRENT_VERSION> for OperationSecretTree {}
     impl traits::VcOperationTree<CURRENT_VERSION> for OperationSecretTree {}

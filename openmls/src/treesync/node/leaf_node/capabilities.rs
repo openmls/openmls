@@ -1,4 +1,9 @@
-use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
+use std::collections::HashSet;
+
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{Ciphersuite, VerifiableCiphersuite},
+};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
@@ -100,6 +105,24 @@ impl Capabilities {
         CapabilitiesBuilder(Self::default())
     }
 
+    /// Creates [`Capabilities`] advertising exactly the ciphersuites supported
+    /// by the given crypto provider, with defaults for all other fields.
+    ///
+    /// In contrast to [`Capabilities::default()`], which advertises a
+    /// hardcoded ciphersuite list independently of what the crypto provider
+    /// can actually perform, this constructor derives the advertised list from
+    /// [`OpenMlsCrypto::supported_ciphersuites()`].
+    pub fn for_provider(crypto: &impl OpenMlsCrypto) -> Self {
+        Capabilities {
+            ciphersuites: crypto
+                .supported_ciphersuites()
+                .into_iter()
+                .map(VerifiableCiphersuite::from)
+                .collect(),
+            ..Default::default()
+        }
+    }
+
     // ---------------------------------------------------------------------------------------------
 
     /// Get a reference to the list of versions in this extension.
@@ -140,13 +163,17 @@ impl Capabilities {
         &self,
         required_capabilities: &RequiredCapabilitiesExtension,
     ) -> Result<(), LeafNodeValidationError> {
+        // The required capabilities come from the wire, so all three checks use
+        // a set lookup and stop at the first unsupported entry.
+
         // Check if all required extensions are supported.
-        let unsupported_extension_types = required_capabilities
+        let supported_extensions: HashSet<ExtensionType> =
+            self.extensions().iter().copied().collect();
+        if required_capabilities
             .extension_types()
             .iter()
-            .filter(|&e| !self.contains_extension(*e))
-            .collect::<Vec<_>>();
-        if !unsupported_extension_types.is_empty() {
+            .any(|e| !e.is_default() && !supported_extensions.contains(e))
+        {
             log::error!(
                 "Leaf node does not support all required extension types\n
                 Supported extensions: {:?}\n
@@ -157,18 +184,21 @@ impl Capabilities {
             return Err(LeafNodeValidationError::UnsupportedExtensions);
         }
         // Check if all required proposals are supported.
+        let supported_proposals: HashSet<ProposalType> = self.proposals().iter().copied().collect();
         if required_capabilities
             .proposal_types()
             .iter()
-            .any(|p| !self.contains_proposal(*p))
+            .any(|p| !p.is_default() && !supported_proposals.contains(p))
         {
             return Err(LeafNodeValidationError::UnsupportedProposals);
         }
         // Check if all required credential types are supported.
+        let supported_credentials: HashSet<CredentialType> =
+            self.credentials().iter().copied().collect();
         if required_capabilities
             .credential_types()
             .iter()
-            .any(|c| !self.contains_credential(*c))
+            .any(|c| !supported_credentials.contains(c))
         {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -180,25 +210,25 @@ impl Capabilities {
         &self,
         extensions: &Extensions<impl ExtensionValidator>,
     ) -> bool {
-        extensions
+        let mut required = extensions
             .iter()
             .map(Extension::extension_type)
-            .all(|e| e.is_default() || self.extensions().contains(&e))
+            .filter(|e| !e.is_default())
+            .peekable();
+
+        // Most leaf nodes carry no non-default extensions. Skip building the
+        // lookup set for them.
+        if required.peek().is_none() {
+            return true;
+        }
+
+        let supported: HashSet<ExtensionType> = self.extensions().iter().copied().collect();
+        required.all(|e| supported.contains(&e))
     }
 
     /// Check if these [`Capabilities`] contains the credential.
     pub(crate) fn contains_credential(&self, credential_type: CredentialType) -> bool {
         self.credentials().contains(&credential_type)
-    }
-
-    /// Check if these [`Capabilities`] contain the extension.
-    pub(crate) fn contains_extension(&self, extension_type: ExtensionType) -> bool {
-        extension_type.is_default() || self.extensions().contains(&extension_type)
-    }
-
-    /// Check if these [`Capabilities`] contain the proposal.
-    pub(crate) fn contains_proposal(&self, proposal_type: ProposalType) -> bool {
-        proposal_type.is_default() || self.proposals().contains(&proposal_type)
     }
 
     /// Check if these [`Capabilities`] contain the version.
@@ -401,9 +431,13 @@ pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256,
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519,
     ]
 }
 
@@ -414,7 +448,10 @@ pub(super) fn default_credentials() -> Vec<CredentialType> {
 
 #[cfg(test)]
 mod tests {
-    use openmls_traits::types::{Ciphersuite, VerifiableCiphersuite};
+    use openmls_traits::{
+        crypto::OpenMlsCrypto,
+        types::{Ciphersuite, VerifiableCiphersuite},
+    };
     use tls_codec::{Deserialize, Serialize};
 
     use super::Capabilities;
@@ -472,5 +509,18 @@ mod tests {
         let got = Capabilities::tls_deserialize_exact(test_serialized).unwrap();
 
         assert_eq!(expected, got);
+    }
+
+    #[test]
+    fn for_provider_advertises_exactly_the_supported_ciphersuites() {
+        let crypto = openmls_rust_crypto::RustCrypto::default();
+        let capabilities = Capabilities::for_provider(&crypto);
+
+        let expected: Vec<VerifiableCiphersuite> = crypto
+            .supported_ciphersuites()
+            .into_iter()
+            .map(VerifiableCiphersuite::from)
+            .collect();
+        assert_eq!(capabilities.ciphersuites(), expected.as_slice());
     }
 }
