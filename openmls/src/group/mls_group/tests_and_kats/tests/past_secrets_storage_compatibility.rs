@@ -127,9 +127,19 @@ impl OpenMlsProvider for Provider {
 
 impl Provider {
     fn new(conn: Connection) -> Self {
+        // The dump is a 0.8.1 database: it records only `initial` and
+        // `constraint_addition` as applied, so everything from V3 onwards is
+        // missing. Migrating it is precisely what an upgrading user does, and
+        // without it the `virtual-clients-draft` read path fails on tables that
+        // those later migrations create.
+        let mut storage = SqliteStorageProvider::new(conn);
+        storage
+            .run_migrations()
+            .expect("error running storage migrations");
+
         Self {
             crypto: CryptoProvider::default(),
-            storage: SqliteStorageProvider::new(conn),
+            storage,
         }
     }
 }
