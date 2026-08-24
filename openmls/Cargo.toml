@@ -167,10 +167,8 @@ criterion = { version = "^0.8", default-features = false, features = [
     "html_reports",
 ] }
 hex = { version = "0.4", features = ["serde"] }
-lazy_static = "1.4"
 openmls_traits = { workspace = true, features = ["test-utils"] }
 pretty_env_logger = "0.5"
-tempfile = "3"
 wasm-bindgen = "0.2.100"
 wasm-bindgen-test = "0.3.50"
 clap = { version = "4", features = ["derive"] }
