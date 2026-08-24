@@ -2,8 +2,6 @@ use hpke_rs_libcrux::HpkeLibcrux;
 
 use std::sync::Mutex;
 
-#[cfg(feature = "targeted-messages-draft")]
-use openmls_traits::crypto::HpkeSealPskResolvedAadError;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
@@ -457,36 +455,27 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     #[cfg(feature = "targeted-messages-draft")]
-    fn hpke_seal_psk_resolved_aad<F, E>(
+    fn hpke_seal_psk(
         &self,
         config: HpkeConfig,
         pk_r: &[u8],
         info: &[u8],
+        aad: &[u8],
         ptxt: &[u8],
         psk: &[u8],
         psk_id: &[u8],
-        aad_builder: F,
-    ) -> Result<HpkeCiphertext, HpkeSealPskResolvedAadError<E>>
-    where
-        F: FnOnce(&[u8]) -> Result<Vec<u8>, E>,
-    {
-        let mut hpke = hpke_psk_from_config(config);
-        // Split the single-shot seal into setup and seal so the AAD can be built
-        // from the KEM output. The setup and seal must share the same context.
-        let (kem_output, mut context) = hpke
-            .setup_sender(&pk_r.into(), info, Some(psk), Some(psk_id), None)
-            .map_err(|_| HpkeSealPskResolvedAadError::CryptoError(CryptoError::SenderSetupError))?;
-        let aad = aad_builder(kem_output.as_slice())
-            .map_err(HpkeSealPskResolvedAadError::AadBuildError)?;
-        let ciphertext = context.seal(&aad, ptxt).map_err(|e| match e {
-            hpke_rs::HpkeError::InvalidInput => {
-                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InvalidLength)
-            }
-            hpke_rs::HpkeError::InsufficientRandomness => {
-                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InsufficientRandomness)
-            }
-            _ => HpkeSealPskResolvedAadError::CryptoError(CryptoError::HpkeEncryptionError),
-        })?;
+    ) -> Result<HpkeCiphertext, CryptoError> {
+        let mut config = hpke_psk_from_config(config);
+
+        let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
+
+        let (kem_output, ciphertext) = config
+            .seal(&pk_r, info, aad, ptxt, Some(psk), Some(psk_id), None)
+            .map_err(|e| match e {
+                hpke_rs::HpkeError::InvalidConfig => CryptoError::SenderSetupError,
+                _ => CryptoError::HpkeEncryptionError,
+            })?;
+
         Ok(HpkeCiphertext {
             kem_output: kem_output.into(),
             ciphertext: ciphertext.into(),
