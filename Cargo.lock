@@ -2509,8 +2509,6 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tls_codec",
- "wasm-bindgen",
- "wasm-bindgen-test",
  "web-time",
  "zeroize",
 ]
