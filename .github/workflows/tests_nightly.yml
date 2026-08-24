@@ -10,10 +10,6 @@ on:
     # 02:00 UTC every day. Cron syntax: minute hour dom month dow.
     - cron: "0 2 * * *"
   workflow_dispatch:
-  # TEMPORARY: run the full matrix on pull requests while we diagnose why the
-  # `pq-ciphersuites` jobs get their runner torn down (exit 143). Revert before
-  # merging — this is ten cold full-matrix builds per push.
-  pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
