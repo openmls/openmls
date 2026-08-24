@@ -2493,7 +2493,6 @@ dependencies = [
  "itertools 0.14.0",
  "lazy_static",
  "log",
- "once_cell",
  "openmls",
  "openmls_basic_credential",
  "openmls_libcrux_crypto",

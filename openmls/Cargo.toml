@@ -41,7 +41,6 @@ wasm-bindgen-test = { version = "0.3.50", optional = true }
 getrandom = { version = "0.4.2", optional = true }
 getrandom_old = { package = "getrandom", version = "0.2.15", optional = true }
 web-time = { version = "1.1", optional = true, features = ["serde"] }
-once_cell = { version = "1.19.0", optional = true }
 zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
@@ -60,7 +59,6 @@ test-utils = [
     "dep:openmls_basic_credential",
     "dep:openmls_memory_storage",
     "dep:openmls_test",
-    "dep:once_cell",
     "backtrace",
 ]
 backtrace = []
