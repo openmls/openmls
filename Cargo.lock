@@ -644,6 +644,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "core-models"
+version = "0.0.7"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "hax-lib",
+ "pastey",
+ "rand",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -670,6 +680,18 @@ dependencies = [
  "bindgen",
  "cc",
  "pkg-config",
+]
+
+[[package]]
+name = "crabgrind"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "035c801dc4b418e1d857a6536dc88b4d1929c7a1fd163389766e18d322d34a84"
+dependencies = [
+ "bindgen",
+ "cc",
+ "pkg-config",
+ "rustversion",
 ]
 
 [[package]]
@@ -1459,10 +1481,26 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812de62ab573b876c6c40d7553bae9402ae3bad95b64af06f964388eecb9b7b1"
 dependencies = [
- "hpke-rs-crypto",
- "hpke-rs-libcrux",
- "hpke-rs-rust-crypto",
- "libcrux-sha3",
+ "hpke-rs-crypto 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hpke-rs-libcrux 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hpke-rs-rust-crypto 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-sha3 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log",
+ "serde",
+ "subtle",
+ "tls_codec",
+ "zeroize",
+]
+
+[[package]]
+name = "hpke-rs"
+version = "0.7.0"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "hpke-rs-crypto 0.7.0 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "hpke-rs-libcrux 0.7.0 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "hpke-rs-rust-crypto 0.7.0 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha3 0.0.10 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "log",
  "serde",
  "subtle",
@@ -1481,17 +1519,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "hpke-rs-crypto"
+version = "0.7.0"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "rand",
+ "zeroize",
+]
+
+[[package]]
 name = "hpke-rs-libcrux"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c1ace95ef11fbbd84527eada5fc1304f66720fc4c008db30d888d62d3c52613"
 dependencies = [
- "hpke-rs-crypto",
- "libcrux-aead",
- "libcrux-ecdh",
- "libcrux-hkdf",
- "libcrux-kem",
- "libcrux-traits",
+ "hpke-rs-crypto 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-aead 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-ecdh 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-hkdf 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-kem 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand",
+ "rand_chacha 0.10.0",
+ "rand_core 0.10.1",
+ "zeroize",
+]
+
+[[package]]
+name = "hpke-rs-libcrux"
+version = "0.7.0"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "hpke-rs-crypto 0.7.0 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-aead 0.0.9 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-ecdh 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-hkdf 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-kem 0.0.9 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha3 0.0.10 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "rand",
  "rand_chacha 0.10.0",
  "rand_core 0.10.1",
@@ -1507,7 +1572,7 @@ dependencies = [
  "aes-gcm",
  "chacha20poly1305",
  "hkdf 0.13.0",
- "hpke-rs-crypto",
+ "hpke-rs-crypto 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "k256",
  "ml-kem",
  "p256",
@@ -1518,6 +1583,27 @@ dependencies = [
  "sha2 0.11.0",
  "subtle",
  "x-wing",
+ "x25519-dalek 2.0.1",
+ "zeroize",
+]
+
+[[package]]
+name = "hpke-rs-rust-crypto"
+version = "0.7.0"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "aes-gcm",
+ "chacha20poly1305",
+ "hkdf 0.13.0",
+ "hpke-rs-crypto 0.7.0 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "k256",
+ "p256",
+ "p384",
+ "rand",
+ "rand_chacha 0.10.0",
+ "rand_core 0.10.1",
+ "sha2 0.11.0",
+ "subtle",
  "x25519-dalek 2.0.1",
  "zeroize",
 ]
@@ -1978,10 +2064,21 @@ version = "0.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22acbe68be84b7b41aaba6e39b87036fc4324dee628d94773750bf3d7e906d69"
 dependencies = [
- "libcrux-aes",
- "libcrux-chacha20poly1305",
- "libcrux-secrets",
- "libcrux-traits",
+ "libcrux-aes 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-chacha20poly1305 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-aead"
+version = "0.0.9"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-aes 0.0.9 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-chacha20poly1305 0.0.9 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -1990,10 +2087,21 @@ version = "0.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57cc95b11dbc797b1e169467b1fc4205c4e6ee2ce516a035ad7342ce5f6ae971"
 dependencies = [
- "libcrux-intrinsics",
- "libcrux-platform",
- "libcrux-secrets",
- "libcrux-traits",
+ "libcrux-intrinsics 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-platform 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-aes"
+version = "0.0.9"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-intrinsics 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-platform 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -2002,11 +2110,23 @@ version = "0.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "537e6eee5cdc9a980014d058784b0be09614f0596df789b114f7833aa9f35d75"
 dependencies = [
- "libcrux-hacl-rs",
- "libcrux-macros",
- "libcrux-poly1305",
- "libcrux-secrets",
- "libcrux-traits",
+ "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-poly1305 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-chacha20poly1305"
+version = "0.0.9"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-poly1305 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -2015,10 +2135,21 @@ version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4f3cfd5e31cb9745e290ee061222c380ec42884654b09fc7d12a5b0ed63e028"
 dependencies = [
- "libcrux-hacl-rs",
- "libcrux-macros",
- "libcrux-secrets",
- "libcrux-traits",
+ "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-curve25519"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -2027,21 +2158,41 @@ version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a227590b89ff55ce7cd97b5a7468c82d231db8f3b890bb4d4fb6d271e7524d7"
 dependencies = [
- "libcrux-curve25519",
- "libcrux-p256",
+ "libcrux-curve25519 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-p256 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
  "tls_codec",
 ]
 
 [[package]]
+name = "libcrux-ecdh"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-curve25519 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-p256 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "rand",
+ "tls_codec",
+]
+
+[[package]]
+name = "libcrux-ecdsa"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-p256 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha2 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "rand",
+]
+
+[[package]]
 name = "libcrux-ed25519"
 version = "0.0.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc463d32f41c47e03dc664547596928a13cb3d79c03453a9b3fe654649313982"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
 dependencies = [
- "libcrux-hacl-rs",
- "libcrux-macros",
- "libcrux-sha2",
+ "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha2 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "rand_core 0.10.1",
 ]
 
@@ -2051,7 +2202,15 @@ version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66106db376ae249af86911aee048cf73ea1f394d6653026fc988dd22cf2a4ace"
 dependencies = [
- "libcrux-macros",
+ "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-hacl-rs"
+version = "0.0.5"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -2060,9 +2219,19 @@ version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc94e651dca4d47edbcdd88bb2428ce16a2bd86b7a4e7170da87b505478f9839"
 dependencies = [
- "libcrux-hacl-rs",
- "libcrux-hmac",
- "libcrux-secrets",
+ "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-hmac 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-hkdf"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-hmac 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -2071,19 +2240,29 @@ version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "500ad9b32c715161b594172ca1fb11503a1c033b393ff4c0c33505ce51c1943c"
 dependencies = [
- "libcrux-hacl-rs",
- "libcrux-macros",
- "libcrux-sha2",
- "libcrux-traits",
+ "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-sha2 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-hmac"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha2 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
 name = "libcrux-hmac-drbg"
 version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "860985647c344b7357ce950bf8e13f076db47df36132d49b48a6fff30abe5be6"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
 dependencies = [
- "libcrux-hmac",
+ "libcrux-hmac 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "rand",
 ]
 
@@ -2093,7 +2272,16 @@ version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98a0c574d4eb81d0814bc2b91e4a433d7e0b35851b1d62eb5dd95c064f1f76d0"
 dependencies = [
- "core-models",
+ "core-models 0.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hax-lib",
+]
+
+[[package]]
+name = "libcrux-intrinsics"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "core-models 0.0.7 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "hax-lib",
 ]
 
@@ -2103,12 +2291,26 @@ version = "0.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "541a7377fb35060892e0620982e224e47419f10da8c212453bf642dafe529691"
 dependencies = [
- "libcrux-curve25519",
- "libcrux-ecdh",
- "libcrux-ml-kem",
- "libcrux-p256",
- "libcrux-sha3",
- "libcrux-traits",
+ "libcrux-curve25519 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-ecdh 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-ml-kem 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-p256 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-sha3 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand",
+]
+
+[[package]]
+name = "libcrux-kem"
+version = "0.0.9"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-curve25519 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-ecdh 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-ml-kem 0.0.10 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-p256 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha3 0.0.10 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "rand",
 ]
 
@@ -2123,17 +2325,56 @@ dependencies = [
 ]
 
 [[package]]
+name = "libcrux-macros"
+version = "0.0.3"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "quote",
+ "syn 3.0.3",
+]
+
+[[package]]
+name = "libcrux-ml-dsa"
+version = "0.0.10"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "core-models 0.0.7 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "hax-lib",
+ "libcrux-intrinsics 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-platform 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha3 0.0.10 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "tls_codec",
+]
+
+[[package]]
 name = "libcrux-ml-kem"
 version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d8160f7d64fd2716b4fd05cc886a042f8dcda18d9206c0d506e2c67bdf97daa"
 dependencies = [
  "hax-lib",
- "libcrux-intrinsics",
- "libcrux-platform",
- "libcrux-secrets",
- "libcrux-sha3",
- "libcrux-traits",
+ "libcrux-intrinsics 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-platform 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-sha3 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand",
+ "tls_codec",
+]
+
+[[package]]
+name = "libcrux-ml-kem"
+version = "0.0.10"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "hax-lib",
+ "libcrux-intrinsics 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-platform 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha3 0.0.10 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "rand",
  "tls_codec",
 ]
@@ -2144,11 +2385,23 @@ version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3400732702d578be622257b98cec85e9b0cd34a67f1f06d3ebe9ae34963cdf02"
 dependencies = [
- "libcrux-hacl-rs",
- "libcrux-macros",
- "libcrux-secrets",
- "libcrux-sha2",
- "libcrux-traits",
+ "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-sha2 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-p256"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha2 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -2161,13 +2414,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "libcrux-platform"
+version = "0.0.3"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "libcrux-poly1305"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76a9144949845813a0b8787d08cbba47baabe59c83f3043e558e6e92385c40cc"
 dependencies = [
- "libcrux-hacl-rs",
- "libcrux-macros",
+ "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-poly1305"
+version = "0.0.6"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -2176,7 +2446,16 @@ version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79054fc9037cb70d6a546cf094cea7d7df06af5e49d230ba24103d27ccc886f1"
 dependencies = [
- "crabgrind",
+ "crabgrind 0.2.6",
+ "hax-lib",
+]
+
+[[package]]
+name = "libcrux-secrets"
+version = "0.0.6"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "crabgrind 0.3.1",
  "hax-lib",
 ]
 
@@ -2186,9 +2465,19 @@ version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "960e46e1be0b77098cc6ce82137864936ecad3a1b9fd4303dd51202ca140dd1e"
 dependencies = [
- "libcrux-hacl-rs",
- "libcrux-macros",
- "libcrux-traits",
+ "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-sha2"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -2198,9 +2487,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c09f5c39afae0528e1f70a3c1e3c6ee649ec1f19dda26fc9b6ea91108fb879ef"
 dependencies = [
  "hax-lib",
- "libcrux-intrinsics",
- "libcrux-platform",
- "libcrux-traits",
+ "libcrux-intrinsics 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-platform 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-sha3"
+version = "0.0.10"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "hax-lib",
+ "libcrux-intrinsics 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-platform 0.0.3 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
 ]
 
 [[package]]
@@ -2209,7 +2509,16 @@ version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fa7a21e8c2e8baa8b40f0b176740f2ca4baadd79d1b00e48d6b1e363c42085a"
 dependencies = [
- "libcrux-secrets",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand",
+]
+
+[[package]]
+name = "libcrux-traits"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng#24b4189859519509b603c98506db9d509b0cd9ae"
+dependencies = [
+ "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "rand",
 ]
 
@@ -2604,16 +2913,19 @@ version = "0.4.0-rc.1"
 dependencies = [
  "aes",
  "fpe",
- "hpke-rs",
- "hpke-rs-crypto",
- "hpke-rs-libcrux",
- "libcrux-aead",
+ "hpke-rs 0.7.0 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "hpke-rs-crypto 0.7.0 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "hpke-rs-libcrux 0.7.0 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-aead 0.0.9 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-ecdsa",
  "libcrux-ed25519",
- "libcrux-hkdf",
- "libcrux-hmac",
+ "libcrux-hkdf 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-hmac 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "libcrux-hmac-drbg",
- "libcrux-sha2",
- "libcrux-traits",
+ "libcrux-ml-dsa",
+ "libcrux-p256 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-sha2 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
+ "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux?branch=franziskus%2Ffallible-rng)",
  "openmls_memory_storage",
  "openmls_traits",
  "rand",
@@ -2645,9 +2957,9 @@ dependencies = [
  "fpe",
  "hkdf 0.13.0",
  "hmac 0.13.0",
- "hpke-rs",
- "hpke-rs-crypto",
- "hpke-rs-rust-crypto",
+ "hpke-rs 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hpke-rs-crypto 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hpke-rs-rust-crypto 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ml-dsa",
  "openmls_memory_storage",
  "openmls_traits",
