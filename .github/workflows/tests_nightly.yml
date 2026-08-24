@@ -32,7 +32,6 @@ jobs:
       fail-fast: false
       matrix:
         mode:
-          - { name: debug, arg: "" }
           - { name: release, arg: --release }
         features:
           - { name: base, arg: "" }
@@ -49,33 +48,5 @@ jobs:
 
       - name: Tests with all providers and ciphersuites
         run: |
-          # TEMPORARY: sample memory and disk every 10s alongside the build.
-          sample() {
-            while true; do
-              ts=$(date -u +%H:%M:%S)
-              disk=$(df -m --output=avail / | tail -1 | tr -d ' ')
-              awk -v ts="$ts" -v disk="$disk" '
-                /^MemTotal:/     { total = $2 }
-                /^MemAvailable:/ { avail = $2 }
-                /^SwapTotal:/    { swtotal = $2 }
-                /^SwapFree:/     { swfree = $2 }
-                END {
-                  printf "[res] %s  mem_avail=%dM/%dM  swap_used=%dM  disk_avail=%sM\n",
-                         ts, avail/1024, total/1024, (swtotal-swfree)/1024, disk
-                }
-              ' /proc/meminfo
-              ps -eo rss=,comm= --sort=-rss | head -3 |
-                awk '{ printf "[res]              %-20s %6dM\n", $2, $1/1024 }'
-              sleep 10
-            done
-          }
-          sample &
-          sampler=$!
-          trap 'kill "$sampler" 2>/dev/null || true' EXIT
-
-          echo "[res] nproc=$(nproc)"
-          free -m
-          df -h /
-
           cargo test ${{ matrix.mode.arg }} -p openmls --verbose --no-default-features \
             -F all-ciphersuites,sqlite-provider,libcrux-provider ${{ matrix.features.arg }}
