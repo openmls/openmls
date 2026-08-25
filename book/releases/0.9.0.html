@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-e9dadfee.js";
+            window.path_to_searchindex_js = "../searchindex-9fb7409c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-d3aff166.js"></script>
@@ -174,10 +174,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="090-2026-08-03"><a class="header" href="#090-2026-08-03">0.9.0 (2026-08-03)</a></h1>
-<blockquote>
-<p>This release is going out first as <code>0.9.0-rc.1</code>, per the <a href="../release_management.html">pre-release strategy</a>. The final <code>0.9.0</code> tag will follow after the rc is deemed good.</p>
-</blockquote>
+                        <h1 id="090-2026-08-25"><a class="header" href="#090-2026-08-25">0.9.0 (2026-08-25)</a></h1>
 <h2 id="highlights"><a class="header" href="#highlights">Highlights</a></h2>
 <ul>
 <li><strong>Storage.</strong> Non-self describing storage formats are officially not supported anymore in OpenMLS starting with this release.</li>
@@ -204,6 +201,8 @@
 </ul>
 <h2 id="changed"><a class="header" href="#changed">Changed</a></h2>
 <ul>
+<li><a href="https://github.com/openmls/openmls/pull/2149">#2149</a>: <code>build_with_new_signer</code> now always generates an UpdatePath, so the new signature key reaches the committer’s leaf. External commits take their credential solely from <code>ExternalCommitBuilder::build_group</code>, with new errors for a mismatched credential or a new signer.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2174">#2174</a>: Faster duplicate and membership checks during validation (hash sets, binary search for unmerged leaves). No API change.</li>
 <li><a href="https://github.com/openmls/openmls/pull/2109">#2109</a>: Group/key-package creation, welcome processing, external commits and <code>PublicGroup</code> creation now fail early with <code>UnsupportedCiphersuite</code> instead of failing deep in a crypto operation.</li>
 <li><a href="https://github.com/openmls/openmls/pull/1980">#1980</a>: Enriched lifetime-related leaf node validation errors.</li>
 <li><a href="https://github.com/openmls/openmls/pull/1972">#1972</a>: <code>MlsGroup::max_past_epochs()</code> now returns <code>Option&lt;usize&gt;</code>.</li>
@@ -217,7 +216,10 @@
 </ul>
 <h2 id="fixed"><a class="header" href="#fixed">Fixed</a></h2>
 <ul>
-<li><a href="https://github.com/openmls/openmls/pulls/2186">#2186</a>: Fix wrong computation of tree node indexes when provided invalid inputs.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2186">#2186</a>: Fix wrong computation of tree node indexes when provided invalid inputs, which could let a commit from a sender outside the tree be accepted.</li>
+<li><a href="https://github.com/openmls/openmls/security/advisories/GHSA-rrmv-c79f-cf5r">GHSA-rrmv-c79f-cf5r</a>: Fix out-of-bounds panic in manual <code>DeserializeBytes</code> impls.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2143">#2143</a>: <code>build_with_new_signer</code> now signs the Welcome and exported GroupInfo with the new signer. Previously invited members rejected the Welcome with <code>InvalidGroupInfoSignature</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2147">#2147</a>: Fix an off-by-one in the variable-length prefix size during extension serialization.</li>
 <li><a href="https://github.com/openmls/openmls/pull/2134">#2134</a>: Known structured extension payloads now reject trailing bytes during decoding.</li>
 <li><a href="https://github.com/openmls/openmls/pull/2109">#2109</a>: <code>OpenMlsRustCrypto</code>’s <code>supports()</code> now agrees with <code>supported_ciphersuites()</code> for <code>MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87</code>.</li>
 <li><a href="https://github.com/openmls/openmls/pull/2089">#2089</a>: A Commit without an UpdatePath from this client’s own leaf that doesn’t match the pending commit is now staged normally instead of rejected.</li>
