@@ -56,8 +56,8 @@ fn commit_builder_with_aad() {
         .commit()
         .tls_serialize_detached()
         .expect("serialization should succeed");
-    let msg_in = MlsMessageIn::tls_deserialize(&mut &wire_msg[..])
-        .expect("deserialization should succeed");
+    let msg_in =
+        MlsMessageIn::tls_deserialize(&mut &wire_msg[..]).expect("deserialization should succeed");
     let protocol_message = msg_in
         .try_into_protocol_message()
         .expect("should be a protocol message");
