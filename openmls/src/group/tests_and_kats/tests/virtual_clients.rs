@@ -197,16 +197,26 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     .expect("derive reference parent keypair");
 
     // Actual: send the VC commit.
-    main_group
+    let builder = main_group
         .commit_builder()
         .vc_emulation(
             provider.crypto(),
             provider.storage(),
             emulator_group.group_id(),
         )
-        .expect("vc_emulation")
-        .load_psks(provider.storage())
-        .expect("load psks")
+        .expect("vc_emulation");
+    assert_eq!(
+        builder.vc_epoch_id(),
+        Some(&epoch_id),
+        "the builder must expose the derivation epoch the commit acts from"
+    );
+    let builder = builder.load_psks(provider.storage()).expect("load psks");
+    assert_eq!(
+        builder.vc_epoch_id(),
+        Some(&epoch_id),
+        "the resolved derivation epoch must survive the stage transition"
+    );
+    builder
         .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
         .expect("build vc commit")
         .stage_commit(provider)
@@ -238,7 +248,8 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
 /// the per-KeyPackage seed (dedicated `key_package` operation, index 0),
 /// imported into the created group's ciphersuite. The encryption key secret
 /// and the "Group Creation" epoch secret both derive from that seed under
-/// the created group's ciphersuite.
+/// the created group's ciphersuite. The group's binding at epoch 0 names the
+/// derivation epoch the creation consumed.
 #[openmls_test::openmls_test]
 fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
@@ -298,6 +309,14 @@ fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
         expected_leaf_keypair.public_key(),
         "the creator leaf's encryption key secret must derive from the \
          per-KeyPackage seed imported into the created group's ciphersuite"
+    );
+    assert_eq!(
+        main_group
+            .vc_derivation_epoch_at(provider.storage(), GroupEpoch::from(0))
+            .expect("read the binding at epoch 0"),
+        Some(epoch_id),
+        "the binding at epoch 0 must name the derivation epoch the creation \
+         consumed"
     );
 }
 

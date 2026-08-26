@@ -277,6 +277,13 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
     pub(crate) fn stage(&self) -> &T {
         &self.stage
     }
+
+    /// Returns the [`EpochId`] of the derivation epoch this commit acts from,
+    /// or `None` if no virtual-clients material was loaded.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_epoch_id(&self) -> Option<&EpochId> {
+        self.vc_loaded.as_ref().map(|loaded| &loaded.epoch_id)
+    }
 }
 
 impl MlsGroup {
