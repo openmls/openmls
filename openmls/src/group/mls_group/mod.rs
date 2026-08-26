@@ -788,6 +788,7 @@ impl MlsGroup {
     /// Returns the [`EpochId`] of the derivation epoch this group is bound to
     /// at `epoch`, or `None` if the group has no virtual-clients binding for
     /// that epoch.
+    ///
     /// [`EpochId`]: crate::components::vc_derivation_info::EpochId
     #[cfg(feature = "virtual-clients-draft")]
     pub fn vc_derivation_epoch_at<Storage: StorageProvider>(
