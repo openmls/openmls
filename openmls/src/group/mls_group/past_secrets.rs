@@ -86,14 +86,10 @@ impl MessageSecretsStore {
         // max or the limit of the storage size
         let max_past_epochs = max_epochs(policy);
 
-        let old_size = self.max_epochs;
         self.max_epochs = max_past_epochs;
-        if old_size > max_past_epochs {
-            let num_epochs_out = old_size - max_past_epochs;
-            self.past_epoch_trees
-                .rotate_left(num_epochs_out.min(self.past_epoch_trees.len()));
-            self.past_epoch_trees.truncate(max_past_epochs);
-        }
+
+        let excess = self.past_epoch_trees.len().saturating_sub(max_past_epochs);
+        self.past_epoch_trees.drain(0..excess);
     }
 
     /// Set the `message_secrets` to a provided `MessageSecrets`, and return

@@ -835,3 +835,49 @@ fn test_empty_secret_tree_store() {
     // Make sure we cannot access the message secrets we just stored
     assert!(message_secrets_store.secrets_for_epoch_mut(0).is_none());
 }
+
+/// The past epochs the group can still read, oldest first.
+fn retained_epochs(group: &MlsGroup) -> Vec<u64> {
+    (0..group.epoch().as_u64())
+        .filter(|epoch| group.message_secrets_and_leaves((*epoch).into()).is_ok())
+        .collect()
+}
+
+/// Shrinking the retention keeps the most recent past epochs, whether or not
+/// the store has reached its limit.
+#[openmls_test::openmls_test]
+fn shrink_policy_keeps_newest_epochs<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
+    for (policy, commits, keep) in [
+        (PastEpochDeletionPolicy::KeepAll, 8usize, 3usize),
+        (PastEpochDeletionPolicy::MaxEpochs(10), 4, 2),
+        (PastEpochDeletionPolicy::MaxEpochs(6), 5, 3),
+        (PastEpochDeletionPolicy::MaxEpochs(4), 8, 2),
+    ] {
+        let (provider, signer, mut group) = setup::<Provider>(ciphersuite, policy.clone());
+        apply_and_merge_commits(commits, &provider, &signer, &mut group, policy);
+        let before = retained_epochs(&group);
+
+        group
+            .set_past_epoch_deletion_policy(&provider, PastEpochDeletionPolicy::MaxEpochs(keep))
+            .expect("error updating policy");
+
+        assert_eq!(retained_epochs(&group), &before[before.len() - keep..]);
+    }
+}
+
+/// A shrink that drops nothing must still leave the store in order, so that
+/// the next commit evicts the oldest epoch.
+#[openmls_test::openmls_test]
+fn shrink_policy_keeps_the_store_ordered<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
+    let policy = PastEpochDeletionPolicy::MaxEpochs(3);
+    let (provider, signer, mut group) = setup::<Provider>(ciphersuite, policy.clone());
+    apply_and_merge_commits(2, &provider, &signer, &mut group, policy);
+
+    let shrunk = PastEpochDeletionPolicy::MaxEpochs(2);
+    group
+        .set_past_epoch_deletion_policy(&provider, shrunk.clone())
+        .expect("error updating policy");
+    apply_and_merge_commits(1, &provider, &signer, &mut group, shrunk);
+
+    assert_eq!(retained_epochs(&group), [1, 2]);
+}
