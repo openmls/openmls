@@ -5,6 +5,8 @@ use tls_codec::Serialize as _;
 #[cfg(doc)]
 use super::CommitMessageBundle;
 #[cfg(doc)]
+use crate::group::PastEpochDeletionPolicy;
+#[cfg(doc)]
 use crate::treesync::LeafNodeParameters;
 
 use crate::{
@@ -16,9 +18,9 @@ use crate::{
         commit_builder::{CommitBuilder, ExternalCommitInfo, Initial},
         past_secrets::MessageSecretsStore,
         public_group::errors::CreationFromExternalError,
-        ExternalCommitBuilderFinalizeError, LeafNodeLifetimePolicy, MlsGroup, MlsGroupJoinConfig,
-        MlsGroupState, PendingCommitState, ProposalStore, PublicGroup, QueuedProposal,
-        ValidationError, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ExternalCommitBuilderFinalizeError, GroupEpoch, LeafNodeLifetimePolicy, Member, MlsGroup,
+        MlsGroupJoinConfig, MlsGroupState, PendingCommitState, ProposalStore, PublicGroup,
+        QueuedProposal, ValidationError, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::{
         group_info::VerifiableGroupInfo,
@@ -58,6 +60,20 @@ pub enum ExternalCommitBuilderError<StorageError> {
     /// Error validating proposals.
     #[error("Error validating proposals: {0}")]
     InvalidProposal(#[from] ValidationError),
+    /// The group provided via [`ExternalCommitBuilder::retain_past_epochs_from`]
+    /// has a different group id than the group being joined.
+    #[error("The group provided via retain_past_epochs_from has a different group id than the group being joined.")]
+    PastEpochsGroupIdMismatch,
+    /// The group provided via [`ExternalCommitBuilder::retain_past_epochs_from`]
+    /// uses a different ciphersuite than the group being joined.
+    #[error("The group provided via retain_past_epochs_from uses a different ciphersuite than the group being joined.")]
+    PastEpochsCiphersuiteMismatch,
+    /// The own leaf of the group provided via
+    /// [`ExternalCommitBuilder::retain_past_epochs_from`] carries a different
+    /// signature key than the credential the external commit is built with,
+    /// i.e. the state belongs to a different member.
+    #[error("The group provided via retain_past_epochs_from belongs to a different member than the credential the external commit is built with.")]
+    PastEpochsSignatureKeyMismatch,
 }
 
 /// This is the builder for external commits. It allows you to build an external
@@ -77,6 +93,9 @@ pub struct ExternalCommitBuilder {
     config: MlsGroupJoinConfig,
     validate_lifetimes: LeafNodeLifetimePolicy,
     aad: Vec<u8>,
+    /// A previous incarnation of the group to carry past epoch message
+    /// secrets over from. Set by [`Self::retain_past_epochs_from`].
+    past_group: Option<Box<MlsGroup>>,
     /// Whether to join the group as an emulation group of a virtual client. Set
     /// by [`Self::emulation_group`].
     #[cfg(feature = "virtual-clients-draft")]
@@ -128,6 +147,62 @@ impl ExternalCommitBuilder {
         self
     }
 
+    /// Carries the past epoch application message secrets of `group`, a
+    /// previous incarnation of the group being joined, over into the group
+    /// built by this external commit.
+    ///
+    /// When a member uses an external commit to rejoin a group it is already
+    /// a member of (e.g. because its group state became unusable), the group
+    /// produced by this builder replaces the state the member already holds —
+    /// including the message secrets of past epochs retained according to the
+    /// [`PastEpochDeletionPolicy`]. Without this option, application messages
+    /// from epochs the member participated in, which it could still have
+    /// decrypted a moment before the rejoin, become undecryptable.
+    ///
+    /// Carrying the secrets over is bounded by the [`PastEpochDeletionPolicy`]
+    /// of the config passed to [`Self::with_config`], measured against the
+    /// epoch the external commit creates: a member that missed more epochs
+    /// than the policy retains has no valid past epochs left, and nothing is
+    /// carried over. In particular, the default policy is
+    /// `PastEpochDeletionPolicy::MaxEpochs(0)`, under which nothing is
+    /// retained at all — to make use of this option, the config needs a
+    /// policy that retains past epochs.
+    ///
+    /// If the previous state is exactly at the epoch of the
+    /// [`VerifiableGroupInfo`], with a matching group context, its current
+    /// message secrets also replace the placeholder secrets of the pre-join
+    /// epoch, so messages sealed in that epoch remain decryptable as well.
+    /// If the previous state had instead moved beyond the epoch of the
+    /// [`VerifiableGroupInfo`] (e.g. because the `GroupInfo` is stale, or
+    /// the state sits on a fork of the group), its retained secrets for the
+    /// pre-join epoch and earlier are used and everything newer is dropped.
+    /// Messages from epochs the previous state never reached — including the
+    /// pre-join epoch, when the member had fallen behind — still fail to
+    /// decrypt after the rejoin, with an AEAD error rather than
+    /// `TooDistantInThePast`, since the placeholder secrets remain in place
+    /// for that epoch.
+    ///
+    /// Note that this does not extend what the client can decrypt: the client
+    /// already holds these secrets in its previous group state, and a client
+    /// without a previous group state has nothing to carry over.
+    ///
+    /// `group` must be this client's own previous state for the group being
+    /// joined: it must have the same group id and ciphersuite, and its own
+    /// leaf must carry the signature key of the credential the external
+    /// commit is built with. Otherwise [`Self::build_group`] fails with
+    /// [`ExternalCommitBuilderError::PastEpochsGroupIdMismatch`],
+    /// [`ExternalCommitBuilderError::PastEpochsCiphersuiteMismatch`] or
+    /// [`ExternalCommitBuilderError::PastEpochsSignatureKeyMismatch`]. Aside
+    /// from its retained message secrets, the state of `group` is discarded;
+    /// whatever the storage provider holds for the group id is only
+    /// overwritten once the external commit is finalized, so if
+    /// [`Self::build_group`] fails, the state can be reloaded via
+    /// [`MlsGroup::load`].
+    pub fn retain_past_epochs_from(mut self, group: MlsGroup) -> Self {
+        self.past_group = Some(Box::new(group));
+        self
+    }
+
     /// Join the group as an emulation group of a virtual client. See
     /// [`MlsGroupCreateConfigBuilder::emulation_group`] for what an emulation
     /// group is.
@@ -173,6 +248,7 @@ impl ExternalCommitBuilder {
             mut config,
             aad,
             validate_lifetimes,
+            past_group,
             #[cfg(feature = "virtual-clients-draft")]
             emulation_group,
         } = self;
@@ -236,10 +312,45 @@ impl ExternalCommitBuilder {
             // tracked in #767.
             LeafNodeIndex::new(0u32),
         );
-        let message_secrets_store = MessageSecretsStore::new_with_secret(
+        let mut message_secrets_store = MessageSecretsStore::new_with_secret(
             config.past_epoch_deletion_policy(),
             message_secrets,
         );
+
+        // If the client rejoins a group it is already a member of, carry the
+        // past epoch message secrets of its previous group state over into
+        // the new one. See [`ExternalCommitBuilder::retain_past_epochs_from`].
+        if let Some(past_group) = past_group {
+            if past_group.group_id() != group_context.group_id() {
+                return Err(ExternalCommitBuilderError::PastEpochsGroupIdMismatch);
+            }
+            if past_group.ciphersuite() != ciphersuite {
+                return Err(ExternalCommitBuilderError::PastEpochsCiphersuiteMismatch);
+            }
+            // The past state has to belong to the member this external
+            // commit rejoins: its retained secrets answer the own-message
+            // question with the own leaf of their epochs, so another
+            // member's state would silently misclassify that member's
+            // messages as this client's own.
+            if past_group
+                .own_leaf_node()
+                .map(|own_leaf| own_leaf.signature_key())
+                != Some(&credential_with_key.signature_key)
+            {
+                return Err(ExternalCommitBuilderError::PastEpochsSignatureKeyMismatch);
+            }
+            let past_epoch = past_group.context().epoch();
+            let past_context_matches = past_group.context() == group_context;
+            let past_leaves: Vec<Member> = past_group.public_group().members().collect();
+            let rejoin_epoch = GroupEpoch::from(group_context.epoch().as_u64().saturating_add(1));
+            message_secrets_store.inherit_past_epochs(
+                past_group.message_secrets_store,
+                past_epoch,
+                past_leaves,
+                rejoin_epoch,
+                past_context_matches,
+            );
+        }
 
         let external_init_proposal =
             Proposal::external_init(ExternalInitProposal::from(kem_output));
