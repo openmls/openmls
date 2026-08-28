@@ -726,8 +726,11 @@ impl MlsGroup {
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
     /// from the previous epoch. The secret tree is returned if the Commit does not contain a self removal.
     ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a `LibraryError`.
+    /// Beyond a `LibraryError`, this fails on a storage error, and on an
+    /// emulation group it also fails if registering the derivation epoch the
+    /// commit creates fails. The group is already advanced in memory by then,
+    /// and a storage transaction does not roll that back, so a caller that sees
+    /// an error has to discard this group and load it again.
     pub(crate) fn merge_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,

@@ -3431,14 +3431,53 @@ fn bound_group_fails_closed_when_derivation_state_missing_on_send() {
 
     let epoch_id = newest_epoch(&emulator_group, &provider);
     let _commit_msg = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
+
+    // The group's binding keeps the epoch state alive, so the guarded delete
+    // refuses while the binding is stored.
+    let bindings: VcEmulationBindings = provider
+        .storage()
+        .vc_emulation_bindings(alice_group.group_id())
+        .expect("read emulation bindings")
+        .expect("the VC commit bound the group");
+    assert!(!provider
+        .storage()
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .expect("guarded delete while bound"));
+
+    // Drop the binding. The emulator group's registration record alone still
+    // keeps the epoch state alive.
+    provider
+        .storage()
+        .delete_vc_emulation_bindings(alice_group.group_id())
+        .expect("drop emulation bindings");
+    assert!(!provider
+        .storage()
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .expect("guarded delete while registered"));
+
+    // Drop the registration too, delete the state, then put the binding back.
+    // That leaves the group bound to an epoch whose state is gone, which is
+    // the situation a corrupted or partially restored store can produce.
+    provider
+        .storage()
+        .delete_registered_vc_derivation_epoch(emulator_group.group_id())
+        .expect("drop registered derivation epoch");
     let deleted = provider
         .storage()
         .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
         .expect("delete derivation epoch state");
     assert!(
         deleted,
-        "no retained material, so the epoch state is deleted"
+        "nothing references the epoch, so the epoch state is deleted"
     );
+    provider
+        .storage()
+        .write_vc_emulation_bindings(
+            alice_group.group_id(),
+            &bindings,
+            &bindings.bound_epoch_ids(),
+        )
+        .expect("restore emulation bindings");
 
     let err = alice_group
         .create_message(&provider, &alice_signer, b"must not send")
@@ -3455,6 +3494,70 @@ fn bound_group_fails_closed_when_derivation_state_missing_on_send() {
         ),
         "unexpected error: {err:?}"
     );
+}
+
+#[test]
+fn aged_out_binding_releases_derivation_epoch_state() {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let provider = OpenMlsRustCrypto::default();
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+
+    let mut alice_group =
+        new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
+    let (mut emulator_group, emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"AliceEmulator", true);
+
+    let epoch_id_one = newest_epoch(&emulator_group, &provider);
+    let _commit = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
+
+    // Start a second derivation epoch on the emulation group. The emulator's
+    // registration record then references only the new epoch, so the group's
+    // binding is all that keeps the first epoch's state alive.
+    let _bundle = emulator_group
+        .commit_builder()
+        .derivation_epoch(true)
+        .force_self_update(true)
+        .load_psks(provider.storage())
+        .expect("load psks")
+        .build(provider.rand(), provider.crypto(), &emulator_signer, |_| {
+            true
+        })
+        .expect("build emulator commit with marker")
+        .stage_commit(&provider)
+        .expect("stage emulator commit with marker");
+    emulator_group
+        .merge_pending_commit(&provider)
+        .expect("emulator merge marker commit");
+    let epoch_id_two = newest_epoch(&emulator_group, &provider);
+    assert_ne!(epoch_id_one, epoch_id_two);
+    assert!(!provider
+        .storage()
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id_one)
+        .expect("guarded delete while bound"));
+
+    // The second VC commit rewrites the bindings. The group retains no past
+    // message secrets, so the record keeps a single entry and the rewrite
+    // drops the first epoch from the bound-epochs list.
+    let _commit = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
+    let bindings: VcEmulationBindings = provider
+        .storage()
+        .vc_emulation_bindings(alice_group.group_id())
+        .expect("read emulation bindings")
+        .expect("emulation bindings present");
+    assert_eq!(bindings.bound_epoch_ids(), vec![epoch_id_two.clone()]);
+
+    // Nothing references the first epoch anymore, so its state is deletable.
+    // The second epoch stays alive through the new binding.
+    assert!(provider
+        .storage()
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id_one)
+        .expect("guarded delete of the aged-out epoch"));
+    assert!(!provider
+        .storage()
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id_two)
+        .expect("guarded delete of the still-bound epoch"));
 }
 
 /// On a group bound to a derivation epoch, `create_unconfirmed_message`
