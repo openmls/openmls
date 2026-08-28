@@ -787,6 +787,22 @@ impl MlsGroup {
         Ok(Some(state))
     }
 
+    /// Returns the [`EpochId`] of the derivation epoch this group is bound to
+    /// at `epoch`, or `None` if the group has no virtual-clients binding for
+    /// that epoch.
+    ///
+    /// [`EpochId`]: crate::components::vc_derivation_info::EpochId
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_derivation_epoch_at<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        epoch: GroupEpoch,
+    ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
+        let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> =
+            storage.vc_emulation_bindings(self.group_id())?;
+        Ok(bindings.and_then(|bindings| bindings.get(epoch).cloned()))
+    }
+
     /// Returns whether this group is an emulation group of a virtual client.
     ///
     /// The flag is set when the application creates the group as an emulation
