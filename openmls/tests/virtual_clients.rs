@@ -5985,3 +5985,227 @@ fn new_derivation_epoch_requires_emulation_group() {
         "unexpected error: {err:?}"
     );
 }
+
+/// Reading a *past* epoch after a sibling-resync external commit.
+///
+/// The resync moves `own_leaf_index` to the joiner's new leaf
+/// (`staged_commit.rs`, `if let Some(new_idx) = state.new_own_leaf_index`).
+/// The secret trees of epochs before the resync were built for the *old*
+/// index, so from that point on "the group's current own leaf" and "the leaf a
+/// past epoch's secret tree belongs to" are two different things.
+///
+/// `DecryptedMessage::from_inbound_ciphertext` decides whether an inbound
+/// message is the caller's own by comparing the sender's leaf index against
+/// one of those two. Comparing against the current one misclassifies every
+/// message in every pre-resync epoch that came from the leaf the client has
+/// since moved onto -- here Dave's, who was removed before the resync and
+/// whose leaf the joiner then reuses.
+///
+/// The tree is arranged so that the resync actually moves the leaf, which
+/// needs a blank to the left of the virtual client:
+///
+/// ```text
+///   leaf 0      leaf 1      leaf 2
+///   Dave        Alice (VC)  Bob      epoch 1: Dave sends
+///   -           Alice (VC)  Bob      epoch 2: Dave removed; Alice and Bob send
+///   Alice (VC)  -           Bob      epoch 3: resync, Alice moves 1 -> 0
+/// ```
+#[openmls_test]
+fn vc_past_epoch_read_survives_sibling_resync() {
+    use openmls::group::PastEpochDeletionPolicy;
+    use openmls::prelude::LeafNodeIndex;
+
+    let dave_provider = Provider::default();
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    let join_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::MaxEpochs(10))
+        .build();
+
+    // Higher-level group. Dave creates it and takes leaf 0, so that removing
+    // him later leaves a blank to the left of the virtual client -- without
+    // that blank the joiner reuses the virtual client's own leaf and
+    // `own_leaf_index` never moves.
+    //
+    // The past-epoch buffer has to be large enough to still hold the epochs
+    // the messages below are sent in; the default `MaxEpochs(0)` would drop
+    // them at the next commit and the reads would fail for an unrelated
+    // reason.
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::MaxEpochs(10))
+        .capabilities(vc_capabilities())
+        .with_leaf_node_extensions(vc_leaf_extensions())
+        .expect("attach leaf-node extensions on higher-level config")
+        .build();
+    let (dave_credential, dave_signer) =
+        new_credential(&dave_provider, b"Dave", ciphersuite.signature_algorithm());
+    let mut dave_main = MlsGroup::new(&dave_provider, &dave_signer, &group_config, dave_credential)
+        .expect("dave create higher-level group");
+    assert_eq!(dave_main.own_leaf_index(), LeafNodeIndex::new(0));
+
+    // Dave adds the virtual client (leaf 1) and Bob (leaf 2).
+    let alice_vc_kp = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build(
+            ciphersuite,
+            &alice_a_provider,
+            &vc_signer,
+            vc_credential.clone(),
+        )
+        .expect("alice VC KP build")
+        .key_package()
+        .to_owned();
+    let (bob_kp, bob_signer) = vc_key_package(ciphersuite, &bob_provider, b"Bob");
+    let (_, welcome, _) = dave_main
+        .add_members(&dave_provider, &dave_signer, &[alice_vc_kp, bob_kp])
+        .expect("dave adds alice and bob");
+    dave_main
+        .merge_pending_commit(&dave_provider)
+        .expect("dave merge add");
+    let ratchet_tree = dave_main.export_ratchet_tree();
+    let mut alice_a_main = StagedWelcome::new_from_welcome(
+        &alice_a_provider,
+        &join_config,
+        welcome.clone().into_welcome().expect("welcome"),
+        Some(ratchet_tree.clone().into()),
+    )
+    .and_then(|s| s.into_group(&alice_a_provider))
+    .expect("alice_a join higher-level group");
+    let mut bob_main = StagedWelcome::new_from_welcome(
+        &bob_provider,
+        &join_config,
+        welcome.into_welcome().expect("welcome"),
+        Some(ratchet_tree.into()),
+    )
+    .and_then(|s| s.into_group(&bob_provider))
+    .expect("bob join higher-level group");
+
+    let dave_leaf = dave_main.own_leaf_index();
+    let old_leaf_index = alice_a_main.own_leaf_index();
+    assert_eq!(old_leaf_index, LeafNodeIndex::new(1));
+
+    // Epoch 1: Dave sends from leaf 0, and alice_a leaves it unread.
+    let epoch_with_dave = alice_a_main.epoch();
+    let from_dave = dave_main
+        .create_message(&dave_provider, &dave_signer, b"dave from leaf zero")
+        .expect("dave app message");
+
+    // Epoch 1 -> 2: Bob removes Dave, blanking leaf 0.
+    let (remove_commit, _, _) = bob_main
+        .remove_members(&bob_provider, &bob_signer, &[dave_leaf])
+        .expect("bob removes dave");
+    bob_main
+        .merge_pending_commit(&bob_provider)
+        .expect("bob merge remove");
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, remove_commit);
+
+    // Epoch 2: Bob and the virtual client each send, both left unread.
+    let pre_resync_epoch = alice_a_main.epoch();
+    let from_bob = bob_main
+        .create_message(&bob_provider, &bob_signer, b"bob before the resync")
+        .expect("bob app message");
+    let from_alice_a = alice_a_main
+        .create_message(&alice_a_provider, &vc_signer, b"alice_a before the resync")
+        .expect("alice_a app message");
+
+    // The resync: alice_b founds the emulation group with alice_a, then joins
+    // the higher-level group by external commit. The auto-Remove picks up the
+    // virtual client's leaf 1, and the joiner lands on the blank leaf 0.
+    let (siblings, commit_msg) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        join_config.clone(),
+    );
+    let new_leaf_index = siblings.alice_b_main.own_leaf_index();
+
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, commit_msg.clone());
+    process_and_merge_commit(&mut bob_main, &bob_provider, commit_msg);
+
+    assert_eq!(
+        new_leaf_index, dave_leaf,
+        "the joiner must land on Dave's blanked leaf, otherwise this test \
+         checks nothing"
+    );
+    assert_ne!(
+        old_leaf_index, new_leaf_index,
+        "the resync must actually move the virtual client's own leaf"
+    );
+    assert_eq!(alice_a_main.own_leaf_index(), new_leaf_index);
+    assert!(
+        epoch_with_dave.as_u64() < pre_resync_epoch.as_u64()
+            && pre_resync_epoch.as_u64() < alice_a_main.epoch().as_u64(),
+        "both unread messages must come from epochs before the resync"
+    );
+
+    // The case this test exists for: Dave's message, sent from leaf 0 in an
+    // epoch in which leaf 0 was his, read after the virtual client has moved
+    // onto that same leaf 0.
+    let processed = alice_a_main
+        .process_message(
+            &alice_a_provider,
+            from_dave.into_protocol_message().unwrap(),
+        )
+        .expect(
+            "a message from a leaf the client has since moved onto must not be \
+             mistaken for the client's own",
+        );
+    match processed.into_content() {
+        ProcessedMessageContent::ApplicationMessage(app) => {
+            assert_eq!(
+                app.into_bytes(),
+                b"dave from leaf zero",
+                "Dave's message came back with the wrong content"
+            );
+        }
+        other => panic!("expected Dave's application message, got {other:?}"),
+    }
+
+    // Bob never moved, so his message is the control: it must read the same
+    // way before and after the resync.
+    let processed = alice_a_main
+        .process_message(&alice_a_provider, from_bob.into_protocol_message().unwrap())
+        .expect("Bob's pre-resync message must still be readable");
+    match processed.into_content() {
+        ProcessedMessageContent::ApplicationMessage(app) => {
+            assert_eq!(app.into_bytes(), b"bob before the resync");
+        }
+        other => panic!("expected Bob's application message, got {other:?}"),
+    }
+
+    // The virtual client's own message, echoed back by the delivery service.
+    // Its sending ratchet consumed that generation, so the echo can only be
+    // recognized, not decrypted.
+    let processed = alice_a_main
+        .process_message(
+            &alice_a_provider,
+            from_alice_a.into_protocol_message().unwrap(),
+        )
+        .expect(
+            "the echo of a message the virtual client sent from its old leaf, in \
+             an epoch whose secret tree belongs to that same old leaf, must still \
+             be recognized as its own rather than failing to decrypt",
+        );
+    assert!(
+        matches!(
+            processed.into_content(),
+            ProcessedMessageContent::OwnPrivateMessage
+        ),
+        "the echo must be classified as an own message"
+    );
+}

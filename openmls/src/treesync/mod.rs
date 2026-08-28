@@ -548,7 +548,6 @@ impl TreeSync {
         ciphersuite: Ciphersuite,
         ratchet_tree: RatchetTree,
     ) -> Result<Self, TreeSyncFromNodesError> {
-        // TODO #800: Unmerged leaves should be checked
         let total_nodes = ratchet_tree.0.len();
         let mut leaf_nodes = Vec::with_capacity(total_nodes.div_ceil(2));
         let mut parent_nodes = Vec::with_capacity(total_nodes / 2);
@@ -581,6 +580,18 @@ impl TreeSync {
                     None => TreeSyncParentNode::blank(),
                 };
                 parent_nodes.push(parent);
+            }
+        }
+
+        // Unmerged leaves must point into the tree
+        let leaf_count = leaf_nodes.len() as u32;
+        for parent in parent_nodes.iter() {
+            if let Some(parent_node) = parent.node() {
+                if let Some(last_unmerged_leaf_index) = parent_node.unmerged_leaves().last() {
+                    if last_unmerged_leaf_index.u32() >= leaf_count {
+                        return Err(TreeSyncFromNodesError::from(PublicTreeError::MalformedTree));
+                    }
+                }
             }
         }
 

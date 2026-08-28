@@ -5,11 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.9.0 (2026-08-03)
+## Unreleased
 
 ### Added
 
-- Added `PublicGroup::validate_key_package_for_add`, which checks whether a single `KeyPackage` is eligible to be added to the group without building a commit. Applications adding several members at once can use it to filter out candidates that a commit would reject, and to report which candidate was rejected and why. Uniqueness of the signature, init and encryption keys is not covered, since it can only be decided for a full set of proposals.
+- [#2184](https://github.com/openmls/openmls/pull/2184): Added `PreSharedKeyProposal::psk`, a getter for the `PreSharedKeyId` of a `PreSharedKey` proposal.
+- [#2167](https://github.com/openmls/openmls/pull/2167): Added `PublicGroup::validate_key_package_for_add`, which checks whether a single `KeyPackage` is eligible to be added to the group without building a commit. Applications adding several members at once can use it to filter out candidates that a commit would reject, and to report which candidate was rejected and why. Uniqueness of the signature, init and encryption keys is not covered, since it can only be decided for a full set of proposals.
+
+### Fixed
+
+- [#2194](https://github.com/openmls/openmls/pull/2194): With the `virtual-clients-draft` feature, whether an inbound `PrivateMessage` is this client's own is now decided against the leaf index the epoch's secret tree was built for, rather than the group's current own leaf index. The two differ for every epoch before a sibling-resync external commit moved the client's leaf. Previously a message another member sent from the leaf the client had since moved onto was silently returned as `ProcessedMessageContent::OwnPrivateMessage`, and the echo of the client's own pre-resync message failed with `SecretTreeError::SecretReuseError`.
+
+## 0.9.0 (2026-08-25)
+
+### Added
+
 - [#1972](https://github.com/openmls/openmls/pull/1972): Add APIs for time-based deletion of past epoch secrets, and for setting the past epoch deletion policy for an `MlsGroup`.
 - [#2010](https://github.com/openmls/openmls/pull/2010): Added `MlsGroup::propose_self_update_with_new_signer`, a variant of `propose_self_update` that stages an `Update` proposal carrying a new signature key.
 - [#2084](https://github.com/openmls/openmls/pull/2084): Added the `ProcessedMessageContent::OwnPendingCommit` variant, returned when processing a Commit authored by this client that matches the group's pending commit. Callers should merge the pending commit via `MlsGroup::merge_pending_commit()`.
@@ -28,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#2186](https://github.com/openmls/openmls/pull/2186): Two treemath helpers computed node indexes without checking their inputs, so a commit from a sender outside the tree could be accepted. Both now reject out-of-range input.
 - [#2143](https://github.com/openmls/openmls/pull/2143): A commit built with `CommitBuilder::build_with_new_signer` (or `MlsGroup::self_update_with_new_signer`) now signs the GroupInfo in the Welcome and the exported GroupInfo with the new signer, matching the signature key the commit puts in the committer's leaf. Previously both were signed with the old signer, so invited members rejected the Welcome with `InvalidGroupInfoSignature`.
 - [#2147](https://github.com/openmls/openmls/pull/2147): Fixed an off-by-one in the computation of the variable-length prefix size during extension serialization. Extensions with payloads of exactly 0x3fff or 0x3fff_ffff bytes now serialize with the correct length prefix.
 - [GHSA-rrmv-c79f-cf5r](https://github.com/openmls/openmls/security/advisories/GHSA-rrmv-c79f-cf5r): Fix out-of-bounds panic in manual DeserializeBytes impls
@@ -40,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [#2174](https://github.com/openmls/openmls/pull/2174): Duplicate and membership checks on extensions, capabilities and key packages now use hash sets instead of nested scans, and unmerged leaf lookups use binary search. This cuts the cost of validating large groups and key packages. No API change.
 - [#2149](https://github.com/openmls/openmls/pull/2149): `CommitBuilder::build_with_new_signer` now always generates an UpdatePath, so the new signature key is installed in the committer's leaf even when no proposal requires a path. Previously, a new signer passed to an otherwise pathless commit was silently ignored. It also rejects a new signer whose signature scheme does not match the group's ciphersuite with `CreateCommitError::InvalidSignerCiphersuite`.
 - [#2149](https://github.com/openmls/openmls/pull/2149): External commits now have a single authoritative credential: the `CredentialWithKey` passed to `ExternalCommitBuilder::build_group`. Leaf node parameters that pin a different credential are rejected with the new `CreateCommitError::ExternalCommitCredentialMismatch`, and `build_with_new_signer` on an external commit fails with the new `CreateCommitError::ExternalCommitWithNewSigner`.
 - [#2146](https://github.com/openmls/openmls/pull/2146): The `Debug` output of `HpkePrivateKey` and `ExporterSecret` no longer contains the secret bytes. The `crypto-debug` feature now also enables the corresponding feature in `openmls_traits`, restoring the full output for debugging.
