@@ -1,0 +1,84 @@
+name: Interop
+
+# Manual only: the full matrix takes a while (all peers x all configs x all
+# ciphersuites x both handshake modes) and drives external docker images, so
+# it should not run on every push/PR.
+on:
+  workflow_dispatch:
+    inputs:
+      peers:
+        description: "Comma-separated peers to test against"
+        required: false
+        default: "mls-rs,mlspp"
+      configs:
+        description: "Comma-separated config files (empty = all)"
+        required: false
+        default: ""
+      timeout:
+        description: "Per (config, peer) run timeout in seconds (0 = wait for completion)"
+        required: false
+        default: "900"
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  interop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    defaults:
+      run:
+        working-directory: interop_client/docker
+    steps:
+      - uses: actions/checkout@v7
+
+      # Makes `docker compose build` use BuildKit's `docker-container` driver,
+      # which is what lets the `cache_from`/`cache_to: type=gha` entries in
+      # docker-compose.cache.yml actually persist layers in the GitHub Actions
+      # cache across runs (the default `docker` driver ignores them).
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run full interop matrix
+        env:
+          COMPOSE_FILE: docker-compose.yml:docker-compose.cache.yml
+        run: |
+          args=(--timeout "${{ inputs.timeout }}" --peers "${{ inputs.peers }}")
+          if [ -n "${{ inputs.configs }}" ]; then
+            args+=(--configs "${{ inputs.configs }}")
+          fi
+          python3 run-interop.py "${args[@]}"
+
+      # Runs even if the matrix reported genuine failures (the previous step
+      # then exits non-zero), so the summary is available either way. Pulls
+      # the same INTEROP-TABLE/INTEROP-FAILURES blocks run-interop.py just
+      # wrote into README.md, rather than re-parsing raw stdout.
+      - name: Publish results to job summary
+        if: always()
+        run: |
+          python3 - "$GITHUB_STEP_SUMMARY" <<'PY'
+          import re
+          import sys
+
+          summary_path = sys.argv[1]
+          text = open("../README.md").read()
+
+          def block(name):
+              m = re.search(
+                  rf"<!-- {re.escape(name)}:START -->\n(.*?)\n<!-- {re.escape(name)}:END -->",
+                  text,
+                  re.S,
+              )
+              return m.group(1).strip() if m else f"_no {name} block found in README.md_"
+
+          with open(summary_path, "a") as fh:
+              fh.write("# Interop results\n\n")
+              fh.write(block("INTEROP-TABLE"))
+              fh.write("\n\n")
+              fh.write(block("INTEROP-FAILURES"))
+              fh.write("\n")
+          PY
