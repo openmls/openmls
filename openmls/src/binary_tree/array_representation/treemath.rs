@@ -6,6 +6,17 @@ use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 pub(crate) const MAX_TREE_SIZE: u32 = (1 << 30) - 1;
 pub(crate) const MIN_TREE_SIZE: u32 = 1;
 
+/// Largest tree (node) index of any valid tree: node indices range over
+/// `0..=MAX_TREE_INDEX`. It is the last leaf of the maximal tree (even).
+const MAX_TREE_INDEX: u32 = MAX_TREE_SIZE - 1;
+
+/// Largest leaf payload: leaf `l` sits at tree index `2*l <= MAX_TREE_INDEX`.
+const MAX_LEAF: u32 = MAX_TREE_INDEX / 2;
+
+/// Largest parent payload: parent `p` sits at tree index `2*p + 1 < MAX_TREE_INDEX`
+/// (odd indices stop one short of the even maximum).
+const MAX_PARENT: u32 = MAX_LEAF - 1;
+
 /// LeafNodeIndex references a leaf node in a tree.
 #[derive(
     Debug,
@@ -37,6 +48,10 @@ impl LeafNodeIndex {
         LeafNodeIndex(index)
     }
 
+    /// Checks that the wrapped index is valid.
+    fn valid(&self) -> bool {
+        self.0 <= MAX_LEAF
+    }
     /// Return the inner value as `u32`.
     pub fn u32(&self) -> u32 {
         self.0
@@ -67,6 +82,11 @@ impl ParentNodeIndex {
     /// Create a new `ParentNodeIndex` from a `u32`.
     pub(crate) fn new(index: u32) -> Self {
         ParentNodeIndex(index)
+    }
+
+    /// Checks that the wrapped index is valid.
+    fn valid(&self) -> bool {
+        self.0 <= MAX_PARENT
     }
 
     /// Return the inner value as `u32`.
@@ -133,6 +153,14 @@ impl TreeNodeIndex {
             TreeNodeIndex::Leaf(LeafNodeIndex::from_tree_index(index))
         } else {
             TreeNodeIndex::Parent(ParentNodeIndex::from_tree_index(index))
+        }
+    }
+
+    /// Checks that the wrapped index is valid.
+    fn valid(&self) -> bool {
+        match self {
+            TreeNodeIndex::Leaf(leaf_node_index) => leaf_node_index.valid(),
+            TreeNodeIndex::Parent(parent_node_index) => parent_node_index.valid(),
         }
     }
 
@@ -429,7 +457,7 @@ pub(crate) fn node_width(n: usize) -> usize {
 }
 
 pub(crate) fn is_node_in_tree(node_index: TreeNodeIndex, size: TreeSize) -> bool {
-    node_index.u32() < size.u32()
+    node_index.valid() && node_index.u32() < size.u32()
 }
 
 #[test]
@@ -450,6 +478,17 @@ fn test_node_not_in_tree() {
         assert!(!is_node_in_tree(
             TreeNodeIndex::new(test.0),
             TreeSize::new(test.1)
+        ));
+    }
+}
+
+#[test]
+fn test_node_not_in_tree_wrapping() {
+    let tests = [1u32 << 31, u32::MAX];
+    for leaf in tests.iter() {
+        assert!(!is_node_in_tree(
+            TreeNodeIndex::Leaf(LeafNodeIndex::new(*leaf)),
+            TreeSize::new(3)
         ));
     }
 }

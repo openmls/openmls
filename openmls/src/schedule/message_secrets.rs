@@ -101,6 +101,12 @@ impl MessageSecrets {
             ..self
         }
     }
+
+    /// The leaf index this epoch's secret tree was built for, i.e. the group's
+    /// own leaf index at the time the epoch was entered.
+    pub(crate) fn own_index(&self) -> LeafNodeIndex {
+        self.secret_tree.own_index()
+    }
 }
 
 // Test functions

@@ -2480,7 +2480,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "openmls"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 dependencies = [
  "base64",
  "clap",
@@ -2539,7 +2539,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_basic_credential"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "ed25519-dalek",
  "ml-dsa",
@@ -2555,7 +2555,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_libcrux_crypto"
-version = "0.4.0-rc.1"
+version = "0.4.0"
 dependencies = [
  "aes",
  "fpe",
@@ -2577,7 +2577,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_memory_storage"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "base64",
  "hex",
@@ -2591,7 +2591,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_rust_crypto"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -2618,7 +2618,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_serialization_helpers"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "ciborium",
  "postcard",
@@ -2632,7 +2632,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_sqlite_storage"
-version = "0.3.0-rc.1"
+version = "0.3.0"
 dependencies = [
  "openmls_traits",
  "refinery",
@@ -2643,7 +2643,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_test"
-version = "0.3.0-rc.1"
+version = "0.3.0"
 dependencies = [
  "openmls_libcrux_crypto",
  "openmls_rust_crypto",
@@ -2655,7 +2655,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_traits"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "serde",
  "tls_codec",
