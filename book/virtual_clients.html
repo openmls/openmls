@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-88e011cb.js";
+            window.path_to_searchindex_js = "searchindex-2a92c202.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-81492934.js"></script>
@@ -527,9 +527,12 @@ external commit (Variant B) works, because it is an application-orchestrated
 sequence of operations the code already supports.</li>
 <li>VC Update proposals are not implemented. Only commits and external commits
 emit virtual-client leaves.</li>
-<li>The <code>VirtualClientAction</code> coordination channel over SafeAAD (the draft’s
-<code>external_join</code> and <code>key_package_upload</code> actions) is not implemented. The
-transport of the KeyPackage upload is left entirely to the application.</li>
+<li>The <code>key_package_upload</code> action is carried and parsed, but nothing acts on it
+automatically. The application decides whether to attach it to an
+emulation-group commit, reads it back with
+<code>ProcessedMessage::vc_commit_data()</code>, and calls
+<code>process_vc_key_package_upload</code> itself. Only the <code>new_derivation_epoch</code> action
+is acted on by the library.</li>
 <li>Per-epoch state for dead derivation epochs is not garbage collected
 automatically.</li>
 </ul>
