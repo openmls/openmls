@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9fb7409c.js";
+            window.path_to_searchindex_js = "searchindex-88e011cb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-d3aff166.js"></script>
+        <script src="toc-81492934.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -2727,6 +2727,137 @@ However, this may lead to false positives and is not enough to know the membersh
 commit, encrypted for the old epoch, that contains the hash of the commit they are
 merging. This way, all group members know which commits are merged, and the <code>readd</code>
 strategy can be used to resolve possible forks.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="sub-group-branching"><a class="header" href="#sub-group-branching">Sub-group branching</a></h1>
+<p>Sometimes a subset of the members in a group want to continue in a separate, smaller
+group without setting up an new group from scratch. MLS supports this with
+<em>sub-group branching</em> (<a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching">RFC 9420 §11.3</a>): a new group is created with the same
+parameters as an existing (parent) group, and its key schedule is seeded with a
+resumption PSK derived from the parent. This cryptographically ties the new
+sub-group to the parent epoch it branched from.</p>
+<p>The rest of this chapter assumes you already have a parent group (<code>alice_group</code>
+on the sender side, <code>bob_group</code> on the receiver side).</p>
+<h2 id="exporting-branchinfo-from-the-parent"><a class="header" href="#exporting-branchinfo-from-the-parent">Exporting <code>BranchInfo</code> from the parent</a></h2>
+<p>Both the sender and each receiver export a <code>BranchInfo</code> from their own parent group.
+<code>BranchInfo</code> is an owned snapshot of the values a branch needs (protocol version,
+ciphersuite, group id, epoch, the parent’s resumption PSK secret, and the parent
+members’ credentials).</p>
+<blockquote class="blockquote-tag blockquote-tag-warning">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p>
+<p>The <code>BranchInfo</code> carries the parent’s resumption PSK secret, which is
+sensitive key material.</p>
+</blockquote>
+<p>The sender and every receiver must use a <code>BranchInfo</code> exported from the <em>same</em>
+parent epoch — the branch’s key schedule is derived from that epoch’s resumption
+PSK. A receiver’s view of the parent group may advance in the meantime (an
+unrelated commit arrives before the branch <code>Welcome</code> is processed), so its current
+<code>branch_info()</code> might no longer match the epoch the branch was taken from.
+Applications that need to tolerate this should keep the <code>BranchInfo</code> of several
+recent epochs (a sliding window) and join with the one for the parent epoch the
+branch was taken from. Because <code>BranchInfo</code> is an owned snapshot, this is just a
+matter of holding on to the values. The window size is bounded by how many
+resumption PSKs the group retains (<code>number_of_resumption_psks</code>).</p>
+<pre><code class="language-rust no_run noplayground">    // Both sides export the information the branch needs from the parent group.
+    let alice_branch_info: BranchInfo = alice_group.branch_info();
+    let bob_branch_info: BranchInfo = bob_group.branch_info();</code></pre>
+<h2 id="sender-creating-and-branching-the-sub-group"><a class="header" href="#sender-creating-and-branching-the-sub-group">Sender: creating and branching the sub-group</a></h2>
+<p>Creating the sub-group and its branch commit is a single builder operation:
+<code>MlsGroup::builder()...branch(branch_info).build_branch(...)</code>. The sub-group is
+created with the parent’s ciphersuite automatically (from <code>BranchInfo</code>); set any
+other group configuration on the <code>MlsGroupBuilder</code> before calling <code>branch</code>. The
+branch commit adds the given members, mixes the parent’s resumption PSK secret
+into the sub-group’s key schedule, and generates the <code>Welcome</code> message to add the
+other members to the group.</p>
+<p><code>build_branch</code> returns the new sub-group and the commit bundle, but does not
+merge the commit: as with any commit, merge it only once you’re certain it goes
+through, e.g. the delivery service has confirmed it.</p>
+<pre><code class="language-rust no_run noplayground">    // Creating the sub-group and its branch commit is a single builder
+    // operation. The sub-group uses the parent's ciphersuite automatically; set
+    // any other group configuration on the builder before calling `branch`.
+    let (mut alice_sub_group, commit_message_bundle) = MlsGroup::builder()
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .branch(alice_branch_info)
+        .build_branch(
+            alice_provider,
+            &amp;alice_signature_keys,
+            alice_credential,
+            vec![bob_sub_key_package.key_package().clone()],
+        )
+        .expect("Could not create the sub-group branch.");
+
+    // The commit is staged but not merged yet.
+    alice_sub_group
+        .merge_pending_commit(alice_provider)
+        .expect("Could not merge commit.");
+
+    let welcome = commit_message_bundle
+        .welcome()
+        .expect("An unexpected error occurred.")
+        .clone();</code></pre>
+<h2 id="receiver-joining-the-sub-group"><a class="header" href="#receiver-joining-the-sub-group">Receiver: joining the sub-group</a></h2>
+<p>A receiver’s view of the parent group may have advanced between when the branch
+was taken and when its <code>Welcome</code> arrives, so the receiver first needs to find out
+<em>which</em> parent epoch the branch derives from before it can pick the matching
+<code>BranchInfo</code>. The branch PSK that carries the parent group and epoch lives inside
+the <code>Welcome</code>’s encrypted <code>GroupSecrets</code>, so reading it requires decrypting the
+<code>Welcome</code>.</p>
+<p><code>StagedWelcome::process_branch_welcome</code> does exactly one decryption and returns a
+<code>PendingBranchWelcome</code>. Call <code>parent()</code> on it to read the parent <code>(group_id, epoch)</code> the branch was taken from (see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-pre-shared-keys">RFC 9420 §8.4</a>), select the <code>BranchInfo</code> for
+that parent epoch (e.g. from the sliding window above), then finish the join with
+<code>build_from_branch</code>, which reuses the already-decrypted state.</p>
+<p>In addition to the regular join processing, this injects the parent’s resumption
+PSK secret and enforces the <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching">RFC 9420 §11.3</a> receiver checks. <code>build_from_branch</code>
+verifies that the branch PSK in the <code>Welcome</code> references the same parent group and
+epoch as the <code>BranchInfo</code> you selected (before that secret is mixed into the key
+schedule); a <code>BranchInfo</code> from the wrong parent epoch fails with
+<code>WelcomeError::SubgroupParentMismatch</code>. The remaining checks run when <code>build</code> is
+called: the protocol version and ciphersuite must match the parent, the sub-group
+must be at epoch 1, and every sub-group member must also be a member of the parent
+group. The membership check is on by default and can be disabled with
+<code>.check_members(false)</code>.</p>
+<pre><code class="language-rust no_run noplayground">    // Bob decrypts the branch welcome once with `process_branch_welcome`, then
+    // reads which parent group and epoch it derives from. This lets him pick the
+    // matching `BranchInfo` from his window even if his view of the parent group
+    // has advanced (see the sliding-window note above), without decrypting the
+    // welcome twice.
+    let pending = StagedWelcome::process_branch_welcome(
+        bob_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+    )
+    .expect("Error processing the branch welcome.");
+
+    // The parent group and epoch the branch was taken from.
+    let (_parent_group_id, parent_epoch) = pending
+        .parent()
+        .expect("This is a sub-group branch welcome.");
+
+    // Select the `BranchInfo` exported from that parent epoch.
+    let bob_branch_info = bob_branch_window
+        .into_iter()
+        .find_map(|(epoch, info)| (epoch == parent_epoch).then_some(info))
+        .expect("No BranchInfo for the branch's parent epoch.");
+
+    // Finish the join from the same carrier, reusing the already-decrypted state.
+    // `build_from_branch` checks that the branch PSK references the same parent
+    // group/epoch as the `BranchInfo`; the remaining receiver checks (matching
+    // version, ciphersuite, sub-group epoch, and membership) run when `build` is
+    // called.
+    let bob_sub_group = pending
+        .build_from_branch(bob_provider, bob_branch_info)
+        .expect("Error joining the branch.")
+        .with_ratchet_tree(sub_group_ratchet_tree.into())
+        // .check_members(false) // optional; the membership check is on by default
+        .build()
+        .expect("Error joining the sub-group.")
+        .into_group(bob_provider)
+        .expect("Error creating the sub-group.");</code></pre>
+<p>If you already know the parent epoch (so no peek is needed), the one-shot
+<code>StagedWelcome::build_from_branch(provider, join_config, welcome, branch_info)</code>
+takes the <code>Welcome</code> and <code>BranchInfo</code> directly and also decrypts only once. It
+fails with <code>WelcomeError::SubgroupParentMismatch</code> if the <code>BranchInfo</code> is from the
+wrong parent epoch.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="traits--external-types"><a class="header" href="#traits--external-types">Traits &amp; External Types</a></h1>
 <p>OpenMLS defines several traits that have to be implemented to use
