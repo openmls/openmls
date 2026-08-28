@@ -1,4 +1,8 @@
-FROM ubuntu:latest
+# --- builder -----------------------------------------------------------------
+# Everything needed to build mlspp and its interop client (compilers, vcpkg,
+# the cloned source tree, build objects) lives only in this stage; none of it
+# ends up in the final image.
+FROM ubuntu:latest AS builder
 
 RUN apt-get -y update && apt-get -y install git make cmake clang curl zip pkg-config ninja-build \
   libicu-dev
@@ -44,5 +48,23 @@ WORKDIR ${HOME}/mlspp/cmd/interop
 RUN ${VCPKG}/vcpkg install
 RUN cmake . -DCMAKE_TOOLCHAIN_FILE=$VCPKG/scripts/buildsystems/vcpkg.cmake -DMLSPP_DIR=${HOME}/mlspp_install
 RUN make -j$(nproc)
+
+# --- runtime -------------------------------------------------------------
+# vcpkg's default Linux triplet (x64-linux) links its dependencies statically,
+# so the built binary only needs libc/libstdc++ (from the base image) and ICU
+# (linked dynamically, since it comes from the system package, not vcpkg) --
+# not the compilers, vcpkg, or the cloned source/build tree from the builder
+# stage.
+FROM ubuntu:latest
+
+RUN apt-get -y update && apt-get -y install --no-install-recommends libicu-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m user
+USER user
+WORKDIR /home/user
+
+COPY --from=builder --chown=user:user \
+  /home/user/mlspp/cmd/interop/mlspp_client ./mlspp_client
 
 ENTRYPOINT [ "./mlspp_client" ]
