@@ -1,7 +1,7 @@
 # Sub-group branching
 
 Sometimes a subset of the members in a group want to continue in a separate, smaller
-group without going through a full fresh key exchange. MLS supports this with
+group without setting up an new group from scratch. MLS supports this with
 *sub-group branching* ([RFC 9420 §11.3]): a new group is created with the same
 parameters as an existing (parent) group, and its key schedule is seeded with a
 resumption PSK derived from the parent. This cryptographically ties the new
