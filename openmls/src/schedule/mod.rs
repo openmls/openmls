@@ -748,9 +748,8 @@ impl ExporterSecret {
         }
     }
 
-    /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
-    /// it can be used outside of OpenMLS. This function is made available for
-    /// use from the outside through [`MlsGroup::export_secret`].
+    /// Derive a `Secret` from the exporter secret. This function is made
+    /// available for use from the outside through [`MlsGroup::export_secret`].
     pub(crate) fn derive_exported_secret(
         &self,
         ciphersuite: Ciphersuite,
@@ -758,14 +757,11 @@ impl ExporterSecret {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, CryptoError> {
+    ) -> Result<Secret, CryptoError> {
         let context_hash = &crypto.hash(ciphersuite.hash_algorithm(), context)?;
-        Ok(self
-            .secret
+        self.secret
             .derive_secret(crypto, ciphersuite, label)?
-            .kdf_expand_label(crypto, ciphersuite, "exported", context_hash, key_length)?
-            .as_slice()
-            .to_vec())
+            .kdf_expand_label(crypto, ciphersuite, "exported", context_hash, key_length)
     }
 }
 

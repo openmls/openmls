@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2184](https://github.com/openmls/openmls/pull/2184): Added `PreSharedKeyProposal::psk`, a getter for the `PreSharedKeyId` of a `PreSharedKey` proposal.
 - [#2167](https://github.com/openmls/openmls/pull/2167): Added `PublicGroup::validate_key_package_for_add`, which checks whether a single `KeyPackage` is eligible to be added to the group without building a commit. Applications adding several members at once can use it to filter out candidates that a commit would reject, and to report which candidate was rejected and why. Uniqueness of the signature, init and encryption keys is not covered, since it can only be decided for a full set of proposals.
 
+### Changed
+
+- The secret export functions on `MlsGroup`, `StagedCommit`, `StagedWelcome`, `ProcessedWelcome` and `ProcessedMessage` now return `ExportedSecret<T>` instead of `Vec<u8>`. The new type zeroizes the secret on drop and is parameterized with a marker struct recording which function produced the secret. Use `as_slice()` to access the secret bytes.
+
 ### Fixed
 
 - [#2194](https://github.com/openmls/openmls/pull/2194): With the `virtual-clients-draft` feature, whether an inbound `PrivateMessage` is this client's own is now decided against the leaf index the epoch's secret tree was built for, rather than the group's current own leaf index. The two differ for every epoch before a sibling-resync external commit moved the client's leaf. Previously a message another member sent from the leaf the client had since moved onto was silently returned as `ProcessedMessageContent::OwnPrivateMessage`, and the echo of the client's own pre-resync message failed with `SecretTreeError::SecretReuseError`.
