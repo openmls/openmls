@@ -85,6 +85,9 @@ pub(crate) mod app_ephemeral;
 #[cfg(feature = "targeted-messages-draft")]
 mod targeted_messages;
 
+#[cfg(feature = "virtual-clients-draft")]
+mod vc_application_secret;
+
 // Tests
 #[cfg(test)]
 pub(crate) mod tests_and_kats;
