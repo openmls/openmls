@@ -1173,8 +1173,16 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let serialized_group_id = serde_json::to_vec(group_id)?;
-        self.delete::<CURRENT_VERSION>(VC_EMULATION_BINDING_LABEL, &serialized_group_id)?;
-        self.delete::<CURRENT_VERSION>(VC_BOUND_EPOCHS_LABEL, &serialized_group_id)
+        let record_key = build_key_from_vec::<CURRENT_VERSION>(
+            VC_EMULATION_BINDING_LABEL,
+            serialized_group_id.clone(),
+        );
+        let epochs_key =
+            build_key_from_vec::<CURRENT_VERSION>(VC_BOUND_EPOCHS_LABEL, serialized_group_id);
+        let mut values = self.values.write().unwrap();
+        values.remove(&record_key);
+        values.remove(&epochs_key);
+        Ok(())
     }
 
     #[cfg(feature = "virtual-clients-draft")]

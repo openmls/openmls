@@ -471,7 +471,17 @@ impl DerivationInfo {
 /// `safe_export_secret(VC_COMPONENT_ID)`, so every emulator client of a virtual
 /// client arrives at the same value for a given derivation epoch.
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserializeBytes,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    TlsSize,
+    TlsSerialize,
+    TlsDeserializeBytes,
 )]
 pub struct EpochId(VLByteVec);
 
@@ -1006,16 +1016,17 @@ impl VcEmulationBindings {
     }
 
     /// The derivation epochs this record binds, without duplicates and in
-    /// order of first appearance. A derivation epoch stays bound while the
-    /// virtual-client LeafNode it produced is active, so the same epoch id
-    /// usually appears under several higher-level epochs.
+    /// sorted order. A derivation epoch stays bound while the virtual-client
+    /// LeafNode it produced is active, so the same epoch id usually appears
+    /// under several higher-level epochs.
     pub fn bound_epoch_ids(&self) -> Vec<EpochId> {
-        let mut epoch_ids = Vec::with_capacity(self.bindings.len());
-        for (_, epoch_id) in &self.bindings {
-            if !epoch_ids.contains(epoch_id) {
-                epoch_ids.push(epoch_id.clone());
-            }
-        }
+        let mut epoch_ids: Vec<EpochId> = self
+            .bindings
+            .iter()
+            .map(|(_, epoch_id)| epoch_id.clone())
+            .collect();
+        epoch_ids.sort_unstable();
+        epoch_ids.dedup();
         epoch_ids
     }
 
