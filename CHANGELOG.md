@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#2203](https://github.com/openmls/openmls/pull/2203): `MemoryStorage::clear_proposal_queue` now actually deletes the queued proposal bodies. It built the per-proposal key by hand instead of going through the `label + key + version` scheme `queue_proposal` used to store them, so the delete never matched and every proposal body outlived the group's proposal-ref list that was supposed to track it. `queued_proposals` looked empty afterward because it only reads what the ref list points to, but the bodies stayed in the store, growing without bound for the lifetime of the provider.
 - [#2194](https://github.com/openmls/openmls/pull/2194): With the `virtual-clients-draft` feature, whether an inbound `PrivateMessage` is this client's own is now decided against the leaf index the epoch's secret tree was built for, rather than the group's current own leaf index. The two differ for every epoch before a sibling-resync external commit moved the client's leaf. Previously a message another member sent from the leaf the client had since moved onto was silently returned as `ProcessedMessageContent::OwnPrivateMessage`, and the echo of the client's own pre-resync message failed with `SecretTreeError::SecretReuseError`.
 
 ## 0.9.0 (2026-08-25)

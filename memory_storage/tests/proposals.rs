@@ -75,3 +75,33 @@ fn read_write_delete() {
     let proposals_read: Vec<(ProposalRef, Proposal)> = storage.queued_proposals(&group_id).unwrap();
     assert!(proposals_read.is_empty());
 }
+
+/// `queued_proposals` only reports what's reachable through the refs list, so
+/// an emptied refs list makes the queue look clear even if the proposal
+/// bodies are still sitting in the store under their own keys. Check the raw
+/// store directly.
+#[test]
+fn clear_proposal_queue_removes_the_proposal_bodies() {
+    let group_id = TestGroupId(b"TestGroupId".to_vec());
+    let storage = MemoryStorage::default();
+
+    storage
+        .queue_proposal(&group_id, &ProposalRef(0), &Proposal(vec![0xA1]))
+        .unwrap();
+    storage
+        .queue_proposal(&group_id, &ProposalRef(1), &Proposal(vec![0xA2]))
+        .unwrap();
+
+    // Two proposal bodies plus the refs list.
+    assert_eq!(storage.values.read().unwrap().len(), 3);
+
+    storage
+        .clear_proposal_queue::<TestGroupId, ProposalRef>(&group_id)
+        .unwrap();
+
+    assert_eq!(
+        storage.values.read().unwrap().len(),
+        0,
+        "clear_proposal_queue left orphaned proposal bodies in the store"
+    );
+}

@@ -878,16 +878,19 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         // Get all proposal refs for this group.
         let proposal_refs: Vec<ProposalRef> =
             self.read_list(PROPOSAL_QUEUE_REFS_LABEL, &serde_json::to_vec(group_id)?)?;
-        let mut values = self.values.write().unwrap();
         for proposal_ref in proposal_refs {
-            // Delete all proposals.
+            // Delete all proposals. `queue_proposal` wrote each body through
+            // `write`, which prefixes the label and suffixes the version via
+            // `build_key_from_vec`, so the removal has to go through the same
+            // helper (`delete`) rather than a bare `values.remove` on the raw
+            // `serde_json` key, or nothing gets removed.
             let key = serde_json::to_vec(&(group_id, proposal_ref))?;
-            values.remove(&key);
+            self.delete::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, &key)?;
         }
 
         // Delete the proposal refs from the store.
-        let key = build_key::<CURRENT_VERSION, &GroupId>(PROPOSAL_QUEUE_REFS_LABEL, group_id);
-        values.remove(&key);
+        let key = serde_json::to_vec(group_id)?;
+        self.delete::<CURRENT_VERSION>(PROPOSAL_QUEUE_REFS_LABEL, &key)?;
 
         Ok(())
     }
