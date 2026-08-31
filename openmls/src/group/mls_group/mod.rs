@@ -61,6 +61,11 @@ pub(crate) mod migration_import;
 #[cfg(feature = "virtual-clients-draft")]
 pub use application::UnconfirmedMessage;
 pub use branch::BranchInfo;
+pub use exporting::{
+    ExportedSecret, GroupExport, ProcessedWelcomeExport, StagedCommitExport, StagedWelcomeExport,
+};
+#[cfg(feature = "extensions-draft")]
+pub use exporting::{GroupSafeExport, PendingSafeExport, StagedCommitSafeExport};
 pub use proposal::Propose;
 
 use config::*;

@@ -113,7 +113,7 @@ fn decrypt_targeted_message_content_with_real_tbm(
             crate::ciphersuite::hpke::PskEncryptParams {
                 label: super::TARGETED_MESSAGE_DATA_LABEL,
                 context: &[],
-                psk: &psk,
+                psk: psk.as_slice(),
                 psk_id: &psk_id_bytes,
                 ciphersuite: ctx.ciphersuite,
             },

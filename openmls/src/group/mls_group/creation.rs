@@ -423,18 +423,19 @@ impl ProcessedWelcome {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ExportSecretError> {
+    ) -> Result<ExportedSecret<ProcessedWelcomeExport>, ExportSecretError> {
         if key_length > u16::MAX as usize {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExportSecretError::KeyLengthTooLong);
         }
 
-        Ok(self
-            .epoch_secrets
-            .epoch_secrets
-            .exporter_secret()
-            .derive_exported_secret(self.ciphersuite, crypto, label, context, key_length)
-            .map_err(LibraryError::unexpected_crypto_error)?)
+        Ok(ExportedSecret::new(
+            self.epoch_secrets
+                .epoch_secrets
+                .exporter_secret()
+                .derive_exported_secret(self.ciphersuite, crypto, label, context, key_length)
+                .map_err(LibraryError::unexpected_crypto_error)?,
+        ))
     }
 
     /// Retrieve a reference to the own [`KeyPackage`] that was retrieved from local storage as
@@ -702,23 +703,24 @@ impl StagedWelcome {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ExportSecretError> {
+    ) -> Result<ExportedSecret<StagedWelcomeExport>, ExportSecretError> {
         if key_length > u16::MAX as usize {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExportSecretError::KeyLengthTooLong);
         }
 
-        Ok(self
-            .group_epoch_secrets
-            .exporter_secret()
-            .derive_exported_secret(
-                self.group_context().ciphersuite(),
-                crypto,
-                label,
-                context,
-                key_length,
-            )
-            .map_err(LibraryError::unexpected_crypto_error)?)
+        Ok(ExportedSecret::new(
+            self.group_epoch_secrets
+                .exporter_secret()
+                .derive_exported_secret(
+                    self.group_context().ciphersuite(),
+                    crypto,
+                    label,
+                    context,
+                    key_length,
+                )
+                .map_err(LibraryError::unexpected_crypto_error)?,
+        ))
     }
 }
 
