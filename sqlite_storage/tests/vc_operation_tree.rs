@@ -45,9 +45,134 @@ impl traits::RetainedKeyPackageMaterial<1> for TestRetainedMaterial {}
 impl Entity<1> for TestRetainedMaterial {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-struct TestEmulationState(Vec<u8>);
-impl traits::VcEmulationEpochState<1> for TestEmulationState {}
-impl Entity<1> for TestEmulationState {}
+struct TestDerivationState(Vec<u8>);
+impl traits::VcDerivationEpochState<1> for TestDerivationState {}
+impl Entity<1> for TestDerivationState {}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+struct TestGroupId(Vec<u8>);
+impl traits::GroupId<1> for TestGroupId {}
+impl Key<1> for TestGroupId {}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+struct TestEmulationBindings(Vec<u8>);
+impl traits::VcEmulationBindings<1> for TestEmulationBindings {}
+impl Entity<1> for TestEmulationBindings {}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+struct TestRegistered(Vec<u8>);
+impl traits::RegisteredVcDerivationEpoch<1> for TestRegistered {}
+impl Entity<1> for TestRegistered {}
+
+/// An emulation group's registration record keeps its epoch's state alive. A
+/// newer registration replaces the projection entry and releases the epoch,
+/// and so does deleting the record.
+#[test]
+fn registration_keeps_epoch_state_alive() {
+    let storage = storage();
+    let epoch_id = TestEpochId(b"RegisteredEpoch".to_vec());
+    let group_id = TestGroupId(b"emulation-group".to_vec());
+
+    storage
+        .write_vc_derivation_epoch_state(&epoch_id, &TestDerivationState(b"state".to_vec()))
+        .unwrap();
+    assert!(!storage
+        .has_registered_vc_derivation_epoch_for_epoch(&epoch_id)
+        .unwrap());
+
+    storage
+        .write_registered_vc_derivation_epoch(
+            &group_id,
+            &TestRegistered(b"registration".to_vec()),
+            &epoch_id,
+        )
+        .unwrap();
+    assert!(storage
+        .has_registered_vc_derivation_epoch_for_epoch(&epoch_id)
+        .unwrap());
+
+    // Nothing else references the epoch, so the registration alone has to
+    // keep the state.
+    assert!(!storage
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .unwrap());
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
+    assert!(read_state.is_some());
+
+    // A newer registration supersedes the old epoch and releases it.
+    let newer_epoch_id = TestEpochId(b"NewerEpoch".to_vec());
+    storage
+        .write_registered_vc_derivation_epoch(
+            &group_id,
+            &TestRegistered(b"newer registration".to_vec()),
+            &newer_epoch_id,
+        )
+        .unwrap();
+    assert!(!storage
+        .has_registered_vc_derivation_epoch_for_epoch(&epoch_id)
+        .unwrap());
+    assert!(storage
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .unwrap());
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
+    assert!(read_state.is_none());
+
+    storage
+        .delete_registered_vc_derivation_epoch(&group_id)
+        .unwrap();
+    assert!(!storage
+        .has_registered_vc_derivation_epoch_for_epoch(&newer_epoch_id)
+        .unwrap());
+}
+
+/// A group bound to a derivation epoch keeps that epoch's state alive, and
+/// dropping the group's bindings releases it.
+#[test]
+fn emulation_binding_keeps_epoch_state_alive() {
+    let storage = storage();
+    let epoch_id = TestEpochId(b"BoundEpoch".to_vec());
+    let group_id = TestGroupId(b"group".to_vec());
+
+    storage
+        .write_vc_derivation_epoch_state(&epoch_id, &TestDerivationState(b"state".to_vec()))
+        .unwrap();
+    assert!(!storage
+        .has_vc_emulation_binding_for_epoch(&epoch_id)
+        .unwrap());
+
+    storage
+        .write_vc_emulation_bindings(
+            &group_id,
+            &TestEmulationBindings(b"bindings".to_vec()),
+            std::slice::from_ref(&epoch_id),
+        )
+        .unwrap();
+    assert!(storage
+        .has_vc_emulation_binding_for_epoch(&epoch_id)
+        .unwrap());
+
+    // No retained material references the epoch, so the binding alone has to
+    // keep the state.
+    assert!(!storage
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .unwrap());
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
+    assert!(read_state.is_some());
+
+    storage.delete_vc_emulation_bindings(&group_id).unwrap();
+    assert!(!storage
+        .has_vc_emulation_binding_for_epoch(&epoch_id)
+        .unwrap());
+    assert!(storage
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
+        .unwrap());
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
+    assert!(read_state.is_none());
+}
 
 /// A batch write stores the operation tree and the retained material, the
 /// material ties the epoch into liveness, and the guarded delete keeps the
@@ -60,7 +185,7 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
     let kp_ref = TestKeyPackageRef(b"kp-ref".to_vec());
 
     storage
-        .write_vc_emulation_epoch_state(&epoch_id, &TestEmulationState(b"state".to_vec()))
+        .write_vc_derivation_epoch_state(&epoch_id, &TestDerivationState(b"state".to_vec()))
         .unwrap();
 
     assert!(!storage
@@ -92,10 +217,10 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
 
     // While material references the epoch the guarded delete is a no-op.
     assert!(!storage
-        .delete_vc_emulation_state_if_unreferenced(&epoch_id)
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
         .unwrap());
-    let read_state: Option<TestEmulationState> =
-        storage.vc_emulation_epoch_state(&epoch_id).unwrap();
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
     assert!(read_state.is_some());
     let read_tree: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
     assert!(read_tree.is_some());
@@ -109,10 +234,10 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
         .has_retained_key_package_material_for_epoch(&epoch_id)
         .unwrap());
     assert!(storage
-        .delete_vc_emulation_state_if_unreferenced(&epoch_id)
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
         .unwrap());
-    let read_state: Option<TestEmulationState> =
-        storage.vc_emulation_epoch_state(&epoch_id).unwrap();
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
     assert!(read_state.is_none());
     let read_tree: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
     assert!(read_tree.is_none());
@@ -126,7 +251,6 @@ fn storage() -> openmls_sqlite_storage::SqliteStorageProvider<JsonCodec, Connect
     storage
 }
 
-/// Write, read back, overwrite, and delete an operation secret tree.
 #[test]
 fn operation_tree_read_write_delete() {
     let storage = storage();
@@ -156,10 +280,10 @@ fn operation_tree_read_write_delete() {
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&other_epoch_id).unwrap();
     assert_eq!(read, None);
 
-    // Deleting the emulation state removes the operation tree too. No retained
-    // material references this epoch, so the deletion goes through.
+    // Deleting the derivation epoch state removes the operation tree too. No
+    // retained material references this epoch, so the deletion goes through.
     let deleted = storage
-        .delete_vc_emulation_state_if_unreferenced(&epoch_id)
+        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
         .unwrap();
     assert!(deleted);
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();

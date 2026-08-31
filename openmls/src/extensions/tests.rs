@@ -467,3 +467,79 @@ fn app_data_dictionary_extension() {
     // check the dictionary
     assert_eq!(&dictionary, extension.dictionary());
 }
+
+/// `n` distinct unknown extensions with empty extension data.
+///
+/// The types start above the known ones and skip GREASE values, so that every
+/// extension stays an `Extension::Unknown` after a round trip.
+fn unknown_extensions(n: usize) -> Vec<Extension> {
+    (0x0100u16..)
+        .filter(|extension_type| !crate::grease::is_grease_value(*extension_type))
+        .take(n)
+        .map(|extension_type| Extension::Unknown(extension_type, UnknownExtension(vec![])))
+        .collect()
+}
+
+// A single unauthenticated message can carry tens of thousands of distinct
+// extensions. Decoding must stay linear in that number, so this test would
+// take minutes with the previous quadratic duplicate check. There is no timing
+// assertion here because that would be flaky.
+#[test]
+fn many_distinct_extensions_are_deserialized() {
+    const NUM_EXTENSIONS: usize = 65_000;
+
+    let wire = unknown_extensions(NUM_EXTENSIONS)
+        .tls_serialize_detached()
+        .expect("failed to serialize the extension list");
+
+    let extensions = Extensions::<AnyObject>::tls_deserialize_exact(&wire)
+        .expect("failed to deserialize the extension list");
+
+    assert_eq!(extensions.iter().count(), NUM_EXTENSIONS);
+    assert!(extensions
+        .iter()
+        .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_))));
+}
+
+#[test]
+fn duplicate_extensions_are_rejected() {
+    let extension = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
+
+    let err = Extensions::<AnyObject>::from_vec(vec![extension.clone(), extension])
+        .expect_err("duplicate extension types must be rejected");
+
+    assert_eq!(err, InvalidExtensionError::Duplicate);
+}
+
+// Signature verification re-serializes the payload it verifies, so decoding
+// must hand back the extensions in exactly the order they arrived in. Sorting
+// or otherwise reordering them here breaks signature verification silently.
+#[test]
+fn deserialization_preserves_extension_order() {
+    // Deliberately not in ascending extension type order.
+    let extensions = vec![
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default()),
+        Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe])),
+        Extension::ApplicationId(ApplicationIdExtension::new(b"Test")),
+    ];
+    let expected_order: Vec<ExtensionType> =
+        extensions.iter().map(Extension::extension_type).collect();
+
+    let wire = extensions
+        .tls_serialize_detached()
+        .expect("failed to serialize the extension list");
+    let got = Extensions::<AnyObject>::tls_deserialize_exact(&wire)
+        .expect("failed to deserialize the extension list");
+
+    assert_eq!(
+        got.iter()
+            .map(Extension::extension_type)
+            .collect::<Vec<_>>(),
+        expected_order
+    );
+    assert_eq!(
+        got.tls_serialize_detached()
+            .expect("failed to re-serialize the extension list"),
+        wire
+    );
+}

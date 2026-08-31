@@ -77,7 +77,7 @@ pub mod errors;
 /// | 0xDADA           | GREASE                   | Y | RFC XXXX |
 /// | 0xEAEA           | GREASE                   | Y | RFC XXXX |
 /// | 0xF000  - 0xFFFF | Reserved for Private Use | - | RFC XXXX |
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(
     feature = "0-8-1-storage-format",
     derive(serde::Serialize, serde::Deserialize)

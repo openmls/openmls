@@ -646,8 +646,14 @@ impl KeyPackageBuilder {
 
     /// Build a batch of virtual-client KeyPackages a sibling can reproduce.
     ///
+    /// The batch uses the newest derivation epoch of the emulation group named
+    /// by `emulation_group_id`, which is what the draft requires of every new
+    /// virtual-client operation. The epoch is resolved from the emulation
+    /// group's current state, and the returned [`VcKeyPackageBatch`] reports it
+    /// in its `epoch_id`.
+    ///
     /// Allocates a single generation of the `key_package` operation ratchet for
-    /// the emulation epoch identified by `epoch_id`. For each
+    /// that derivation epoch. For each
     /// `key_package_index` in `0..count` it derives a per-KeyPackage seed
     /// secret from that one operation secret and derives the KeyPackage's init
     /// key and leaf encryption key from the seed. Each leaf carries an
@@ -656,7 +662,7 @@ impl KeyPackageBuilder {
     /// so a sibling can recover the emulation leaf index, generation, and
     /// index.
     ///
-    /// The operation secret and the seeds are derived under the emulation
+    /// The operation secret and the seeds are derived under the derivation
     /// epoch's ciphersuite (the operation tree's ciphersuite). The init and
     /// leaf-encryption keys are derived from each seed under the KeyPackage's
     /// own `ciphersuite`.
@@ -684,7 +690,7 @@ impl KeyPackageBuilder {
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
+        emulation_group_id: &crate::group::GroupId,
         count: usize,
     ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
         // Reject an unsupported ciphersuite and an empty batch before loading
@@ -697,7 +703,8 @@ impl KeyPackageBuilder {
         if count == 0 {
             return Err(KeyPackageNewError::EmptyBatch);
         }
-        let mut builder = VcKeyPackageBatchBuilder::with_capacity(provider, epoch_id, count)?;
+        let mut builder =
+            VcKeyPackageBatchBuilder::with_capacity(provider, emulation_group_id, count)?;
         for _ in 0..count {
             builder.add_key_package(
                 self.clone(),

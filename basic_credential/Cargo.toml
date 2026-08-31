@@ -1,6 +1,6 @@
 [package]
 name = "openmls_basic_credential"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 rust-version.workspace = true
@@ -19,7 +19,7 @@ serde = { workspace = true }
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 p256 = { version = "0.13" }
 p384 = { version = "0.13" }
-ml-dsa = "0.1.0"
+ml-dsa = { version = "0.1.0", optional = true }
 rand_core = { version = "0.6", features = ["getrandom"] }
 zeroize = "1.8.2"
 
@@ -28,6 +28,7 @@ clonable = [] # Make the keys clonable
 test-utils = [] # Only use for tests!
 draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
+    "dep:ml-dsa",
 ]
 
 [dev-dependencies]

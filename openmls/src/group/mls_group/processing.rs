@@ -7,9 +7,9 @@ use errors::CommitToPendingProposalsError;
 use errors::MergePendingCommitError;
 #[cfg(feature = "extensions-draft")]
 use errors::ResolveAppDataCommitError;
+use openmls_traits::crypto::OpenMlsCrypto;
 #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
 use openmls_traits::signatures::Signer;
-use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider as _};
 
 #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
 use crate::messages::group_info::GroupInfo;
@@ -215,7 +215,7 @@ impl core::fmt::Debug for UnresolvedAppDataCommit {
         // is printed.
         #[cfg(feature = "virtual-clients-draft")]
         debug_struct.field(
-            "vc_emulation_epoch_id",
+            "vc_derivation_epoch_id",
             &self
                 .vc_commit_material
                 .as_ref()
@@ -323,20 +323,20 @@ impl MlsGroup {
         // `ProcessMessageError::StorageError`. `PublicMessage` carries no
         // `reuse_guard`, so the lookup is skipped for it. The binding is
         // looked up at the epoch the message was sent in: a delayed message
-        // from a past epoch must be deprotected with the emulation state
+        // from a past epoch must be deprotected with the derivation epoch state
         // that was bound then, not the latest one.
         #[cfg(feature = "virtual-clients-draft")]
-        let emulation_state = if let ProtocolMessage::PrivateMessage(private_message) = &message {
-            self.vc_emulation_state_at_epoch(provider.storage(), private_message.epoch())
+        let derivation_state = if let ProtocolMessage::PrivateMessage(private_message) = &message {
+            self.vc_derivation_state_at_epoch(provider.storage(), private_message.epoch())
                 .map_err(|e| match e {
-                    super::VcEmulationStateError::Storage(e) => {
+                    super::VcDerivationStateError::Storage(e) => {
                         ProcessMessageError::StorageError(e)
                     }
-                    super::VcEmulationStateError::MissingEmulationEpochState => {
+                    super::VcDerivationStateError::MissingDerivationEpochState => {
                         ProcessMessageError::ValidationError(
                             crate::group::ValidationError::UnableToDecrypt(
                                 crate::framing::errors::MessageDecryptionError::VirtualClientsError(
-                                    crate::components::vc_derivation_info::VirtualClientsError::MissingEmulationEpochState,
+                                    crate::components::vc_derivation_info::VirtualClientsError::MissingDerivationEpochState,
                                 ),
                             ),
                         )
@@ -346,7 +346,7 @@ impl MlsGroup {
             None
         };
         #[cfg(feature = "virtual-clients-draft")]
-        let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> = emulation_state
+        let emulator_ctx: Option<crate::framing::EmulatorReuseGuardCtx<'_>> = derivation_state
             .as_ref()
             .map(|state| state.reuse_guard_inputs());
 
@@ -477,7 +477,7 @@ impl MlsGroup {
 
         // Update the per-epoch emulation bindings. Self-removal drops them.
         // Otherwise the epoch the commit moves the group into is bound to
-        // the emulation epoch of the commit's VC leaf, or, if the commit
+        // the derivation epoch of the commit's VC leaf, or, if the commit
         // does not install a new VC leaf, to the binding of the current
         // epoch, since the VC leaf stays active across commits by other
         // members.
@@ -492,10 +492,10 @@ impl MlsGroup {
                 })?;
             provider
                 .storage()
-                .delete_registered_vc_emulation_epoch(self.group_id())
+                .delete_registered_vc_derivation_epoch(self.group_id())
                 .map_err(|e| {
                     log::error!(
-                        "vc: drop registered emulation epoch on self-removal failed: {e:?}"
+                        "vc: drop registered derivation epoch on self-removal failed: {e:?}"
                     );
                     MergeCommitError::StorageError(e)
                 })?;
@@ -506,7 +506,7 @@ impl MlsGroup {
                 .map_err(MergeCommitError::StorageError)?
                 .unwrap_or_default();
             let epoch_id = staged_commit
-                .vc_emulation_epoch_id
+                .vc_derivation_epoch_id
                 .clone()
                 .or_else(|| bindings.get(self.epoch()).cloned());
             if let Some(epoch_id) = epoch_id {
@@ -515,9 +515,8 @@ impl MlsGroup {
                 // with the message secrets they are needed for.
                 let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
                 bindings.insert(staged_commit.epoch(), epoch_id, max_entries);
-                provider
-                    .storage()
-                    .write_vc_emulation_bindings(self.group_id(), &bindings)
+                bindings
+                    .store(provider.storage(), self.group_id())
                     .map_err(|e| {
                         log::error!("vc: persist emulation bindings at merge failed: {e:?}");
                         MergeCommitError::StorageError(e)
@@ -588,8 +587,8 @@ impl MlsGroup {
     /// Returns `Ok(None)` when the commit carries no virtual-clients
     /// derivation-info entry on its update-path leaf (path-less commits, or
     /// commits without an `app_data_dictionary`). Otherwise:
-    ///   - looks up the per-epoch `EmulationEpochState` and operation secret
-    ///     tree the application registered via `register_vc_emulation_epoch`,
+    ///   - looks up the per-epoch `VcDerivationEpochState` and operation secret
+    ///     tree registered for the commit's derivation epoch,
     ///   - decrypts the wrapped `DerivationInfoTbe` with the AEAD key/nonce
     ///     derived from the epoch encryption key and the path leaf's
     ///     serialized encryption key,
@@ -612,7 +611,7 @@ impl MlsGroup {
 
         use crate::{
             components::vc_derivation_info::{
-                DerivationInfo, EmulationEpochState, VirtualClientOperationType,
+                DerivationInfo, VcDerivationEpochState, VirtualClientOperationType,
                 VirtualClientsError, VC_COMPONENT_ID,
             },
             components::vc_operation_tree::OperationSecretTree,
@@ -636,13 +635,13 @@ impl MlsGroup {
 
         let epoch_id = derivation_info.epoch_id();
         let storage = provider.storage();
-        let state: EmulationEpochState = storage
-            .vc_emulation_epoch_state(epoch_id)
+        let state: VcDerivationEpochState = storage
+            .vc_derivation_epoch_state(epoch_id)
             .map_err(|e| {
-                log::error!("vc: load emulation epoch state failed: {e:?}");
+                log::error!("vc: load derivation epoch state failed: {e:?}");
                 VirtualClientsError::StorageError
             })?
-            .ok_or(VirtualClientsError::MissingEmulationEpochState)?;
+            .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
         let mut operation_tree: OperationSecretTree = storage
             .vc_operation_tree(epoch_id)
             .map_err(|e| {
@@ -650,7 +649,7 @@ impl MlsGroup {
                 VirtualClientsError::StorageError
             })?
             .ok_or(VirtualClientsError::MissingOperationTree)?;
-        // The receiver uses the emulation epoch's AEAD key and ciphersuite
+        // The receiver uses the derivation epoch's AEAD key and ciphersuite
         // for `DerivationInfoTbe`. The sender's emulation leaf index travels
         // on the wire, so it doesn't have to come from storage on this side.
         let (_state_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();

@@ -564,30 +564,30 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_emulation_epoch_state<
+    fn write_vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<V_TEST>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<V_TEST>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<V_TEST>,
     >(
         &self,
         _epoch_id: &EpochId,
-        _vc_emulation_epoch_state: &VcEmulationEpochState,
+        _vc_derivation_epoch_state: &VcDerivationEpochState,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_epoch_state<
+    fn vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<V_TEST>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<V_TEST>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<V_TEST>,
     >(
         &self,
         _epoch_id: &EpochId,
-    ) -> Result<Option<VcEmulationEpochState>, Self::Error> {
+    ) -> Result<Option<VcDerivationEpochState>, Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_state_if_unreferenced<EpochId: traits::VcEpochId<V_TEST>>(
+    fn delete_vc_derivation_epoch_state_if_unreferenced<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
     ) -> Result<bool, Self::Error> {
@@ -598,10 +598,12 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     fn write_vc_emulation_bindings<
         GroupId: traits::GroupId<V_TEST>,
         VcEmulationBindings: traits::VcEmulationBindings<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST>,
     >(
         &self,
         _group_id: &GroupId,
         _bindings: &VcEmulationBindings,
+        _bound_epochs: &[EpochId],
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -626,30 +628,32 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_registered_vc_emulation_epoch<
+    fn write_registered_vc_derivation_epoch<
         GroupId: traits::GroupId<V_TEST>,
-        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<V_TEST>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST>,
     >(
         &self,
         _group_id: &GroupId,
-        _registered: &RegisteredVcEmulationEpoch,
+        _registered: &RegisteredVcDerivationEpoch,
+        _epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn registered_vc_emulation_epoch<
+    fn registered_vc_derivation_epoch<
         GroupId: traits::GroupId<V_TEST>,
-        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<V_TEST>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<V_TEST>,
     >(
         &self,
         _group_id: &GroupId,
-    ) -> Result<Option<RegisteredVcEmulationEpoch>, Self::Error> {
+    ) -> Result<Option<RegisteredVcDerivationEpoch>, Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_registered_vc_emulation_epoch<GroupId: traits::GroupId<V_TEST>>(
+    fn delete_registered_vc_derivation_epoch<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -707,6 +711,22 @@ impl StorageProvider<V_TEST> for MemoryStorage {
 
     #[cfg(feature = "virtual-clients-draft")]
     fn has_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_vc_emulation_binding_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_registered_vc_derivation_epoch_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
     ) -> Result<bool, Self::Error> {

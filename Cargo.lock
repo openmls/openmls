@@ -3,15 +3,6 @@
 version = 4
 
 [[package]]
-name = "addr2line"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b5d307320b3181d6d7954e663bd7c774a838b8220fe0593c86d9fb09f498b4b"
-dependencies = [
- "gimli",
-]
-
-[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -243,21 +234,6 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
-]
-
-[[package]]
-name = "backtrace"
-version = "0.3.76"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb531853791a215d7c62a30daf0dde835f381ab5de4589cfe7c649d2cbe92bd6"
-dependencies = [
- "addr2line",
- "cfg-if",
- "libc",
- "miniz_oxide",
- "object",
- "rustc-demangle",
- "windows-link",
 ]
 
 [[package]]
@@ -1258,12 +1234,6 @@ dependencies = [
  "opaque-debug",
  "polyval",
 ]
-
-[[package]]
-name = "gimli"
-version = "0.32.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
 name = "glob"
@@ -2485,15 +2455,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8f8bdf33df195859076e54ab11ee78a1b208382d3a26ec40d142ffc1ecc49ef"
 
 [[package]]
-name = "object"
-version = "0.37.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff76201f031d8863c38aa7f905eca4f53abbfa15f609db4277d44cd8938f33fe"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2519,9 +2480,8 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "openmls"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 dependencies = [
- "backtrace",
  "base64",
  "clap",
  "criterion",
@@ -2531,9 +2491,7 @@ dependencies = [
  "hex",
  "indicatif",
  "itertools 0.14.0",
- "lazy_static",
  "log",
- "once_cell",
  "openmls",
  "openmls_basic_credential",
  "openmls_libcrux_crypto",
@@ -2549,11 +2507,8 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_json",
- "tempfile",
  "thiserror",
  "tls_codec",
- "wasm-bindgen",
- "wasm-bindgen-test",
  "web-time",
  "zeroize",
 ]
@@ -2584,7 +2539,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_basic_credential"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "ed25519-dalek",
  "ml-dsa",
@@ -2600,7 +2555,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_libcrux_crypto"
-version = "0.4.0-rc.1"
+version = "0.4.0"
 dependencies = [
  "aes",
  "fpe",
@@ -2622,7 +2577,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_memory_storage"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "base64",
  "hex",
@@ -2636,7 +2591,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_rust_crypto"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -2663,7 +2618,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_serialization_helpers"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "ciborium",
  "postcard",
@@ -2677,7 +2632,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_sqlite_storage"
-version = "0.3.0-rc.1"
+version = "0.3.0"
 dependencies = [
  "openmls_traits",
  "refinery",
@@ -2688,7 +2643,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_test"
-version = "0.3.0-rc.1"
+version = "0.3.0"
 dependencies = [
  "openmls_libcrux_crypto",
  "openmls_rust_crypto",
@@ -2700,7 +2655,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_traits"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "serde",
  "tls_codec",
@@ -3400,12 +3355,6 @@ dependencies = [
  "libsqlite3-sys",
  "smallvec",
 ]
-
-[[package]]
-name = "rustc-demangle"
-version = "0.1.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b74b56ffa8bb2830709a538c2cbcae9aa062db0d2a42563bfb09bdaae44020eb"
 
 [[package]]
 name = "rustc-hash"

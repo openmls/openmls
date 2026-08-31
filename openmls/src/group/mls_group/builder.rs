@@ -10,11 +10,12 @@ use crate::{
     extensions::Extensions,
     group::{
         config::PastEpochDeletionPolicy, past_secrets::MessageSecretsStore,
-        public_group::errors::PublicGroupBuildError, GroupContext, GroupId, MlsGroup,
+        public_group::errors::PublicGroupBuildError, BranchInfo, CommitBuilderStageError,
+        CommitMessageBundle, CreateCommitError, GroupContext, GroupId, MlsGroup,
         MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
         PublicGroup, WireFormatPolicy,
     },
-    key_packages::Lifetime,
+    key_packages::{KeyPackage, Lifetime},
     schedule::{
         psk::{load_psks, store::ResumptionPskStore, PskSecret},
         EpochSecretsResult, InitSecret, JoinerSecret, KeySchedule, PreSharedKeyId,
@@ -34,8 +35,10 @@ pub struct MlsGroupBuilder {
     mls_group_create_config_builder: MlsGroupCreateConfigBuilder,
     replace_old_group: bool,
     psk_ids: Vec<PreSharedKeyId>,
+    /// The emulation group to create this group as a virtual client of. The
+    /// derivation epoch is resolved from its state when [`Self::build`] runs.
     #[cfg(feature = "virtual-clients-draft")]
-    vc_epoch_id: Option<crate::components::vc_derivation_info::EpochId>,
+    vc_emulation_group_id: Option<GroupId>,
 }
 
 impl MlsGroupBuilder {
@@ -49,7 +52,13 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Create the group as a virtual client on the emulation epoch `epoch_id`.
+    /// Create the group as a virtual client of the emulation group named by
+    /// `emulation_group_id`.
+    ///
+    /// The group is created from the newest derivation epoch of the emulation
+    /// group, which is what the draft requires of every new virtual-client
+    /// operation. The epoch is resolved when [`Self::build`] runs, against the
+    /// emulation group's state at that point.
     ///
     /// The creator's leaf is `key_package`-sourced and its key material is
     /// derived from a fresh `key_package` operation secret of that epoch (so
@@ -60,11 +69,8 @@ impl MlsGroupBuilder {
     ///
     /// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn vc_emulation(
-        mut self,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
-    ) -> Self {
-        self.vc_epoch_id = Some(epoch_id);
+    pub fn vc_emulation(mut self, emulation_group_id: &GroupId) -> Self {
+        self.vc_emulation_group_id = Some(emulation_group_id.clone());
         self
     }
 
@@ -72,6 +78,25 @@ impl MlsGroupBuilder {
     pub fn replace_old_group(mut self) -> Self {
         self.replace_old_group = true;
         self
+    }
+
+    /// Turn this builder into a sub-group branch builder, as described in
+    /// [RFC 9420 §11.3].
+    ///
+    /// The parent group's parameters are provided via `branch_info`, which the
+    /// parent exports with
+    /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info). The
+    /// sub-group is created with the parent's ciphersuite. Set any other group
+    /// configuration on this builder before calling `branch`, then create the
+    /// sub-group and its branch commit with
+    /// [`BranchGroupBuilder::build_branch`].
+    ///
+    /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+    pub fn branch(self, branch_info: BranchInfo) -> BranchGroupBuilder {
+        BranchGroupBuilder {
+            group_builder: self,
+            branch_info,
+        }
     }
 
     /// Build a new group as configured by this builder.
@@ -112,7 +137,12 @@ impl MlsGroupBuilder {
             .map_err(|_| NewGroupError::UnsupportedCiphersuite(ciphersuite))?;
 
         #[cfg(feature = "virtual-clients-draft")]
-        if let Some(epoch_id) = self.vc_epoch_id.clone() {
+        if let Some(emulation_group_id) = &self.vc_emulation_group_id {
+            let epoch_id =
+                crate::components::vc_derivation_info::require_newest_vc_derivation_epoch(
+                    provider.storage(),
+                    emulation_group_id,
+                )?;
             return build_vc_internal(
                 provider,
                 signer,
@@ -216,7 +246,22 @@ impl MlsGroupBuilder {
         resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
 
         #[cfg(feature = "extensions-draft")]
-        let application_export_tree = ApplicationExportTree::new(application_exporter);
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let mut application_export_tree = ApplicationExportTree::new(application_exporter);
+
+        // The initial epoch of an emulation group is a derivation epoch.
+        #[cfg(feature = "virtual-clients-draft")]
+        if mls_group_create_config.emulation_group {
+            crate::components::vc_derivation_info::register_vc_derivation_epoch(
+                provider.crypto(),
+                provider.storage(),
+                Some(&mut application_export_tree),
+                crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
+                    &public_group,
+                    LeafNodeIndex::new(0),
+                ),
+            )?;
+        }
 
         let mls_group = MlsGroup {
             mls_group_config: mls_group_create_config.join_config.clone(),
@@ -232,6 +277,8 @@ impl MlsGroupBuilder {
             resumption_psk_store,
             #[cfg(feature = "extensions-draft")]
             application_export_tree: Some(application_export_tree),
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: mls_group_create_config.emulation_group,
         };
 
         mls_group
@@ -377,11 +424,73 @@ impl MlsGroupBuilder {
     }
 }
 
+/// Builder that creates a fresh sub-group and its branch commit in a single
+/// step, as described in [RFC 9420 §11.3].
+///
+/// Create this with [`MlsGroupBuilder::branch`].
+///
+/// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+pub struct BranchGroupBuilder {
+    group_builder: MlsGroupBuilder,
+    branch_info: BranchInfo,
+}
+
+impl BranchGroupBuilder {
+    /// Create the sub-group and the branch commit that adds `new_members` to it.
+    ///
+    /// This creates a fresh group with the parent's ciphersuite, adds the branch
+    /// resumption PSK (mixing in the parent's resumption PSK secret), and commits
+    /// the additions. It returns the new (epoch-0) sub-group and the
+    /// [`CommitMessageBundle`] carrying the branch commit and `Welcome`.
+    ///
+    /// The commit is staged but **not** merged: merge it with
+    /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
+    /// only once the delivery service has confirmed it.
+    pub fn build_branch<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        signer: &impl Signer,
+        credential_with_key: CredentialWithKey,
+        new_members: Vec<KeyPackage>,
+    ) -> Result<(MlsGroup, CommitMessageBundle), BranchError<Provider::StorageError>> {
+        // The sub-group must use the same ciphersuite as the parent group.
+        let group_builder = self
+            .group_builder
+            .ciphersuite(self.branch_info.ciphersuite());
+        let mut group = group_builder.build(provider, signer, credential_with_key)?;
+
+        let bundle = group
+            .commit_builder()
+            .branch(provider.rand(), &self.branch_info)?
+            .propose_adds(new_members)
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
+
+        Ok((group, bundle))
+    }
+}
+
+/// Indicates an error occurred while creating a sub-group branch with
+/// [`BranchGroupBuilder::build_branch`].
+#[derive(Debug, thiserror::Error)]
+pub enum BranchError<StorageError> {
+    /// An error occurred while creating the sub-group.
+    #[error(transparent)]
+    NewGroup(#[from] NewGroupError<StorageError>),
+    /// An error occurred while creating the branch commit.
+    #[error(transparent)]
+    CreateCommit(#[from] CreateCommitError),
+    /// An error occurred while staging the branch commit.
+    #[error(transparent)]
+    CommitBuilderStage(#[from] CommitBuilderStageError<StorageError>),
+}
+
 /// Create a new group with the virtual client as the creator (epoch 0, single
 /// leaf).
 ///
 /// The creator's leaf is `key_package`-sourced and its key material is derived
-/// from a fresh `key_package` operation secret of the emulation epoch
+/// from a fresh `key_package` operation secret of the derivation epoch
 /// `epoch_id` (batch index 0). The epoch-0 `epoch_secret` is derived from the
 /// same KeyPackage seed under the created group's ciphersuite. A sibling
 /// emulator client reconstructs this exact state with
@@ -433,7 +542,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         None,
     )?;
 
-    // Load the emulation epoch state and operation tree, allocate a fresh
+    // Load the derivation epoch state and operation tree, allocate a fresh
     // `key_package` generation (empty operation context, matching the KeyPackage
     // batch path), and persist the advanced tree right away. A retried creation
     // consumes a fresh generation.
@@ -563,13 +672,15 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         // Reconstructed VC groups do not populate the application export tree,
         // matching the other VC group-entry paths.
         application_export_tree: None,
+        // A group a virtual client creates is not itself an emulation group.
+        emulation_group: false,
     };
 
-    // Bind epoch 0 of the new group to the emulation epoch so later VC
-    // operations in this group resolve the right emulation state. Written before
-    // the group itself, so an error between the writes cannot leave a loadable
-    // group without a binding (a bound group is required for the reuse-guard
-    // MUST).
+    // Bind epoch 0 of the new group to the derivation epoch so later VC
+    // operations in this group resolve the right derivation epoch state.
+    // Written before the group itself, so an error between the writes cannot
+    // leave a loadable group without a binding (a bound group is required for
+    // the reuse-guard MUST).
     let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
         .storage()
         .vc_emulation_bindings(&group_id)
@@ -577,9 +688,8 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         .unwrap_or_default();
     let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
     bindings.insert(mls_group.epoch(), epoch_id, max_entries);
-    provider
-        .storage()
-        .write_vc_emulation_bindings(&group_id, &bindings)
+    bindings
+        .store(provider.storage(), &group_id)
         .map_err(NewGroupError::StorageError)?;
 
     mls_group

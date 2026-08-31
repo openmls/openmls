@@ -1,6 +1,6 @@
 [package]
 name = "openmls"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 rust-version.workspace = true
@@ -32,17 +32,14 @@ log = { version = "0.4", features = ["std"] }
 tls_codec = { workspace = true }
 rayon = "^1.12.0"
 thiserror = { workspace = true }
-backtrace = { version = "0.3", optional = true }
 # Only required for tests.
 rand = { version = "0.10", optional = true }
 serde_json = { version = "1.0", optional = true }
 # Crypto providers required for KAT and testing - "test-utils" feature
 itertools = { version = "0.14", optional = true }
-wasm-bindgen-test = { version = "0.3.50", optional = true }
 getrandom = { version = "0.4.2", optional = true }
 getrandom_old = { package = "getrandom", version = "0.2.15", optional = true }
 web-time = { version = "1.1", optional = true, features = ["serde"] }
-once_cell = { version = "1.19.0", optional = true }
 zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
@@ -57,14 +54,12 @@ test-utils = [
     "dep:itertools",
     "openmls_rust_crypto/test-utils",
     "dep:rand",
-    "dep:wasm-bindgen-test",
     "dep:openmls_basic_credential",
     "dep:openmls_memory_storage",
     "dep:openmls_test",
-    "dep:once_cell",
     "backtrace",
 ]
-backtrace = ["dep:backtrace"]
+backtrace = []
 libcrux-provider = [
     "dep:openmls_libcrux_crypto",
     "openmls_test?/libcrux-provider",
@@ -170,12 +165,8 @@ criterion = { version = "^0.8", default-features = false, features = [
     "html_reports",
 ] }
 hex = { version = "0.4", features = ["serde"] }
-lazy_static = "1.4"
 openmls_traits = { workspace = true, features = ["test-utils"] }
 pretty_env_logger = "0.5"
-tempfile = "3"
-wasm-bindgen = "0.2.100"
-wasm-bindgen-test = "0.3.50"
 clap = { version = "4", features = ["derive"] }
 base64 = "0.22.1"
 flate2 = "1.0"

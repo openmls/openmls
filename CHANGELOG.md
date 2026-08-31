@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.9.0 (2026-08-03)
+## Unreleased
+
+### Added
+
+- [#2184](https://github.com/openmls/openmls/pull/2184): Added `PreSharedKeyProposal::psk`, a getter for the `PreSharedKeyId` of a `PreSharedKey` proposal.
+- [#2167](https://github.com/openmls/openmls/pull/2167): Added `PublicGroup::validate_key_package_for_add`, which checks whether a single `KeyPackage` is eligible to be added to the group without building a commit. Applications adding several members at once can use it to filter out candidates that a commit would reject, and to report which candidate was rejected and why. Uniqueness of the signature, init and encryption keys is not covered, since it can only be decided for a full set of proposals.
+
+### Fixed
+
+- [#2194](https://github.com/openmls/openmls/pull/2194): With the `virtual-clients-draft` feature, whether an inbound `PrivateMessage` is this client's own is now decided against the leaf index the epoch's secret tree was built for, rather than the group's current own leaf index. The two differ for every epoch before a sibling-resync external commit moved the client's leaf. Previously a message another member sent from the leaf the client had since moved onto was silently returned as `ProcessedMessageContent::OwnPrivateMessage`, and the echo of the client's own pre-resync message failed with `SecretTreeError::SecretReuseError`.
+
+## 0.9.0 (2026-08-25)
 
 ### Added
 
@@ -27,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#2186](https://github.com/openmls/openmls/pull/2186): Two treemath helpers computed node indexes without checking their inputs, so a commit from a sender outside the tree could be accepted. Both now reject out-of-range input.
 - [#2143](https://github.com/openmls/openmls/pull/2143): A commit built with `CommitBuilder::build_with_new_signer` (or `MlsGroup::self_update_with_new_signer`) now signs the GroupInfo in the Welcome and the exported GroupInfo with the new signer, matching the signature key the commit puts in the committer's leaf. Previously both were signed with the old signer, so invited members rejected the Welcome with `InvalidGroupInfoSignature`.
 - [#2147](https://github.com/openmls/openmls/pull/2147): Fixed an off-by-one in the computation of the variable-length prefix size during extension serialization. Extensions with payloads of exactly 0x3fff or 0x3fff_ffff bytes now serialize with the correct length prefix.
 - [GHSA-rrmv-c79f-cf5r](https://github.com/openmls/openmls/security/advisories/GHSA-rrmv-c79f-cf5r): Fix out-of-bounds panic in manual DeserializeBytes impls
@@ -39,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [#2174](https://github.com/openmls/openmls/pull/2174): Duplicate and membership checks on extensions, capabilities and key packages now use hash sets instead of nested scans, and unmerged leaf lookups use binary search. This cuts the cost of validating large groups and key packages. No API change.
 - [#2149](https://github.com/openmls/openmls/pull/2149): `CommitBuilder::build_with_new_signer` now always generates an UpdatePath, so the new signature key is installed in the committer's leaf even when no proposal requires a path. Previously, a new signer passed to an otherwise pathless commit was silently ignored. It also rejects a new signer whose signature scheme does not match the group's ciphersuite with `CreateCommitError::InvalidSignerCiphersuite`.
 - [#2149](https://github.com/openmls/openmls/pull/2149): External commits now have a single authoritative credential: the `CredentialWithKey` passed to `ExternalCommitBuilder::build_group`. Leaf node parameters that pin a different credential are rejected with the new `CreateCommitError::ExternalCommitCredentialMismatch`, and `build_with_new_signer` on an external commit fails with the new `CreateCommitError::ExternalCommitWithNewSigner`.
 - [#2146](https://github.com/openmls/openmls/pull/2146): The `Debug` output of `HpkePrivateKey` and `ExporterSecret` no longer contains the secret bytes. The `crypto-debug` feature now also enables the corresponding feature in `openmls_traits`, restoring the full output for debugging.
@@ -53,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2060](https://github.com/openmls/openmls/pull/2060) Renamed `extensions-draft-08` feature flag to `extensions-draft`.
 - Reworked the receive-side API for `AppDataUpdate` proposals (`extensions-draft` feature). `MlsGroup::process_message` now returns a commit covering `AppDataUpdate` proposals as `ProcessedMessageContent::UnresolvedAppDataCommit`. Applications inspect the verified proposals via `UnresolvedAppDataCommit::app_data_update_proposals()` and resume staging with `MlsGroup::stage_app_data_commit()`. This replaces the `MlsGroup::unprotect_message`/`MlsGroup::process_unverified_message_with_app_data_updates` flow, which exposed unverified message content; both functions are no longer public, and `ProcessMessageError::FoundAppDataUpdateProposal` was removed.
 - [#2098](https://github.com/openmls/openmls/pull/2098): Extended the reworked receive-side API for `AppDataUpdate` proposals to `PublicGroup` (`extensions-draft` feature). `PublicGroup::process_message` now returns a commit covering `AppDataUpdate` proposals as `ProcessedMessageContent::UnresolvedAppDataCommit`. Applications compute the updates with the new `PublicGroup::app_data_dictionary_updater()` and resume staging with the new `PublicGroup::stage_app_data_commit()`. This replaces `PublicGroup::process_message_with_app_data_updates`, which was removed. Also added `MlsGroup::resolve_app_data_commit()` and `PublicGroup::resolve_app_data_commit()`, which stage an `UnresolvedAppDataCommit` and return the same `ProcessedMessage` with regular `StagedCommitMessage` content, so callers can keep a single code path for commits with and without `AppDataUpdate` proposals. Made `StagedCommit::safe_export_secret()` public so secrets of the new epoch can be exported from resolved commits before merging.
+- Removed the `openmls::wasm` module, a `test-utils`-gated re-export of `wasm_bindgen_test::wasm_bindgen_test` that worked around an old `rstest` issue. `rstest` is no longer a dependency and nothing used the re-export, so `openmls` no longer depends on `wasm-bindgen-test`.
 - [#2083](https://github.com/openmls/openmls/pull/2083): Raised MSRV to Rust 1.91.
 - Bumped the minimum required versions of `openmls_traits` (0.6.0), `openmls_memory_storage` (0.6.0), `openmls_rust_crypto` (0.6.0), `openmls_libcrux_crypto` (0.4.0), `openmls_basic_credential` (0.6.0), `openmls_sqlite_storage` (0.3.0), and `openmls_test` (0.3.0); added the new `openmls_serialization_helpers` (0.1.0) crate. All of these are additive releases (new PQ ciphersuite support, virtual-clients-draft storage plumbing, MSRV bump); `openmls_traits`, `openmls_memory_storage`, `openmls_libcrux_crypto` and `openmls_sqlite_storage` also carry the `extensions-draft-08` → `extensions-draft` feature-flag rename from #2060 (an unstable/draft feature, never part of a stable release).
 

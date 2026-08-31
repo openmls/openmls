@@ -113,9 +113,30 @@ pub enum WelcomeError<StorageError> {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// The joined group is an emulation group, and registering the derivation
+    /// epoch of the Welcome's output epoch failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    RegisterVcDerivationEpoch(#[from] crate::group::RegisterVcDerivationEpochError<StorageError>),
     /// This error indicates that computing the key schedule failed
     #[error(transparent)]
     KeySchedule(#[from] KeyScheduleError),
+    /// The subgroup's protocol version or ciphersuite does not match the parent
+    /// group (RFC 9420 §11.3).
+    #[error("The subgroup's protocol version or ciphersuite does not match the parent group.")]
+    SubgroupParameterMismatch,
+    /// The subgroup is not at epoch 1, as required for a branched subgroup
+    /// (RFC 9420 §11.3).
+    #[error("The subgroup is not at epoch 1.")]
+    SubgroupEpochInvalid,
+    /// A member of the subgroup does not match any member of the parent group
+    /// (RFC 9420 §11.3).
+    #[error("A member of the subgroup does not match any member of the parent group.")]
+    SubgroupLeafMismatch,
+    /// The parent group or epoch referenced by the subgroup's branch PSK does not
+    /// match the provided parent group information (RFC 9420 §11.3).
+    #[error("The subgroup's branch PSK does not reference the provided parent group/epoch.")]
+    SubgroupParentMismatch,
 }
 
 /// External Commit error
@@ -223,9 +244,9 @@ pub enum VcExternalCommitJoinError<StorageError> {
     /// so a sibling cannot reconstruct the joining state from it.
     #[error("The external commit carries no virtual-clients derivation info.")]
     MissingDerivationInfo,
-    /// The derivation info references a different emulation epoch than the one
+    /// The derivation info references a different derivation epoch than the one
     /// supplied.
-    #[error("The external commit references a different emulation epoch.")]
+    #[error("The external commit references a different derivation epoch.")]
     EpochIdMismatch,
     /// A virtual-clients processing error occurred.
     #[error(transparent)]
@@ -259,9 +280,9 @@ pub enum VcGroupCreationJoinError<StorageError> {
     /// The creator leaf carries no virtual-clients derivation info.
     #[error("The creator leaf carries no virtual-clients derivation info.")]
     MissingDerivationInfo,
-    /// The derivation info references a different emulation epoch than the one
+    /// The derivation info references a different derivation epoch than the one
     /// supplied.
-    #[error("The creator leaf references a different emulation epoch.")]
+    #[error("The creator leaf references a different derivation epoch.")]
     EpochIdMismatch,
     /// The creator leaf is not `key_package`-sourced, so it is not a virtual
     /// client's group-creation leaf.
@@ -313,6 +334,13 @@ pub enum StageCommitError {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// The commit's virtual-clients Safe AAD item, or the Safe AAD carrying it,
+    /// did not parse. The item decides whether the commit's output epoch is a
+    /// derivation epoch, so an emulation group cannot fall back to a guess.
+    /// Groups that are not emulation groups never read the item.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("The commit's virtual-clients Safe AAD item did not parse: {0}")]
+    MalformedVcCommitData(String),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -407,6 +435,22 @@ pub enum CreateCommitError {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// See [`VcCommitDataError`](crate::components::vc_commit_data::VcCommitDataError)
+    /// for more details.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VcCommitData(#[from] crate::components::vc_commit_data::VcCommitDataError),
+    /// A new derivation epoch was requested, but the group's GroupContext does
+    /// not require Safe AAD framing, so the commit cannot carry the marker.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("A new derivation epoch requires the group to use Safe AAD framing.")]
+    NewDerivationEpochWithoutSafeAad,
+    /// A new derivation epoch was requested in a group that is not configured
+    /// as an emulation group. The sender would broadcast the marker without
+    /// registering the epoch itself, desynchronizing the emulator clients.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("A new derivation epoch can only be requested in an emulation group.")]
+    NewDerivationEpochOutsideEmulationGroup,
     /// Missing own key to apply proposal.
     #[error("Missing own key to apply proposal.")]
     OwnKeyNotFound,
@@ -762,6 +806,11 @@ pub enum MergeCommitError<StorageError> {
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),
+    /// The commit creates a virtual-clients derivation epoch for this emulation
+    /// group, and registering it failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    RegisterVcDerivationEpoch(#[from] crate::group::RegisterVcDerivationEpochError<StorageError>),
 }
 
 #[cfg(feature = "extensions-draft")]

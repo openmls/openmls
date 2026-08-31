@@ -172,17 +172,17 @@ pub trait StorageProvider<const VERSION: u16> {
         application_export_tree: &ApplicationExportTree,
     ) -> Result<(), Self::Error>;
 
-    /// Write the virtual clients per-emulation-epoch state (the AEAD key
+    /// Write the virtual clients per-derivation-epoch state (the AEAD key
     /// plus the registering client's emulation-group leaf index) for the
     /// given epoch.
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_emulation_epoch_state<
+    fn write_vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<VERSION>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<VERSION>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-        vc_emulation_epoch_state: &VcEmulationEpochState,
+        vc_derivation_epoch_state: &VcDerivationEpochState,
     ) -> Result<(), Self::Error>;
 
     /// Store the record binding each recent epoch of a higher-level group to
@@ -194,36 +194,52 @@ pub trait StorageProvider<const VERSION: u16> {
     /// group and prunes its own entries in lockstep with the group's
     /// message-secrets retention. A subsequent write replaces any previously
     /// stored record.
+    ///
+    /// `bound_epochs` lists the distinct derivation epochs the record binds,
+    /// so that an implementation can keep a projection from epoch to bound
+    /// group for [`Self::has_vc_emulation_binding_for_epoch`]. A write
+    /// replaces the group's projection rather than adding to it. Record and
+    /// projection must become visible together.
     #[cfg(feature = "virtual-clients-draft")]
     fn write_vc_emulation_bindings<
         GroupId: traits::GroupId<VERSION>,
         VcEmulationBindings: traits::VcEmulationBindings<VERSION>,
+        EpochId: traits::VcEpochId<VERSION>,
     >(
         &self,
         group_id: &GroupId,
         bindings: &VcEmulationBindings,
+        bound_epochs: &[EpochId],
     ) -> Result<(), Self::Error>;
 
-    /// Record the emulation epoch an emulation group registered for its
+    /// Record the derivation epoch an emulation group registered for its
     /// current group epoch. Written by the register call itself so that a
     /// repeated call in the same group epoch returns the already-derived
     /// epoch id instead of consuming the forward-secure exporter again. A
     /// subsequent write replaces any previously stored record.
+    ///
+    /// `epoch_id` is the derivation epoch the record names, so that an
+    /// implementation can keep a projection from epoch to registering group
+    /// for [`Self::has_registered_vc_derivation_epoch_for_epoch`]. A write
+    /// replaces the group's projection entry. Record and projection must
+    /// become visible together.
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_registered_vc_emulation_epoch<
+    fn write_registered_vc_derivation_epoch<
         GroupId: traits::GroupId<VERSION>,
-        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<VERSION>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<VERSION>,
+        EpochId: traits::VcEpochId<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-        registered: &RegisteredVcEmulationEpoch,
+        registered: &RegisteredVcDerivationEpoch,
+        epoch_id: &EpochId,
     ) -> Result<(), Self::Error>;
 
-    /// Write the per-emulation-epoch Virtual Client Operation Secret Tree
+    /// Write the per-derivation-epoch Virtual Client Operation Secret Tree
     /// (the lazily derived node secrets plus the per-leaf operation
     /// ratchets) for the given epoch. The tree is written back after every
     /// ratchet advance. It is stored separately from the static
-    /// `EmulationEpochState` so that per-operation writes do not rewrite
+    /// `VcDerivationEpochState` so that per-operation writes do not rewrite
     /// the static fields.
     #[cfg(feature = "virtual-clients-draft")]
     fn write_vc_operation_tree<
@@ -528,16 +544,16 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<ApplicationExportTree>, Self::Error>;
 
     #[cfg(feature = "virtual-clients-draft")]
-    /// Get the virtual clients per-emulation-epoch state for the given
+    /// Get the virtual clients per-derivation-epoch state for the given
     /// epoch (the AEAD key plus the registering client's
     /// emulation-group leaf index).
-    fn vc_emulation_epoch_state<
+    fn vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<VERSION>,
-        VcEmulationEpochState: traits::VcEmulationEpochState<VERSION>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<VERSION>,
     >(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<Option<VcEmulationEpochState>, Self::Error>;
+    ) -> Result<Option<VcDerivationEpochState>, Self::Error>;
 
     /// Load the per-epoch emulation bindings of a higher-level group (see
     /// [`Self::write_vc_emulation_bindings`]). Returns `None` if no VC
@@ -551,19 +567,19 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<Option<VcEmulationBindings>, Self::Error>;
 
-    /// Load the emulation epoch the given emulation group registered (see
-    /// [`Self::write_registered_vc_emulation_epoch`]). Returns `None` if the
-    /// group never registered an emulation epoch.
+    /// Load the derivation epoch the given emulation group registered (see
+    /// [`Self::write_registered_vc_derivation_epoch`]). Returns `None` if the
+    /// group never registered a derivation epoch.
     #[cfg(feature = "virtual-clients-draft")]
-    fn registered_vc_emulation_epoch<
+    fn registered_vc_derivation_epoch<
         GroupId: traits::GroupId<VERSION>,
-        RegisteredVcEmulationEpoch: traits::RegisteredVcEmulationEpoch<VERSION>,
+        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<RegisteredVcEmulationEpoch>, Self::Error>;
+    ) -> Result<Option<RegisteredVcDerivationEpoch>, Self::Error>;
 
-    /// Get the per-emulation-epoch Virtual Client Operation Secret Tree for
+    /// Get the per-derivation-epoch Virtual Client Operation Secret Tree for
     /// the given epoch (the lazily derived node secrets plus the per-leaf
     /// operation ratchets).
     #[cfg(feature = "virtual-clients-draft")]
@@ -588,11 +604,37 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error>;
 
     /// Return `true` if any retained virtual clients KeyPackage material still
-    /// references `epoch_id`. Used to keep an emulation epoch's state alive
+    /// references `epoch_id`. Used to keep a derivation epoch's state alive
     /// while KeyPackages derived from it can still be welcomed (see
-    /// [`Self::delete_vc_emulation_state_if_unreferenced`]).
+    /// [`Self::delete_vc_derivation_epoch_state_if_unreferenced`]).
     #[cfg(feature = "virtual-clients-draft")]
     fn has_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error>;
+
+    /// Return `true` if the emulation bindings of any higher-level group still
+    /// reference `epoch_id`. Used to keep a derivation epoch's state alive
+    /// while a group bound to it can still protect and deprotect messages
+    /// (see [`Self::delete_vc_derivation_epoch_state_if_unreferenced`]).
+    ///
+    /// The answer covers the `bound_epochs` of the last
+    /// [`Self::write_vc_emulation_bindings`] call of each group.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_vc_emulation_binding_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error>;
+
+    /// Return `true` if the registration record of any emulation group still
+    /// names `epoch_id`. Used to keep a derivation epoch's state alive while
+    /// the group that registered it can still operate on it (see
+    /// [`Self::delete_vc_derivation_epoch_state_if_unreferenced`]).
+    ///
+    /// The answer covers the `epoch_id` of the last
+    /// [`Self::write_registered_vc_derivation_epoch`] call of each group.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_registered_vc_derivation_epoch_for_epoch<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error>;
@@ -725,7 +767,8 @@ pub trait StorageProvider<const VERSION: u16> {
     ///
     /// Under the `virtual-clients-draft` feature, an implementation must also
     /// delete the retained virtual clients KeyPackage material stored for the
-    /// same reference (see [`Self::delete_retained_key_package_material`]).
+    /// same reference (see `delete_retained_key_package_material`, which only
+    /// exists under that feature).
     /// Deleting non-existent material is a no-op, so this is safe for
     /// KeyPackages that were never uploaded by a virtual client.
     fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
@@ -749,38 +792,44 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
-    /// Delete all per-epoch state for the given emulation epoch (both the
-    /// emulation epoch state and the Virtual Client Operation Secret Tree),
-    /// but only if no retained virtual clients KeyPackage material still
-    /// references it.
+    /// Delete all per-epoch state for the given derivation epoch (both the
+    /// derivation epoch state and the Virtual Client Operation Secret Tree),
+    /// but only if nothing still references it.
+    ///
+    /// Three liveness sources are checked: retained virtual clients
+    /// KeyPackage material
+    /// ([`Self::has_retained_key_package_material_for_epoch`]), the emulation
+    /// bindings of higher-level groups
+    /// ([`Self::has_vc_emulation_binding_for_epoch`]), and the registration
+    /// records of emulation groups
+    /// ([`Self::has_registered_vc_derivation_epoch_for_epoch`]).
     ///
     /// Returns `Ok(true)` if the epoch state was deleted, and `Ok(false)` if
-    /// it was kept because retained material still references the epoch. The
-    /// liveness check and the deletion belong together. Providers do not open
-    /// their own transaction, so an application using a transactional provider
-    /// (such as SQLite) should call this within a transaction, so a material
-    /// stored concurrently cannot be orphaned by a deletion that already
-    /// observed the epoch as unreferenced. The in-memory provider holds its
-    /// write lock across both.
+    /// it was kept because something still references the epoch. The liveness
+    /// checks and the deletion must apply atomically, or a reference stored
+    /// concurrently can be orphaned. Providers do not open their own
+    /// transaction, so an application using a transactional provider should
+    /// call this within one.
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_state_if_unreferenced<EpochId: traits::VcEpochId<VERSION>>(
+    fn delete_vc_derivation_epoch_state_if_unreferenced<EpochId: traits::VcEpochId<VERSION>>(
         &self,
         epoch_id: &EpochId,
     ) -> Result<bool, Self::Error>;
 
-    /// Remove the per-epoch emulation bindings of the given group. Called
-    /// when the group is being deleted.
+    /// Remove the per-epoch emulation bindings of the given group, together
+    /// with the group's entries in the epoch projection that backs
+    /// [`Self::has_vc_emulation_binding_for_epoch`].
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_emulation_bindings<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
 
-    /// Remove the registered emulation epoch record of the given group (see
-    /// [`Self::write_registered_vc_emulation_epoch`]). Called when the group
-    /// is being deleted or the member removed itself.
+    /// Remove the registered derivation epoch record of the given group,
+    /// together with the group's entry in the epoch projection that backs
+    /// [`Self::has_registered_vc_derivation_epoch_for_epoch`].
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_registered_vc_emulation_epoch<GroupId: traits::GroupId<VERSION>>(
+    fn delete_registered_vc_derivation_epoch<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error>;
@@ -851,11 +900,11 @@ pub mod traits {
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcEpochId<const VERSION: u16>: Key<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
-    pub trait VcEmulationEpochState<const VERSION: u16>: Entity<VERSION> {}
+    pub trait VcDerivationEpochState<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcEmulationBindings<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
-    pub trait RegisteredVcEmulationEpoch<const VERSION: u16>: Entity<VERSION> {}
+    pub trait RegisteredVcDerivationEpoch<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcOperationTree<const VERSION: u16>: Entity<VERSION> {}
     #[cfg(feature = "virtual-clients-draft")]

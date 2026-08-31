@@ -1,4 +1,6 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
+use std::collections::HashSet;
+
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, types::Ciphersuite,
 };
@@ -512,17 +514,31 @@ impl LeafNode {
         &self,
         extensions: &[ExtensionType],
     ) -> Result<(), LeafNodeValidationError> {
-        for required in extensions.iter() {
-            if !self.supports_extension(required) {
-                log::error!(
-                    "Leaf node does not support required extension {:?}\n
-                    Supported extensions: {:?}",
-                    required,
-                    self.payload.capabilities.extensions
-                );
-                return Err(LeafNodeValidationError::UnsupportedExtensions);
-            }
+        let mut required = extensions.iter().filter(|e| !e.is_default()).peekable();
+
+        // Skip building the lookup if there are no non-default extensions.
+        if required.peek().is_none() {
+            return Ok(());
         }
+
+        let supported: HashSet<ExtensionType> = self
+            .payload
+            .capabilities
+            .extensions
+            .iter()
+            .copied()
+            .collect();
+
+        if let Some(unsupported) = required.find(|e| !supported.contains(e)) {
+            log::error!(
+                "Leaf node does not support required extension {:?}\n
+                    Supported extensions: {:?}",
+                unsupported,
+                self.payload.capabilities.extensions
+            );
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        }
+
         Ok(())
     }
 
