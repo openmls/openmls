@@ -6312,3 +6312,165 @@ fn vc_past_epoch_read_survives_sibling_resync() {
         "the echo must be classified as an own message"
     );
 }
+
+#[openmls_test]
+fn vc_siblings_agree_on_application_secrets() {
+    use openmls::components::{
+        vc_application_secret::VcApplicationSecretInfo, vc_derivation_info::VirtualClientsError,
+    };
+    use tls_codec::DeserializeBytes as _;
+
+    const CONTEXT: &[u8] = b"application-defined context";
+
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (emulator_a, _signer_a, emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let epoch_id = newest_epoch(&emulator_a, &provider_a);
+
+    let (info, secret) = emulator_a
+        .next_vc_application_secret(&provider_a, CONTEXT)
+        .expect("alice_a takes an application secret");
+    assert_eq!(info.epoch_id, epoch_id);
+    assert_eq!(info.leaf_index, emulator_a.own_leaf_index());
+    assert_eq!(info.generation, 0);
+    assert_eq!(secret.len(), ciphersuite.hash_length());
+
+    // The coordinates reach the sibling over the application's own channel.
+    let info_bytes = info.tls_serialize_detached().expect("serialize the info");
+    let info =
+        VcApplicationSecretInfo::tls_deserialize_exact_bytes(&info_bytes).expect("parse the info");
+
+    let sibling_secret = emulator_b
+        .derive_vc_application_secret(&provider_b, &info, CONTEXT)
+        .expect("alice_b rederives the secret");
+    assert_eq!(secret, sibling_secret);
+
+    let err = emulator_b
+        .derive_vc_application_secret(&provider_b, &info, CONTEXT)
+        .expect_err("the generation was consumed");
+    assert_eq!(err, VirtualClientsError::OperationGenerationConsumed);
+
+    // The sender's ratchet moved on, and the sibling follows.
+    let (next_info, next_secret) = emulator_a
+        .next_vc_application_secret(&provider_a, CONTEXT)
+        .expect("alice_a takes a second application secret");
+    assert_eq!(next_info.generation, 1);
+    assert_ne!(next_secret, secret);
+    assert_eq!(
+        next_secret,
+        emulator_b
+            .derive_vc_application_secret(&provider_b, &next_info, CONTEXT)
+            .expect("alice_b rederives the second secret")
+    );
+
+    // alice_b sends from its own leaf's ratchet, which is a different one.
+    let (own_info, own_secret) = emulator_b
+        .next_vc_application_secret(&provider_b, CONTEXT)
+        .expect("alice_b takes an application secret of its own");
+    assert_eq!(own_info.leaf_index, emulator_b.own_leaf_index());
+    assert_ne!(own_info.leaf_index, info.leaf_index);
+    assert_eq!(own_info.generation, 0);
+    assert_ne!(own_secret, secret);
+    assert_eq!(
+        own_secret,
+        emulator_a
+            .derive_vc_application_secret(&provider_a, &own_info, CONTEXT)
+            .expect("alice_a rederives its sibling's secret")
+    );
+
+    // Own coordinates handed back to their sender are refused instead of
+    // burning that client's own ratchet head.
+    let err = emulator_b
+        .derive_vc_application_secret(&provider_b, &own_info, CONTEXT)
+        .expect_err("alice_b must not rederive from its own leaf");
+    assert_eq!(err, VirtualClientsError::OwnLeafIndex);
+
+    // The wrong context yields different bytes and still consumes the generation.
+    let (mismatch_info, mismatch_secret) = emulator_a
+        .next_vc_application_secret(&provider_a, CONTEXT)
+        .expect("alice_a takes a third application secret");
+    let wrong_context_secret = emulator_b
+        .derive_vc_application_secret(&provider_b, &mismatch_info, b"a different context")
+        .expect("the wrong context still succeeds");
+    assert_ne!(mismatch_secret, wrong_context_secret);
+    let err = emulator_b
+        .derive_vc_application_secret(&provider_b, &mismatch_info, CONTEXT)
+        .expect_err("the wrong context consumed the generation");
+    assert_eq!(err, VirtualClientsError::OperationGenerationConsumed);
+}
+
+#[openmls_test]
+fn vc_application_secret_survives_a_new_derivation_epoch() {
+    use openmls::components::{
+        vc_application_secret::VcApplicationSecretInfo, vc_derivation_info::VirtualClientsError,
+    };
+
+    const CONTEXT: &[u8] = b"application-defined context";
+
+    let provider_a = Provider::default();
+    let provider_b = Provider::default();
+
+    let (mut emulator_a, signer_a, mut emulator_b, _signer_b) =
+        sibling_emulation_group(ciphersuite, &provider_a, &provider_b);
+    let old_epoch = newest_epoch(&emulator_a, &provider_a);
+
+    let (info, secret) = emulator_a
+        .next_vc_application_secret(&provider_a, CONTEXT)
+        .expect("alice_a takes an application secret");
+    assert_eq!(info.epoch_id, old_epoch);
+
+    // The emulation group starts a fresh derivation epoch on both sides.
+    let commit = send_emulation_commit(&mut emulator_a, &provider_a, &signer_a, true);
+    process_and_merge_commit(&mut emulator_b, &provider_b, commit);
+    let new_epoch = newest_epoch(&emulator_a, &provider_a);
+    assert_ne!(new_epoch, old_epoch);
+    assert_eq!(new_epoch, newest_epoch(&emulator_b, &provider_b));
+
+    let sibling_secret = emulator_b
+        .derive_vc_application_secret(&provider_b, &info, CONTEXT)
+        .expect("alice_b rederives from the previous derivation epoch");
+    assert_eq!(secret, sibling_secret);
+
+    // New secrets come from the new epoch, whose ratchets start over.
+    let (next_info, _next_secret) = emulator_a
+        .next_vc_application_secret(&provider_a, CONTEXT)
+        .expect("alice_a takes an application secret from the new epoch");
+    assert_eq!(next_info.epoch_id, new_epoch);
+    assert_eq!(next_info.generation, 0);
+
+    let unknown_epoch = VcApplicationSecretInfo {
+        epoch_id: EpochId::new(b"unknown epoch".to_vec()),
+        ..next_info
+    };
+    let err = emulator_b
+        .derive_vc_application_secret(&provider_b, &unknown_epoch, CONTEXT)
+        .expect_err("an unknown derivation epoch has no state");
+    assert_eq!(err, VirtualClientsError::MissingDerivationEpochState);
+}
+
+#[openmls_test]
+fn vc_application_secret_requires_emulation_group() {
+    use openmls::components::{
+        vc_application_secret::VcApplicationSecretInfo, vc_derivation_info::VirtualClientsError,
+    };
+
+    let provider = Provider::default();
+    let (group, _signer) = make_emulator_group(ciphersuite, &provider, b"NotAnEmulator", false);
+
+    let info = VcApplicationSecretInfo {
+        epoch_id: EpochId::new(b"no such epoch".to_vec()),
+        leaf_index: group.own_leaf_index(),
+        generation: 0,
+    };
+    let err = group
+        .derive_vc_application_secret(&provider, &info, b"ctx")
+        .expect_err("a group without per-epoch state cannot rederive");
+    assert_eq!(err, VirtualClientsError::MissingDerivationEpochState);
+
+    let err = group
+        .next_vc_application_secret(&provider, b"ctx")
+        .expect_err("a group without a derivation epoch has no application ratchet");
+    assert_eq!(err, VirtualClientsError::NoDerivationEpoch);
+}

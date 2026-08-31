@@ -135,6 +135,10 @@ pub enum VirtualClientsError {
     /// The requested leaf index lies outside the operation secret tree.
     #[error("Leaf index is outside the operation secret tree.")]
     IndexOutOfBounds,
+    /// The coordinates of a sibling's operation name the calling client's own
+    /// leaf index.
+    #[error("The operation coordinates name the caller's own leaf index.")]
+    OwnLeafIndex,
     /// The operation secret for the requested generation was already derived
     /// and deleted for forward secrecy.
     #[error("The operation secret for this generation was already consumed.")]
@@ -1235,8 +1239,7 @@ fn import_secret(
 }
 
 impl OperationSecret {
-    /// Test-only accessor for comparing derived operation secrets.
-    #[cfg(test)]
+    /// The raw operation secret bytes.
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.0.as_slice()
     }
@@ -1423,15 +1426,16 @@ impl From<PathGenerationSecret> for PathSecret {
 /// secrets derived for different operations cannot collide even if the other
 /// fields happen to match.
 ///
-/// The operation type does not travel on the wire. Receivers infer it from
-/// the carrying LeafNode's `leaf_node_source`: `key_package` maps to
-/// [`KeyPackage`](Self::KeyPackage), `update` and `commit` map to
-/// [`LeafNode`](Self::LeafNode).
+/// The operation type does not travel on the wire. For the two operations
+/// that produce a LeafNode, receivers infer it from that leaf's
+/// `leaf_node_source`: `key_package` maps to [`KeyPackage`](Self::KeyPackage),
+/// `update` and `commit` map to [`LeafNode`](Self::LeafNode).
 ///
-/// Only `LeafNode` is wired into a sender path today (see `apply_vc_emulation`
-/// in the commit builder). `KeyPackage` and `Application` are reserved
-/// variants that a follow-up PR will emit, once the KeyPackage and
-/// application-message operation paths exist.
+/// [`Application`](Self::Application) secrets are not attached to a leaf. The
+/// application takes them from the ratchet directly and publishes the
+/// coordinates its siblings need, see the [`vc_application_secret`] module.
+///
+/// [`vc_application_secret`]: crate::components::vc_application_secret
 #[derive(Debug, Clone, Copy, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
 #[repr(u8)]
 pub enum VirtualClientOperationType {
