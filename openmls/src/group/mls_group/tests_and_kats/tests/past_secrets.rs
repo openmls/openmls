@@ -881,3 +881,36 @@ fn shrink_policy_keeps_the_store_ordered<Provider: OpenMlsProvider>(ciphersuite:
 
     assert_eq!(retained_epochs(&group), [1, 2]);
 }
+
+/// A store persisted by a version whose `resize` left the queue rotated comes back
+/// in order, so that the next commit again evicts the oldest epoch.
+#[openmls_test::openmls_test]
+fn rotated_store_is_normalized_on_load<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite) {
+    let policy = PastEpochDeletionPolicy::MaxEpochs(3);
+    let (provider, signer, mut group) = setup::<Provider>(ciphersuite, policy.clone());
+    apply_and_merge_commits(2, &provider, &signer, &mut group, policy);
+    assert_eq!(group.message_secrets_store().past_epochs(), [0, 1]);
+
+    // What shrinking to `MaxEpochs(2)` used to leave behind and write out.
+    let mut legacy = group.message_secrets_store().clone();
+    legacy.resize_as_before_the_fix(&PastEpochDeletionPolicy::MaxEpochs(2));
+    assert_eq!(legacy.past_epochs(), [1, 0]);
+    provider
+        .storage()
+        .write_message_secrets(group.group_id(), &legacy)
+        .expect("error writing message secrets");
+
+    let mut group = MlsGroup::load(provider.storage(), group.group_id())
+        .expect("error loading group")
+        .expect("no group for id");
+    assert_eq!(group.message_secrets_store().past_epochs(), [0, 1]);
+
+    // Without the normalization this evicts epoch 1 and leaves `0, 2`.
+    group
+        .update_group_context_extensions(&provider, Extensions::empty(), &signer)
+        .expect("error building commit");
+    group
+        .merge_pending_commit(&provider)
+        .expect("error merging commit");
+    assert_eq!(retained_epochs(&group), [1, 2]);
+}
