@@ -598,10 +598,12 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     fn write_vc_emulation_bindings<
         GroupId: traits::GroupId<V_TEST>,
         VcEmulationBindings: traits::VcEmulationBindings<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST>,
     >(
         &self,
         _group_id: &GroupId,
         _bindings: &VcEmulationBindings,
+        _bound_epochs: &[EpochId],
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -629,10 +631,12 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     fn write_registered_vc_derivation_epoch<
         GroupId: traits::GroupId<V_TEST>,
         RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST>,
     >(
         &self,
         _group_id: &GroupId,
         _registered: &RegisteredVcDerivationEpoch,
+        _epoch_id: &EpochId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
@@ -707,6 +711,22 @@ impl StorageProvider<V_TEST> for MemoryStorage {
 
     #[cfg(feature = "virtual-clients-draft")]
     fn has_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_vc_emulation_binding_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn has_registered_vc_derivation_epoch_for_epoch<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
         _epoch_id: &EpochId,
     ) -> Result<bool, Self::Error> {

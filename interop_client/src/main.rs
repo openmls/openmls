@@ -596,7 +596,9 @@ impl MlsClient for MlsClientImpl {
             )
             .map_err(into_status)?;
 
-        let response = ExportResponse { exported_secret };
+        let response = ExportResponse {
+            exported_secret: exported_secret.as_slice().to_vec(),
+        };
 
         info!(?response, "Response");
         Ok(Response::new(response))

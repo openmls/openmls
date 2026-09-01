@@ -60,11 +60,18 @@ pub(crate) mod migration_import;
 
 #[cfg(feature = "virtual-clients-draft")]
 pub use application::UnconfirmedMessage;
+pub use branch::BranchInfo;
+pub use exporting::{
+    ExportedSecret, GroupExport, ProcessedWelcomeExport, StagedCommitExport, StagedWelcomeExport,
+};
+#[cfg(feature = "extensions-draft")]
+pub use exporting::{GroupSafeExport, PendingSafeExport, StagedCommitSafeExport};
 pub use proposal::Propose;
 
 use config::*;
 
 // Crate
+pub(crate) mod branch;
 pub(crate) mod builder;
 pub(crate) mod commit_builder;
 pub(crate) mod config;
@@ -82,6 +89,9 @@ pub(crate) mod app_ephemeral;
 
 #[cfg(feature = "targeted-messages-draft")]
 mod targeted_messages;
+
+#[cfg(feature = "virtual-clients-draft")]
+mod vc_application_secret;
 
 // Tests
 #[cfg(test)]
@@ -785,6 +795,22 @@ impl MlsGroup {
         Ok(Some(state))
     }
 
+    /// Returns the [`EpochId`] of the derivation epoch this group is bound to
+    /// at `epoch`, or `None` if the group has no virtual-clients binding for
+    /// that epoch.
+    ///
+    /// [`EpochId`]: crate::components::vc_derivation_info::EpochId
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_derivation_epoch_at<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        epoch: GroupEpoch,
+    ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
+        let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> =
+            storage.vc_emulation_bindings(self.group_id())?;
+        Ok(bindings.and_then(|bindings| bindings.get(epoch).cloned()))
+    }
+
     /// Returns whether this group is an emulation group of a virtual client.
     ///
     /// The flag is set when the application creates the group as an emulation
@@ -1465,7 +1491,7 @@ impl WelcomeKeyMaterial {
 
     /// The local [`KeyPackageBundle`] on the regular path, or `None` on the
     /// virtual-client path. Checks that only apply when there is a local
-    /// KeyPackage to compare against branch on this.
+    /// KeyPackage to compare against branch on this value.
     pub fn key_package_bundle(&self) -> Option<&KeyPackageBundle> {
         match &self.inner {
             WelcomeKeyMaterialInner::KeyPackage(bundle) => Some(bundle),

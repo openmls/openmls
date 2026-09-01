@@ -1,8 +1,14 @@
+use std::{
+    fmt::{Debug, Formatter},
+    marker::PhantomData,
+};
+
 use errors::{ExportGroupInfoError, ExportSecretError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
+use zeroize::ZeroizeOnDrop;
 
 use crate::{
-    ciphersuite::HpkePublicKey,
+    ciphersuite::{HpkePublicKey, Secret},
     extensions::errors::InvalidExtensionError,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
 };
@@ -13,6 +19,90 @@ use crate::{
 };
 
 use super::*;
+
+/// A secret exported from a group.
+///
+/// The marker type `T` records which export function produced the secret, so
+/// secrets from different export paths cannot be confused.
+pub struct ExportedSecret<T> {
+    secret: Secret,
+    _marker: PhantomData<T>,
+}
+
+/// Marker for secrets exported via [`MlsGroup::export_secret`].
+pub struct GroupExport;
+
+/// Marker for secrets exported via [`StagedCommit::export_secret`].
+pub struct StagedCommitExport;
+
+/// Marker for secrets exported via [`StagedWelcome::export_secret`].
+pub struct StagedWelcomeExport;
+
+/// Marker for secrets exported via [`ProcessedWelcome::export_secret`].
+pub struct ProcessedWelcomeExport;
+
+/// Marker for secrets exported via [`MlsGroup::safe_export_secret`].
+#[cfg(feature = "extensions-draft")]
+pub struct GroupSafeExport;
+
+/// Marker for secrets exported via
+/// [`MlsGroup::safe_export_secret_from_pending`].
+#[cfg(feature = "extensions-draft")]
+pub struct PendingSafeExport;
+
+/// Marker for secrets exported via [`StagedCommit::safe_export_secret`] or
+/// [`ProcessedMessage::safe_export_secret`].
+///
+/// [`ProcessedMessage::safe_export_secret`]: crate::framing::ProcessedMessage::safe_export_secret
+#[cfg(feature = "extensions-draft")]
+pub struct StagedCommitSafeExport;
+
+impl<T> ExportedSecret<T> {
+    pub(crate) fn new(secret: Secret) -> Self {
+        Self {
+            secret,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Returns the secret bytes.
+    pub fn as_slice(&self) -> &[u8] {
+        self.secret.as_slice()
+    }
+}
+
+#[cfg(feature = "extensions-draft")]
+impl ExportedSecret<StagedCommitSafeExport> {
+    /// Re-wraps a safe export of a staged commit as a safe export of the
+    /// pending commit, for [`MlsGroup::safe_export_secret_from_pending`].
+    pub(crate) fn into_pending_safe_export(self) -> ExportedSecret<PendingSafeExport> {
+        ExportedSecret::new(self.secret)
+    }
+}
+
+impl<T> AsRef<[u8]> for ExportedSecret<T> {
+    fn as_ref(&self) -> &[u8] {
+        self.secret.as_slice()
+    }
+}
+
+// The inner [`Secret`] is zeroized when dropped.
+impl<T> ZeroizeOnDrop for ExportedSecret<T> {}
+
+impl<T> Debug for ExportedSecret<T> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_struct("ExportedSecret")
+            .field("secret", &self.secret)
+            .finish()
+    }
+}
+
+impl<T, U> PartialEq<ExportedSecret<U>> for ExportedSecret<T> {
+    // Constant time comparison.
+    fn eq(&self, other: &ExportedSecret<U>) -> bool {
+        self.secret == other.secret
+    }
+}
 
 impl MlsGroup {
     // === Export secrets ===
@@ -28,18 +118,19 @@ impl MlsGroup {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ExportSecretError> {
+    ) -> Result<ExportedSecret<GroupExport>, ExportSecretError> {
         if key_length > u16::MAX as usize {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExportSecretError::KeyLengthTooLong);
         }
 
         if self.is_active() {
-            Ok(self
-                .group_epoch_secrets
-                .exporter_secret()
-                .derive_exported_secret(self.ciphersuite(), crypto, label, context, key_length)
-                .map_err(LibraryError::unexpected_crypto_error)?)
+            Ok(ExportedSecret::new(
+                self.group_epoch_secrets
+                    .exporter_secret()
+                    .derive_exported_secret(self.ciphersuite(), crypto, label, context, key_length)
+                    .map_err(LibraryError::unexpected_crypto_error)?,
+            ))
         } else {
             Err(ExportSecretError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
@@ -55,7 +146,7 @@ impl MlsGroup {
         crypto: &Crypto,
         storage: &Storage,
         component_id: ComponentId,
-    ) -> Result<Vec<u8>, SafeExportSecretError<Storage::Error>> {
+    ) -> Result<ExportedSecret<GroupSafeExport>, SafeExportSecretError<Storage::Error>> {
         if !self.is_active() {
             return Err(SafeExportSecretError::GroupState(
                 MlsGroupStateError::UseAfterEviction,
@@ -72,7 +163,7 @@ impl MlsGroup {
             .write_application_export_tree(group_id, application_export_tree)
             .map_err(SafeExportSecretError::Storage)?;
 
-        Ok(component_secret.as_slice().to_vec())
+        Ok(ExportedSecret::new(component_secret))
     }
 
     /// Export a secret from the forward secure exporter of the pending commit
@@ -83,7 +174,8 @@ impl MlsGroup {
         crypto: &impl OpenMlsCrypto,
         storage: &Provider,
         component_id: ComponentId,
-    ) -> Result<Vec<u8>, PendingSafeExportSecretError<Provider::Error>> {
+    ) -> Result<ExportedSecret<PendingSafeExport>, PendingSafeExportSecretError<Provider::Error>>
+    {
         let group_id = self.group_id().clone();
         let MlsGroupState::PendingCommit(ref mut group_state) = self.group_state else {
             return Err(PendingSafeExportSecretError::NoPendingCommit);
@@ -95,7 +187,7 @@ impl MlsGroup {
         storage
             .write_group_state(&group_id, &self.group_state)
             .map_err(PendingSafeExportSecretError::Storage)?;
-        Ok(secret.as_slice().to_vec())
+        Ok(secret.into_pending_safe_export())
     }
 
     /// Returns the epoch authenticator of the current epoch.
@@ -106,6 +198,29 @@ impl MlsGroup {
     /// Returns the resumption PSK secret of the current epoch.
     pub fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
         self.group_epoch_secrets().resumption_psk()
+    }
+
+    /// Export the information a sub-group branch needs from this (parent) group,
+    /// as described in [RFC 9420 §11.3].
+    ///
+    /// Hand the resulting [`BranchInfo`] to the sender
+    /// ([`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch)) and to
+    /// the receiver
+    /// ([`StagedWelcome::build_from_branch`](crate::group::StagedWelcome::build_from_branch)).
+    ///
+    /// The returned [`BranchInfo`] carries this group's resumption PSK secret,
+    /// which is sensitive key material.
+    ///
+    /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+    pub fn branch_info(&self) -> BranchInfo {
+        BranchInfo {
+            version: self.version(),
+            ciphersuite: self.ciphersuite(),
+            group_id: self.group_id().clone(),
+            epoch: self.epoch(),
+            resumption_psk_secret: self.resumption_psk_secret().clone(),
+            member_credentials: self.members().map(|m| m.credential).collect(),
+        }
     }
 
     /// Returns a resumption psk for a given epoch. If no resumption psk

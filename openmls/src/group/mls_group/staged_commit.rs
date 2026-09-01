@@ -11,10 +11,13 @@ use super::proposal_store::{
 
 #[cfg(feature = "virtual-clients-draft")]
 use super::Sender;
+#[cfg(feature = "extensions-draft")]
+use super::StagedCommitSafeExport;
 use super::{
-    super::errors::*, load_psks, Credential, Extension, GroupContext, GroupEpochSecrets, GroupId,
-    JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup, MlsGroupState,
-    OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue, PskSecret, QueuedProposal,
+    super::errors::*, load_psks, Credential, ExportedSecret, Extension, GroupContext,
+    GroupEpochSecrets, GroupId, JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets,
+    MlsGroup, MlsGroupState, OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue,
+    PskSecret, QueuedProposal, StagedCommitExport,
 };
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
@@ -726,8 +729,11 @@ impl MlsGroup {
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
     /// from the previous epoch. The secret tree is returned if the Commit does not contain a self removal.
     ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a `LibraryError`.
+    /// Beyond a `LibraryError`, this fails on a storage error, and on an
+    /// emulation group it also fails if registering the derivation epoch the
+    /// commit creates fails. The group is already advanced in memory by then,
+    /// and a storage transaction does not roll that back, so a caller that sees
+    /// an error has to discard this group and load it again.
     pub(crate) fn merge_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -1156,7 +1162,7 @@ impl StagedCommit {
         &mut self,
         crypto: &impl OpenMlsCrypto,
         component_id: ComponentId,
-    ) -> Result<Vec<u8>, StagedSafeExportSecretError> {
+    ) -> Result<ExportedSecret<StagedCommitSafeExport>, StagedSafeExportSecretError> {
         let ciphersuite = self.group_context().ciphersuite();
         let StagedCommitState::GroupMember(ref mut staged_commit) = self.state else {
             return Err(StagedSafeExportSecretError::NotGroupMember);
@@ -1166,7 +1172,7 @@ impl StagedCommit {
         };
         let secret =
             application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
-        Ok(secret.as_slice().to_vec())
+        Ok(ExportedSecret::new(secret))
     }
 
     /// Exports a secret from the epoch that the staged commit moves to.
@@ -1182,7 +1188,7 @@ impl StagedCommit {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ExportSecretError> {
+    ) -> Result<ExportedSecret<StagedCommitExport>, ExportSecretError> {
         if key_length > u16::MAX as usize {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExportSecretError::KeyLengthTooLong);
@@ -1192,8 +1198,8 @@ impl StagedCommit {
             StagedCommitState::PublicState(_public_staged_commit_state) => Err(
                 ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction),
             ),
-            StagedCommitState::GroupMember(member_staged_commit_state) => {
-                Ok(member_staged_commit_state
+            StagedCommitState::GroupMember(member_staged_commit_state) => Ok(ExportedSecret::new(
+                member_staged_commit_state
                     .group_epoch_secrets
                     .exporter_secret()
                     .derive_exported_secret(
@@ -1203,8 +1209,8 @@ impl StagedCommit {
                         context,
                         key_length,
                     )
-                    .map_err(LibraryError::unexpected_crypto_error)?)
-            }
+                    .map_err(LibraryError::unexpected_crypto_error)?,
+            )),
         }
     }
 }

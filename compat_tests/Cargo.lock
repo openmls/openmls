@@ -1712,19 +1712,19 @@ dependencies = [
 
 [[package]]
 name = "openmls"
-version = "0.9.0-rc.1"
+version = "0.9.0"
 dependencies = [
  "backtrace",
  "itertools 0.14.0",
  "log",
  "once_cell",
- "openmls_basic_credential 0.6.0-rc.1",
+ "openmls_basic_credential 0.6.0",
  "openmls_libcrux_crypto",
- "openmls_memory_storage 0.6.0-rc.1",
+ "openmls_memory_storage 0.6.0",
  "openmls_rust_crypto",
  "openmls_serialization_helpers",
  "openmls_test",
- "openmls_traits 0.6.0-rc.1",
+ "openmls_traits 0.6.0",
  "rand 0.10.2",
  "rayon",
  "serde",
@@ -1764,11 +1764,11 @@ dependencies = [
 
 [[package]]
 name = "openmls_basic_credential"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "ed25519-dalek",
  "ml-dsa",
- "openmls_traits 0.6.0-rc.1",
+ "openmls_traits 0.6.0",
  "p256",
  "p384",
  "rand_core 0.6.4",
@@ -1785,14 +1785,14 @@ dependencies = [
  "openmls 0.7.1",
  "openmls 0.7.4",
  "openmls 0.8.1",
- "openmls 0.9.0-rc.1",
+ "openmls 0.9.0",
  "openmls_basic_credential 0.4.1",
  "openmls_basic_credential 0.5.0",
- "openmls_basic_credential 0.6.0-rc.1",
+ "openmls_basic_credential 0.6.0",
  "openmls_libcrux_crypto",
  "openmls_traits 0.4.1 (git+https://github.com/openmls/openmls.git?branch=openmls-v0.7.4-migration-helpers)",
  "openmls_traits 0.5.0",
- "openmls_traits 0.6.0-rc.1",
+ "openmls_traits 0.6.0",
  "postcard",
  "serde",
  "serde_json",
@@ -1802,7 +1802,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_libcrux_crypto"
-version = "0.4.0-rc.1"
+version = "0.4.0"
 dependencies = [
  "aes",
  "fpe",
@@ -1816,8 +1816,8 @@ dependencies = [
  "libcrux-hmac-drbg",
  "libcrux-sha2",
  "libcrux-traits",
- "openmls_memory_storage 0.6.0-rc.1",
- "openmls_traits 0.6.0-rc.1",
+ "openmls_memory_storage 0.6.0",
+ "openmls_traits 0.6.0",
  "rand 0.10.2",
  "tls_codec 0.5.0",
 ]
@@ -1837,11 +1837,11 @@ dependencies = [
 
 [[package]]
 name = "openmls_memory_storage"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "hex",
  "log",
- "openmls_traits 0.6.0-rc.1",
+ "openmls_traits 0.6.0",
  "serde",
  "serde_json",
  "thiserror 2.0.19",
@@ -1849,7 +1849,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_rust_crypto"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1862,8 +1862,8 @@ dependencies = [
  "hpke-rs-crypto",
  "hpke-rs-rust-crypto",
  "ml-dsa",
- "openmls_memory_storage 0.6.0-rc.1",
- "openmls_traits 0.6.0-rc.1",
+ "openmls_memory_storage 0.6.0",
+ "openmls_traits 0.6.0",
  "p256",
  "p384",
  "rand_chacha 0.3.1",
@@ -1876,7 +1876,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_serialization_helpers"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1899,10 +1899,10 @@ dependencies = [
 
 [[package]]
 name = "openmls_test"
-version = "0.3.0-rc.1"
+version = "0.3.0"
 dependencies = [
  "openmls_rust_crypto",
- "openmls_traits 0.6.0-rc.1",
+ "openmls_traits 0.6.0",
  "quote",
  "syn 2.0.119",
 ]
@@ -1937,7 +1937,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_traits"
-version = "0.6.0-rc.1"
+version = "0.6.0"
 dependencies = [
  "serde",
  "tls_codec 0.5.0",
