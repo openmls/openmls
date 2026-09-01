@@ -45,6 +45,10 @@ draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
     "openmls_memory_storage/draft-ietf-mls-pq-ciphersuites",
     "dep:libcrux-ml-dsa",
+    # NOTE: on hpke-rs 0.7.0 this only makes ML-KEM available in the libcrux
+    # backend. On hpke-rs main (celabshq/libcrux#1539, unreleased) this flag is
+    # deprecated, selects the older unlabeled DeriveKeyPair, and is mutually
+    # exclusive with `draft-ietf-hpke-pq` -- revisit when bumping hpke-rs.
     "hpke-rs-libcrux/draft-connolly-cfrg-hpke-mlkem",
     "openmls_rust_crypto/draft-ietf-mls-pq-ciphersuites",
 ]
