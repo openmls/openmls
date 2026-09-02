@@ -5,7 +5,10 @@
 //! MLS protocol implementation, including in KeyPackages, capabilities,
 //! proposals, and validation logic.
 
-use openmls::prelude::*;
+use openmls::prelude::{
+    tls_codec::{Deserialize, Serialize},
+    *,
+};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::Ciphersuite;
@@ -474,4 +477,25 @@ fn test_grease_injection_in_groups_via_with_grease() {
         has_grease_credential,
         "with_grease() should add a GREASE credential"
     );
+}
+
+#[test]
+fn test_grease_ciphersuite_rejected_in_wire_position() {
+    let provider = OpenMlsRustCrypto::default();
+    let (credential, signer) = create_credential(b"Alice");
+    let key_package = KeyPackage::builder()
+        .build(
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            &provider,
+            &signer,
+            credential,
+        )
+        .expect("Failed to create KeyPackage");
+
+    // Protocol version (2 bytes), then the ciphersuite (2 bytes).
+    let mut bytes = key_package.key_package().tls_serialize_detached().unwrap();
+    assert_eq!(&bytes[2..4], &[0x00, 0x01]);
+    bytes[2..4].copy_from_slice(&[0x0A, 0x0A]);
+
+    assert!(KeyPackageIn::tls_deserialize_exact(bytes.as_slice()).is_err());
 }
