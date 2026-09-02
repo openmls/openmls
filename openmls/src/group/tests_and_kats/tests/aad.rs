@@ -76,7 +76,7 @@ fn test_add_member_with_aad() {
         )
         .expect("An unexpected error occurred.");
 
-        let aad = b"Test AAD".to_vec();
+        let aad = b"Test AAD commit".to_vec();
 
         alice_group.set_aad(aad.clone());
 
@@ -96,6 +96,10 @@ fn test_add_member_with_aad() {
             .merge_pending_commit(alice_provider)
             .expect("error merging pending commit");
 
+        assert_eq!(alice_group.aad(), b"");
+
+        // TODO: Check that Test aad commit is set on commit object
+
         let welcome: MlsMessageIn = welcome.into();
         let welcome = welcome
             .into_welcome()
@@ -111,9 +115,13 @@ fn test_add_member_with_aad() {
         .into_group(bob_provider)
         .expect("Error creating group from staged join");
 
+        // TODO: Is there AAD on the welcome message?
+
         // === Alice sends a message to Bob ===
 
         let message = b"Hello, World!".to_vec();
+        let aad = b"Test AAD message".to_vec();
+
         alice_group.set_aad(aad.clone());
         let alice_message: MlsMessageIn = alice_group
             .create_message(
@@ -125,7 +133,7 @@ fn test_add_member_with_aad() {
             .into();
 
         // Test the AAD was reset
-        assert_eq!(alice_group.aad().len(), 0);
+        assert_eq!(alice_group.aad(), b"");
 
         let bob_message = bob_group
             .process_message(
@@ -138,6 +146,8 @@ fn test_add_member_with_aad() {
         assert_eq!(bob_message.aad(), &aad);
 
         // === Alice adds Charlie ===
+
+        let aad = b"Test AAD commit 2".to_vec();
 
         alice_group.set_aad(aad.clone());
         let (commit, _welcome, _group_info) = alice_group
@@ -152,7 +162,8 @@ fn test_add_member_with_aad() {
             .expect("error merging pending commit");
 
         // Test the AAD was reset
-        assert_eq!(alice_group.aad().len(), 0);
+        assert_eq!(alice_group.aad(), b"");
+        // TODO: Test aad was set on commit / welcome.
 
         let bob_processed_message = bob_group
             .process_message(
@@ -160,6 +171,9 @@ fn test_add_member_with_aad() {
                 commit.clone().into_protocol_message().unwrap(),
             )
             .expect("Error handling message");
+
+        // Test the AAD was set correctly
+        assert_eq!(bob_processed_message.aad(), &aad);
 
         match bob_processed_message.into_content() {
             ProcessedMessageContent::StagedCommitMessage(bob_staged_commit) => {
@@ -170,10 +184,9 @@ fn test_add_member_with_aad() {
             _ => panic!("Expected a StagedCommitMessage"),
         }
 
-        // Test the AAD was set correctly
-        assert_eq!(bob_message.aad(), &aad);
-
         // === Alice removes Charlie ===
+
+        let aad = b"Test AAD commit 3".to_vec();
 
         alice_group.set_aad(aad.clone());
         let (commit, _welcome, _group_info) = alice_group
@@ -188,7 +201,8 @@ fn test_add_member_with_aad() {
             .expect("error merging pending commit");
 
         // Test the AAD was reset
-        assert_eq!(alice_group.aad().len(), 0);
+        assert_eq!(alice_group.aad(), b"");
+        // TODO" Test aad was set on commit / welcome?
 
         let bob_processed_message = bob_group
             .process_message(
