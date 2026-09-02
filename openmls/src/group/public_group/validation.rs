@@ -8,6 +8,7 @@ use openmls_traits::types::VerifiableCiphersuite;
 use super::PublicGroup;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::signature::SignaturePublicKey,
     extensions::RequiredCapabilitiesExtension,
     framing::{
         mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
@@ -193,6 +194,11 @@ impl PublicGroup {
     ///  - [valn0111]: Verify that the following fields are unique among the members of the group: `signature_key`
     ///  - [valn0112]: Verify that the following fields are unique among the members of the group: `encryption_key`
     ///
+    /// `path_leaf_signature_key` is the signature key of the leaf node the
+    /// commit's path installs for `sender`. It is passed separately from
+    /// `commit` because the path of a commit under construction does not exist
+    /// yet. The signature key of its leaf node is already fixed, though.
+    ///
     /// [valn0111]: https://validation.openmls.tech/#valn0111
     /// [valn0112]: https://validation.openmls.tech/#valn0112
     /// [valn1208]: https://validation.openmls.tech/#valn1208
@@ -200,17 +206,27 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
         commit: Option<&Commit>,
+        sender: &Sender,
+        path_leaf_signature_key: Option<&SignaturePublicKey>,
     ) -> Result<(), ProposalValidationError> {
         let mut signature_key_set = HashSet::new();
         let mut init_key_set = HashSet::new();
         let mut encryption_key_set = HashSet::new();
 
         // Handle the exceptions needed for https://validation.openmls.tech/#valn0306
-        let remove_proposals = HashSet::<LeafNodeIndex>::from_iter(
-            proposal_queue
-                .remove_proposals()
-                .map(|remove_proposal| remove_proposal.remove_proposal().removed),
-        );
+        let removed_members = proposal_queue
+            .remove_proposals()
+            .map(|remove_proposal| remove_proposal.remove_proposal().removed)
+            .chain(
+                proposal_queue
+                    .filtered_by_type(ProposalType::SelfRemove)
+                    .filter_map(|self_remove| self_remove.sender().as_member()),
+            )
+            .collect::<HashSet<LeafNodeIndex>>();
+
+        // The leaf node in the path replaces the committer's leaf, so the
+        // committer's current signature key is not compared with it.
+        let replaced_leaf = path_leaf_signature_key.and_then(|_| sender.as_member());
 
         // Initialize the sets with the current members, filtered by the
         // remove proposals.
@@ -221,22 +237,29 @@ impl PublicGroup {
             ..
         } in self.treesync().full_leaf_members()
         {
-            if !remove_proposals.contains(&index) {
+            if removed_members.contains(&index) {
+                continue;
+            }
+            encryption_key_set.insert(encryption_key);
+            if replaced_leaf != Some(index) {
                 signature_key_set.insert(signature_key);
-                encryption_key_set.insert(encryption_key);
             }
         }
 
-        // Collect signature keys from add proposals
-        let signature_keys = proposal_queue.add_proposals().map(|add_proposal| {
-            add_proposal
-                .add_proposal()
-                .key_package()
-                .leaf_node()
-                .signature_key()
-                .as_slice()
-                .to_vec()
-        });
+        // Collect signature keys from add proposals and the commit path leaf
+        // node
+        let signature_keys = proposal_queue
+            .add_proposals()
+            .map(|add_proposal| {
+                add_proposal
+                    .add_proposal()
+                    .key_package()
+                    .leaf_node()
+                    .signature_key()
+                    .as_slice()
+                    .to_vec()
+            })
+            .chain(path_leaf_signature_key.map(|signature_key| signature_key.as_slice().to_vec()));
 
         // Collect encryption keys from add proposals, update proposals, the
         // commit leaf node and path keys
@@ -295,6 +318,7 @@ impl PublicGroup {
         //  - https://validation.openmls.tech/#valn0111
         //  - https://validation.openmls.tech/#valn0305
         //  - https://validation.openmls.tech/#valn0306
+        //  - https://validation.openmls.tech/#valn1207
         for signature_key in signature_keys {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKey);

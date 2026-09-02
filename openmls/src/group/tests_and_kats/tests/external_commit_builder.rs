@@ -234,6 +234,179 @@ fn external_commit_builder() {
         .any(|m| m.credential == charlie_credential_with_key.credential));
 }
 
+#[openmls_test]
+fn external_commit_after_self_remove() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: alice_credential_with_key,
+        signer: alice_signer,
+    } = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: bob_credential_with_key,
+        signer: bob_signer,
+    } = generate_credential_with_key(
+        b"bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    let capabilities = Capabilities::builder()
+        .proposals(vec![ProposalType::SelfRemove])
+        .build();
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .with_capabilities(capabilities.clone())
+        .build(
+            alice_provider,
+            &alice_signer,
+            alice_credential_with_key.clone(),
+        )
+        .unwrap();
+
+    let join_group_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build();
+
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_capabilities(capabilities)
+        .build();
+
+    // Bob joins the group externally.
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, true)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+        .with_config(join_group_config.clone())
+        .build_group(
+            bob_provider,
+            verifiable_group_info,
+            bob_credential_with_key.clone(),
+        )
+        .unwrap()
+        .leaf_node_parameters(leaf_node_parameters.clone())
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(bob_provider)
+        .unwrap();
+
+    let processed_message = alice_group
+        .process_message(
+            alice_provider,
+            commit_message_bundle
+                .into_commit()
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a staged commit message.");
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, *staged_commit)
+        .unwrap();
+
+    // Bob leaves through a SelfRemove proposal, which Alice stores.
+    let msg_out = bob_group
+        .leave_group_via_self_remove(bob_provider, &bob_signer)
+        .unwrap();
+    let ProtocolMessage::PublicMessage(self_remove_proposal) =
+        msg_out.into_protocol_message().unwrap()
+    else {
+        panic!("Expected a public message for the self-remove proposal.");
+    };
+
+    let processed_message = alice_group
+        .process_message(alice_provider, *self_remove_proposal.clone())
+        .unwrap();
+    let ProcessedMessageContent::ProposalMessage(proposal) = processed_message.into_content()
+    else {
+        panic!("Expected a proposal message.");
+    };
+    alice_group
+        .store_pending_proposal(alice_provider.storage(), *proposal)
+        .unwrap();
+
+    // Bob rejoins with the same credential, referencing his SelfRemove.
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, true)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    let (bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+        .with_proposals(vec![*self_remove_proposal])
+        .with_config(join_group_config)
+        .build_group(
+            bob_provider,
+            verifiable_group_info,
+            bob_credential_with_key.clone(),
+        )
+        .unwrap()
+        .leaf_node_parameters(leaf_node_parameters)
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(bob_provider)
+        .unwrap();
+
+    let processed_message = alice_group
+        .process_message(
+            alice_provider,
+            commit_message_bundle
+                .into_commit()
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a staged commit message.");
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, *staged_commit)
+        .unwrap();
+
+    // Alice and Bob are the only members and Bob's signature key is in the
+    // tree exactly once.
+    let members = alice_group.members().collect::<Vec<_>>();
+    assert_eq!(members, bob_group.members().collect::<Vec<_>>());
+    assert_eq!(members.len(), 2);
+    assert!(members
+        .iter()
+        .any(|m| m.credential == alice_credential_with_key.credential));
+    assert!(members
+        .iter()
+        .any(|m| m.credential == bob_credential_with_key.credential));
+}
+
 // An external commit with a consistent credential, signature key and signer
 // succeeds, even when the leaf node parameters repeat the credential passed to
 // the external commit builder. The generated leaf carries that credential and

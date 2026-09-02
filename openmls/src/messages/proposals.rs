@@ -378,6 +378,7 @@ impl Proposal {
             (Proposal::Remove(_), Proposal::Remove(_)) => true,
             // SelfRemoves have the highest priority.
             (_, Proposal::SelfRemove) => true,
+            (Proposal::SelfRemove, Proposal::Update(_) | Proposal::Remove(_)) => false,
             _ => {
                 debug_assert!(false);
                 false

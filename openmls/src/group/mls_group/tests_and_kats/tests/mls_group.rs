@@ -4021,6 +4021,38 @@ fn commit_with_new_signer_mismatched_credential() {
     assert_eq!(err, CreateCommitError::InvalidLeafNodeParameters);
 }
 
+// https://validation.openmls.tech/#valn0111
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_duplicate_signature_key() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (mut alice_group, alice_signer, _bob_group, bob_signer, _, bob_credential_with_key) =
+        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+    let new_signer = NewSignerBundle {
+        signer: &bob_signer,
+        credential_with_key: bob_credential_with_key,
+    };
+
+    let err = alice_group
+        .commit_builder()
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build_with_new_signer(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            new_signer,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        CreateCommitError::ProposalValidationError(ProposalValidationError::DuplicateSignatureKey)
+    );
+}
+
 // Alice proposes a signer swap; Bob processes the proposal (envelope verifies
 // against Alice's OLD leaf sig key, embedded leaf verifies against the NEW sig
 // key), stores it, and commits it. After both merge, everyone's view of
