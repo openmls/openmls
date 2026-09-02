@@ -4,11 +4,14 @@ use crate::{
     framing::*,
     group::{
         tests_and_kats::utils::{generate_credential_with_key, generate_key_package},
+        mls_group::{
+            tests_and_kats::utils::{setup_alice_group, setup_client},
+        },
         *,
     },
 };
 
-// Tests the different variants of the RemoveOperation enum.
+// Tests AAD in end-to-end group creation, message and removal with three members.
 #[openmls_test::openmls_test]
 fn test_add_member_with_aad() {
     // Test over both wire format policies
@@ -197,4 +200,230 @@ fn test_add_member_with_aad() {
         // Test the AAD was set correctly
         assert_eq!(bob_processed_message.aad(), &aad);
     }
+}
+
+
+
+#[openmls_test::openmls_test]
+fn test_set_aad() {
+    use crate::test_utils::single_group_test_framework::*;
+    let alice_party = CorePartyState::<Provider>::new("alice");
+
+    let create_config = MlsGroupCreateConfig::test_default_from_ciphersuite(ciphersuite);
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    let mut group_state = GroupState::new_from_party(
+        group_id,
+        alice_party.generate_pre_group(ciphersuite),
+        create_config.clone(),
+    )
+    .unwrap();
+
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let aad: Vec<u8> = b"Test AAD".to_vec();
+    alice.group.set_aad(aad);
+
+    assert_eq!(alice.group.aad(), b"Test AAD");
+}
+
+#[openmls_test::openmls_test]
+fn test_aad_commit() {
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    let aad: Vec<u8> = b"Test AAD".to_vec();
+    group.set_aad(aad);
+
+    let message_bundle = group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+            true
+        })
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    assert_eq!(group.aad(), b"");
+
+    let processed_message = group
+        .process_message(provider, message_bundle
+            .commit()
+            .clone()
+            .into_protocol_message()
+            .unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(processed_message.aad(), b"Test AAD");
+}
+
+#[openmls_test::openmls_test]
+fn test_aad_commit_with_group_info() {
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    let aad: Vec<u8> = b"Test AAD".to_vec();
+    group.set_aad(aad);
+
+    let message_bundle = group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .create_group_info(true)
+        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+            true
+        })
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    assert_eq!(group.aad(), b"");
+
+    message_bundle.group_info().expect("expected group info in commit");
+
+    let processed_message = group
+        .process_message(provider, message_bundle
+            .commit()
+            .clone()
+            .into_protocol_message()
+            .unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(processed_message.aad(), b"Test AAD");
+}
+
+
+#[openmls_test::openmls_test]
+fn test_aad_commit_with_welcome() {
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    let aad: Vec<u8> = b"Test AAD".to_vec();
+    group.set_aad(aad);
+
+    let bob_provider = &Provider::default();
+    let (_, bob_pkb, _bob_signer, _) = setup_client("Bob", ciphersuite, bob_provider);
+
+    let message_bundle = group
+        .commit_builder()
+        .propose_adds(Some(bob_pkb.into_key_package()))
+        .load_psks(provider.storage())
+        .unwrap()
+        .use_ratchet_tree_extension(true) // TODO; named differently than on the external commit builder
+        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+            true
+        })
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    assert_eq!(group.aad(), b"");
+
+    let welcome = message_bundle.welcome().expect("expected welcome message in commit");
+
+    let processed_message = group
+        .process_message(provider, message_bundle
+            .commit()
+            .clone()
+            .into_protocol_message()
+            .unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(processed_message.aad(), b"Test AAD");
+
+    StagedWelcome::new_from_welcome(
+        bob_provider,
+        group.configuration(),
+        welcome.clone(),
+        None,
+    )
+    .expect("expected valid welcome")
+    .into_group(bob_provider)
+    .expect("welcome to create group");
+
+// TODO: mutation test for adding aad to welcome!
+}
+
+#[openmls_test::openmls_test]
+fn test_aad_application_message() {
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    let aad: Vec<u8> = b"Test AAD".to_vec();
+    group.set_aad(aad);
+
+    let message_bundle = group
+        .create_message(provider, &signer, b"Test Message")
+        .unwrap();
+
+    assert_eq!(group.aad(), b"");
+
+    let processed_message = group
+        .process_message(
+            provider,
+            message_bundle.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(processed_message.aad(), b"Test AAD");
+}
+
+#[openmls_test::openmls_test]
+fn test_aad_propose_add() {
+
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    let aad: Vec<u8> = b"Test AAD".to_vec();
+    group.set_aad(aad);
+
+    // TODO: Cleaner way to create key package?
+    let (_, bob_pkb, _, _) = setup_client("Bob", ciphersuite, &Provider::default());
+
+    // TODO: difference to create_add_proposal?
+    let (message_bundle, _) = group
+        .propose_add_member(provider, &signer, bob_pkb.key_package())
+        .unwrap();
+
+    assert_eq!(group.aad(), b"");
+
+    let alice_processed_message = group
+        .process_message(
+            provider,
+            message_bundle.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+}
+
+#[openmls_test::openmls_test]
+fn test_aad_propose_add_by_value() {
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    let aad: Vec<u8> = b"Test AAD".to_vec();
+    group.set_aad(aad);
+
+    let (_, bob_pkb, _, _) = setup_client("Bob", ciphersuite, &Provider::default());
+
+    let (message_bundle, _) = group
+        .propose_add_member_by_value(provider, &signer,  bob_pkb.into_key_package())
+        .unwrap();
+
+    assert_eq!(group.aad(), b"");
+
+    let alice_processed_message = group
+        .process_message(
+            provider,
+            message_bundle.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(alice_processed_message.aad(), b"Test AAD");
 }
