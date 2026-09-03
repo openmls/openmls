@@ -2574,6 +2574,141 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
     }
 }
 
+#[openmls_test]
+fn welcome_join_takes_over_epoch_reference_from_retained_material() {
+    use openmls::components::vc_derivation_info::{
+        assemble_vc_key_package_upload, process_vc_key_package_upload,
+    };
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA", true);
+    let (_e_commit, mut emulator_b, _emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &alice_a_provider,
+        &emulator_a_signer,
+        &alice_b_provider,
+        b"AliceEmulatorB",
+    );
+    let epoch_id = newest_epoch(&emulator_b, &alice_b_provider);
+
+    // alice_a publishes a KeyPackage and alice_b retains its material.
+    let mut batch = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            ciphersuite,
+            &alice_a_provider,
+            &vc_signer,
+            vc_credential.clone(),
+            emulator_a.group_id(),
+            1,
+        )
+        .expect("alice_a build_vc_batch");
+    let generation = batch.generation;
+    let batch_epoch_id = batch.epoch_id.clone();
+    let (vc_key_package_bundle, kp_info) = batch.key_packages.remove(0);
+    let upload = assemble_vc_key_package_upload(
+        alice_a_provider.storage(),
+        batch_epoch_id,
+        generation,
+        vec![kp_info],
+    )
+    .expect("assemble upload");
+    process_vc_key_package_upload(&alice_b_provider, &upload).expect("alice_b process upload");
+
+    // alice_b deletes its emulation group, dropping the derivation-epoch log.
+    // The retained material is now the epoch's only reference and keeps its
+    // state alive through the delete-time sweep.
+    emulator_b
+        .delete(alice_b_provider.storage())
+        .expect("alice_b delete emulation group");
+    let state: Option<VcDerivationEpochState> = alice_b_provider
+        .storage()
+        .vc_derivation_epoch_state(&epoch_id)
+        .expect("read epoch state after group delete");
+    assert!(
+        state.is_some(),
+        "the retained material must keep the epoch state alive"
+    );
+
+    // Bob adds the virtual client via the published KeyPackage.
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut bob_main = MlsGroup::new(
+        &bob_provider,
+        &bob_signer,
+        &bob_group_config,
+        bob_credential,
+    )
+    .expect("bob create higher-level group");
+    let (_commit, welcome, _gi) = bob_main
+        .add_members(
+            &bob_provider,
+            &bob_signer,
+            &[vc_key_package_bundle.key_package().clone()],
+        )
+        .expect("bob add virtual client");
+    bob_main
+        .merge_pending_commit(&bob_provider)
+        .expect("bob merge add");
+    let ratchet_tree = bob_main.export_ratchet_tree();
+
+    // The join consumes the material and binds the joined group to the epoch,
+    // so the epoch state survives the join.
+    let processed = openmls::group::ProcessedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &vc_join_config(),
+        welcome.into_welcome().expect("welcome present"),
+    )
+    .expect("alice_b process welcome");
+    let mut alice_b_main = processed
+        .into_staged_welcome(&alice_b_provider, Some(ratchet_tree.into()))
+        .expect("alice_b stage welcome")
+        .into_group(&alice_b_provider)
+        .expect("alice_b join higher-level group");
+
+    let state: Option<VcDerivationEpochState> = alice_b_provider
+        .storage()
+        .vc_derivation_epoch_state(&epoch_id)
+        .expect("read epoch state after the join");
+    assert!(
+        state.is_some(),
+        "the joined group's binding must keep the epoch state alive"
+    );
+    let unconfirmed = alice_b_main
+        .create_unconfirmed_message(&alice_b_provider, &vc_signer, b"bound send")
+        .expect("alice_b create unconfirmed message");
+    assert!(
+        unconfirmed.generation_id.is_some(),
+        "a group joined through a virtual client's KeyPackage must be bound"
+    );
+
+    // Deleting the joined group drops the binding, the epoch's last reference.
+    alice_b_main
+        .delete(alice_b_provider.storage())
+        .expect("alice_b delete higher-level group");
+    let state: Option<VcDerivationEpochState> = alice_b_provider
+        .storage()
+        .vc_derivation_epoch_state(&epoch_id)
+        .expect("read epoch state after the group delete");
+    assert!(
+        state.is_none(),
+        "deleting the last group bound to the epoch must release its key material"
+    );
+}
+
 /// Regression test for the batch-model switch. A virtual client builds one
 /// batch of KeyPackages larger than the operation tree's
 /// `OUT_OF_ORDER_TOLERANCE` (32), so the old per-KeyPackage-generation model

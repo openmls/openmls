@@ -1640,6 +1640,16 @@ impl WelcomeKeyMaterial {
         }
     }
 
+    /// The derivation epoch the virtual-client material belongs to, or `None`
+    /// on the regular path.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn vc_epoch_id(&self) -> Option<&crate::components::vc_derivation_info::EpochId> {
+        match &self.inner {
+            WelcomeKeyMaterialInner::KeyPackage(_) => None,
+            WelcomeKeyMaterialInner::VirtualClient(material) => Some(&material.epoch_id),
+        }
+    }
+
     /// The joiner's leaf encryption keypair.
     fn encryption_key_pair(&self) -> EncryptionKeyPair {
         match &self.inner {

@@ -276,11 +276,13 @@ processes the commit as an ordinary commit. The permissive handling is framed
 around the receiver, who may not be a sibling. The sender is always a sibling.
 
 When a commit that carries a `DerivationInfo` is merged, the client stores a
-binding from `(GroupId, GroupEpoch)` to the `EpochId` from that leaf. The
-binding is keyed by epoch, not just group id, because a delayed application
-message from an earlier higher-level epoch must be processed with the derivation
-epoch that was active then. Bindings follow the same retention window as the
-message secrets store.
+binding from `(GroupId, GroupEpoch)` to the `EpochId` from that leaf. Joining a
+higher-level group through a virtual client's KeyPackage, by Welcome or by
+external commit, binds the joined epoch to the KeyPackage's derivation epoch the
+same way. The binding is keyed by epoch, not just group id, because a delayed
+application message from an earlier higher-level epoch must be processed with
+the derivation epoch that was active then. Bindings follow the same retention
+window as the message secrets store.
 
 ## Confirming handshake messages
 

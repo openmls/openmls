@@ -689,6 +689,25 @@ impl StagedWelcome {
         // resize the store
         mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
 
+        // A join through a virtual client's KeyPackage binds the joined epoch
+        // to the KeyPackage's derivation epoch, which also keeps the epoch
+        // referenced after `keys_for_welcome` consumed the retained material.
+        // Written before the group itself, so an error between the writes
+        // cannot leave a loadable group without a binding (a bound group is
+        // required for the reuse-guard MUST).
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(epoch_id) = self.key_material.vc_epoch_id() {
+            let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
+            crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+                provider.storage(),
+                mls_group.group_id(),
+                mls_group.epoch(),
+                epoch_id.clone(),
+                max_entries,
+            )
+            .map_err(WelcomeError::StorageError)?;
+        }
+
         mls_group
             .store(provider.storage())
             .map_err(WelcomeError::StorageError)?;
@@ -1034,6 +1053,10 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
                     );
                     VirtualClientsError::StorageError
                 })?;
+            // Consuming the material drops a reference to its derivation
+            // epoch. The epoch is not swept here: staging still reads its
+            // state, and `StagedWelcome::into_group` binds the joined group
+            // to it.
             return Ok((
                 resumption_psk_store,
                 WelcomeKeyMaterial::with_vc_welcome_material(material),
