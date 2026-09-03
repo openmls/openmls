@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 struct TestEpochId(Vec<u8>);
 impl traits::VcEpochId<CURRENT_VERSION> for TestEpochId {}
 impl Key<CURRENT_VERSION> for TestEpochId {}
+impl Entity<CURRENT_VERSION> for TestEpochId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 struct TestOperationTree(Vec<u8>);
@@ -39,145 +40,142 @@ impl traits::GroupId<CURRENT_VERSION> for TestGroupId {}
 impl Key<CURRENT_VERSION> for TestGroupId {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-struct TestEmulationBindings(Vec<u8>);
-impl traits::VcEmulationBindings<CURRENT_VERSION> for TestEmulationBindings {}
-impl Entity<CURRENT_VERSION> for TestEmulationBindings {}
+struct TestGroupEpoch(u64);
+impl traits::EpochKey<CURRENT_VERSION> for TestGroupEpoch {}
+impl Key<CURRENT_VERSION> for TestGroupEpoch {}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-struct TestRegistered(Vec<u8>);
-impl traits::RegisteredVcDerivationEpoch<CURRENT_VERSION> for TestRegistered {}
-impl Entity<CURRENT_VERSION> for TestRegistered {}
+struct TestBinding(Vec<u8>);
+impl traits::VcEmulationBinding<CURRENT_VERSION> for TestBinding {}
+impl Entity<CURRENT_VERSION> for TestBinding {}
 
-/// An emulation group's registration record keeps its epoch's state alive. A
-/// newer registration replaces the projection entry and releases the epoch,
-/// and so does deleting the record.
-#[test]
-fn registration_keeps_epoch_state_alive() {
-    let storage = MemoryStorage::default();
-    let epoch_id = TestEpochId(b"RegisteredEpoch".to_vec());
-    let group_id = TestGroupId(b"emulation-group".to_vec());
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+struct TestLogEntry(Vec<u8>);
+impl traits::VcDerivationEpochLogEntry<CURRENT_VERSION> for TestLogEntry {}
+impl Entity<CURRENT_VERSION> for TestLogEntry {}
 
+fn sweep(storage: &MemoryStorage) -> Vec<TestEpochId> {
     storage
-        .write_vc_derivation_epoch_state(&epoch_id, &TestDerivationState(b"state".to_vec()))
-        .unwrap();
-    assert!(!storage
-        .has_registered_vc_derivation_epoch_for_epoch(&epoch_id)
-        .unwrap());
-
-    storage
-        .write_registered_vc_derivation_epoch(
-            &group_id,
-            &TestRegistered(b"registration".to_vec()),
-            &epoch_id,
-        )
-        .unwrap();
-    assert!(storage
-        .has_registered_vc_derivation_epoch_for_epoch(&epoch_id)
-        .unwrap());
-
-    // Nothing else references the epoch, so the registration alone has to
-    // keep the state.
-    assert!(!storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap());
-    let read_state: Option<TestDerivationState> =
-        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
-    assert!(read_state.is_some());
-
-    // A newer registration supersedes the old epoch and releases it.
-    let newer_epoch_id = TestEpochId(b"NewerEpoch".to_vec());
-    storage
-        .write_registered_vc_derivation_epoch(
-            &group_id,
-            &TestRegistered(b"newer registration".to_vec()),
-            &newer_epoch_id,
-        )
-        .unwrap();
-    assert!(!storage
-        .has_registered_vc_derivation_epoch_for_epoch(&epoch_id)
-        .unwrap());
-    assert!(storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap());
-    let read_state: Option<TestDerivationState> =
-        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
-    assert!(read_state.is_none());
-
-    storage
-        .delete_registered_vc_derivation_epoch(&group_id)
-        .unwrap();
-    assert!(!storage
-        .has_registered_vc_derivation_epoch_for_epoch(&newer_epoch_id)
-        .unwrap());
+        .delete_unreferenced_vc_derivation_epoch_states()
+        .unwrap()
 }
 
-/// A group bound to a derivation epoch keeps that epoch's state alive, and
-/// dropping the group's bindings releases it.
+#[test]
+fn logged_epochs_keep_epoch_state_alive() {
+    let storage = MemoryStorage::default();
+    let pruned_epoch_id = TestEpochId(b"PrunedEpoch".to_vec());
+    let newest_epoch_id = TestEpochId(b"NewestEpoch".to_vec());
+    let group_id = TestGroupId(b"emulation-group".to_vec());
+
+    for (epoch_id, entry) in [
+        (&pruned_epoch_id, b"entry-0".to_vec()),
+        (&newest_epoch_id, b"entry-1".to_vec()),
+    ] {
+        storage
+            .write_vc_derivation_epoch_state(epoch_id, &TestDerivationState(b"state".to_vec()))
+            .unwrap();
+        storage
+            .write_vc_derivation_epoch_log_entry(&group_id, epoch_id, &TestLogEntry(entry))
+            .unwrap();
+    }
+    let mut entries: Vec<TestLogEntry> =
+        storage.vc_derivation_epoch_log_entries(&group_id).unwrap();
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
+    assert_eq!(
+        entries,
+        vec![
+            TestLogEntry(b"entry-0".to_vec()),
+            TestLogEntry(b"entry-1".to_vec())
+        ]
+    );
+
+    // Nothing else references either epoch, so the log entries alone keep both
+    // states.
+    assert!(sweep(&storage).is_empty());
+    for epoch_id in [&pruned_epoch_id, &newest_epoch_id] {
+        let read_state: Option<TestDerivationState> =
+            storage.vc_derivation_epoch_state(epoch_id).unwrap();
+        assert!(read_state.is_some());
+    }
+
+    // Pruning one entry releases exactly that epoch on the next sweep.
+    storage
+        .delete_vc_derivation_epoch_log_entries(&group_id, std::slice::from_ref(&pruned_epoch_id))
+        .unwrap();
+    assert_eq!(sweep(&storage), vec![pruned_epoch_id.clone()]);
+    let read_state: Option<TestDerivationState> =
+        storage.vc_derivation_epoch_state(&pruned_epoch_id).unwrap();
+    assert!(read_state.is_none());
+
+    // Deleting the whole log releases the remaining epoch.
+    storage.delete_vc_derivation_epoch_log(&group_id).unwrap();
+    let entries: Vec<TestLogEntry> = storage.vc_derivation_epoch_log_entries(&group_id).unwrap();
+    assert!(entries.is_empty());
+    assert_eq!(sweep(&storage), vec![newest_epoch_id]);
+}
+
 #[test]
 fn emulation_binding_keeps_epoch_state_alive() {
     let storage = MemoryStorage::default();
-    let epoch_id = TestEpochId(b"BoundEpoch".to_vec());
+    let first_epoch_id = TestEpochId(b"FirstBoundEpoch".to_vec());
+    let second_epoch_id = TestEpochId(b"SecondBoundEpoch".to_vec());
     let group_id = TestGroupId(b"group".to_vec());
 
-    storage
-        .write_vc_derivation_epoch_state(&epoch_id, &TestDerivationState(b"state".to_vec()))
+    for (epoch_id, group_epoch, binding) in [
+        (&first_epoch_id, TestGroupEpoch(5), b"binding-5".to_vec()),
+        (&second_epoch_id, TestGroupEpoch(6), b"binding-6".to_vec()),
+    ] {
+        storage
+            .write_vc_derivation_epoch_state(epoch_id, &TestDerivationState(b"state".to_vec()))
+            .unwrap();
+        storage
+            .write_vc_emulation_binding(&group_id, &group_epoch, epoch_id, &TestBinding(binding))
+            .unwrap();
+    }
+
+    // The point get serves each binding under its own group epoch.
+    let read: Option<TestBinding> = storage
+        .vc_emulation_binding(&group_id, &TestGroupEpoch(5))
         .unwrap();
-    assert!(!storage
-        .has_vc_emulation_binding_for_epoch(&epoch_id)
-        .unwrap());
-
-    storage
-        .write_vc_emulation_bindings(
-            &group_id,
-            &TestEmulationBindings(b"bindings".to_vec()),
-            std::slice::from_ref(&epoch_id),
-        )
+    assert_eq!(read, Some(TestBinding(b"binding-5".to_vec())));
+    let read: Option<TestBinding> = storage
+        .vc_emulation_binding(&group_id, &TestGroupEpoch(7))
         .unwrap();
-    assert!(storage
-        .has_vc_emulation_binding_for_epoch(&epoch_id)
-        .unwrap());
+    assert_eq!(read, None);
+    let all: Vec<TestBinding> = storage.vc_emulation_bindings(&group_id).unwrap();
+    assert_eq!(all.len(), 2);
 
-    // No retained material references the epoch, so the binding alone has to
-    // keep the state.
-    assert!(!storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap());
-    let read_state: Option<TestDerivationState> =
-        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
-    assert!(read_state.is_some());
+    // No retained material references the epochs, so the bindings alone keep
+    // the states.
+    assert!(sweep(&storage).is_empty());
 
-    storage.delete_vc_emulation_bindings(&group_id).unwrap();
-    assert!(!storage
-        .has_vc_emulation_binding_for_epoch(&epoch_id)
-        .unwrap());
-    assert!(storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap());
+    // A targeted delete of the first binding releases only the first epoch.
+    storage
+        .delete_vc_emulation_bindings(&group_id, &[TestGroupEpoch(5)])
+        .unwrap();
+    assert_eq!(sweep(&storage), vec![first_epoch_id]);
+
+    // Deleting all bindings of the group releases the second epoch too.
+    storage.delete_all_vc_emulation_bindings(&group_id).unwrap();
+    let all: Vec<TestBinding> = storage.vc_emulation_bindings(&group_id).unwrap();
+    assert!(all.is_empty());
+    assert_eq!(sweep(&storage), vec![second_epoch_id.clone()]);
     let read_state: Option<TestDerivationState> =
-        storage.vc_derivation_epoch_state(&epoch_id).unwrap();
+        storage.vc_derivation_epoch_state(&second_epoch_id).unwrap();
     assert!(read_state.is_none());
 }
 
-/// A batch write stores the operation tree and the retained material, the
-/// material ties the epoch into liveness, and the guarded delete keeps the
-/// epoch state while material references it but removes it afterwards.
 #[test]
 fn batch_write_ties_retained_material_into_epoch_liveness() {
     let storage = MemoryStorage::default();
     let epoch_id = TestEpochId(b"LiveEpoch".to_vec());
-    let other_epoch_id = TestEpochId(b"OtherEpoch".to_vec());
     let kp_ref = TestKeyPackageRef(b"kp-ref".to_vec());
 
-    // Register the derivation epoch state so the guarded delete has
-    // something to remove. The operation tree is written by the batch below.
+    // Register the derivation epoch state so the sweep has something to
+    // remove. The operation tree is written by the batch below.
     storage
         .write_vc_derivation_epoch_state(&epoch_id, &TestDerivationState(b"state".to_vec()))
         .unwrap();
-
-    // No retained material yet.
-    assert!(!storage
-        .has_retained_key_package_material_for_epoch(&epoch_id)
-        .unwrap());
 
     let tree = TestOperationTree(b"AdvancedTree".to_vec());
     let material = TestRetainedMaterial(b"material".to_vec());
@@ -196,36 +194,21 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
         storage.retained_key_package_material(&kp_ref).unwrap();
     assert_eq!(read_material, Some(material));
 
-    // The epoch is now referenced, a different epoch is not.
-    assert!(storage
-        .has_retained_key_package_material_for_epoch(&epoch_id)
-        .unwrap());
-    assert!(!storage
-        .has_retained_key_package_material_for_epoch(&other_epoch_id)
-        .unwrap());
-
-    // While material references the epoch the guarded delete is a no-op and the
+    // While material references the epoch the sweep leaves it alone and the
     // epoch state and tree stay readable.
-    assert!(!storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap());
+    assert!(sweep(&storage).is_empty());
     let read_state: Option<TestDerivationState> =
         storage.vc_derivation_epoch_state(&epoch_id).unwrap();
     assert!(read_state.is_some());
     let read_tree: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
     assert!(read_tree.is_some());
 
-    // After deleting the material the epoch is unreferenced, so the guarded
-    // delete removes both the epoch state and the operation tree.
+    // After deleting the material the epoch is unreferenced, so the sweep
+    // removes both the epoch state and the operation tree.
     storage
         .delete_retained_key_package_material(&kp_ref)
         .unwrap();
-    assert!(!storage
-        .has_retained_key_package_material_for_epoch(&epoch_id)
-        .unwrap());
-    assert!(storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap());
+    assert_eq!(sweep(&storage), vec![epoch_id.clone()]);
     let read_state: Option<TestDerivationState> =
         storage.vc_derivation_epoch_state(&epoch_id).unwrap();
     assert!(read_state.is_none());
@@ -233,9 +216,8 @@ fn batch_write_ties_retained_material_into_epoch_liveness() {
     assert!(read_tree.is_none());
 }
 
-/// Write, read back, overwrite, and delete an operation secret tree.
 #[test]
-fn operation_tree_read_write_delete() {
+fn operation_tree_read_write_sweep() {
     let storage = MemoryStorage::default();
     let epoch_id = TestEpochId(b"TestEpochId".to_vec());
 
@@ -263,12 +245,10 @@ fn operation_tree_read_write_delete() {
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&other_epoch_id).unwrap();
     assert_eq!(read, None);
 
-    // Deleting the derivation epoch state removes the operation tree too. No
-    // retained material references this epoch, so the deletion goes through.
-    let deleted = storage
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .unwrap();
-    assert!(deleted);
+    // The tree row has no state, log entry, binding, or material next to it,
+    // which is what a crashed registration leaves behind. The sweep collects
+    // it.
+    assert_eq!(sweep(&storage), vec![epoch_id.clone()]);
     let read: Option<TestOperationTree> = storage.vc_operation_tree(&epoch_id).unwrap();
     assert_eq!(read, None);
 }

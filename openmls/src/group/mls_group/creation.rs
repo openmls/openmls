@@ -1395,16 +1395,15 @@ impl MlsGroup {
         // Written before the group itself, so an error between the writes
         // cannot leave a loadable group without a binding (a bound group is
         // required for the reuse-guard MUST).
-        let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
-            .storage()
-            .vc_emulation_bindings(public_group.group_id())
-            .map_err(Error::StorageError)?
-            .unwrap_or_default();
         let max_entries = message_secrets_store.max_epochs.saturating_add(1);
-        bindings.insert(public_group.group_context().epoch(), epoch_id, max_entries);
-        bindings
-            .store(provider.storage(), public_group.group_id())
-            .map_err(Error::StorageError)?;
+        crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+            provider.storage(),
+            public_group.group_id(),
+            public_group.group_context().epoch(),
+            epoch_id,
+            max_entries,
+        )
+        .map_err(Error::StorageError)?;
 
         let mls_group = MlsGroup {
             mls_group_config: join_config.clone(),

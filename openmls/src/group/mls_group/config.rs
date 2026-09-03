@@ -551,10 +551,7 @@ impl MlsGroupCreateConfigBuilder {
     /// a `new_derivation_epoch` action in its virtual-clients Safe AAD item
     /// (see [`CommitBuilder::derivation_epoch`]). OpenMLS derives and
     /// persists the derivation-epoch state itself at group creation, at a
-    /// Welcome join, and when such a commit is merged. Applications should wrap
-    /// every merge in a storage transaction. A merge performs several storage
-    /// writes even without virtual clients, and derivation-epoch registration
-    /// adds more.
+    /// Welcome join, and when such a commit is merged.
     ///
     /// Use [`MlsGroup::newest_vc_derivation_epoch`] to look up the derivation
     /// epoch that virtual-client operations resolve to. It may be older than

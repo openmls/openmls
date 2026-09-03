@@ -580,15 +580,10 @@ impl MlsGroup {
         #[cfg(feature = "extensions-draft")]
         storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
 
-        // Drop this group's derivation-epoch bindings and its registration
-        // record. `VcDerivationEpochState` and the operation secret tree are
-        // keyed on the derivation epoch and may still be referenced by other
-        // higher-level groups, so they're not deleted here.
+        // The derivation-epoch state itself is keyed on the epoch rather than on
+        // this group, so it only goes if this group held the last reference.
         #[cfg(feature = "virtual-clients-draft")]
-        {
-            storage.delete_vc_emulation_bindings(self.group_id())?;
-            storage.delete_registered_vc_derivation_epoch(self.group_id())?;
-        }
+        self.drop_all_vc_derivation_epoch_references(storage)?;
 
         self.proposal_store_mut().empty();
         storage.delete_encryption_epoch_key_pairs(
@@ -779,10 +774,10 @@ impl MlsGroup {
         Option<crate::components::vc_derivation_info::VcDerivationEpochState>,
         VcDerivationStateError<Storage::Error>,
     > {
-        let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> = storage
-            .vc_emulation_bindings(self.group_id())
+        let binding: Option<crate::components::vc_derivation_info::VcEmulationBinding> = storage
+            .vc_emulation_binding(self.group_id(), &epoch)
             .map_err(VcDerivationStateError::Storage)?;
-        let Some(epoch_id) = bindings.and_then(|bindings| bindings.get(epoch).cloned()) else {
+        let Some(epoch_id) = binding.map(|binding| binding.into_epoch_id()) else {
             return Ok(None);
         };
         let state = storage
@@ -806,9 +801,9 @@ impl MlsGroup {
         storage: &Storage,
         epoch: GroupEpoch,
     ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
-        let bindings: Option<crate::components::vc_derivation_info::VcEmulationBindings> =
-            storage.vc_emulation_bindings(self.group_id())?;
-        Ok(bindings.and_then(|bindings| bindings.get(epoch).cloned()))
+        let binding: Option<crate::components::vc_derivation_info::VcEmulationBinding> =
+            storage.vc_emulation_binding(self.group_id(), &epoch)?;
+        Ok(binding.map(|binding| binding.into_epoch_id()))
     }
 
     /// Returns whether this group is an emulation group of a virtual client.
@@ -843,6 +838,22 @@ impl MlsGroup {
         storage: &Storage,
     ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
         crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, self.group_id())
+    }
+
+    /// Drop every reference this group holds to a derivation epoch, both its
+    /// emulation bindings and its own derivation-epoch log, then sweep the
+    /// epochs that are now unreferenced.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn drop_all_vc_derivation_epoch_references<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        use crate::components::vc_derivation_info::EpochId;
+
+        storage.delete_all_vc_emulation_bindings(self.group_id())?;
+        storage.delete_vc_derivation_epoch_log(self.group_id())?;
+        storage.delete_unreferenced_vc_derivation_epoch_states::<EpochId>()?;
+        Ok(())
     }
 
     // Encrypt an AuthenticatedContent into an PrivateMessage

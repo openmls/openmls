@@ -681,16 +681,15 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     // Written before the group itself, so an error between the writes cannot
     // leave a loadable group without a binding (a bound group is required for
     // the reuse-guard MUST).
-    let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
-        .storage()
-        .vc_emulation_bindings(&group_id)
-        .map_err(NewGroupError::StorageError)?
-        .unwrap_or_default();
     let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
-    bindings.insert(mls_group.epoch(), epoch_id, max_entries);
-    bindings
-        .store(provider.storage(), &group_id)
-        .map_err(NewGroupError::StorageError)?;
+    crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+        provider.storage(),
+        &group_id,
+        mls_group.epoch(),
+        epoch_id,
+        max_entries,
+    )
+    .map_err(NewGroupError::StorageError)?;
 
     mls_group
         .store(provider.storage())

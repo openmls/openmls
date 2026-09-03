@@ -475,50 +475,54 @@ impl MlsGroup {
             .write_group_state(self.group_id(), &self.group_state)
             .map_err(MergeCommitError::StorageError)?;
 
-        // Update the per-epoch emulation bindings. Self-removal drops them.
-        // Otherwise the epoch the commit moves the group into is bound to
-        // the derivation epoch of the commit's VC leaf, or, if the commit
-        // does not install a new VC leaf, to the binding of the current
-        // epoch, since the VC leaf stays active across commits by other
-        // members.
+        // Update the per-epoch emulation bindings. Self-removal drops them,
+        // along with the group's own derivation-epoch log. Otherwise the epoch
+        // the commit moves the group into is bound to the derivation epoch of
+        // the commit's VC leaf, or, if the commit does not install a new VC
+        // leaf, to the binding of the current epoch, since the VC leaf stays
+        // active across commits by other members. Either way the derivation
+        // epochs that lost their last reference are released.
         #[cfg(feature = "virtual-clients-draft")]
         if staged_commit.self_removed() {
-            provider
-                .storage()
-                .delete_vc_emulation_bindings(self.group_id())
+            self.drop_all_vc_derivation_epoch_references(provider.storage())
                 .map_err(|e| {
-                    log::error!("vc: drop emulation bindings on self-removal failed: {e:?}");
-                    MergeCommitError::StorageError(e)
-                })?;
-            provider
-                .storage()
-                .delete_registered_vc_derivation_epoch(self.group_id())
-                .map_err(|e| {
-                    log::error!(
-                        "vc: drop registered derivation epoch on self-removal failed: {e:?}"
-                    );
+                    log::error!("vc: drop derivation epoch references on self-removal: {e:?}");
                     MergeCommitError::StorageError(e)
                 })?;
         } else {
-            let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
-                .storage()
-                .vc_emulation_bindings(self.group_id())
-                .map_err(MergeCommitError::StorageError)?
-                .unwrap_or_default();
-            let epoch_id = staged_commit
-                .vc_derivation_epoch_id
-                .clone()
-                .or_else(|| bindings.get(self.epoch()).cloned());
+            use crate::components::vc_derivation_info::{EpochId, VcEmulationBinding};
+
+            let epoch_id = match staged_commit.vc_derivation_epoch_id.clone() {
+                Some(epoch_id) => Some(epoch_id),
+                None => provider
+                    .storage()
+                    .vc_emulation_binding(self.group_id(), &self.epoch())
+                    .map_err(MergeCommitError::StorageError)?
+                    .map(VcEmulationBinding::into_epoch_id),
+            };
             if let Some(epoch_id) = epoch_id {
-                // Keep one entry per retained message-secrets epoch plus
+                // Keep one binding per retained message-secrets epoch plus
                 // the new current one, so bindings age out in lockstep
                 // with the message secrets they are needed for.
                 let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
-                bindings.insert(staged_commit.epoch(), epoch_id, max_entries);
-                bindings
-                    .store(provider.storage(), self.group_id())
+                crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+                    provider.storage(),
+                    self.group_id(),
+                    staged_commit.epoch(),
+                    epoch_id,
+                    max_entries,
+                )
+                .map_err(|e| {
+                    log::error!("vc: persist emulation binding at merge failed: {e:?}");
+                    MergeCommitError::StorageError(e)
+                })?;
+                // The epochs whose bindings just aged out lost a reference, so
+                // sweep the ones that are now unreferenced.
+                provider
+                    .storage()
+                    .delete_unreferenced_vc_derivation_epoch_states::<EpochId>()
                     .map_err(|e| {
-                        log::error!("vc: persist emulation bindings at merge failed: {e:?}");
+                        log::error!("vc: release unbound derivation epochs at merge: {e:?}");
                         MergeCommitError::StorageError(e)
                     })?;
             }
