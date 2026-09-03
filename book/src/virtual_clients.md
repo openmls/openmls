@@ -185,7 +185,7 @@ An emulation group can be configured to keep a log of the derivation epochs it
 registered. This is such that emulator clients can still process delayed
 messages sent by sibling emulator clients.
 
-How far back the log reaches can be configure on group join, defaulting to five
+How far back the log reaches can be configured on group join, defaulting to five
 epochs:
 
 ```rust,no_run,noplayground
@@ -200,7 +200,7 @@ The log is stored as one entry per registered epoch, and every stored entry
 keeps its epoch's key material alive, as does every higher-level group binding
 and every retained KeyPackage. Registering a new derivation epoch drops the log
 entries beyond the window and then runs a storage sweep that deletes the key
-material of every epoch nothing references anymore. The sweep runs at the end
+material of every epoch not referenced anymore. The sweep runs at the end
 of every library operation that drops a reference (registration, commit merge,
 group deletion), so an epoch is released as soon as its last holder lets go,
 and state that a crash orphaned is collected on the next sweep. A reference

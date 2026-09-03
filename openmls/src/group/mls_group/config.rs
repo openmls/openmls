@@ -306,8 +306,6 @@ pub struct MlsGroupJoinConfig {
     /// Derivation-epoch retention policy, only consulted on emulation groups.
     /// See [`VcDerivationEpochRetentionPolicy`].
     #[cfg(feature = "virtual-clients-draft")]
-    // Absent from a config that was stored without `virtual-clients-draft`, so
-    // it has to default rather than fail to deserialize.
     #[serde(default)]
     pub(crate) vc_derivation_epoch_retention_policy: VcDerivationEpochRetentionPolicy,
 }
