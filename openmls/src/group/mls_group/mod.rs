@@ -50,8 +50,17 @@ use openmls_traits::{
 #[cfg(feature = "extensions-draft")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
+#[cfg(all(feature = "virtual-clients-draft", not(target_arch = "wasm32")))]
+use std::time::SystemTime;
+
+#[cfg(all(feature = "virtual-clients-draft", target_arch = "wasm32"))]
+use web_time::SystemTime;
+
 #[cfg(feature = "virtual-clients-draft")]
-use crate::group::VcDerivationEpochRetentionPolicy;
+use crate::group::{
+    VcDerivationEpochDeletion, VcDerivationEpochDeletionResult, VcDerivationEpochDeletionTime,
+    VcDerivationEpochRetentionPolicy,
+};
 
 // Private
 mod application;
@@ -872,6 +881,41 @@ impl MlsGroup {
         crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, self.group_id())
     }
 
+    /// Delete the derivation epochs of this emulation group that `deletion`
+    /// selects, unless something else still references them. See
+    /// [`VcDerivationEpochDeletion`] and [`VcDerivationEpochDeletionResult`].
+    ///
+    /// Performs several storage writes, so wrap the call in a storage
+    /// transaction.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn delete_vc_derivation_epochs<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+        deletion: VcDerivationEpochDeletion,
+    ) -> Result<VcDerivationEpochDeletionResult, Provider::StorageError> {
+        use crate::components::vc_derivation_info::VcDerivationEpochLog;
+
+        let storage = provider.storage();
+        let mut log = VcDerivationEpochLog::load(storage, self.group_id())?;
+        if log.is_empty() {
+            return Ok(VcDerivationEpochDeletionResult::default());
+        }
+        let cutoff = match deletion.time {
+            VcDerivationEpochDeletionTime::BeforeTimestamp(timestamp) => timestamp,
+            // A duration longer than the time since the epoch leaves nothing
+            // superseded before the cutoff, which is what an unreachably long
+            // retention window should mean.
+            VcDerivationEpochDeletionTime::OlderThanDuration(duration) => SystemTime::now()
+                .checked_sub(duration)
+                .unwrap_or(SystemTime::UNIX_EPOCH),
+        };
+        let mut dropped = log.drop_superseded_before(cutoff);
+        if let Some(max_epochs) = deletion.max_epochs {
+            dropped.extend(log.shrink_to(max_epochs));
+        }
+        self.release_vc_derivation_epochs(storage, dropped)
+    }
+
     /// Shrink this group's derivation-epoch log to its retention policy and
     /// release the epochs that dropped out.
     #[cfg(feature = "virtual-clients-draft")]
@@ -879,7 +923,7 @@ impl MlsGroup {
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        use crate::components::vc_derivation_info::{EpochId, VcDerivationEpochLog};
+        use crate::components::vc_derivation_info::VcDerivationEpochLog;
 
         let mut log = VcDerivationEpochLog::load(storage, self.group_id())?;
         let max_epochs = self
@@ -891,9 +935,38 @@ impl MlsGroup {
         if dropped.is_empty() {
             return Ok(());
         }
-        storage.delete_vc_derivation_epoch_log_entries(self.group_id(), &dropped)?;
-        storage.delete_unreferenced_vc_derivation_epoch_states::<EpochId>()?;
+        self.release_vc_derivation_epochs(storage, dropped)?;
         Ok(())
+    }
+
+    /// Delete this group's log entries for the `dropped` epochs and sweep,
+    /// reporting which of them were deleted and which were kept. Epochs whose
+    /// state was already absent appear in neither list.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn release_vc_derivation_epochs<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+        dropped: Vec<crate::components::vc_derivation_info::EpochId>,
+    ) -> Result<VcDerivationEpochDeletionResult, Storage::Error> {
+        use crate::components::vc_derivation_info::{EpochId, VcDerivationEpochState};
+
+        storage.delete_vc_derivation_epoch_log_entries(self.group_id(), &dropped)?;
+        let swept: Vec<EpochId> = storage.delete_unreferenced_vc_derivation_epoch_states()?;
+        let mut result = VcDerivationEpochDeletionResult::default();
+        for epoch_id in dropped {
+            if swept.contains(&epoch_id) {
+                result.deleted.push(epoch_id);
+                continue;
+            }
+            // The sweep reports only what it deleted, so an epoch it left
+            // alone is either still referenced or was already gone.
+            let state: Option<VcDerivationEpochState> =
+                storage.vc_derivation_epoch_state(&epoch_id)?;
+            if state.is_some() {
+                result.kept.push(epoch_id);
+            }
+        }
+        Ok(result)
     }
 
     /// Drop every reference this group holds to a derivation epoch, both its

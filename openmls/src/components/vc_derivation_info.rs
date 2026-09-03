@@ -1,3 +1,6 @@
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::SystemTime;
+
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, CryptoError},
@@ -9,6 +12,8 @@ use tls_codec::{
     DeserializeBytes, SecretVLByteVec, Serialize as _, Size as _, TlsDeserializeBytes,
     TlsSerialize, TlsSize, VLByteSlice, VLByteVec,
 };
+#[cfg(target_arch = "wasm32")]
+use web_time::SystemTime;
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
@@ -785,6 +790,8 @@ pub struct VcDerivationEpochLogEntry {
     pub(crate) group_epoch: crate::group::GroupEpoch,
     /// The derivation epoch id derived by that registration.
     pub(crate) epoch_id: EpochId,
+    /// When the registration happened, in local wall-clock time.
+    pub(crate) registered_at: SystemTime,
 }
 
 impl VcDerivationEpochLogEntry {
@@ -831,14 +838,18 @@ impl VcDerivationEpochLog {
         })
     }
 
+    pub(crate) fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
     /// The newest logged registration, or `None` if the log is empty.
     pub(crate) fn newest(&self) -> Option<&VcDerivationEpochLogEntry> {
         self.entries.back()
     }
 
-    /// Append a registration of `epoch_id` for `group_epoch`, sequenced after
-    /// the current newest entry. Returns a clone of the appended entry for the
-    /// caller to persist.
+    /// Append a registration of `epoch_id` for `group_epoch`, timestamped now
+    /// and sequenced after the current newest entry. Returns a clone of the
+    /// appended entry for the caller to persist.
     fn push(&mut self, group_epoch: GroupEpoch, epoch_id: EpochId) -> VcDerivationEpochLogEntry {
         let sequence = self
             .entries
@@ -848,6 +859,7 @@ impl VcDerivationEpochLog {
             sequence,
             group_epoch,
             epoch_id,
+            registered_at: SystemTime::now(),
         };
         self.entries.push_back(entry.clone());
         entry
@@ -859,6 +871,20 @@ impl VcDerivationEpochLog {
     pub(crate) fn shrink_to(&mut self, max_entries: usize) -> Vec<EpochId> {
         let excess = self.entries.len().saturating_sub(max_entries.max(1));
         self.drop_oldest(excess)
+    }
+
+    /// Drop every entry superseded before `cutoff` and return the epochs of
+    /// the dropped entries. An entry is superseded when its successor is
+    /// registered, so entry `i` goes when entry `i + 1` was registered before
+    /// `cutoff`. The newest entry has no successor and never drops.
+    pub(crate) fn drop_superseded_before(&mut self, cutoff: SystemTime) -> Vec<EpochId> {
+        let count = self
+            .entries
+            .iter()
+            .skip(1)
+            .rposition(|successor| successor.registered_at < cutoff)
+            .map_or(0, |index| index + 1);
+        self.drop_oldest(count)
     }
 
     /// Drop the `count` oldest entries, keeping the newest one regardless, and
@@ -2744,11 +2770,16 @@ mod tests {
         assert_eq!(base, sibling_id);
     }
 
-    fn log_entry(group_epoch: u64, epoch_id: &EpochId) -> VcDerivationEpochLogEntry {
+    fn log_entry(
+        group_epoch: u64,
+        epoch_id: &EpochId,
+        registered_at: SystemTime,
+    ) -> VcDerivationEpochLogEntry {
         VcDerivationEpochLogEntry {
             sequence: group_epoch,
             group_epoch: GroupEpoch::from(group_epoch),
             epoch_id: epoch_id.clone(),
+            registered_at,
         }
     }
 
@@ -2756,9 +2787,9 @@ mod tests {
     fn log_reconstruction_orders_by_sequence() {
         let provider = OpenMlsRustCrypto::default();
         let group_id = GroupId::from_slice(b"emulation-group");
-        let first = log_entry(0, &EpochId::new(vec![1]));
-        let second = log_entry(1, &EpochId::new(vec![2]));
-        let third = log_entry(2, &EpochId::new(vec![3]));
+        let first = log_entry(0, &EpochId::new(vec![1]), SystemTime::UNIX_EPOCH);
+        let second = log_entry(1, &EpochId::new(vec![2]), SystemTime::UNIX_EPOCH);
+        let third = log_entry(2, &EpochId::new(vec![3]), SystemTime::UNIX_EPOCH);
         // Written out of order. The provider returns entries unordered anyway,
         // so the sort must come from the sequence numbers alone.
         for entry in [&second, &third, &first] {
@@ -2788,5 +2819,39 @@ mod tests {
             log.newest().map(|entry| entry.epoch_id.clone()),
             Some(third.epoch_id)
         );
+    }
+
+    #[test]
+    fn wall_clock_sweep_measures_from_supersession() {
+        let old = EpochId::new(vec![1]);
+        let mid = EpochId::new(vec![2]);
+        let new = EpochId::new(vec![3]);
+        let start = SystemTime::UNIX_EPOCH;
+        let minutes = |m: u64| std::time::Duration::from_secs(m * 60);
+        // `old` lives from `start` until `mid` supersedes it 10 minutes before
+        // the 24 h mark, where `new` in turn supersedes `mid`.
+        let mut log = VcDerivationEpochLog {
+            entries: std::collections::VecDeque::from([
+                log_entry(0, &old, start),
+                log_entry(1, &mid, start + minutes(23 * 60 + 50)),
+                log_entry(2, &new, start + minutes(24 * 60)),
+            ]),
+        };
+
+        // A 24 h sweep 5 minutes past the day puts the cutoff well after
+        // `old`'s registration, but `old` was only just superseded and stays.
+        assert!(log.drop_superseded_before(start + minutes(5)).is_empty());
+        // Once the cutoff passes `old`'s supersession, `old` goes. `mid` was
+        // superseded later and stays.
+        assert_eq!(
+            log.drop_superseded_before(start + minutes(23 * 60 + 55)),
+            vec![old]
+        );
+        // The newest entry has no successor and survives any cutoff.
+        assert_eq!(
+            log.drop_superseded_before(start + minutes(48 * 60)),
+            vec![mid]
+        );
+        assert_eq!(log.newest().map(|entry| entry.epoch_id.clone()), Some(new));
     }
 }

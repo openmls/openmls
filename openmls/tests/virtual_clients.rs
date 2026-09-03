@@ -12,7 +12,7 @@ use openmls::{
     group::{
         AppDataUpdates, ConfirmMessageError, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
         MlsGroupJoinConfig, Propose, StageCommitError, StagedVcExternalCommitJoin, StagedWelcome,
-        VcDerivationEpochRetentionPolicy, VcExternalCommitJoinError,
+        VcDerivationEpochDeletion, VcDerivationEpochRetentionPolicy, VcExternalCommitJoinError,
         MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
@@ -34,6 +34,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_test::openmls_test;
 use openmls_traits::storage::StorageProvider as _;
 use openmls_traits::OpenMlsProvider;
+use std::time::{Duration, SystemTime};
 use tls_codec::Serialize as _;
 
 mod mls_group;
@@ -6607,4 +6608,65 @@ fn deleting_an_emulation_group_releases_its_derivation_epochs() {
 
     assert!(!epoch_state_exists(&provider, &first_epoch));
     assert!(!epoch_state_exists(&provider, &second_epoch));
+}
+
+#[openmls_test]
+fn manual_wall_clock_deletion_of_derivation_epochs() {
+    let provider = Provider::default();
+    let (mut emulator, emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"Emulator", true);
+    let first_epoch = newest_epoch(&emulator, &provider);
+
+    // Bind a higher-level group to the first epoch, so the deletion below has
+    // one epoch it can remove and one it has to keep.
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+    let mut main_group = new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
+    let _commit = send_vc_commit(&mut main_group, &emulator, &provider, &alice_signer);
+
+    let _commit = send_emulation_commit(&mut emulator, &provider, &emulator_signer, true);
+    let second_epoch = newest_epoch(&emulator, &provider);
+    let _commit = send_emulation_commit(&mut emulator, &provider, &emulator_signer, true);
+    let third_epoch = newest_epoch(&emulator, &provider);
+
+    // Nothing was superseded an hour ago.
+    let result = emulator
+        .delete_vc_derivation_epochs(
+            &provider,
+            VcDerivationEpochDeletion::older_than_duration(Duration::from_secs(3600)),
+        )
+        .expect("delete derivation epochs by age");
+    assert!(result.deleted.is_empty());
+    assert!(result.kept.is_empty());
+    assert!(epoch_state_exists(&provider, &first_epoch));
+
+    // A cutoff in the future selects every entry. The newest survives it, the
+    // bound first epoch is dropped from the log but kept in storage, and the
+    // second epoch is deleted.
+    let result = emulator
+        .delete_vc_derivation_epochs(
+            &provider,
+            VcDerivationEpochDeletion::before_timestamp(
+                SystemTime::now() + Duration::from_secs(3600),
+            ),
+        )
+        .expect("delete derivation epochs before a timestamp");
+    assert_eq!(result.deleted, vec![second_epoch.clone()]);
+    assert_eq!(result.kept, vec![first_epoch.clone()]);
+    assert!(epoch_state_exists(&provider, &first_epoch));
+    assert!(!epoch_state_exists(&provider, &second_epoch));
+    assert_eq!(newest_epoch(&emulator, &provider), third_epoch);
+
+    // The optional cap applies on top of the time condition, which on its own
+    // selects nothing here.
+    let _commit = send_emulation_commit(&mut emulator, &provider, &emulator_signer, true);
+    let fourth_epoch = newest_epoch(&emulator, &provider);
+    let result = emulator
+        .delete_vc_derivation_epochs(
+            &provider,
+            VcDerivationEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH).max_epochs(1),
+        )
+        .expect("delete derivation epochs beyond the cap");
+    assert_eq!(result.deleted, vec![third_epoch]);
+    assert_eq!(newest_epoch(&emulator, &provider), fourth_epoch);
 }

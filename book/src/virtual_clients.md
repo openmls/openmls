@@ -210,6 +210,23 @@ end of this chapter.
 `MlsGroup::set_vc_derivation_epoch_retention_policy` changes the window later
 and applies it right away.
 
+`VcDerivationEpochRetentionPolicy::KeepAll` turns the automatic pruning off. The
+application then decides when epochs go, by how long ago they were superseded.
+An epoch is superseded when the next one is registered, so the duration is a
+grace period after the epoch stopped being current, however late in its life
+that happened:
+
+```rust,no_run,noplayground
+let outcome = emulator_group.delete_vc_derivation_epochs(
+    provider,
+    VcDerivationEpochDeletion::older_than_duration(Duration::from_secs(24 * 3600)),
+)?;
+```
+
+The function returns the epochs whose state was deleted and the ones that were kept
+because something still referenced them. Either way they leave the log, so a
+later call does not reconsider them.
+
 ## Committing in a higher-level group
 
 To commit on behalf of the virtual client, set `vc_emulation` on the commit
