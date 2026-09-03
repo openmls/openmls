@@ -14,7 +14,10 @@ use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::{hash_ref::KeyPackageRef, Secret},
     components::vc_operation_tree::OperationSecretTree,
-    group::{mls_group::errors::RegisterVcDerivationEpochError, GroupEpoch, GroupId},
+    group::{
+        mls_group::errors::RegisterVcDerivationEpochError, GroupEpoch, GroupId,
+        VcDerivationEpochRetentionPolicy,
+    },
     key_packages::InitKey,
     messages::PathSecret,
     schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
@@ -849,6 +852,24 @@ impl VcDerivationEpochLog {
         self.entries.push_back(entry.clone());
         entry
     }
+
+    /// Drop the oldest entries until at most `max_entries` are left, and return
+    /// the epochs of the dropped entries. Never drops the newest entry, so the
+    /// group keeps a derivation epoch to operate on.
+    pub(crate) fn shrink_to(&mut self, max_entries: usize) -> Vec<EpochId> {
+        let excess = self.entries.len().saturating_sub(max_entries.max(1));
+        self.drop_oldest(excess)
+    }
+
+    /// Drop the `count` oldest entries, keeping the newest one regardless, and
+    /// return their epochs. Each epoch appears in at most one entry.
+    fn drop_oldest(&mut self, count: usize) -> Vec<EpochId> {
+        let droppable = self.entries.len().saturating_sub(1);
+        self.entries
+            .drain(0..count.min(droppable))
+            .map(|entry| entry.epoch_id)
+            .collect()
+    }
 }
 
 /// The newest derivation epoch registered for the emulation group
@@ -906,17 +927,21 @@ pub(crate) struct VcDerivationEpochParams<'a> {
     pub(crate) own_leaf_index: LeafNodeIndex,
     /// Number of leaves in the emulation group's ratchet tree.
     pub(crate) tree_size: TreeSize,
+    /// How many derivation epochs the group's log may keep.
+    pub(crate) retention_policy: VcDerivationEpochRetentionPolicy,
 }
 
 impl<'a> VcDerivationEpochParams<'a> {
     /// Read the coordinates off the emulation group's public state. The caller
-    /// supplies `own_leaf_index`, which the public state does not carry.
+    /// supplies `own_leaf_index` and the retention policy, which the public
+    /// state does not carry.
     ///
     /// For a merge, pass the state after the staged diff was merged, so the
     /// coordinates describe the epoch the commit moves the group into.
     pub(crate) fn for_public_group(
         public_group: &'a crate::group::PublicGroup,
         own_leaf_index: LeafNodeIndex,
+        retention_policy: VcDerivationEpochRetentionPolicy,
     ) -> Self {
         Self {
             group_id: public_group.group_id(),
@@ -924,6 +949,7 @@ impl<'a> VcDerivationEpochParams<'a> {
             group_epoch: public_group.group_context().epoch(),
             own_leaf_index,
             tree_size: public_group.tree_size(),
+            retention_policy,
         }
     }
 }
@@ -937,6 +963,10 @@ impl<'a> VcDerivationEpochParams<'a> {
 /// per-epoch operation secret tree (sized like the emulation group's ratchet
 /// tree), and persists the tree, the per-epoch state and the appended
 /// derivation-epoch log entry. Returns the derived [`EpochId`].
+///
+/// Appending to the log applies the group's retention policy (see
+/// [`VcDerivationEpochRetentionPolicy`]), which may delete the state of older
+/// derivation epochs.
 ///
 /// The caller owns `export_tree` and is responsible for persisting it after
 /// this call, so that the puncture is not lost. A `None` export tree fails with
@@ -966,6 +996,7 @@ pub(crate) fn register_vc_derivation_epoch<
         group_epoch,
         own_leaf_index,
         tree_size,
+        retention_policy,
     } = params;
     let export_tree =
         export_tree.ok_or(RegisterVcDerivationEpochError::MissingApplicationExportTree)?;
@@ -1023,6 +1054,7 @@ pub(crate) fn register_vc_derivation_epoch<
         ciphersuite,
     );
     let entry = log.push(group_epoch, epoch_id.clone());
+    let dropped = log.shrink_to(retention_policy.max_epochs().unwrap_or(usize::MAX));
 
     storage
         .write_vc_operation_tree(&epoch_id, &operation_tree)
@@ -1040,6 +1072,23 @@ pub(crate) fn register_vc_derivation_epoch<
         .write_vc_derivation_epoch_log_entry(group_id, &epoch_id, &entry)
         .map_err(|e| {
             log::error!("vc: persist derivation epoch log entry at registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+    if !dropped.is_empty() {
+        storage
+            .delete_vc_derivation_epoch_log_entries(group_id, &dropped)
+            .map_err(|e| {
+                log::error!("vc: prune derivation epoch log at registration failed: {e:?}");
+                RegisterVcDerivationEpochError::Storage(e)
+            })?;
+    }
+    // The sweep releases the epochs that just dropped out of the log, unless
+    // something else still references them, and collects any orphans earlier
+    // crashes left behind.
+    storage
+        .delete_unreferenced_vc_derivation_epoch_states::<EpochId>()
+        .map_err(|e| {
+            log::error!("vc: release pruned derivation epochs at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
         })?;
 
@@ -2729,6 +2778,14 @@ mod tests {
         );
         assert_eq!(
             newest_vc_derivation_epoch(provider.storage(), &group_id).expect("newest epoch"),
+            Some(third.epoch_id.clone())
+        );
+
+        // Pruning drops the entries with the lowest sequences first.
+        let mut log = log;
+        assert_eq!(log.shrink_to(2), vec![first.epoch_id.clone()]);
+        assert_eq!(
+            log.newest().map(|entry| entry.epoch_id.clone()),
             Some(third.epoch_id)
         );
     }

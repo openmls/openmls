@@ -259,6 +259,10 @@ impl MlsGroupBuilder {
                 crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
                     &public_group,
                     LeafNodeIndex::new(0),
+                    mls_group_create_config
+                        .join_config
+                        .vc_derivation_epoch_retention_policy()
+                        .clone(),
                 ),
             )?;
         }
@@ -350,6 +354,19 @@ impl MlsGroupBuilder {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
             .set_past_epoch_deletion_policy(policy);
+        self
+    }
+
+    /// Sets the derivation-epoch retention policy. See
+    /// [`VcDerivationEpochRetentionPolicy`](crate::group::VcDerivationEpochRetentionPolicy).
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn set_vc_derivation_epoch_retention_policy(
+        mut self,
+        policy: crate::group::VcDerivationEpochRetentionPolicy,
+    ) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .set_vc_derivation_epoch_retention_policy(policy);
         self
     }
 

@@ -192,6 +192,39 @@ impl PastEpochDeletionPolicy {
     }
 }
 
+/// Configures how many virtual-clients derivation epochs an emulation group
+/// keeps, so that delayed messages from sibling emulator clients can still be
+/// processed.
+///
+/// Registering a new derivation epoch drops the epochs beyond the window. Their
+/// key material is deleted unless a higher-level group or a retained KeyPackage
+/// still references it.
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum VcDerivationEpochRetentionPolicy {
+    /// Keep at most `n` derivation epochs.
+    MaxEpochs(usize),
+    /// Keep every derivation epoch.
+    KeepAll,
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl Default for VcDerivationEpochRetentionPolicy {
+    fn default() -> Self {
+        Self::MaxEpochs(5)
+    }
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl VcDerivationEpochRetentionPolicy {
+    pub(crate) fn max_epochs(&self) -> Option<usize> {
+        match self {
+            Self::MaxEpochs(epochs) => Some(*epochs),
+            Self::KeepAll => None,
+        }
+    }
+}
+
 /// The [`MlsGroupJoinConfig`] contains all configuration parameters that are
 /// relevant to group operation at runtime. It is used to configure the group's
 /// behaviour when joining an existing group. To configure a newly created
@@ -214,6 +247,13 @@ pub struct MlsGroupJoinConfig {
     pub(crate) use_ratchet_tree_extension: bool,
     /// Sender ratchet configuration
     pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
+    /// Derivation-epoch retention policy, only consulted on emulation groups.
+    /// See [`VcDerivationEpochRetentionPolicy`].
+    #[cfg(feature = "virtual-clients-draft")]
+    // Absent from a config that was stored without `virtual-clients-draft`, so
+    // it has to default rather than fail to deserialize.
+    #[serde(default)]
+    pub(crate) vc_derivation_epoch_retention_policy: VcDerivationEpochRetentionPolicy,
 }
 
 impl MlsGroupJoinConfig {
@@ -244,6 +284,13 @@ impl MlsGroupJoinConfig {
 
     pub(crate) fn past_epoch_deletion_policy(&self) -> &PastEpochDeletionPolicy {
         &self.past_epoch_deletion_policy
+    }
+
+    /// Returns the derivation-epoch retention policy set in this
+    /// [`MlsGroupJoinConfig`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_derivation_epoch_retention_policy(&self) -> &VcDerivationEpochRetentionPolicy {
+        &self.vc_derivation_epoch_retention_policy
     }
 }
 
@@ -346,6 +393,17 @@ impl MlsGroupJoinConfigBuilder {
     /// as low as possible.
     pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
         self.join_config.past_epoch_deletion_policy = policy;
+        self
+    }
+
+    /// Sets the derivation-epoch retention policy. See
+    /// [`VcDerivationEpochRetentionPolicy`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn set_vc_derivation_epoch_retention_policy(
+        mut self,
+        policy: VcDerivationEpochRetentionPolicy,
+    ) -> Self {
+        self.join_config.vc_derivation_epoch_retention_policy = policy;
         self
     }
 
@@ -514,6 +572,17 @@ impl MlsGroupCreateConfigBuilder {
     /// as low as possible.
     pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
         self.config.join_config.past_epoch_deletion_policy = policy;
+        self
+    }
+
+    /// Sets the derivation-epoch retention policy. See
+    /// [`VcDerivationEpochRetentionPolicy`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn set_vc_derivation_epoch_retention_policy(
+        mut self,
+        policy: VcDerivationEpochRetentionPolicy,
+    ) -> Self {
+        self.config.join_config.vc_derivation_epoch_retention_policy = policy;
         self
     }
 

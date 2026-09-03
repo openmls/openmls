@@ -50,6 +50,9 @@ use openmls_traits::{
 #[cfg(feature = "extensions-draft")]
 use crate::schedule::{application_export_tree::ApplicationExportTree, ApplicationExportSecret};
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::group::VcDerivationEpochRetentionPolicy;
+
 // Private
 mod application;
 mod exporting;
@@ -328,6 +331,9 @@ impl MlsGroup {
     ) -> Result<(), Storage::Error> {
         let policy_changed = self.mls_group_config.past_epoch_deletion_policy()
             != mls_group_config.past_epoch_deletion_policy();
+        #[cfg(feature = "virtual-clients-draft")]
+        let retention_changed = self.mls_group_config.vc_derivation_epoch_retention_policy()
+            != mls_group_config.vc_derivation_epoch_retention_policy();
 
         self.mls_group_config = mls_group_config.clone();
         storage.write_mls_join_config(self.group_id(), mls_group_config)?;
@@ -336,6 +342,11 @@ impl MlsGroup {
             // Resize the store to adhere to the new policy.
             self.resize_message_secrets_store(mls_group_config.past_epoch_deletion_policy());
             storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+        }
+
+        #[cfg(feature = "virtual-clients-draft")]
+        if retention_changed {
+            self.apply_vc_derivation_epoch_retention(storage)?;
         }
 
         Ok(())
@@ -673,6 +684,27 @@ impl MlsGroup {
         Ok(())
     }
 
+    /// Get the derivation-epoch retention policy for the group.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_derivation_epoch_retention_policy(&self) -> &VcDerivationEpochRetentionPolicy {
+        self.mls_group_config.vc_derivation_epoch_retention_policy()
+    }
+
+    /// Set the derivation-epoch retention policy for the group and apply it
+    /// right away. See [`VcDerivationEpochRetentionPolicy`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn set_vc_derivation_epoch_retention_policy<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        policy: VcDerivationEpochRetentionPolicy,
+    ) -> Result<(), Provider::StorageError> {
+        self.mls_group_config.vc_derivation_epoch_retention_policy = policy;
+        provider
+            .storage()
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+        self.apply_vc_derivation_epoch_retention(provider.storage())
+    }
+
     /// Get the message secrets. Either from the secrets store or from the group.
     pub(crate) fn message_secrets_for_epoch_mut(
         &mut self,
@@ -838,6 +870,30 @@ impl MlsGroup {
         storage: &Storage,
     ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
         crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, self.group_id())
+    }
+
+    /// Shrink this group's derivation-epoch log to its retention policy and
+    /// release the epochs that dropped out.
+    #[cfg(feature = "virtual-clients-draft")]
+    fn apply_vc_derivation_epoch_retention<Storage: StorageProvider>(
+        &self,
+        storage: &Storage,
+    ) -> Result<(), Storage::Error> {
+        use crate::components::vc_derivation_info::{EpochId, VcDerivationEpochLog};
+
+        let mut log = VcDerivationEpochLog::load(storage, self.group_id())?;
+        let max_epochs = self
+            .mls_group_config
+            .vc_derivation_epoch_retention_policy()
+            .max_epochs()
+            .unwrap_or(usize::MAX);
+        let dropped = log.shrink_to(max_epochs);
+        if dropped.is_empty() {
+            return Ok(());
+        }
+        storage.delete_vc_derivation_epoch_log_entries(self.group_id(), &dropped)?;
+        storage.delete_unreferenced_vc_derivation_epoch_states::<EpochId>()?;
+        Ok(())
     }
 
     /// Drop every reference this group holds to a derivation epoch, both its

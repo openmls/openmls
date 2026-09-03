@@ -179,6 +179,37 @@ applies relative to the commit's input state: operations that reference a
 derivation epoch, including ones carried by this very commit, keep using the
 input state's newest derivation epoch.
 
+## Retaining derivation epochs
+
+An emulation group can be configured to keep a log of the derivation epochs it
+registered. This is such that emulator clients can still process delayed
+messages sent by sibling emulator clients.
+
+How far back the log reaches can be configure on group join, defaulting to five
+epochs:
+
+```rust,no_run,noplayground
+let create_config = MlsGroupCreateConfig::builder()
+    .emulation_group(true)
+    .set_vc_derivation_epoch_retention_policy(VcDerivationEpochRetentionPolicy::MaxEpochs(10))
+    // ... the leaf requirements above, ciphersuite, wire format policy
+    .build();
+```
+
+The log is stored as one entry per registered epoch, and every stored entry
+keeps its epoch's key material alive, as does every higher-level group binding
+and every retained KeyPackage. Registering a new derivation epoch drops the log
+entries beyond the window and then runs a storage sweep that deletes the key
+material of every epoch nothing references anymore. The sweep runs at the end
+of every library operation that drops a reference (registration, commit merge,
+group deletion), so an epoch is released as soon as its last holder lets go,
+and state that a crash orphaned is collected on the next sweep. A reference
+dropped outside the library, such as a retained KeyPackage deleted through the
+storage provider, is only noticed by the next sweep. See the limitations at the
+end of this chapter.
+`MlsGroup::set_vc_derivation_epoch_retention_policy` changes the window later
+and applies it right away.
+
 ## Committing in a higher-level group
 
 To commit on behalf of the virtual client, set `vc_emulation` on the commit

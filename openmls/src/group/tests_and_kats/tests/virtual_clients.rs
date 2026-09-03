@@ -20,7 +20,8 @@ use crate::{
     framing::{MlsMessageIn, ProcessedMessageContent},
     group::{
         GroupContext, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
-        MlsGroupCreateConfigBuilder, StagedWelcome, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        MlsGroupCreateConfigBuilder, StagedWelcome, VcDerivationEpochRetentionPolicy,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     messages::PathSecret,
@@ -476,6 +477,7 @@ fn repeated_registration_with_fresh_tree_punctures_it() {
         group_epoch: GroupEpoch::from(5),
         own_leaf_index: LeafNodeIndex::new(0),
         tree_size: TreeSize::from_leaf_count(2),
+        retention_policy: VcDerivationEpochRetentionPolicy::default(),
     };
 
     let mut tree_a = fresh_export_tree(ciphersuite, 1);
@@ -530,6 +532,7 @@ fn stale_log_entry_is_appended_past() {
         group_epoch: GroupEpoch::from(0),
         own_leaf_index: LeafNodeIndex::new(0),
         tree_size: TreeSize::from_leaf_count(1),
+        retention_policy: VcDerivationEpochRetentionPolicy::default(),
     };
 
     // An earlier group instance under the same group id registered an epoch
