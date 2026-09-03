@@ -212,6 +212,8 @@ fn test_add_member_with_aad() {
     }
 }
 
+const AAD: &[u8] = b"Test AAD";
+
 #[openmls_test::openmls_test]
 fn test_set_aad() {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
@@ -234,10 +236,9 @@ fn test_set_aad() {
 
         let [alice] = group_state.members_mut(&["alice"]);
 
-        let aad: Vec<u8> = b"Test AAD".to_vec();
-        alice.group.set_aad(aad);
+        alice.group.set_aad(AAD.to_vec());
 
-        assert_eq!(alice.group.aad(), b"Test AAD");
+        assert_eq!(alice.group.aad(), AAD);
     }
 }
 
@@ -248,8 +249,7 @@ fn test_aad_stage_commit() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let message_bundle = group
         .commit_builder()
@@ -275,7 +275,7 @@ fn test_aad_stage_commit() {
         )
         .unwrap();
 
-    assert_eq!(processed_message.aad(), b"Test AAD");
+    assert_eq!(processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -283,8 +283,7 @@ fn test_aad_stage_commit_with_group_info() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let message_bundle = group
         .commit_builder()
@@ -315,7 +314,7 @@ fn test_aad_stage_commit_with_group_info() {
         )
         .unwrap();
 
-    assert_eq!(processed_message.aad(), b"Test AAD");
+    assert_eq!(processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -323,8 +322,7 @@ fn test_aad_stage_commit_with_welcome() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let bob_provider = &Provider::default();
     let (_, bob_pkb, _bob_signer, _) = setup_client("Bob", ciphersuite, bob_provider);
@@ -359,7 +357,7 @@ fn test_aad_stage_commit_with_welcome() {
         )
         .unwrap();
 
-    assert_eq!(processed_message.aad(), b"Test AAD");
+    assert_eq!(processed_message.aad(), AAD);
 
     StagedWelcome::new_from_welcome(bob_provider, group.configuration(), welcome.clone(), None)
         .expect("expected valid welcome")
@@ -372,8 +370,7 @@ fn test_aad_create_application_message() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let message_bundle = group
         .create_message(provider, &signer, b"Test Message")
@@ -385,7 +382,7 @@ fn test_aad_create_application_message() {
         .process_message(provider, message_bundle.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(processed_message.aad(), b"Test AAD");
+    assert_eq!(processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -393,8 +390,7 @@ fn test_aad_propose_add() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
     let (_, bob_pkb, _, _) = setup_client("Bob", ciphersuite, &Provider::default());
 
     let (message_bundle, _) = group
@@ -407,7 +403,7 @@ fn test_aad_propose_add() {
         .process_message(provider, message_bundle.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -415,8 +411,7 @@ fn test_aad_add_members() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
     let (_, bob_pkb, _, _) = setup_client("Bob", ciphersuite, &Provider::default());
 
     let (commit, _welcome, _group_info) = group
@@ -429,7 +424,7 @@ fn test_aad_add_members() {
         .process_message(provider, commit.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -437,8 +432,7 @@ fn test_aad_add_members_without_update() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
     let (_, bob_pkb, _, _) = setup_client("Bob", ciphersuite, &Provider::default());
 
     let (commit, _welcome, _group_info) = group
@@ -451,7 +445,7 @@ fn test_aad_add_members_without_update() {
         .process_message(provider, commit.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -467,8 +461,7 @@ fn test_aad_swap_members() {
         _bob_credential_with_key,
     ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    alice_group.set_aad(aad);
+    alice_group.set_aad(AAD.to_vec());
     let (_, charlie_pkb, _, _) = setup_client("Charlie", ciphersuite, &Provider::default());
 
     let welcomeCommits = alice_group
@@ -489,7 +482,7 @@ fn test_aad_swap_members() {
         )
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -505,8 +498,7 @@ fn test_aad_remove_members() {
         _bob_credential_with_key,
     ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    alice_group.set_aad(aad);
+    alice_group.set_aad(AAD.to_vec());
 
     let (commit, _welcome_option, _group_info) = alice_group
         .remove_members(alice_provider, &alice_signer, &[bob_group.own_leaf_index()])
@@ -518,7 +510,7 @@ fn test_aad_remove_members() {
         .process_message(alice_provider, commit.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -534,8 +526,7 @@ fn test_aad_leave_group() {
         _bob_credential_with_key,
     ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    alice_group.set_aad(aad);
+    alice_group.set_aad(AAD.to_vec());
 
     let proposal = alice_group
         .leave_group(alice_provider, &alice_signer)
@@ -547,7 +538,7 @@ fn test_aad_leave_group() {
         .process_message(bob_provider, proposal.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(bob_processed_message.aad(), b"Test AAD");
+    assert_eq!(bob_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -563,8 +554,7 @@ fn test_aad_leave_group_via_self_remove() {
         _bob_credential_with_key,
     ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    alice_group.set_aad(aad);
+    alice_group.set_aad(AAD.to_vec());
 
     let proposal = alice_group
         .leave_group_via_self_remove(alice_provider, &alice_signer)
@@ -576,7 +566,7 @@ fn test_aad_leave_group_via_self_remove() {
         .process_message(bob_provider, proposal.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(bob_processed_message.aad(), b"Test AAD");
+    assert_eq!(bob_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -592,8 +582,7 @@ fn test_aad_propose_remove_member() {
         _bob_credential_with_key,
     ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    alice_group.set_aad(aad);
+    alice_group.set_aad(AAD.to_vec());
 
     let (proposal, _hash_reference) = alice_group
         .propose_remove_member(alice_provider, &alice_signer, bob_group.own_leaf_index())
@@ -605,7 +594,7 @@ fn test_aad_propose_remove_member() {
         .process_message(alice_provider, proposal.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -621,8 +610,7 @@ fn test_aad_propose_remove_member_by_credential() {
         bob_credential_with_key,
     ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    alice_group.set_aad(aad);
+    alice_group.set_aad(AAD.to_vec());
 
     let (proposal, _hash_reference) = alice_group
         .propose_remove_member_by_credential(
@@ -638,7 +626,7 @@ fn test_aad_propose_remove_member_by_credential() {
         .process_message(alice_provider, proposal.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 // propose_add_member_by_value is created by the `impl_propose_fun!` macro.
@@ -648,8 +636,7 @@ fn test_aad_propose_add_by_value() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let (_, bob_pkb, _, _) = setup_client("Bob", ciphersuite, &Provider::default());
 
@@ -663,7 +650,7 @@ fn test_aad_propose_add_by_value() {
         .process_message(provider, message_bundle.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -671,8 +658,7 @@ fn test_aad_propose_group_context_extensions() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let extensions =
         Extensions::from_vec(vec![Extension::Unknown(1, UnknownExtension(Vec::new()))]).unwrap();
@@ -687,7 +673,7 @@ fn test_aad_propose_group_context_extensions() {
         .process_message(provider, message.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -697,8 +683,7 @@ fn test_aad_self_update() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let commit = group
         .self_update(provider, &signer, LeafNodeParameters::default())
@@ -713,7 +698,7 @@ fn test_aad_self_update() {
         )
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -723,8 +708,7 @@ fn test_aad_self_update_with_new_signer() {
     let provider = &Provider::default();
     let (mut group, _old_credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let (new_credential_with_key, _, signature_key_pair, _) =
         setup_client("Bob", ciphersuite, &Provider::default());
@@ -747,7 +731,7 @@ fn test_aad_self_update_with_new_signer() {
         )
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -757,8 +741,7 @@ fn test_aad_propose_self_update() {
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let (proposal, _hash_reference) = group
         .propose_self_update(provider, &signer, LeafNodeParameters::default())
@@ -770,7 +753,7 @@ fn test_aad_propose_self_update() {
         .process_message(provider, proposal.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
 
 #[openmls_test::openmls_test]
@@ -780,8 +763,7 @@ fn test_aad_propose_self_update_with_new_signer() {
     let provider = &Provider::default();
     let (mut group, _old_credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
-    let aad: Vec<u8> = b"Test AAD".to_vec();
-    group.set_aad(aad);
+    group.set_aad(AAD.to_vec());
 
     let (new_credential_with_key, _, signature_key_pair, _) =
         setup_client("Alice", ciphersuite, &Provider::default());
@@ -806,5 +788,5 @@ fn test_aad_propose_self_update_with_new_signer() {
         .process_message(provider, proposal.into_protocol_message().unwrap())
         .unwrap();
 
-    assert_eq!(alice_processed_message.aad(), b"Test AAD");
+    assert_eq!(alice_processed_message.aad(), AAD);
 }
