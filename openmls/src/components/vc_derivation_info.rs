@@ -795,6 +795,21 @@ pub struct VcDerivationEpochLogEntry {
 }
 
 impl VcDerivationEpochLogEntry {
+    /// Convert a [`RegisteredVcDerivationEpoch`] into a log entry. The record
+    /// was its group's only registration, so the entry takes sequence 0.
+    pub fn from_legacy_record(
+        group_epoch: GroupEpoch,
+        epoch_id: EpochId,
+        registered_at: SystemTime,
+    ) -> Self {
+        Self {
+            sequence: 0,
+            group_epoch,
+            epoch_id,
+            registered_at,
+        }
+    }
+
     /// The derivation epoch this entry registered.
     pub fn epoch_id(&self) -> &EpochId {
         &self.epoch_id
@@ -896,6 +911,22 @@ impl VcDerivationEpochLog {
             .map(|entry| entry.epoch_id)
             .collect()
     }
+}
+
+/// Registration record of the storage layout that preceded the
+/// derivation-epoch log. Only for decoding stored records and converting them
+/// with [`VcDerivationEpochLogEntry::from_legacy_record`].
+#[deprecated(
+    since = "0.9.0",
+    note = "migration-only: decode pre-log registration records and convert them with \
+            `VcDerivationEpochLogEntry::from_legacy_record`. Will be removed in 0.10.0."
+)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RegisteredVcDerivationEpoch {
+    /// The emulation group's own epoch at registration time.
+    pub group_epoch: GroupEpoch,
+    /// The derivation epoch id derived by that registration.
+    pub epoch_id: EpochId,
 }
 
 /// The newest derivation epoch registered for the emulation group
@@ -1138,6 +1169,15 @@ pub struct VcEmulationBinding {
 }
 
 impl VcEmulationBinding {
+    /// Build the binding of `group_epoch` to `epoch_id` from one entry of a
+    /// [`VcEmulationBindings`] record.
+    pub fn from_legacy_record(group_epoch: GroupEpoch, epoch_id: EpochId) -> Self {
+        Self {
+            group_epoch,
+            epoch_id,
+        }
+    }
+
     /// The derivation epoch this binding names.
     pub fn epoch_id(&self) -> &EpochId {
         &self.epoch_id
@@ -1145,6 +1185,28 @@ impl VcEmulationBinding {
 
     pub(crate) fn into_epoch_id(self) -> EpochId {
         self.epoch_id
+    }
+}
+
+/// Per-group bindings record of the storage layout that preceded per-epoch
+/// [`VcEmulationBinding`] rows. Only for decoding stored records and
+/// converting their entries with [`VcEmulationBinding::from_legacy_record`].
+#[deprecated(
+    since = "0.9.0",
+    note = "migration-only: decode pre-row bindings records and convert their entries with \
+            `VcEmulationBinding::from_legacy_record`. Will be removed in 0.10.0."
+)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VcEmulationBindings {
+    // In order of insertion, oldest at the front.
+    bindings: std::collections::VecDeque<(GroupEpoch, EpochId)>,
+}
+
+#[allow(deprecated)]
+impl VcEmulationBindings {
+    /// The `(group_epoch, epoch_id)` pairs of the record, oldest first.
+    pub fn into_entries(self) -> Vec<(GroupEpoch, EpochId)> {
+        self.bindings.into()
     }
 }
 
@@ -2768,6 +2830,81 @@ mod tests {
             )
             .expect("sibling derive generation id");
         assert_eq!(base, sibling_id);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn legacy_registration_record_layout_is_frozen() {
+        let record = RegisteredVcDerivationEpoch {
+            group_epoch: GroupEpoch::from(7),
+            epoch_id: EpochId::new(vec![1, 2, 3]),
+        };
+        let json = serde_json::to_string(&record).expect("serialize legacy record");
+        assert_eq!(json, r#"{"group_epoch":7,"epoch_id":[1,2,3]}"#);
+        let decoded: RegisteredVcDerivationEpoch =
+            serde_json::from_str(&json).expect("deserialize legacy record");
+        assert_eq!(decoded, record);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn legacy_bindings_record_layout_is_frozen() {
+        let record = VcEmulationBindings {
+            bindings: std::collections::VecDeque::from([
+                (GroupEpoch::from(7), EpochId::new(vec![1, 2, 3])),
+                (GroupEpoch::from(8), EpochId::new(vec![4, 5, 6])),
+            ]),
+        };
+        let json = serde_json::to_string(&record).expect("serialize legacy record");
+        assert_eq!(json, r#"{"bindings":[[7,[1,2,3]],[8,[4,5,6]]]}"#);
+        let decoded: VcEmulationBindings =
+            serde_json::from_str(&json).expect("deserialize legacy record");
+        assert_eq!(decoded, record);
+
+        let entries = decoded.into_entries();
+        assert_eq!(
+            entries,
+            vec![
+                (GroupEpoch::from(7), EpochId::new(vec![1, 2, 3])),
+                (GroupEpoch::from(8), EpochId::new(vec![4, 5, 6])),
+            ]
+        );
+    }
+
+    #[test]
+    fn binding_from_legacy_record() {
+        let epoch_id = EpochId::new(vec![4, 5, 6]);
+        let binding = VcEmulationBinding::from_legacy_record(GroupEpoch::from(3), epoch_id.clone());
+        assert_eq!(binding.group_epoch, GroupEpoch::from(3));
+        assert_eq!(binding.epoch_id(), &epoch_id);
+    }
+
+    #[test]
+    fn log_entry_from_legacy_record() {
+        let epoch_id = EpochId::new(vec![4, 5, 6]);
+        let registered_at = SystemTime::UNIX_EPOCH;
+        let entry = VcDerivationEpochLogEntry::from_legacy_record(
+            GroupEpoch::from(3),
+            epoch_id.clone(),
+            registered_at,
+        );
+
+        assert_eq!(entry.sequence, 0);
+        assert_eq!(entry.group_epoch, GroupEpoch::from(3));
+        assert_eq!(entry.epoch_id(), &epoch_id);
+        assert_eq!(entry.registered_at, registered_at);
+
+        // A log holding only the converted entry treats it as the newest one,
+        // so neither pruning path drops it.
+        let mut log = VcDerivationEpochLog {
+            entries: std::collections::VecDeque::from([entry]),
+        };
+        assert!(log.shrink_to(1).is_empty());
+        assert!(log.drop_superseded_before(SystemTime::now()).is_empty());
+        assert_eq!(
+            log.newest().map(|entry| entry.epoch_id.clone()),
+            Some(epoch_id)
+        );
     }
 
     fn log_entry(
