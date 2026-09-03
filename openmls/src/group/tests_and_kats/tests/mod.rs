@@ -32,4 +32,6 @@ mod unsupported_ciphersuite;
     feature = "draft-ietf-mls-pq-ciphersuites"
 ))]
 mod virtual_clients;
+mod welcome_validation;
+
 mod wire_format_policy;

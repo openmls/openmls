@@ -14,6 +14,7 @@ use crate::{
     messages::{ConfirmationTag, Welcome},
     prelude_test::signable::Signable,
     schedule::{ConfirmationKey, MembershipKey},
+    test_utils::frankenstein::FrankenHpkeCiphertext,
 };
 
 use super::{
@@ -410,7 +411,7 @@ pub enum FrankenContentType {
 )]
 pub struct FrankenEncryptedGroupSecrets {
     pub new_member: VLBytes,
-    pub encrypted_group_secrets: VLBytes,
+    pub encrypted_group_secrets: FrankenHpkeCiphertext,
 }
 
 impl From<MlsMessageOut> for FrankenMlsMessage {
