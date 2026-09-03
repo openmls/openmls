@@ -36,11 +36,7 @@ fn test_valn1405_inline_tree_valid() {
         .stage_commit(alice_provider)
         .unwrap();
 
-    let welcome: FrankenWelcome = message_bundle
-        .welcome()
-        .unwrap()
-        .clone()
-        .into();
+    let welcome: FrankenWelcome = message_bundle.welcome().unwrap().clone().into();
 
     // validate Welcome message
     let staged_welcome = StagedWelcome::new_from_welcome(
@@ -57,4 +53,4 @@ fn test_valn1405_inline_tree_valid() {
 }
 
 // TODO: Test: With changed tree_hash in the encrypted group_info, staging the welcome should return an error.
-// TODO: Repeat tests without the ratchet three extensiion.
+// TODO: Repeat tests without the ratchet tree extensiion.
