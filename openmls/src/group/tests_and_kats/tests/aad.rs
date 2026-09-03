@@ -241,7 +241,7 @@ fn test_set_aad() {
     }
 }
 
-// Tests for indivudual functions that call reset_add()
+// Tests for individual functions that call reset_add()
 
 #[openmls_test::openmls_test]
 fn test_aad_stage_commit() {
