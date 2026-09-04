@@ -171,7 +171,15 @@ impl PublicGroup {
         // ValSem102
         // ValSem103
         // ValSem104
-        self.validate_key_uniqueness(&proposal_queue, Some(commit))?;
+        self.validate_key_uniqueness(
+            &proposal_queue,
+            Some(commit),
+            sender,
+            commit
+                .path
+                .as_ref()
+                .map(|path| path.leaf_node().signature_key()),
+        )?;
         // ValSem105
         self.validate_add_proposals(&proposal_queue)?;
         // ValSem106
