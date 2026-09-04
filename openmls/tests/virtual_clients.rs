@@ -2570,6 +2570,165 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
     }
 }
 
+/// Regression test: both emulator clients join a higher-level group from the
+/// same KeyPackage Welcome, and application messages one sibling sends from
+/// the shared leaf must be readable by the other.
+///
+/// alice_a joins with the KeyPackageBundle it stored when building the batch,
+/// alice_b with the material it derived from the upload. Before the joined
+/// epoch was bound to the derivation epoch at Welcome time, neither had an
+/// emulator context for it, so a sibling's message from the own leaf index
+/// was taken for an own echo and surfaced as `OwnPrivateMessage`.
+#[openmls_test]
+fn vc_siblings_joined_via_key_package_welcome_read_each_others_messages() {
+    use openmls::components::vc_derivation_info::{
+        assemble_vc_key_package_upload, process_vc_key_package_upload,
+    };
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+
+    // Emulator group: alice_a creates, alice_b joins via Welcome.
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA", true);
+    let (_e_commit, _emulator_b, _emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &alice_a_provider,
+        &emulator_a_signer,
+        &alice_b_provider,
+        b"AliceEmulatorB",
+    );
+
+    // alice_a publishes a virtual-client KeyPackage and hands the upload to
+    // alice_b.
+    let mut batch = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            ciphersuite,
+            &alice_a_provider,
+            &vc_signer,
+            vc_credential.clone(),
+            emulator_a.group_id(),
+            1,
+        )
+        .expect("alice_a build_vc_batch");
+    let generation = batch.generation;
+    let batch_epoch_id = batch.epoch_id.clone();
+    let (vc_key_package_bundle, kp_info) = batch.key_packages.remove(0);
+    let upload = assemble_vc_key_package_upload(
+        alice_a_provider.storage(),
+        batch_epoch_id,
+        generation,
+        vec![kp_info],
+    )
+    .expect("assemble upload");
+    process_vc_key_package_upload(&alice_b_provider, &upload).expect("alice_b process upload");
+
+    // Bob founds a higher-level group and adds the virtual client.
+    let (bob_credential, bob_signer) =
+        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut bob_main = MlsGroup::new(
+        &bob_provider,
+        &bob_signer,
+        &bob_group_config,
+        bob_credential,
+    )
+    .expect("bob create higher-level group");
+    let (_commit, welcome, _gi) = bob_main
+        .add_members(
+            &bob_provider,
+            &bob_signer,
+            &[vc_key_package_bundle.key_package().clone()],
+        )
+        .expect("bob add virtual client");
+    bob_main
+        .merge_pending_commit(&bob_provider)
+        .expect("bob merge add");
+    let ratchet_tree = bob_main.export_ratchet_tree();
+    let welcome = welcome.into_welcome().expect("welcome present");
+
+    // Both siblings join from the same Welcome.
+    let join = |provider: &Provider, label: &str| {
+        openmls::group::ProcessedWelcome::new_from_welcome(
+            provider,
+            &vc_join_config(),
+            welcome.clone(),
+        )
+        .unwrap_or_else(|e| panic!("{label} process welcome: {e:?}"))
+        .into_staged_welcome(provider, Some(ratchet_tree.clone().into()))
+        .unwrap_or_else(|e| panic!("{label} stage welcome: {e:?}"))
+        .into_group(provider)
+        .unwrap_or_else(|e| panic!("{label} join higher-level group: {e:?}"))
+    };
+    let mut alice_a_main = join(&alice_a_provider, "alice_a");
+    let mut alice_b_main = join(&alice_b_provider, "alice_b");
+    assert_eq!(alice_a_main.own_leaf_index(), alice_b_main.own_leaf_index());
+    assert_eq!(
+        alice_a_main.epoch_authenticator(),
+        alice_b_main.epoch_authenticator()
+    );
+
+    let expect_app_message =
+        |processed: openmls::prelude::ProcessedMessage, expected: &[u8]| match processed
+            .into_content()
+        {
+            ProcessedMessageContent::ApplicationMessage(msg) => {
+                assert_eq!(msg.into_bytes().as_slice(), expected);
+            }
+            ProcessedMessageContent::OwnPrivateMessage => {
+                panic!("sibling message was taken for an own echo")
+            }
+            other => panic!("expected application message, got {other:?}"),
+        };
+
+    // alice_a sends: bob and alice_b read it.
+    let app_msg = alice_a_main
+        .create_message(&alice_a_provider, &vc_signer, b"from alice_a")
+        .expect("alice_a creates application message");
+    let protocol_message = app_msg.into_protocol_message().unwrap();
+    expect_app_message(
+        bob_main
+            .process_message(&bob_provider, protocol_message.clone())
+            .expect("bob processes alice_a's message"),
+        b"from alice_a",
+    );
+    expect_app_message(
+        alice_b_main
+            .process_message(&alice_b_provider, protocol_message)
+            .expect("alice_b processes alice_a's message"),
+        b"from alice_a",
+    );
+
+    // alice_b sends: bob and alice_a read it.
+    let app_msg = alice_b_main
+        .create_message(&alice_b_provider, &vc_signer, b"from alice_b")
+        .expect("alice_b creates application message");
+    let protocol_message = app_msg.into_protocol_message().unwrap();
+    expect_app_message(
+        bob_main
+            .process_message(&bob_provider, protocol_message.clone())
+            .expect("bob processes alice_b's message"),
+        b"from alice_b",
+    );
+    expect_app_message(
+        alice_a_main
+            .process_message(&alice_a_provider, protocol_message)
+            .expect("alice_a processes alice_b's message"),
+        b"from alice_b",
+    );
+}
+
 /// Regression test for the batch-model switch. A virtual client builds one
 /// batch of KeyPackages larger than the operation tree's
 /// `OUT_OF_ORDER_TOLERANCE` (32), so the old per-KeyPackage-generation model
