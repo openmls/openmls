@@ -656,6 +656,9 @@ impl StagedWelcome {
                 crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
                     &self.public_group,
                     self.own_leaf_index,
+                    self.mls_group_config
+                        .vc_derivation_epoch_retention_policy()
+                        .clone(),
                 ),
             )?;
         }
@@ -685,6 +688,28 @@ impl StagedWelcome {
             .map_err(WelcomeError::StorageError)?;
         // resize the store
         mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
+
+        // A join through a virtual client's KeyPackage binds the joined epoch
+        // to the KeyPackage's derivation epoch. The binding takes over the
+        // epoch reference from the retained KeyPackage material, which
+        // `keys_for_welcome` left in storage for that purpose. (a bound group
+        // is required for the reuse-guard MUST).
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(material) = self.key_material.vc_welcome_material() {
+            let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
+            crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+                provider.storage(),
+                mls_group.group_id(),
+                mls_group.epoch(),
+                material.epoch_id.clone(),
+                max_entries,
+            )
+            .map_err(WelcomeError::StorageError)?;
+            provider
+                .storage()
+                .delete_retained_key_package_material(&material.key_package_ref)
+                .map_err(WelcomeError::StorageError)?;
+        }
 
         mls_group
             .store(provider.storage())
@@ -795,9 +820,10 @@ impl PendingBranchWelcome {
 /// join and the subgroup-branch peek (see [`PendingBranchWelcome`]). It consumes
 /// the matching (non-last-resort) key package from storage via
 /// [`keys_for_welcome`] and decrypts the encrypted group secrets addressed to
-/// it. The branch resumption PSK secret is not injected here: injection and
-/// the parent-reference check happen in [`finish_processed_welcome`], so this
-/// step is identical on both paths.
+/// it. Retained virtual-client material is read but not consumed, see
+/// [`keys_for_welcome`]. The branch resumption PSK secret is not injected
+/// here: injection and the parent-reference check happen in
+/// [`finish_processed_welcome`], so this step is identical on both paths.
 fn decrypt_group_secrets<Provider: OpenMlsProvider>(
     provider: &Provider,
     mls_group_config: &MlsGroupJoinConfig,
@@ -1020,17 +1046,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         if let Some(material) =
             resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref)?
         {
-            provider
-                .storage()
-                .delete_retained_key_package_material(&hash_ref)
-                .map_err(|e| {
-                    use crate::components::vc_derivation_info::VirtualClientsError;
-
-                    log::error!(
-                        "vc: delete retained key package material in welcome failed: {e:?}"
-                    );
-                    VirtualClientsError::StorageError
-                })?;
+            // The retained material stays in storage for now.
             return Ok((
                 resumption_psk_store,
                 WelcomeKeyMaterial::with_vc_welcome_material(material),
@@ -1395,16 +1411,15 @@ impl MlsGroup {
         // Written before the group itself, so an error between the writes
         // cannot leave a loadable group without a binding (a bound group is
         // required for the reuse-guard MUST).
-        let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
-            .storage()
-            .vc_emulation_bindings(public_group.group_id())
-            .map_err(Error::StorageError)?
-            .unwrap_or_default();
         let max_entries = message_secrets_store.max_epochs.saturating_add(1);
-        bindings.insert(public_group.group_context().epoch(), epoch_id, max_entries);
-        bindings
-            .store(provider.storage(), public_group.group_id())
-            .map_err(Error::StorageError)?;
+        crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+            provider.storage(),
+            public_group.group_id(),
+            public_group.group_context().epoch(),
+            epoch_id,
+            max_entries,
+        )
+        .map_err(Error::StorageError)?;
 
         let mls_group = MlsGroup {
             mls_group_config: join_config.clone(),

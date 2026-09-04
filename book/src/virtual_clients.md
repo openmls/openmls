@@ -153,8 +153,12 @@ is the key under which all per-epoch state is stored, and it is the value
 embedded in the leaves the virtual client produces.
 
 Registration writes happen alongside the writes of the operation that triggered
-them, so wrap `merge_staged_commit` and `merge_pending_commit` calls on an
-emulation group in a storage transaction.
+them. Calls that create or advance an emulation group perform several storage
+writes that must land together: apply group creation, the Welcome join
+(`StagedWelcome::into_group`), and `merge_staged_commit` and
+`merge_pending_commit` calls atomically, for example by wrapping each call in a
+storage transaction. A call applied partially leaves storage inconsistent with
+the group.
 
 To start a fresh derivation epoch without changing membership, for instance to
 bound the damage of a compromise, mark a commit on the emulation group:
@@ -174,6 +178,54 @@ GroupContext has to require Safe AAD framing. Like all actions, the marker
 applies relative to the commit's input state: operations that reference a
 derivation epoch, including ones carried by this very commit, keep using the
 input state's newest derivation epoch.
+
+## Retaining derivation epochs
+
+An emulation group can be configured to keep a log of the derivation epochs it
+registered. This is such that emulator clients can still process delayed
+messages sent by sibling emulator clients.
+
+How far back the log reaches can be configured on group join, defaulting to five
+epochs:
+
+```rust,no_run,noplayground
+let create_config = MlsGroupCreateConfig::builder()
+    .emulation_group(true)
+    .set_vc_derivation_epoch_retention_policy(VcDerivationEpochRetentionPolicy::MaxEpochs(10))
+    // ... the leaf requirements above, ciphersuite, wire format policy
+    .build();
+```
+
+The log is stored as one entry per registered epoch, and every stored entry
+keeps its epoch's key material alive, as does every higher-level group binding
+and every retained KeyPackage. Registering a new derivation epoch drops the log
+entries beyond the window and then runs a storage sweep that deletes the key
+material of every epoch not referenced anymore. The sweep runs at the end
+of every library operation that drops a reference (registration, commit merge,
+group deletion), so an epoch is released as soon as its last holder lets go,
+and state that a crash orphaned is collected on the next sweep. A reference
+dropped outside the library, such as a retained KeyPackage deleted through the
+storage provider, is only noticed by the next sweep. See the limitations at the
+end of this chapter.
+`MlsGroup::set_vc_derivation_epoch_retention_policy` changes the window later
+and applies it right away.
+
+`VcDerivationEpochRetentionPolicy::KeepAll` turns the automatic pruning off. The
+application then decides when epochs go, by how long ago they were superseded.
+An epoch is superseded when the next one is registered, so the duration is a
+grace period after the epoch stopped being current, however late in its life
+that happened:
+
+```rust,no_run,noplayground
+let outcome = emulator_group.delete_vc_derivation_epochs(
+    provider,
+    VcDerivationEpochDeletion::older_than_duration(Duration::from_secs(24 * 3600)),
+)?;
+```
+
+The function returns the epochs whose state was deleted and the ones that were kept
+because something still referenced them. Either way they leave the log, so a
+later call does not reconsider them.
 
 ## Committing in a higher-level group
 
@@ -224,11 +276,13 @@ processes the commit as an ordinary commit. The permissive handling is framed
 around the receiver, who may not be a sibling. The sender is always a sibling.
 
 When a commit that carries a `DerivationInfo` is merged, the client stores a
-binding from `(GroupId, GroupEpoch)` to the `EpochId` from that leaf. The
-binding is keyed by epoch, not just group id, because a delayed application
-message from an earlier higher-level epoch must be processed with the derivation
-epoch that was active then. Bindings follow the same retention window as the
-message secrets store.
+binding from `(GroupId, GroupEpoch)` to the `EpochId` from that leaf. Joining a
+higher-level group through a virtual client's KeyPackage, by Welcome or by
+external commit, binds the joined epoch to the KeyPackage's derivation epoch the
+same way. The binding is keyed by epoch, not just group id, because a delayed
+application message from an earlier higher-level epoch must be processed with
+the derivation epoch that was active then. Bindings follow the same retention
+window as the message secrets store.
 
 ## Confirming handshake messages
 
@@ -465,8 +519,11 @@ The implementation tracks the draft but does not yet cover everything in it:
   `ProcessedMessage::vc_commit_data()`, and calls
   `process_vc_key_package_upload` itself. Only the `new_derivation_epoch` action
   is acted on by the library.
-- Per-epoch state for dead derivation epochs is not garbage collected
-  automatically.
+- A retained KeyPackage that expires unused keeps its derivation epoch alive
+  until the application deletes the KeyPackage. Deletion through the storage
+  provider's `delete_key_package` removes the retained material too, and a
+  follow-up call to `delete_unreferenced_vc_derivation_epoch_states` releases
+  the epoch's key material if nothing else references it.
 
 Refer to the [virtual clients draft](https://github.com/mlswg/mls-virtual-clients)
 for the authoritative protocol description.

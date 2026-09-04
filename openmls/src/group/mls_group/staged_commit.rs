@@ -814,6 +814,9 @@ impl MlsGroup {
                             crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
                                 self.public_group(),
                                 self.own_leaf_index(),
+                                self.mls_group_config
+                                    .vc_derivation_epoch_retention_policy()
+                                    .clone(),
                             ),
                         )?;
                     }
