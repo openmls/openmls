@@ -2574,37 +2574,51 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
     }
 }
 
-#[openmls_test]
-fn welcome_join_takes_over_epoch_reference_from_retained_material() {
+/// A Welcome for a virtual client whose retained KeyPackage material is the
+/// only reference its derivation epoch has left. Returned to the tests that
+/// exercise the hand-over of that reference to the joined group.
+struct RetainedMaterialWelcome {
+    vc_signer: SignatureKeyPair,
+    epoch_id: EpochId,
+    key_package_ref: openmls::prelude::KeyPackageRef,
+    welcome: openmls::messages::Welcome,
+    ratchet_tree: openmls::treesync::RatchetTree,
+}
+
+/// alice_a publishes a KeyPackage and alice_b retains its material. alice_b
+/// then deletes its emulation group, so the retained material becomes the
+/// epoch's only reference. Bob adds the virtual client through the published
+/// KeyPackage and the returned Welcome is addressed to it.
+fn retained_material_welcome<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_a_provider: &P,
+    alice_b_provider: &P,
+    bob_provider: &P,
+) -> RetainedMaterialWelcome {
     use openmls::components::vc_derivation_info::{
         assemble_vc_key_package_upload, process_vc_key_package_upload,
     };
 
-    let alice_a_provider = Provider::default();
-    let alice_b_provider = Provider::default();
-    let bob_provider = Provider::default();
-
     let (vc_signer, vc_credential) =
-        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+        shared_vc_identity(ciphersuite, alice_a_provider, alice_b_provider);
     let (mut emulator_a, emulator_a_signer) =
-        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA", true);
+        make_emulator_group(ciphersuite, alice_a_provider, b"AliceEmulatorA", true);
     let (_e_commit, mut emulator_b, _emulator_b_signer) = add_emulator_client(
         ciphersuite,
         &mut emulator_a,
-        &alice_a_provider,
+        alice_a_provider,
         &emulator_a_signer,
-        &alice_b_provider,
+        alice_b_provider,
         b"AliceEmulatorB",
     );
-    let epoch_id = newest_epoch(&emulator_b, &alice_b_provider);
+    let epoch_id = newest_epoch(&emulator_b, alice_b_provider);
 
-    // alice_a publishes a KeyPackage and alice_b retains its material.
     let mut batch = KeyPackage::builder()
         .leaf_node_capabilities(vc_capabilities())
         .leaf_node_extensions(vc_leaf_extensions())
         .build_vc_batch(
             ciphersuite,
-            &alice_a_provider,
+            alice_a_provider,
             &vc_signer,
             vc_credential.clone(),
             emulator_a.group_id(),
@@ -2621,11 +2635,14 @@ fn welcome_join_takes_over_epoch_reference_from_retained_material() {
         vec![kp_info],
     )
     .expect("assemble upload");
-    process_vc_key_package_upload(&alice_b_provider, &upload).expect("alice_b process upload");
+    process_vc_key_package_upload(alice_b_provider, &upload).expect("alice_b process upload");
+    let key_package_ref = vc_key_package_bundle
+        .key_package()
+        .hash_ref(alice_b_provider.crypto())
+        .expect("key package ref");
 
-    // alice_b deletes its emulation group, dropping the derivation-epoch log.
-    // The retained material is now the epoch's only reference and keeps its
-    // state alive through the delete-time sweep.
+    // The retained material keeps the epoch state alive through the
+    // delete-time sweep.
     emulator_b
         .delete(alice_b_provider.storage())
         .expect("alice_b delete emulation group");
@@ -2638,46 +2655,64 @@ fn welcome_join_takes_over_epoch_reference_from_retained_material() {
         "the retained material must keep the epoch state alive"
     );
 
-    // Bob adds the virtual client via the published KeyPackage.
     let (bob_credential, bob_signer) =
-        new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
     let bob_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();
-    let mut bob_main = MlsGroup::new(
-        &bob_provider,
-        &bob_signer,
-        &bob_group_config,
-        bob_credential,
-    )
-    .expect("bob create higher-level group");
+    let mut bob_main = MlsGroup::new(bob_provider, &bob_signer, &bob_group_config, bob_credential)
+        .expect("bob create higher-level group");
     let (_commit, welcome, _gi) = bob_main
         .add_members(
-            &bob_provider,
+            bob_provider,
             &bob_signer,
             &[vc_key_package_bundle.key_package().clone()],
         )
         .expect("bob add virtual client");
     bob_main
-        .merge_pending_commit(&bob_provider)
+        .merge_pending_commit(bob_provider)
         .expect("bob merge add");
-    let ratchet_tree = bob_main.export_ratchet_tree();
+
+    RetainedMaterialWelcome {
+        vc_signer,
+        epoch_id,
+        key_package_ref,
+        welcome: welcome.into_welcome().expect("welcome present"),
+        ratchet_tree: bob_main.export_ratchet_tree(),
+    }
+}
+
+#[openmls_test]
+fn welcome_join_takes_over_epoch_reference_from_retained_material() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let RetainedMaterialWelcome {
+        vc_signer,
+        epoch_id,
+        welcome,
+        ratchet_tree,
+        ..
+    } = retained_material_welcome(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &bob_provider,
+    );
 
     // The join consumes the material and binds the joined group to the epoch,
     // so the epoch state survives the join.
-    let processed = openmls::group::ProcessedWelcome::new_from_welcome(
+    let mut alice_b_main = StagedWelcome::new_from_welcome(
         &alice_b_provider,
         &vc_join_config(),
-        welcome.into_welcome().expect("welcome present"),
+        welcome,
+        Some(ratchet_tree.into()),
     )
-    .expect("alice_b process welcome");
-    let mut alice_b_main = processed
-        .into_staged_welcome(&alice_b_provider, Some(ratchet_tree.into()))
-        .expect("alice_b stage welcome")
-        .into_group(&alice_b_provider)
-        .expect("alice_b join higher-level group");
+    .expect("alice_b stage welcome")
+    .into_group(&alice_b_provider)
+    .expect("alice_b join higher-level group");
 
     let state: Option<VcDerivationEpochState> = alice_b_provider
         .storage()
@@ -2706,6 +2741,89 @@ fn welcome_join_takes_over_epoch_reference_from_retained_material() {
     assert!(
         state.is_none(),
         "deleting the last group bound to the epoch must release its key material"
+    );
+}
+
+#[openmls_test]
+fn welcome_join_keeps_epoch_referenced_until_bound() {
+    use openmls::components::vc_derivation_info::RetainedKeyPackageMaterial;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let RetainedMaterialWelcome {
+        vc_signer,
+        epoch_id,
+        key_package_ref,
+        welcome,
+        ratchet_tree,
+    } = retained_material_welcome(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &bob_provider,
+    );
+    let storage = alice_b_provider.storage();
+    let retained_material = |key_package_ref| -> Option<RetainedKeyPackageMaterial> {
+        storage
+            .retained_key_package_material(key_package_ref)
+            .expect("read retained material")
+    };
+    let epoch_state = |epoch_id| -> Option<VcDerivationEpochState> {
+        storage
+            .vc_derivation_epoch_state(epoch_id)
+            .expect("read epoch state")
+    };
+    let sweep = || -> Vec<EpochId> {
+        storage
+            .delete_unreferenced_vc_derivation_epoch_states()
+            .expect("sweep unreferenced epochs")
+    };
+
+    let processed = openmls::group::ProcessedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &vc_join_config(),
+        welcome,
+    )
+    .expect("alice_b process welcome");
+    assert!(
+        retained_material(&key_package_ref).is_some(),
+        "processing the Welcome must leave the retained material in place"
+    );
+    assert!(
+        sweep().is_empty(),
+        "a sweep after processing must not release the epoch"
+    );
+
+    let staged = processed
+        .into_staged_welcome(&alice_b_provider, Some(ratchet_tree.into()))
+        .expect("alice_b stage welcome");
+    assert!(
+        sweep().is_empty(),
+        "a sweep after staging must not release the epoch"
+    );
+
+    let mut alice_b_main = staged
+        .into_group(&alice_b_provider)
+        .expect("alice_b join higher-level group");
+    assert!(
+        retained_material(&key_package_ref).is_none(),
+        "joining must consume the retained material"
+    );
+    assert!(
+        sweep().is_empty(),
+        "the joined group's binding must reference the epoch"
+    );
+    assert!(
+        epoch_state(&epoch_id).is_some(),
+        "the epoch state must survive the join"
+    );
+    let unconfirmed = alice_b_main
+        .create_unconfirmed_message(&alice_b_provider, &vc_signer, b"bound send")
+        .expect("alice_b create unconfirmed message");
+    assert!(
+        unconfirmed.generation_id.is_some(),
+        "a group joined through a virtual client's KeyPackage must be bound"
     );
 }
 

@@ -1640,13 +1640,15 @@ impl WelcomeKeyMaterial {
         }
     }
 
-    /// The derivation epoch the virtual-client material belongs to, or `None`
-    /// on the regular path.
+    /// The virtual-client material on the virtual-client path, or `None` on
+    /// the regular path.
     #[cfg(feature = "virtual-clients-draft")]
-    pub(crate) fn vc_epoch_id(&self) -> Option<&crate::components::vc_derivation_info::EpochId> {
+    pub(crate) fn vc_welcome_material(
+        &self,
+    ) -> Option<&crate::components::vc_derivation_info::VcWelcomeMaterial> {
         match &self.inner {
             WelcomeKeyMaterialInner::KeyPackage(_) => None,
-            WelcomeKeyMaterialInner::VirtualClient(material) => Some(&material.epoch_id),
+            WelcomeKeyMaterialInner::VirtualClient(material) => Some(material),
         }
     }
 

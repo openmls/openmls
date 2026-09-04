@@ -820,7 +820,9 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Delete the retained virtual clients KeyPackage material stored for the
     /// given KeyPackage reference. Called from [`Self::delete_key_package`] so
-    /// the material is removed together with the KeyPackage it describes.
+    /// the material is removed together with the KeyPackage it describes, and
+    /// by the library once a Welcome join has bound the joined group to the
+    /// material's derivation epoch.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
