@@ -1,3 +1,4 @@
+use std::collections::{BTreeSet, VecDeque};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::SystemTime;
 
@@ -612,8 +613,8 @@ pub struct RetainedKeyPackageMaterial {
 /// entry overwrite the first's retained material, so both are rejected before
 /// any state is loaded or any operation generation is consumed.
 fn validate_key_package_infos(infos: &[KeyPackageInfo]) -> Result<(), VirtualClientsError> {
-    let mut seen_indices = std::collections::BTreeSet::new();
-    let mut seen_refs = std::collections::BTreeSet::new();
+    let mut seen_indices = BTreeSet::new();
+    let mut seen_refs = BTreeSet::new();
     for info in infos {
         if !seen_indices.insert(info.key_package_index) {
             return Err(VirtualClientsError::DuplicateKeyPackageIndex(
@@ -787,7 +788,7 @@ pub struct VcDerivationEpochLogEntry {
     /// Position of this entry in the group's log, starting at 0.
     pub(crate) sequence: u64,
     /// The emulation group's own epoch at registration time.
-    pub(crate) group_epoch: crate::group::GroupEpoch,
+    pub(crate) group_epoch: GroupEpoch,
     /// The derivation epoch id derived by that registration.
     pub(crate) epoch_id: EpochId,
     /// When the registration happened, in local wall-clock time.
@@ -823,7 +824,7 @@ impl VcDerivationEpochLogEntry {
 #[derive(Debug, Default)]
 pub(crate) struct VcDerivationEpochLog {
     // In registration order, oldest at the front.
-    entries: std::collections::VecDeque<VcDerivationEpochLogEntry>,
+    entries: VecDeque<VcDerivationEpochLogEntry>,
 }
 
 impl VcDerivationEpochLog {
@@ -843,7 +844,7 @@ impl VcDerivationEpochLog {
             entries
                 .iter()
                 .map(|entry| &entry.epoch_id)
-                .collect::<std::collections::BTreeSet<_>>()
+                .collect::<BTreeSet<_>>()
                 .len()
                 == entries.len(),
             "duplicate derivation epoch id in log"
@@ -1163,7 +1164,7 @@ pub(crate) fn register_vc_derivation_epoch<
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VcEmulationBinding {
     /// The higher-level group's epoch this binding is stored for.
-    pub(crate) group_epoch: crate::group::GroupEpoch,
+    pub(crate) group_epoch: GroupEpoch,
     /// The derivation epoch bound at that group epoch.
     pub(crate) epoch_id: EpochId,
 }
@@ -1199,7 +1200,7 @@ impl VcEmulationBinding {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VcEmulationBindings {
     // In order of insertion, oldest at the front.
-    bindings: std::collections::VecDeque<(GroupEpoch, EpochId)>,
+    bindings: VecDeque<(GroupEpoch, EpochId)>,
 }
 
 #[allow(deprecated)]
@@ -2850,7 +2851,7 @@ mod tests {
     #[allow(deprecated)]
     fn legacy_bindings_record_layout_is_frozen() {
         let record = VcEmulationBindings {
-            bindings: std::collections::VecDeque::from([
+            bindings: VecDeque::from([
                 (GroupEpoch::from(7), EpochId::new(vec![1, 2, 3])),
                 (GroupEpoch::from(8), EpochId::new(vec![4, 5, 6])),
             ]),
@@ -2869,6 +2870,36 @@ mod tests {
                 (GroupEpoch::from(8), EpochId::new(vec![4, 5, 6])),
             ]
         );
+    }
+
+    #[test]
+    fn log_entry_layout_is_frozen() {
+        let entry = VcDerivationEpochLogEntry {
+            sequence: 2,
+            group_epoch: GroupEpoch::from(7),
+            epoch_id: EpochId::new(vec![1, 2, 3]),
+            registered_at: SystemTime::UNIX_EPOCH + std::time::Duration::new(1_700_000_000, 42),
+        };
+        let json = serde_json::to_string(&entry).expect("serialize log entry");
+        assert_eq!(
+            json,
+            r#"{"sequence":2,"group_epoch":7,"epoch_id":[1,2,3],"registered_at":{"secs_since_epoch":1700000000,"nanos_since_epoch":42}}"#
+        );
+        let decoded: VcDerivationEpochLogEntry =
+            serde_json::from_str(&json).expect("deserialize log entry");
+        assert_eq!(decoded, entry);
+    }
+
+    #[test]
+    fn binding_layout_is_frozen() {
+        let binding = VcEmulationBinding {
+            group_epoch: GroupEpoch::from(7),
+            epoch_id: EpochId::new(vec![1, 2, 3]),
+        };
+        let json = serde_json::to_string(&binding).expect("serialize binding");
+        assert_eq!(json, r#"{"group_epoch":7,"epoch_id":[1,2,3]}"#);
+        let decoded: VcEmulationBinding = serde_json::from_str(&json).expect("deserialize binding");
+        assert_eq!(decoded, binding);
     }
 
     #[test]
@@ -2897,7 +2928,7 @@ mod tests {
         // A log holding only the converted entry treats it as the newest one,
         // so neither pruning path drops it.
         let mut log = VcDerivationEpochLog {
-            entries: std::collections::VecDeque::from([entry]),
+            entries: VecDeque::from([entry]),
         };
         assert!(log.shrink_to(1).is_empty());
         assert!(log.drop_superseded_before(SystemTime::now()).is_empty());
@@ -2968,7 +2999,7 @@ mod tests {
         // `old` lives from `start` until `mid` supersedes it 10 minutes before
         // the 24 h mark, where `new` in turn supersedes `mid`.
         let mut log = VcDerivationEpochLog {
-            entries: std::collections::VecDeque::from([
+            entries: VecDeque::from([
                 log_entry(0, &old, start),
                 log_entry(1, &mid, start + minutes(23 * 60 + 50)),
                 log_entry(2, &new, start + minutes(24 * 60)),
