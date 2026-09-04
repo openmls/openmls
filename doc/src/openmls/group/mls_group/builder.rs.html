@@ -259,446 +259,462 @@
 <a href=#259 id=259 data-nosnippet>259</a>                <span class="kw">crate</span>::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
 <a href=#260 id=260 data-nosnippet>260</a>                    <span class="kw-2">&amp;</span>public_group,
 <a href=#261 id=261 data-nosnippet>261</a>                    LeafNodeIndex::new(<span class="number">0</span>),
-<a href=#262 id=262 data-nosnippet>262</a>                ),
-<a href=#263 id=263 data-nosnippet>263</a>            )<span class="question-mark">?</span>;
-<a href=#264 id=264 data-nosnippet>264</a>        }
-<a href=#265 id=265 data-nosnippet>265</a>
-<a href=#266 id=266 data-nosnippet>266</a>        <span class="kw">let </span>mls_group = MlsGroup {
-<a href=#267 id=267 data-nosnippet>267</a>            mls_group_config: mls_group_create_config.join_config.clone(),
-<a href=#268 id=268 data-nosnippet>268</a>            own_leaf_nodes: <span class="macro">vec!</span>[],
-<a href=#269 id=269 data-nosnippet>269</a>            aad: <span class="macro">vec!</span>[],
-<a href=#270 id=270 data-nosnippet>270</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#271 id=271 data-nosnippet>271</a>            </span>safe_aad: <span class="kw">crate</span>::framing::SafeAad::empty(),
-<a href=#272 id=272 data-nosnippet>272</a>            group_state: MlsGroupState::Operational,
-<a href=#273 id=273 data-nosnippet>273</a>            public_group,
-<a href=#274 id=274 data-nosnippet>274</a>            group_epoch_secrets,
-<a href=#275 id=275 data-nosnippet>275</a>            own_leaf_index: LeafNodeIndex::new(<span class="number">0</span>),
-<a href=#276 id=276 data-nosnippet>276</a>            message_secrets_store,
-<a href=#277 id=277 data-nosnippet>277</a>            resumption_psk_store,
-<a href=#278 id=278 data-nosnippet>278</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#279 id=279 data-nosnippet>279</a>            </span>application_export_tree: <span class="prelude-val">Some</span>(application_export_tree),
-<a href=#280 id=280 data-nosnippet>280</a>            <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#281 id=281 data-nosnippet>281</a>            </span>emulation_group: mls_group_create_config.emulation_group,
-<a href=#282 id=282 data-nosnippet>282</a>        };
-<a href=#283 id=283 data-nosnippet>283</a>
-<a href=#284 id=284 data-nosnippet>284</a>        mls_group
-<a href=#285 id=285 data-nosnippet>285</a>            .store(provider.storage())
-<a href=#286 id=286 data-nosnippet>286</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
-<a href=#287 id=287 data-nosnippet>287</a>        mls_group
-<a href=#288 id=288 data-nosnippet>288</a>            .store_epoch_keypairs(provider.storage(), <span class="kw-2">&amp;</span>[leaf_keypair])
-<a href=#289 id=289 data-nosnippet>289</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
-<a href=#290 id=290 data-nosnippet>290</a>
-<a href=#291 id=291 data-nosnippet>291</a>        <span class="prelude-val">Ok</span>(mls_group)
-<a href=#292 id=292 data-nosnippet>292</a>    }
-<a href=#293 id=293 data-nosnippet>293</a>
-<a href=#294 id=294 data-nosnippet>294</a>    <span class="comment">// MlsGroupCreateConfigBuilder options
-<a href=#295 id=295 data-nosnippet>295</a>
-<a href=#296 id=296 data-nosnippet>296</a>    </span><span class="doccomment">/// Sets the `wire_format` property of the MlsGroup.
-<a href=#297 id=297 data-nosnippet>297</a>    </span><span class="kw">pub fn </span>with_wire_format_policy(<span class="kw-2">mut </span><span class="self">self</span>, wire_format_policy: WireFormatPolicy) -&gt; <span class="self">Self </span>{
-<a href=#298 id=298 data-nosnippet>298</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#299 id=299 data-nosnippet>299</a>            </span>.mls_group_create_config_builder
-<a href=#300 id=300 data-nosnippet>300</a>            .wire_format_policy(wire_format_policy);
-<a href=#301 id=301 data-nosnippet>301</a>        <span class="self">self
-<a href=#302 id=302 data-nosnippet>302</a>    </span>}
-<a href=#303 id=303 data-nosnippet>303</a>
-<a href=#304 id=304 data-nosnippet>304</a>    <span class="doccomment">/// Sets the `padding_size` property of the MlsGroup.
-<a href=#305 id=305 data-nosnippet>305</a>    </span><span class="kw">pub fn </span>padding_size(<span class="kw-2">mut </span><span class="self">self</span>, padding_size: usize) -&gt; <span class="self">Self </span>{
-<a href=#306 id=306 data-nosnippet>306</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#307 id=307 data-nosnippet>307</a>            </span>.mls_group_create_config_builder
-<a href=#308 id=308 data-nosnippet>308</a>            .padding_size(padding_size);
-<a href=#309 id=309 data-nosnippet>309</a>        <span class="self">self
-<a href=#310 id=310 data-nosnippet>310</a>    </span>}
-<a href=#311 id=311 data-nosnippet>311</a>
-<a href=#312 id=312 data-nosnippet>312</a>    <span class="doccomment">/// Sets the `max_past_epochs` property of the MlsGroup.
-<a href=#313 id=313 data-nosnippet>313</a>    /// This allows application messages from previous epochs to be decrypted.
-<a href=#314 id=314 data-nosnippet>314</a>    ///
-<a href=#315 id=315 data-nosnippet>315</a>    /// This method overrides the policy set by [`Self::set_past_epoch_deletion_policy()`],
-<a href=#316 id=316 data-nosnippet>316</a>    /// and is equivalent to setting the past epoch deletion policy to
-<a href=#317 id=317 data-nosnippet>317</a>    /// `PastEpochDeletionPolicy::MaxEpochs(max_past_epochs)`.
+<a href=#262 id=262 data-nosnippet>262</a>                    mls_group_create_config
+<a href=#263 id=263 data-nosnippet>263</a>                        .join_config
+<a href=#264 id=264 data-nosnippet>264</a>                        .vc_derivation_epoch_retention_policy()
+<a href=#265 id=265 data-nosnippet>265</a>                        .clone(),
+<a href=#266 id=266 data-nosnippet>266</a>                ),
+<a href=#267 id=267 data-nosnippet>267</a>            )<span class="question-mark">?</span>;
+<a href=#268 id=268 data-nosnippet>268</a>        }
+<a href=#269 id=269 data-nosnippet>269</a>
+<a href=#270 id=270 data-nosnippet>270</a>        <span class="kw">let </span>mls_group = MlsGroup {
+<a href=#271 id=271 data-nosnippet>271</a>            mls_group_config: mls_group_create_config.join_config.clone(),
+<a href=#272 id=272 data-nosnippet>272</a>            own_leaf_nodes: <span class="macro">vec!</span>[],
+<a href=#273 id=273 data-nosnippet>273</a>            aad: <span class="macro">vec!</span>[],
+<a href=#274 id=274 data-nosnippet>274</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#275 id=275 data-nosnippet>275</a>            </span>safe_aad: <span class="kw">crate</span>::framing::SafeAad::empty(),
+<a href=#276 id=276 data-nosnippet>276</a>            group_state: MlsGroupState::Operational,
+<a href=#277 id=277 data-nosnippet>277</a>            public_group,
+<a href=#278 id=278 data-nosnippet>278</a>            group_epoch_secrets,
+<a href=#279 id=279 data-nosnippet>279</a>            own_leaf_index: LeafNodeIndex::new(<span class="number">0</span>),
+<a href=#280 id=280 data-nosnippet>280</a>            message_secrets_store,
+<a href=#281 id=281 data-nosnippet>281</a>            resumption_psk_store,
+<a href=#282 id=282 data-nosnippet>282</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#283 id=283 data-nosnippet>283</a>            </span>application_export_tree: <span class="prelude-val">Some</span>(application_export_tree),
+<a href=#284 id=284 data-nosnippet>284</a>            <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#285 id=285 data-nosnippet>285</a>            </span>emulation_group: mls_group_create_config.emulation_group,
+<a href=#286 id=286 data-nosnippet>286</a>        };
+<a href=#287 id=287 data-nosnippet>287</a>
+<a href=#288 id=288 data-nosnippet>288</a>        mls_group
+<a href=#289 id=289 data-nosnippet>289</a>            .store(provider.storage())
+<a href=#290 id=290 data-nosnippet>290</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+<a href=#291 id=291 data-nosnippet>291</a>        mls_group
+<a href=#292 id=292 data-nosnippet>292</a>            .store_epoch_keypairs(provider.storage(), <span class="kw-2">&amp;</span>[leaf_keypair])
+<a href=#293 id=293 data-nosnippet>293</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+<a href=#294 id=294 data-nosnippet>294</a>
+<a href=#295 id=295 data-nosnippet>295</a>        <span class="prelude-val">Ok</span>(mls_group)
+<a href=#296 id=296 data-nosnippet>296</a>    }
+<a href=#297 id=297 data-nosnippet>297</a>
+<a href=#298 id=298 data-nosnippet>298</a>    <span class="comment">// MlsGroupCreateConfigBuilder options
+<a href=#299 id=299 data-nosnippet>299</a>
+<a href=#300 id=300 data-nosnippet>300</a>    </span><span class="doccomment">/// Sets the `wire_format` property of the MlsGroup.
+<a href=#301 id=301 data-nosnippet>301</a>    </span><span class="kw">pub fn </span>with_wire_format_policy(<span class="kw-2">mut </span><span class="self">self</span>, wire_format_policy: WireFormatPolicy) -&gt; <span class="self">Self </span>{
+<a href=#302 id=302 data-nosnippet>302</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#303 id=303 data-nosnippet>303</a>            </span>.mls_group_create_config_builder
+<a href=#304 id=304 data-nosnippet>304</a>            .wire_format_policy(wire_format_policy);
+<a href=#305 id=305 data-nosnippet>305</a>        <span class="self">self
+<a href=#306 id=306 data-nosnippet>306</a>    </span>}
+<a href=#307 id=307 data-nosnippet>307</a>
+<a href=#308 id=308 data-nosnippet>308</a>    <span class="doccomment">/// Sets the `padding_size` property of the MlsGroup.
+<a href=#309 id=309 data-nosnippet>309</a>    </span><span class="kw">pub fn </span>padding_size(<span class="kw-2">mut </span><span class="self">self</span>, padding_size: usize) -&gt; <span class="self">Self </span>{
+<a href=#310 id=310 data-nosnippet>310</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#311 id=311 data-nosnippet>311</a>            </span>.mls_group_create_config_builder
+<a href=#312 id=312 data-nosnippet>312</a>            .padding_size(padding_size);
+<a href=#313 id=313 data-nosnippet>313</a>        <span class="self">self
+<a href=#314 id=314 data-nosnippet>314</a>    </span>}
+<a href=#315 id=315 data-nosnippet>315</a>
+<a href=#316 id=316 data-nosnippet>316</a>    <span class="doccomment">/// Sets the `max_past_epochs` property of the MlsGroup.
+<a href=#317 id=317 data-nosnippet>317</a>    /// This allows application messages from previous epochs to be decrypted.
 <a href=#318 id=318 data-nosnippet>318</a>    ///
-<a href=#319 id=319 data-nosnippet>319</a>    /// **WARNING**
-<a href=#320 id=320 data-nosnippet>320</a>    ///
-<a href=#321 id=321 data-nosnippet>321</a>    ///
-<a href=#322 id=322 data-nosnippet>322</a>    /// This feature enables the storage of message secrets from past epochs.
-<a href=#323 id=323 data-nosnippet>323</a>    /// It is a trade-off between functionality and forward secrecy and should only be enabled
-<a href=#324 id=324 data-nosnippet>324</a>    /// if the Delivery Service cannot guarantee that application messages will be sent in
-<a href=#325 id=325 data-nosnippet>325</a>    /// the same epoch in which they were generated. The number for `max_epochs` should be
-<a href=#326 id=326 data-nosnippet>326</a>    /// as low as possible.
-<a href=#327 id=327 data-nosnippet>327</a>    ///
-<a href=#328 id=328 data-nosnippet>328</a>    /// NOTE: This function will be deprecated in future releases.
-<a href=#329 id=329 data-nosnippet>329</a>    </span><span class="kw">pub fn </span>max_past_epochs(<span class="kw-2">mut </span><span class="self">self</span>, max_past_epochs: usize) -&gt; <span class="self">Self </span>{
-<a href=#330 id=330 data-nosnippet>330</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#331 id=331 data-nosnippet>331</a>            </span>.mls_group_create_config_builder
-<a href=#332 id=332 data-nosnippet>332</a>            .max_past_epochs(max_past_epochs);
-<a href=#333 id=333 data-nosnippet>333</a>        <span class="self">self
-<a href=#334 id=334 data-nosnippet>334</a>    </span>}
-<a href=#335 id=335 data-nosnippet>335</a>
-<a href=#336 id=336 data-nosnippet>336</a>    <span class="doccomment">/// Set the policy for deleting past epoch secrets.
-<a href=#337 id=337 data-nosnippet>337</a>    ///
-<a href=#338 id=338 data-nosnippet>338</a>    /// By default, storage of past epoch secrets is disabled.
-<a href=#339 id=339 data-nosnippet>339</a>    ///
-<a href=#340 id=340 data-nosnippet>340</a>    /// This method overrides the configuration set by [`Self::max_past_epochs()`].
+<a href=#319 id=319 data-nosnippet>319</a>    /// This method overrides the policy set by [`Self::set_past_epoch_deletion_policy()`],
+<a href=#320 id=320 data-nosnippet>320</a>    /// and is equivalent to setting the past epoch deletion policy to
+<a href=#321 id=321 data-nosnippet>321</a>    /// `PastEpochDeletionPolicy::MaxEpochs(max_past_epochs)`.
+<a href=#322 id=322 data-nosnippet>322</a>    ///
+<a href=#323 id=323 data-nosnippet>323</a>    /// **WARNING**
+<a href=#324 id=324 data-nosnippet>324</a>    ///
+<a href=#325 id=325 data-nosnippet>325</a>    ///
+<a href=#326 id=326 data-nosnippet>326</a>    /// This feature enables the storage of message secrets from past epochs.
+<a href=#327 id=327 data-nosnippet>327</a>    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+<a href=#328 id=328 data-nosnippet>328</a>    /// if the Delivery Service cannot guarantee that application messages will be sent in
+<a href=#329 id=329 data-nosnippet>329</a>    /// the same epoch in which they were generated. The number for `max_epochs` should be
+<a href=#330 id=330 data-nosnippet>330</a>    /// as low as possible.
+<a href=#331 id=331 data-nosnippet>331</a>    ///
+<a href=#332 id=332 data-nosnippet>332</a>    /// NOTE: This function will be deprecated in future releases.
+<a href=#333 id=333 data-nosnippet>333</a>    </span><span class="kw">pub fn </span>max_past_epochs(<span class="kw-2">mut </span><span class="self">self</span>, max_past_epochs: usize) -&gt; <span class="self">Self </span>{
+<a href=#334 id=334 data-nosnippet>334</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#335 id=335 data-nosnippet>335</a>            </span>.mls_group_create_config_builder
+<a href=#336 id=336 data-nosnippet>336</a>            .max_past_epochs(max_past_epochs);
+<a href=#337 id=337 data-nosnippet>337</a>        <span class="self">self
+<a href=#338 id=338 data-nosnippet>338</a>    </span>}
+<a href=#339 id=339 data-nosnippet>339</a>
+<a href=#340 id=340 data-nosnippet>340</a>    <span class="doccomment">/// Set the policy for deleting past epoch secrets.
 <a href=#341 id=341 data-nosnippet>341</a>    ///
-<a href=#342 id=342 data-nosnippet>342</a>    /// **WARNING**
+<a href=#342 id=342 data-nosnippet>342</a>    /// By default, storage of past epoch secrets is disabled.
 <a href=#343 id=343 data-nosnippet>343</a>    ///
-<a href=#344 id=344 data-nosnippet>344</a>    /// This feature enables the storage of message secrets from past epochs.
-<a href=#345 id=345 data-nosnippet>345</a>    /// It is a trade-off between functionality and forward secrecy and should only be enabled
-<a href=#346 id=346 data-nosnippet>346</a>    /// if the Delivery Service cannot guarantee that application messages will be sent in
-<a href=#347 id=347 data-nosnippet>347</a>    /// the same epoch in which they were generated. The number for `max_epochs` should be
-<a href=#348 id=348 data-nosnippet>348</a>    /// as low as possible.
-<a href=#349 id=349 data-nosnippet>349</a>    </span><span class="kw">pub fn </span>set_past_epoch_deletion_policy(<span class="kw-2">mut </span><span class="self">self</span>, policy: PastEpochDeletionPolicy) -&gt; <span class="self">Self </span>{
-<a href=#350 id=350 data-nosnippet>350</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#351 id=351 data-nosnippet>351</a>            </span>.mls_group_create_config_builder
-<a href=#352 id=352 data-nosnippet>352</a>            .set_past_epoch_deletion_policy(policy);
-<a href=#353 id=353 data-nosnippet>353</a>        <span class="self">self
-<a href=#354 id=354 data-nosnippet>354</a>    </span>}
-<a href=#355 id=355 data-nosnippet>355</a>
-<a href=#356 id=356 data-nosnippet>356</a>    <span class="doccomment">/// Sets the `number_of_resumption_psks` property of the MlsGroup.
-<a href=#357 id=357 data-nosnippet>357</a>    </span><span class="kw">pub fn </span>number_of_resumption_psks(<span class="kw-2">mut </span><span class="self">self</span>, number_of_resumption_psks: usize) -&gt; <span class="self">Self </span>{
-<a href=#358 id=358 data-nosnippet>358</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#359 id=359 data-nosnippet>359</a>            </span>.mls_group_create_config_builder
-<a href=#360 id=360 data-nosnippet>360</a>            .number_of_resumption_psks(number_of_resumption_psks);
-<a href=#361 id=361 data-nosnippet>361</a>        <span class="self">self
-<a href=#362 id=362 data-nosnippet>362</a>    </span>}
-<a href=#363 id=363 data-nosnippet>363</a>
-<a href=#364 id=364 data-nosnippet>364</a>    <span class="doccomment">/// Sets the `use_ratchet_tree_extension` property of the MlsGroup.
-<a href=#365 id=365 data-nosnippet>365</a>    </span><span class="kw">pub fn </span>use_ratchet_tree_extension(<span class="kw-2">mut </span><span class="self">self</span>, use_ratchet_tree_extension: bool) -&gt; <span class="self">Self </span>{
-<a href=#366 id=366 data-nosnippet>366</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#367 id=367 data-nosnippet>367</a>            </span>.mls_group_create_config_builder
-<a href=#368 id=368 data-nosnippet>368</a>            .use_ratchet_tree_extension(use_ratchet_tree_extension);
-<a href=#369 id=369 data-nosnippet>369</a>        <span class="self">self
-<a href=#370 id=370 data-nosnippet>370</a>    </span>}
-<a href=#371 id=371 data-nosnippet>371</a>
-<a href=#372 id=372 data-nosnippet>372</a>    <span class="doccomment">/// Sets the `sender_ratchet_configuration` property of the MlsGroup.
-<a href=#373 id=373 data-nosnippet>373</a>    /// See [`SenderRatchetConfiguration`] for more information.
-<a href=#374 id=374 data-nosnippet>374</a>    </span><span class="kw">pub fn </span>sender_ratchet_configuration(
-<a href=#375 id=375 data-nosnippet>375</a>        <span class="kw-2">mut </span><span class="self">self</span>,
-<a href=#376 id=376 data-nosnippet>376</a>        sender_ratchet_configuration: SenderRatchetConfiguration,
-<a href=#377 id=377 data-nosnippet>377</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#378 id=378 data-nosnippet>378</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#379 id=379 data-nosnippet>379</a>            </span>.mls_group_create_config_builder
-<a href=#380 id=380 data-nosnippet>380</a>            .sender_ratchet_configuration(sender_ratchet_configuration);
-<a href=#381 id=381 data-nosnippet>381</a>        <span class="self">self
-<a href=#382 id=382 data-nosnippet>382</a>    </span>}
-<a href=#383 id=383 data-nosnippet>383</a>
-<a href=#384 id=384 data-nosnippet>384</a>    <span class="doccomment">/// Sets the `lifetime` of the group creator's leaf.
-<a href=#385 id=385 data-nosnippet>385</a>    </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
-<a href=#386 id=386 data-nosnippet>386</a>        <span class="self">self</span>.mls_group_create_config_builder =
-<a href=#387 id=387 data-nosnippet>387</a>            <span class="self">self</span>.mls_group_create_config_builder.lifetime(lifetime);
-<a href=#388 id=388 data-nosnippet>388</a>        <span class="self">self
-<a href=#389 id=389 data-nosnippet>389</a>    </span>}
-<a href=#390 id=390 data-nosnippet>390</a>
-<a href=#391 id=391 data-nosnippet>391</a>    <span class="doccomment">/// Sets the `ciphersuite` of the MlsGroup.
-<a href=#392 id=392 data-nosnippet>392</a>    </span><span class="kw">pub fn </span>ciphersuite(<span class="kw-2">mut </span><span class="self">self</span>, ciphersuite: Ciphersuite) -&gt; <span class="self">Self </span>{
-<a href=#393 id=393 data-nosnippet>393</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#394 id=394 data-nosnippet>394</a>            </span>.mls_group_create_config_builder
-<a href=#395 id=395 data-nosnippet>395</a>            .ciphersuite(ciphersuite);
-<a href=#396 id=396 data-nosnippet>396</a>        <span class="self">self
-<a href=#397 id=397 data-nosnippet>397</a>    </span>}
-<a href=#398 id=398 data-nosnippet>398</a>
-<a href=#399 id=399 data-nosnippet>399</a>    <span class="doccomment">/// Sets the initial group context extensions
-<a href=#400 id=400 data-nosnippet>400</a>    </span><span class="kw">pub fn </span>with_group_context_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions&lt;GroupContext&gt;) -&gt; <span class="self">Self </span>{
-<a href=#401 id=401 data-nosnippet>401</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#402 id=402 data-nosnippet>402</a>            </span>.mls_group_create_config_builder
-<a href=#403 id=403 data-nosnippet>403</a>            .with_group_context_extensions(extensions);
-<a href=#404 id=404 data-nosnippet>404</a>        <span class="self">self
-<a href=#405 id=405 data-nosnippet>405</a>    </span>}
-<a href=#406 id=406 data-nosnippet>406</a>
-<a href=#407 id=407 data-nosnippet>407</a>    <span class="doccomment">/// Sets the initial leaf node extensions
-<a href=#408 id=408 data-nosnippet>408</a>    </span><span class="kw">pub fn </span>with_leaf_node_extensions(
-<a href=#409 id=409 data-nosnippet>409</a>        <span class="kw-2">mut </span><span class="self">self</span>,
-<a href=#410 id=410 data-nosnippet>410</a>        extensions: Extensions&lt;LeafNode&gt;,
-<a href=#411 id=411 data-nosnippet>411</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeValidationError&gt; {
-<a href=#412 id=412 data-nosnippet>412</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#413 id=413 data-nosnippet>413</a>            </span>.mls_group_create_config_builder
-<a href=#414 id=414 data-nosnippet>414</a>            .with_leaf_node_extensions(extensions)<span class="question-mark">?</span>;
-<a href=#415 id=415 data-nosnippet>415</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
-<a href=#416 id=416 data-nosnippet>416</a>    }
-<a href=#417 id=417 data-nosnippet>417</a>
-<a href=#418 id=418 data-nosnippet>418</a>    <span class="doccomment">/// Sets the group creator's [`Capabilities`]
-<a href=#419 id=419 data-nosnippet>419</a>    </span><span class="kw">pub fn </span>with_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
-<a href=#420 id=420 data-nosnippet>420</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
-<a href=#421 id=421 data-nosnippet>421</a>            </span>.mls_group_create_config_builder
-<a href=#422 id=422 data-nosnippet>422</a>            .capabilities(capabilities);
-<a href=#423 id=423 data-nosnippet>423</a>        <span class="self">self
-<a href=#424 id=424 data-nosnippet>424</a>    </span>}
-<a href=#425 id=425 data-nosnippet>425</a>}
-<a href=#426 id=426 data-nosnippet>426</a>
-<a href=#427 id=427 data-nosnippet>427</a><span class="doccomment">/// Builder that creates a fresh sub-group and its branch commit in a single
-<a href=#428 id=428 data-nosnippet>428</a>/// step, as described in [RFC 9420 §11.3].
-<a href=#429 id=429 data-nosnippet>429</a>///
-<a href=#430 id=430 data-nosnippet>430</a>/// Create this with [`MlsGroupBuilder::branch`].
-<a href=#431 id=431 data-nosnippet>431</a>///
-<a href=#432 id=432 data-nosnippet>432</a>/// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
-<a href=#433 id=433 data-nosnippet>433</a></span><span class="kw">pub struct </span>BranchGroupBuilder {
-<a href=#434 id=434 data-nosnippet>434</a>    group_builder: MlsGroupBuilder,
-<a href=#435 id=435 data-nosnippet>435</a>    branch_info: BranchInfo,
-<a href=#436 id=436 data-nosnippet>436</a>}
-<a href=#437 id=437 data-nosnippet>437</a>
-<a href=#438 id=438 data-nosnippet>438</a><span class="kw">impl </span>BranchGroupBuilder {
-<a href=#439 id=439 data-nosnippet>439</a>    <span class="doccomment">/// Create the sub-group and the branch commit that adds `new_members` to it.
-<a href=#440 id=440 data-nosnippet>440</a>    ///
-<a href=#441 id=441 data-nosnippet>441</a>    /// This creates a fresh group with the parent's ciphersuite, adds the branch
-<a href=#442 id=442 data-nosnippet>442</a>    /// resumption PSK (mixing in the parent's resumption PSK secret), and commits
-<a href=#443 id=443 data-nosnippet>443</a>    /// the additions. It returns the new (epoch-0) sub-group and the
-<a href=#444 id=444 data-nosnippet>444</a>    /// [`CommitMessageBundle`] carrying the branch commit and `Welcome`.
-<a href=#445 id=445 data-nosnippet>445</a>    ///
-<a href=#446 id=446 data-nosnippet>446</a>    /// The commit is staged but **not** merged: merge it with
-<a href=#447 id=447 data-nosnippet>447</a>    /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
-<a href=#448 id=448 data-nosnippet>448</a>    /// only once the delivery service has confirmed it.
-<a href=#449 id=449 data-nosnippet>449</a>    </span><span class="kw">pub fn </span>build_branch&lt;Provider: OpenMlsProvider&gt;(
-<a href=#450 id=450 data-nosnippet>450</a>        <span class="self">self</span>,
-<a href=#451 id=451 data-nosnippet>451</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#452 id=452 data-nosnippet>452</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#453 id=453 data-nosnippet>453</a>        credential_with_key: CredentialWithKey,
-<a href=#454 id=454 data-nosnippet>454</a>        new_members: Vec&lt;KeyPackage&gt;,
-<a href=#455 id=455 data-nosnippet>455</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsGroup, CommitMessageBundle), BranchError&lt;Provider::StorageError&gt;&gt; {
-<a href=#456 id=456 data-nosnippet>456</a>        <span class="comment">// The sub-group must use the same ciphersuite as the parent group.
-<a href=#457 id=457 data-nosnippet>457</a>        </span><span class="kw">let </span>group_builder = <span class="self">self
-<a href=#458 id=458 data-nosnippet>458</a>            </span>.group_builder
-<a href=#459 id=459 data-nosnippet>459</a>            .ciphersuite(<span class="self">self</span>.branch_info.ciphersuite());
-<a href=#460 id=460 data-nosnippet>460</a>        <span class="kw">let </span><span class="kw-2">mut </span>group = group_builder.build(provider, signer, credential_with_key)<span class="question-mark">?</span>;
-<a href=#461 id=461 data-nosnippet>461</a>
-<a href=#462 id=462 data-nosnippet>462</a>        <span class="kw">let </span>bundle = group
-<a href=#463 id=463 data-nosnippet>463</a>            .commit_builder()
-<a href=#464 id=464 data-nosnippet>464</a>            .branch(provider.rand(), <span class="kw-2">&amp;</span><span class="self">self</span>.branch_info)<span class="question-mark">?
-<a href=#465 id=465 data-nosnippet>465</a>            </span>.propose_adds(new_members)
-<a href=#466 id=466 data-nosnippet>466</a>            .load_psks(provider.storage())<span class="question-mark">?
-<a href=#467 id=467 data-nosnippet>467</a>            </span>.build(provider.rand(), provider.crypto(), signer, |<span class="kw">_</span>| <span class="bool-val">true</span>)<span class="question-mark">?
-<a href=#468 id=468 data-nosnippet>468</a>            </span>.stage_commit(provider)<span class="question-mark">?</span>;
-<a href=#469 id=469 data-nosnippet>469</a>
-<a href=#470 id=470 data-nosnippet>470</a>        <span class="prelude-val">Ok</span>((group, bundle))
-<a href=#471 id=471 data-nosnippet>471</a>    }
-<a href=#472 id=472 data-nosnippet>472</a>}
-<a href=#473 id=473 data-nosnippet>473</a>
-<a href=#474 id=474 data-nosnippet>474</a><span class="doccomment">/// Indicates an error occurred while creating a sub-group branch with
-<a href=#475 id=475 data-nosnippet>475</a>/// [`BranchGroupBuilder::build_branch`].
-<a href=#476 id=476 data-nosnippet>476</a></span><span class="attr">#[derive(Debug, thiserror::Error)]
-<a href=#477 id=477 data-nosnippet>477</a></span><span class="kw">pub enum </span>BranchError&lt;StorageError&gt; {
-<a href=#478 id=478 data-nosnippet>478</a>    <span class="doccomment">/// An error occurred while creating the sub-group.
-<a href=#479 id=479 data-nosnippet>479</a>    </span><span class="attr">#[error(transparent)]
-<a href=#480 id=480 data-nosnippet>480</a>    </span>NewGroup(<span class="attr">#[from] </span>NewGroupError&lt;StorageError&gt;),
-<a href=#481 id=481 data-nosnippet>481</a>    <span class="doccomment">/// An error occurred while creating the branch commit.
-<a href=#482 id=482 data-nosnippet>482</a>    </span><span class="attr">#[error(transparent)]
-<a href=#483 id=483 data-nosnippet>483</a>    </span>CreateCommit(<span class="attr">#[from] </span>CreateCommitError),
-<a href=#484 id=484 data-nosnippet>484</a>    <span class="doccomment">/// An error occurred while staging the branch commit.
-<a href=#485 id=485 data-nosnippet>485</a>    </span><span class="attr">#[error(transparent)]
-<a href=#486 id=486 data-nosnippet>486</a>    </span>CommitBuilderStage(<span class="attr">#[from] </span>CommitBuilderStageError&lt;StorageError&gt;),
-<a href=#487 id=487 data-nosnippet>487</a>}
-<a href=#488 id=488 data-nosnippet>488</a>
-<a href=#489 id=489 data-nosnippet>489</a><span class="doccomment">/// Create a new group with the virtual client as the creator (epoch 0, single
-<a href=#490 id=490 data-nosnippet>490</a>/// leaf).
-<a href=#491 id=491 data-nosnippet>491</a>///
-<a href=#492 id=492 data-nosnippet>492</a>/// The creator's leaf is `key_package`-sourced and its key material is derived
-<a href=#493 id=493 data-nosnippet>493</a>/// from a fresh `key_package` operation secret of the derivation epoch
-<a href=#494 id=494 data-nosnippet>494</a>/// `epoch_id` (batch index 0). The epoch-0 `epoch_secret` is derived from the
-<a href=#495 id=495 data-nosnippet>495</a>/// same KeyPackage seed under the created group's ciphersuite. A sibling
-<a href=#496 id=496 data-nosnippet>496</a>/// emulator client reconstructs this exact state with
-<a href=#497 id=497 data-nosnippet>497</a>/// [`MlsGroup::vc_join_at_creation`]: it shares the operation secret tree, so it
-<a href=#498 id=498 data-nosnippet>498</a>/// rederives the same seed and hence the same epoch secret without any secret
-<a href=#499 id=499 data-nosnippet>499</a>/// travelling on the wire. Because the `epoch_secret` is derived rather than run
-<a href=#500 id=500 data-nosnippet>500</a>/// through the joiner key schedule, this path bypasses it entirely.
-<a href=#501 id=501 data-nosnippet>501</a>///
-<a href=#502 id=502 data-nosnippet>502</a>/// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
-<a href=#503 id=503 data-nosnippet>503</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#504 id=504 data-nosnippet>504</a>#[allow(clippy::too_many_arguments)]
-<a href=#505 id=505 data-nosnippet>505</a></span><span class="kw">fn </span>build_vc_internal&lt;Provider: OpenMlsProvider&gt;(
-<a href=#506 id=506 data-nosnippet>506</a>    provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#507 id=507 data-nosnippet>507</a>    signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-<a href=#508 id=508 data-nosnippet>508</a>    credential_with_key: CredentialWithKey,
-<a href=#509 id=509 data-nosnippet>509</a>    mls_group_create_config: MlsGroupCreateConfig,
-<a href=#510 id=510 data-nosnippet>510</a>    group_id: GroupId,
-<a href=#511 id=511 data-nosnippet>511</a>    replace_old_group: bool,
-<a href=#512 id=512 data-nosnippet>512</a>    epoch_id: <span class="kw">crate</span>::components::vc_derivation_info::EpochId,
-<a href=#513 id=513 data-nosnippet>513</a>) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, NewGroupError&lt;Provider::StorageError&gt;&gt; {
-<a href=#514 id=514 data-nosnippet>514</a>    <span class="kw">use </span>openmls_traits::storage::StorageProvider <span class="kw">as _</span>;
-<a href=#515 id=515 data-nosnippet>515</a>
-<a href=#516 id=516 data-nosnippet>516</a>    <span class="kw">use crate</span>::{
-<a href=#517 id=517 data-nosnippet>517</a>        components::vc_derivation_info::{
-<a href=#518 id=518 data-nosnippet>518</a>            load_vc_epoch_state_and_tree, DerivationInfo, DerivationInfoTbe,
-<a href=#519 id=519 data-nosnippet>519</a>            VirtualClientOperationType, VirtualClientsError,
-<a href=#520 id=520 data-nosnippet>520</a>        },
-<a href=#521 id=521 data-nosnippet>521</a>        schedule::EpochSecrets,
-<a href=#522 id=522 data-nosnippet>522</a>        treesync::TreeSync,
-<a href=#523 id=523 data-nosnippet>523</a>    };
-<a href=#524 id=524 data-nosnippet>524</a>
-<a href=#525 id=525 data-nosnippet>525</a>    <span class="kw">if </span>!replace_old_group
-<a href=#526 id=526 data-nosnippet>526</a>        &amp;&amp; MlsGroup::load(provider.storage(), <span class="kw-2">&amp;</span>group_id)
-<a href=#527 id=527 data-nosnippet>527</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?
-<a href=#528 id=528 data-nosnippet>528</a>            </span>.is_some()
-<a href=#529 id=529 data-nosnippet>529</a>    {
-<a href=#530 id=530 data-nosnippet>530</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(NewGroupError::GroupAlreadyExists);
-<a href=#531 id=531 data-nosnippet>531</a>    }
+<a href=#344 id=344 data-nosnippet>344</a>    /// This method overrides the configuration set by [`Self::max_past_epochs()`].
+<a href=#345 id=345 data-nosnippet>345</a>    ///
+<a href=#346 id=346 data-nosnippet>346</a>    /// **WARNING**
+<a href=#347 id=347 data-nosnippet>347</a>    ///
+<a href=#348 id=348 data-nosnippet>348</a>    /// This feature enables the storage of message secrets from past epochs.
+<a href=#349 id=349 data-nosnippet>349</a>    /// It is a trade-off between functionality and forward secrecy and should only be enabled
+<a href=#350 id=350 data-nosnippet>350</a>    /// if the Delivery Service cannot guarantee that application messages will be sent in
+<a href=#351 id=351 data-nosnippet>351</a>    /// the same epoch in which they were generated. The number for `max_epochs` should be
+<a href=#352 id=352 data-nosnippet>352</a>    /// as low as possible.
+<a href=#353 id=353 data-nosnippet>353</a>    </span><span class="kw">pub fn </span>set_past_epoch_deletion_policy(<span class="kw-2">mut </span><span class="self">self</span>, policy: PastEpochDeletionPolicy) -&gt; <span class="self">Self </span>{
+<a href=#354 id=354 data-nosnippet>354</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#355 id=355 data-nosnippet>355</a>            </span>.mls_group_create_config_builder
+<a href=#356 id=356 data-nosnippet>356</a>            .set_past_epoch_deletion_policy(policy);
+<a href=#357 id=357 data-nosnippet>357</a>        <span class="self">self
+<a href=#358 id=358 data-nosnippet>358</a>    </span>}
+<a href=#359 id=359 data-nosnippet>359</a>
+<a href=#360 id=360 data-nosnippet>360</a>    <span class="doccomment">/// Sets the derivation-epoch retention policy. See
+<a href=#361 id=361 data-nosnippet>361</a>    /// [`VcDerivationEpochRetentionPolicy`](crate::group::VcDerivationEpochRetentionPolicy).
+<a href=#362 id=362 data-nosnippet>362</a>    </span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#363 id=363 data-nosnippet>363</a>    </span><span class="kw">pub fn </span>set_vc_derivation_epoch_retention_policy(
+<a href=#364 id=364 data-nosnippet>364</a>        <span class="kw-2">mut </span><span class="self">self</span>,
+<a href=#365 id=365 data-nosnippet>365</a>        policy: <span class="kw">crate</span>::group::VcDerivationEpochRetentionPolicy,
+<a href=#366 id=366 data-nosnippet>366</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#367 id=367 data-nosnippet>367</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#368 id=368 data-nosnippet>368</a>            </span>.mls_group_create_config_builder
+<a href=#369 id=369 data-nosnippet>369</a>            .set_vc_derivation_epoch_retention_policy(policy);
+<a href=#370 id=370 data-nosnippet>370</a>        <span class="self">self
+<a href=#371 id=371 data-nosnippet>371</a>    </span>}
+<a href=#372 id=372 data-nosnippet>372</a>
+<a href=#373 id=373 data-nosnippet>373</a>    <span class="doccomment">/// Sets the `number_of_resumption_psks` property of the MlsGroup.
+<a href=#374 id=374 data-nosnippet>374</a>    </span><span class="kw">pub fn </span>number_of_resumption_psks(<span class="kw-2">mut </span><span class="self">self</span>, number_of_resumption_psks: usize) -&gt; <span class="self">Self </span>{
+<a href=#375 id=375 data-nosnippet>375</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#376 id=376 data-nosnippet>376</a>            </span>.mls_group_create_config_builder
+<a href=#377 id=377 data-nosnippet>377</a>            .number_of_resumption_psks(number_of_resumption_psks);
+<a href=#378 id=378 data-nosnippet>378</a>        <span class="self">self
+<a href=#379 id=379 data-nosnippet>379</a>    </span>}
+<a href=#380 id=380 data-nosnippet>380</a>
+<a href=#381 id=381 data-nosnippet>381</a>    <span class="doccomment">/// Sets the `use_ratchet_tree_extension` property of the MlsGroup.
+<a href=#382 id=382 data-nosnippet>382</a>    </span><span class="kw">pub fn </span>use_ratchet_tree_extension(<span class="kw-2">mut </span><span class="self">self</span>, use_ratchet_tree_extension: bool) -&gt; <span class="self">Self </span>{
+<a href=#383 id=383 data-nosnippet>383</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#384 id=384 data-nosnippet>384</a>            </span>.mls_group_create_config_builder
+<a href=#385 id=385 data-nosnippet>385</a>            .use_ratchet_tree_extension(use_ratchet_tree_extension);
+<a href=#386 id=386 data-nosnippet>386</a>        <span class="self">self
+<a href=#387 id=387 data-nosnippet>387</a>    </span>}
+<a href=#388 id=388 data-nosnippet>388</a>
+<a href=#389 id=389 data-nosnippet>389</a>    <span class="doccomment">/// Sets the `sender_ratchet_configuration` property of the MlsGroup.
+<a href=#390 id=390 data-nosnippet>390</a>    /// See [`SenderRatchetConfiguration`] for more information.
+<a href=#391 id=391 data-nosnippet>391</a>    </span><span class="kw">pub fn </span>sender_ratchet_configuration(
+<a href=#392 id=392 data-nosnippet>392</a>        <span class="kw-2">mut </span><span class="self">self</span>,
+<a href=#393 id=393 data-nosnippet>393</a>        sender_ratchet_configuration: SenderRatchetConfiguration,
+<a href=#394 id=394 data-nosnippet>394</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#395 id=395 data-nosnippet>395</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#396 id=396 data-nosnippet>396</a>            </span>.mls_group_create_config_builder
+<a href=#397 id=397 data-nosnippet>397</a>            .sender_ratchet_configuration(sender_ratchet_configuration);
+<a href=#398 id=398 data-nosnippet>398</a>        <span class="self">self
+<a href=#399 id=399 data-nosnippet>399</a>    </span>}
+<a href=#400 id=400 data-nosnippet>400</a>
+<a href=#401 id=401 data-nosnippet>401</a>    <span class="doccomment">/// Sets the `lifetime` of the group creator's leaf.
+<a href=#402 id=402 data-nosnippet>402</a>    </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
+<a href=#403 id=403 data-nosnippet>403</a>        <span class="self">self</span>.mls_group_create_config_builder =
+<a href=#404 id=404 data-nosnippet>404</a>            <span class="self">self</span>.mls_group_create_config_builder.lifetime(lifetime);
+<a href=#405 id=405 data-nosnippet>405</a>        <span class="self">self
+<a href=#406 id=406 data-nosnippet>406</a>    </span>}
+<a href=#407 id=407 data-nosnippet>407</a>
+<a href=#408 id=408 data-nosnippet>408</a>    <span class="doccomment">/// Sets the `ciphersuite` of the MlsGroup.
+<a href=#409 id=409 data-nosnippet>409</a>    </span><span class="kw">pub fn </span>ciphersuite(<span class="kw-2">mut </span><span class="self">self</span>, ciphersuite: Ciphersuite) -&gt; <span class="self">Self </span>{
+<a href=#410 id=410 data-nosnippet>410</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#411 id=411 data-nosnippet>411</a>            </span>.mls_group_create_config_builder
+<a href=#412 id=412 data-nosnippet>412</a>            .ciphersuite(ciphersuite);
+<a href=#413 id=413 data-nosnippet>413</a>        <span class="self">self
+<a href=#414 id=414 data-nosnippet>414</a>    </span>}
+<a href=#415 id=415 data-nosnippet>415</a>
+<a href=#416 id=416 data-nosnippet>416</a>    <span class="doccomment">/// Sets the initial group context extensions
+<a href=#417 id=417 data-nosnippet>417</a>    </span><span class="kw">pub fn </span>with_group_context_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions&lt;GroupContext&gt;) -&gt; <span class="self">Self </span>{
+<a href=#418 id=418 data-nosnippet>418</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#419 id=419 data-nosnippet>419</a>            </span>.mls_group_create_config_builder
+<a href=#420 id=420 data-nosnippet>420</a>            .with_group_context_extensions(extensions);
+<a href=#421 id=421 data-nosnippet>421</a>        <span class="self">self
+<a href=#422 id=422 data-nosnippet>422</a>    </span>}
+<a href=#423 id=423 data-nosnippet>423</a>
+<a href=#424 id=424 data-nosnippet>424</a>    <span class="doccomment">/// Sets the initial leaf node extensions
+<a href=#425 id=425 data-nosnippet>425</a>    </span><span class="kw">pub fn </span>with_leaf_node_extensions(
+<a href=#426 id=426 data-nosnippet>426</a>        <span class="kw-2">mut </span><span class="self">self</span>,
+<a href=#427 id=427 data-nosnippet>427</a>        extensions: Extensions&lt;LeafNode&gt;,
+<a href=#428 id=428 data-nosnippet>428</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeValidationError&gt; {
+<a href=#429 id=429 data-nosnippet>429</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#430 id=430 data-nosnippet>430</a>            </span>.mls_group_create_config_builder
+<a href=#431 id=431 data-nosnippet>431</a>            .with_leaf_node_extensions(extensions)<span class="question-mark">?</span>;
+<a href=#432 id=432 data-nosnippet>432</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+<a href=#433 id=433 data-nosnippet>433</a>    }
+<a href=#434 id=434 data-nosnippet>434</a>
+<a href=#435 id=435 data-nosnippet>435</a>    <span class="doccomment">/// Sets the group creator's [`Capabilities`]
+<a href=#436 id=436 data-nosnippet>436</a>    </span><span class="kw">pub fn </span>with_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
+<a href=#437 id=437 data-nosnippet>437</a>        <span class="self">self</span>.mls_group_create_config_builder = <span class="self">self
+<a href=#438 id=438 data-nosnippet>438</a>            </span>.mls_group_create_config_builder
+<a href=#439 id=439 data-nosnippet>439</a>            .capabilities(capabilities);
+<a href=#440 id=440 data-nosnippet>440</a>        <span class="self">self
+<a href=#441 id=441 data-nosnippet>441</a>    </span>}
+<a href=#442 id=442 data-nosnippet>442</a>}
+<a href=#443 id=443 data-nosnippet>443</a>
+<a href=#444 id=444 data-nosnippet>444</a><span class="doccomment">/// Builder that creates a fresh sub-group and its branch commit in a single
+<a href=#445 id=445 data-nosnippet>445</a>/// step, as described in [RFC 9420 §11.3].
+<a href=#446 id=446 data-nosnippet>446</a>///
+<a href=#447 id=447 data-nosnippet>447</a>/// Create this with [`MlsGroupBuilder::branch`].
+<a href=#448 id=448 data-nosnippet>448</a>///
+<a href=#449 id=449 data-nosnippet>449</a>/// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+<a href=#450 id=450 data-nosnippet>450</a></span><span class="kw">pub struct </span>BranchGroupBuilder {
+<a href=#451 id=451 data-nosnippet>451</a>    group_builder: MlsGroupBuilder,
+<a href=#452 id=452 data-nosnippet>452</a>    branch_info: BranchInfo,
+<a href=#453 id=453 data-nosnippet>453</a>}
+<a href=#454 id=454 data-nosnippet>454</a>
+<a href=#455 id=455 data-nosnippet>455</a><span class="kw">impl </span>BranchGroupBuilder {
+<a href=#456 id=456 data-nosnippet>456</a>    <span class="doccomment">/// Create the sub-group and the branch commit that adds `new_members` to it.
+<a href=#457 id=457 data-nosnippet>457</a>    ///
+<a href=#458 id=458 data-nosnippet>458</a>    /// This creates a fresh group with the parent's ciphersuite, adds the branch
+<a href=#459 id=459 data-nosnippet>459</a>    /// resumption PSK (mixing in the parent's resumption PSK secret), and commits
+<a href=#460 id=460 data-nosnippet>460</a>    /// the additions. It returns the new (epoch-0) sub-group and the
+<a href=#461 id=461 data-nosnippet>461</a>    /// [`CommitMessageBundle`] carrying the branch commit and `Welcome`.
+<a href=#462 id=462 data-nosnippet>462</a>    ///
+<a href=#463 id=463 data-nosnippet>463</a>    /// The commit is staged but **not** merged: merge it with
+<a href=#464 id=464 data-nosnippet>464</a>    /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
+<a href=#465 id=465 data-nosnippet>465</a>    /// only once the delivery service has confirmed it.
+<a href=#466 id=466 data-nosnippet>466</a>    </span><span class="kw">pub fn </span>build_branch&lt;Provider: OpenMlsProvider&gt;(
+<a href=#467 id=467 data-nosnippet>467</a>        <span class="self">self</span>,
+<a href=#468 id=468 data-nosnippet>468</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#469 id=469 data-nosnippet>469</a>        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#470 id=470 data-nosnippet>470</a>        credential_with_key: CredentialWithKey,
+<a href=#471 id=471 data-nosnippet>471</a>        new_members: Vec&lt;KeyPackage&gt;,
+<a href=#472 id=472 data-nosnippet>472</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsGroup, CommitMessageBundle), BranchError&lt;Provider::StorageError&gt;&gt; {
+<a href=#473 id=473 data-nosnippet>473</a>        <span class="comment">// The sub-group must use the same ciphersuite as the parent group.
+<a href=#474 id=474 data-nosnippet>474</a>        </span><span class="kw">let </span>group_builder = <span class="self">self
+<a href=#475 id=475 data-nosnippet>475</a>            </span>.group_builder
+<a href=#476 id=476 data-nosnippet>476</a>            .ciphersuite(<span class="self">self</span>.branch_info.ciphersuite());
+<a href=#477 id=477 data-nosnippet>477</a>        <span class="kw">let </span><span class="kw-2">mut </span>group = group_builder.build(provider, signer, credential_with_key)<span class="question-mark">?</span>;
+<a href=#478 id=478 data-nosnippet>478</a>
+<a href=#479 id=479 data-nosnippet>479</a>        <span class="kw">let </span>bundle = group
+<a href=#480 id=480 data-nosnippet>480</a>            .commit_builder()
+<a href=#481 id=481 data-nosnippet>481</a>            .branch(provider.rand(), <span class="kw-2">&amp;</span><span class="self">self</span>.branch_info)<span class="question-mark">?
+<a href=#482 id=482 data-nosnippet>482</a>            </span>.propose_adds(new_members)
+<a href=#483 id=483 data-nosnippet>483</a>            .load_psks(provider.storage())<span class="question-mark">?
+<a href=#484 id=484 data-nosnippet>484</a>            </span>.build(provider.rand(), provider.crypto(), signer, |<span class="kw">_</span>| <span class="bool-val">true</span>)<span class="question-mark">?
+<a href=#485 id=485 data-nosnippet>485</a>            </span>.stage_commit(provider)<span class="question-mark">?</span>;
+<a href=#486 id=486 data-nosnippet>486</a>
+<a href=#487 id=487 data-nosnippet>487</a>        <span class="prelude-val">Ok</span>((group, bundle))
+<a href=#488 id=488 data-nosnippet>488</a>    }
+<a href=#489 id=489 data-nosnippet>489</a>}
+<a href=#490 id=490 data-nosnippet>490</a>
+<a href=#491 id=491 data-nosnippet>491</a><span class="doccomment">/// Indicates an error occurred while creating a sub-group branch with
+<a href=#492 id=492 data-nosnippet>492</a>/// [`BranchGroupBuilder::build_branch`].
+<a href=#493 id=493 data-nosnippet>493</a></span><span class="attr">#[derive(Debug, thiserror::Error)]
+<a href=#494 id=494 data-nosnippet>494</a></span><span class="kw">pub enum </span>BranchError&lt;StorageError&gt; {
+<a href=#495 id=495 data-nosnippet>495</a>    <span class="doccomment">/// An error occurred while creating the sub-group.
+<a href=#496 id=496 data-nosnippet>496</a>    </span><span class="attr">#[error(transparent)]
+<a href=#497 id=497 data-nosnippet>497</a>    </span>NewGroup(<span class="attr">#[from] </span>NewGroupError&lt;StorageError&gt;),
+<a href=#498 id=498 data-nosnippet>498</a>    <span class="doccomment">/// An error occurred while creating the branch commit.
+<a href=#499 id=499 data-nosnippet>499</a>    </span><span class="attr">#[error(transparent)]
+<a href=#500 id=500 data-nosnippet>500</a>    </span>CreateCommit(<span class="attr">#[from] </span>CreateCommitError),
+<a href=#501 id=501 data-nosnippet>501</a>    <span class="doccomment">/// An error occurred while staging the branch commit.
+<a href=#502 id=502 data-nosnippet>502</a>    </span><span class="attr">#[error(transparent)]
+<a href=#503 id=503 data-nosnippet>503</a>    </span>CommitBuilderStage(<span class="attr">#[from] </span>CommitBuilderStageError&lt;StorageError&gt;),
+<a href=#504 id=504 data-nosnippet>504</a>}
+<a href=#505 id=505 data-nosnippet>505</a>
+<a href=#506 id=506 data-nosnippet>506</a><span class="doccomment">/// Create a new group with the virtual client as the creator (epoch 0, single
+<a href=#507 id=507 data-nosnippet>507</a>/// leaf).
+<a href=#508 id=508 data-nosnippet>508</a>///
+<a href=#509 id=509 data-nosnippet>509</a>/// The creator's leaf is `key_package`-sourced and its key material is derived
+<a href=#510 id=510 data-nosnippet>510</a>/// from a fresh `key_package` operation secret of the derivation epoch
+<a href=#511 id=511 data-nosnippet>511</a>/// `epoch_id` (batch index 0). The epoch-0 `epoch_secret` is derived from the
+<a href=#512 id=512 data-nosnippet>512</a>/// same KeyPackage seed under the created group's ciphersuite. A sibling
+<a href=#513 id=513 data-nosnippet>513</a>/// emulator client reconstructs this exact state with
+<a href=#514 id=514 data-nosnippet>514</a>/// [`MlsGroup::vc_join_at_creation`]: it shares the operation secret tree, so it
+<a href=#515 id=515 data-nosnippet>515</a>/// rederives the same seed and hence the same epoch secret without any secret
+<a href=#516 id=516 data-nosnippet>516</a>/// travelling on the wire. Because the `epoch_secret` is derived rather than run
+<a href=#517 id=517 data-nosnippet>517</a>/// through the joiner key schedule, this path bypasses it entirely.
+<a href=#518 id=518 data-nosnippet>518</a>///
+<a href=#519 id=519 data-nosnippet>519</a>/// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
+<a href=#520 id=520 data-nosnippet>520</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#521 id=521 data-nosnippet>521</a>#[allow(clippy::too_many_arguments)]
+<a href=#522 id=522 data-nosnippet>522</a></span><span class="kw">fn </span>build_vc_internal&lt;Provider: OpenMlsProvider&gt;(
+<a href=#523 id=523 data-nosnippet>523</a>    provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#524 id=524 data-nosnippet>524</a>    signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+<a href=#525 id=525 data-nosnippet>525</a>    credential_with_key: CredentialWithKey,
+<a href=#526 id=526 data-nosnippet>526</a>    mls_group_create_config: MlsGroupCreateConfig,
+<a href=#527 id=527 data-nosnippet>527</a>    group_id: GroupId,
+<a href=#528 id=528 data-nosnippet>528</a>    replace_old_group: bool,
+<a href=#529 id=529 data-nosnippet>529</a>    epoch_id: <span class="kw">crate</span>::components::vc_derivation_info::EpochId,
+<a href=#530 id=530 data-nosnippet>530</a>) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, NewGroupError&lt;Provider::StorageError&gt;&gt; {
+<a href=#531 id=531 data-nosnippet>531</a>    <span class="kw">use </span>openmls_traits::storage::StorageProvider <span class="kw">as _</span>;
 <a href=#532 id=532 data-nosnippet>532</a>
-<a href=#533 id=533 data-nosnippet>533</a>    <span class="kw">let </span>ciphersuite = mls_group_create_config.ciphersuite;
-<a href=#534 id=534 data-nosnippet>534</a>    <span class="kw">let </span>capabilities = mls_group_create_config.capabilities.clone();
-<a href=#535 id=535 data-nosnippet>535</a>
-<a href=#536 id=536 data-nosnippet>536</a>    <span class="comment">// Validate that the creator's leaf declares `AppDataDictionary` and lists
-<a href=#537 id=537 data-nosnippet>537</a>    // `VC_COMPONENT_ID` before allocating a generation, so a deterministic
-<a href=#538 id=538 data-nosnippet>538</a>    // precondition failure does not burn an operation secret.
-<a href=#539 id=539 data-nosnippet>539</a>    </span><span class="kw">let </span>resolved_dictionary = <span class="kw">crate</span>::components::vc_derivation_info::resolve_vc_leaf_dictionary(
-<a href=#540 id=540 data-nosnippet>540</a>        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>capabilities),
-<a href=#541 id=541 data-nosnippet>541</a>        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>mls_group_create_config.leaf_node_extensions),
-<a href=#542 id=542 data-nosnippet>542</a>        <span class="prelude-val">None</span>,
-<a href=#543 id=543 data-nosnippet>543</a>    )<span class="question-mark">?</span>;
-<a href=#544 id=544 data-nosnippet>544</a>
-<a href=#545 id=545 data-nosnippet>545</a>    <span class="comment">// Load the derivation epoch state and operation tree, allocate a fresh
-<a href=#546 id=546 data-nosnippet>546</a>    // `key_package` generation (empty operation context, matching the KeyPackage
-<a href=#547 id=547 data-nosnippet>547</a>    // batch path), and persist the advanced tree right away. A retried creation
-<a href=#548 id=548 data-nosnippet>548</a>    // consumes a fresh generation.
-<a href=#549 id=549 data-nosnippet>549</a>    </span><span class="kw">let </span>(state, <span class="kw-2">mut </span>operation_tree) = load_vc_epoch_state_and_tree(provider, <span class="kw-2">&amp;</span>epoch_id)<span class="question-mark">?</span>;
-<a href=#550 id=550 data-nosnippet>550</a>    <span class="kw">let </span>(emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
-<a href=#551 id=551 data-nosnippet>551</a>    <span class="kw">let </span>(generation, operation_secret) = operation_tree.next_operation_secret(
-<a href=#552 id=552 data-nosnippet>552</a>        provider.crypto(),
-<a href=#553 id=553 data-nosnippet>553</a>        emulation_ciphersuite,
-<a href=#554 id=554 data-nosnippet>554</a>        <span class="kw-2">&amp;</span>epoch_id,
-<a href=#555 id=555 data-nosnippet>555</a>        emulation_leaf_index,
-<a href=#556 id=556 data-nosnippet>556</a>        VirtualClientOperationType::KeyPackage,
-<a href=#557 id=557 data-nosnippet>557</a>        <span class="string">b""</span>,
-<a href=#558 id=558 data-nosnippet>558</a>    )<span class="question-mark">?</span>;
-<a href=#559 id=559 data-nosnippet>559</a>    provider
-<a href=#560 id=560 data-nosnippet>560</a>        .storage()
-<a href=#561 id=561 data-nosnippet>561</a>        .write_vc_operation_tree(<span class="kw-2">&amp;</span>epoch_id, <span class="kw-2">&amp;</span>operation_tree)
-<a href=#562 id=562 data-nosnippet>562</a>        .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
-<a href=#563 id=563 data-nosnippet>563</a>
-<a href=#564 id=564 data-nosnippet>564</a>    <span class="comment">// The creator batch consists of this single derivation and is closed
-<a href=#565 id=565 data-nosnippet>565</a>    // immediately: no `KeyPackageUpload` is sent and no
-<a href=#566 id=566 data-nosnippet>566</a>    // `RetainedKeyPackageMaterial` is written, because a creator leaf has no
-<a href=#567 id=567 data-nosnippet>567</a>    // KeyPackage / KeyPackageRef. Import the per-KeyPackage seed (index 0) under
-<a href=#568 id=568 data-nosnippet>568</a>    // the created group's ciphersuite, then derive the creator leaf's encryption
-<a href=#569 id=569 data-nosnippet>569</a>    // keypair and the epoch-0 secret from that seed.
-<a href=#570 id=570 data-nosnippet>570</a>    </span><span class="kw">let </span>key_package_index = <span class="number">0</span>;
-<a href=#571 id=571 data-nosnippet>571</a>    <span class="kw">let </span>key_package_seed = operation_secret.derive_key_package_seed_secret(
-<a href=#572 id=572 data-nosnippet>572</a>        provider.crypto(),
-<a href=#573 id=573 data-nosnippet>573</a>        ciphersuite,
-<a href=#574 id=574 data-nosnippet>574</a>        key_package_index,
+<a href=#533 id=533 data-nosnippet>533</a>    <span class="kw">use crate</span>::{
+<a href=#534 id=534 data-nosnippet>534</a>        components::vc_derivation_info::{
+<a href=#535 id=535 data-nosnippet>535</a>            load_vc_epoch_state_and_tree, DerivationInfo, DerivationInfoTbe,
+<a href=#536 id=536 data-nosnippet>536</a>            VirtualClientOperationType, VirtualClientsError,
+<a href=#537 id=537 data-nosnippet>537</a>        },
+<a href=#538 id=538 data-nosnippet>538</a>        schedule::EpochSecrets,
+<a href=#539 id=539 data-nosnippet>539</a>        treesync::TreeSync,
+<a href=#540 id=540 data-nosnippet>540</a>    };
+<a href=#541 id=541 data-nosnippet>541</a>
+<a href=#542 id=542 data-nosnippet>542</a>    <span class="kw">if </span>!replace_old_group
+<a href=#543 id=543 data-nosnippet>543</a>        &amp;&amp; MlsGroup::load(provider.storage(), <span class="kw-2">&amp;</span>group_id)
+<a href=#544 id=544 data-nosnippet>544</a>            .map_err(NewGroupError::StorageError)<span class="question-mark">?
+<a href=#545 id=545 data-nosnippet>545</a>            </span>.is_some()
+<a href=#546 id=546 data-nosnippet>546</a>    {
+<a href=#547 id=547 data-nosnippet>547</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(NewGroupError::GroupAlreadyExists);
+<a href=#548 id=548 data-nosnippet>548</a>    }
+<a href=#549 id=549 data-nosnippet>549</a>
+<a href=#550 id=550 data-nosnippet>550</a>    <span class="kw">let </span>ciphersuite = mls_group_create_config.ciphersuite;
+<a href=#551 id=551 data-nosnippet>551</a>    <span class="kw">let </span>capabilities = mls_group_create_config.capabilities.clone();
+<a href=#552 id=552 data-nosnippet>552</a>
+<a href=#553 id=553 data-nosnippet>553</a>    <span class="comment">// Validate that the creator's leaf declares `AppDataDictionary` and lists
+<a href=#554 id=554 data-nosnippet>554</a>    // `VC_COMPONENT_ID` before allocating a generation, so a deterministic
+<a href=#555 id=555 data-nosnippet>555</a>    // precondition failure does not burn an operation secret.
+<a href=#556 id=556 data-nosnippet>556</a>    </span><span class="kw">let </span>resolved_dictionary = <span class="kw">crate</span>::components::vc_derivation_info::resolve_vc_leaf_dictionary(
+<a href=#557 id=557 data-nosnippet>557</a>        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>capabilities),
+<a href=#558 id=558 data-nosnippet>558</a>        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>mls_group_create_config.leaf_node_extensions),
+<a href=#559 id=559 data-nosnippet>559</a>        <span class="prelude-val">None</span>,
+<a href=#560 id=560 data-nosnippet>560</a>    )<span class="question-mark">?</span>;
+<a href=#561 id=561 data-nosnippet>561</a>
+<a href=#562 id=562 data-nosnippet>562</a>    <span class="comment">// Load the derivation epoch state and operation tree, allocate a fresh
+<a href=#563 id=563 data-nosnippet>563</a>    // `key_package` generation (empty operation context, matching the KeyPackage
+<a href=#564 id=564 data-nosnippet>564</a>    // batch path), and persist the advanced tree right away. A retried creation
+<a href=#565 id=565 data-nosnippet>565</a>    // consumes a fresh generation.
+<a href=#566 id=566 data-nosnippet>566</a>    </span><span class="kw">let </span>(state, <span class="kw-2">mut </span>operation_tree) = load_vc_epoch_state_and_tree(provider, <span class="kw-2">&amp;</span>epoch_id)<span class="question-mark">?</span>;
+<a href=#567 id=567 data-nosnippet>567</a>    <span class="kw">let </span>(emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
+<a href=#568 id=568 data-nosnippet>568</a>    <span class="kw">let </span>(generation, operation_secret) = operation_tree.next_operation_secret(
+<a href=#569 id=569 data-nosnippet>569</a>        provider.crypto(),
+<a href=#570 id=570 data-nosnippet>570</a>        emulation_ciphersuite,
+<a href=#571 id=571 data-nosnippet>571</a>        <span class="kw-2">&amp;</span>epoch_id,
+<a href=#572 id=572 data-nosnippet>572</a>        emulation_leaf_index,
+<a href=#573 id=573 data-nosnippet>573</a>        VirtualClientOperationType::KeyPackage,
+<a href=#574 id=574 data-nosnippet>574</a>        <span class="string">b""</span>,
 <a href=#575 id=575 data-nosnippet>575</a>    )<span class="question-mark">?</span>;
-<a href=#576 id=576 data-nosnippet>576</a>    <span class="kw">let </span>leaf_encryption_keypair = key_package_seed
-<a href=#577 id=577 data-nosnippet>577</a>        .derive_encryption_key_secret(provider.crypto(), ciphersuite)<span class="question-mark">?
-<a href=#578 id=578 data-nosnippet>578</a>        </span>.generate_encryption_key_pair(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
-<a href=#579 id=579 data-nosnippet>579</a>    <span class="kw">let </span>epoch_secret =
-<a href=#580 id=580 data-nosnippet>580</a>        key_package_seed.derive_group_creation_secret(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
-<a href=#581 id=581 data-nosnippet>581</a>
-<a href=#582 id=582 data-nosnippet>582</a>    <span class="comment">// Wrap the derivation info under the per-epoch AEAD key, bound to the leaf
-<a href=#583 id=583 data-nosnippet>583</a>    // via its serialized encryption key.
-<a href=#584 id=584 data-nosnippet>584</a>    </span><span class="kw">let </span>leaf_encryption_key = leaf_encryption_keypair
-<a href=#585 id=585 data-nosnippet>585</a>        .public_key()
-<a href=#586 id=586 data-nosnippet>586</a>        .tls_serialize_detached()
-<a href=#587 id=587 data-nosnippet>587</a>        .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
-<a href=#588 id=588 data-nosnippet>588</a>    <span class="kw">let </span>tbe = DerivationInfoTbe::KeyPackage {
-<a href=#589 id=589 data-nosnippet>589</a>        leaf_index: emulation_leaf_index,
-<a href=#590 id=590 data-nosnippet>590</a>        generation,
+<a href=#576 id=576 data-nosnippet>576</a>    provider
+<a href=#577 id=577 data-nosnippet>577</a>        .storage()
+<a href=#578 id=578 data-nosnippet>578</a>        .write_vc_operation_tree(<span class="kw-2">&amp;</span>epoch_id, <span class="kw-2">&amp;</span>operation_tree)
+<a href=#579 id=579 data-nosnippet>579</a>        .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+<a href=#580 id=580 data-nosnippet>580</a>
+<a href=#581 id=581 data-nosnippet>581</a>    <span class="comment">// The creator batch consists of this single derivation and is closed
+<a href=#582 id=582 data-nosnippet>582</a>    // immediately: no `KeyPackageUpload` is sent and no
+<a href=#583 id=583 data-nosnippet>583</a>    // `RetainedKeyPackageMaterial` is written, because a creator leaf has no
+<a href=#584 id=584 data-nosnippet>584</a>    // KeyPackage / KeyPackageRef. Import the per-KeyPackage seed (index 0) under
+<a href=#585 id=585 data-nosnippet>585</a>    // the created group's ciphersuite, then derive the creator leaf's encryption
+<a href=#586 id=586 data-nosnippet>586</a>    // keypair and the epoch-0 secret from that seed.
+<a href=#587 id=587 data-nosnippet>587</a>    </span><span class="kw">let </span>key_package_index = <span class="number">0</span>;
+<a href=#588 id=588 data-nosnippet>588</a>    <span class="kw">let </span>key_package_seed = operation_secret.derive_key_package_seed_secret(
+<a href=#589 id=589 data-nosnippet>589</a>        provider.crypto(),
+<a href=#590 id=590 data-nosnippet>590</a>        ciphersuite,
 <a href=#591 id=591 data-nosnippet>591</a>        key_package_index,
-<a href=#592 id=592 data-nosnippet>592</a>    };
-<a href=#593 id=593 data-nosnippet>593</a>    <span class="kw">let </span>derivation_info = DerivationInfo::encrypt(
-<a href=#594 id=594 data-nosnippet>594</a>        provider.crypto(),
-<a href=#595 id=595 data-nosnippet>595</a>        emulation_ciphersuite,
-<a href=#596 id=596 data-nosnippet>596</a>        <span class="kw-2">&amp;</span>epoch_encryption_key,
-<a href=#597 id=597 data-nosnippet>597</a>        epoch_id.clone(),
-<a href=#598 id=598 data-nosnippet>598</a>        <span class="kw-2">&amp;</span>leaf_encryption_key,
-<a href=#599 id=599 data-nosnippet>599</a>        <span class="kw-2">&amp;</span>tbe,
-<a href=#600 id=600 data-nosnippet>600</a>    )<span class="question-mark">?</span>;
-<a href=#601 id=601 data-nosnippet>601</a>    <span class="kw">let </span>derivation_info_bytes = derivation_info
-<a href=#602 id=602 data-nosnippet>602</a>        .tls_serialize_detached()
-<a href=#603 id=603 data-nosnippet>603</a>        .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
-<a href=#604 id=604 data-nosnippet>604</a>    <span class="kw">let </span>leaf_extensions = <span class="kw">crate</span>::components::vc_derivation_info::merge_vc_derivation_info(
-<a href=#605 id=605 data-nosnippet>605</a>        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>mls_group_create_config.leaf_node_extensions),
-<a href=#606 id=606 data-nosnippet>606</a>        resolved_dictionary,
-<a href=#607 id=607 data-nosnippet>607</a>        derivation_info_bytes,
-<a href=#608 id=608 data-nosnippet>608</a>    )<span class="question-mark">?</span>;
-<a href=#609 id=609 data-nosnippet>609</a>
-<a href=#610 id=610 data-nosnippet>610</a>    <span class="comment">// Build the single-leaf tree with the derived key_package-sourced leaf.
-<a href=#611 id=611 data-nosnippet>611</a>    </span><span class="kw">let </span>(treesync, leaf_keypair) = TreeSync::new_vc(
-<a href=#612 id=612 data-nosnippet>612</a>        provider,
-<a href=#613 id=613 data-nosnippet>613</a>        signer,
-<a href=#614 id=614 data-nosnippet>614</a>        ciphersuite,
-<a href=#615 id=615 data-nosnippet>615</a>        credential_with_key,
-<a href=#616 id=616 data-nosnippet>616</a>        <span class="kw-2">*</span>mls_group_create_config.lifetime(),
-<a href=#617 id=617 data-nosnippet>617</a>        capabilities,
-<a href=#618 id=618 data-nosnippet>618</a>        leaf_extensions,
-<a href=#619 id=619 data-nosnippet>619</a>        leaf_encryption_keypair,
-<a href=#620 id=620 data-nosnippet>620</a>    )<span class="question-mark">?</span>;
-<a href=#621 id=621 data-nosnippet>621</a>    <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
-<a href=#622 id=622 data-nosnippet>622</a>        ciphersuite,
-<a href=#623 id=623 data-nosnippet>623</a>        group_id.clone(),
-<a href=#624 id=624 data-nosnippet>624</a>        treesync.tree_hash().to_vec(),
-<a href=#625 id=625 data-nosnippet>625</a>        mls_group_create_config.group_context_extensions.clone(),
-<a href=#626 id=626 data-nosnippet>626</a>    );
-<a href=#627 id=627 data-nosnippet>627</a>    <span class="kw">let </span>serialized_group_context = group_context
-<a href=#628 id=628 data-nosnippet>628</a>        .tls_serialize_detached()
-<a href=#629 id=629 data-nosnippet>629</a>        .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-<a href=#630 id=630 data-nosnippet>630</a>
-<a href=#631 id=631 data-nosnippet>631</a>    <span class="comment">// Derive epoch-0 secrets from the epoch secret derived above.
-<a href=#632 id=632 data-nosnippet>632</a>    </span><span class="kw">let </span>epoch_secrets =
-<a href=#633 id=633 data-nosnippet>633</a>        EpochSecrets::from_epoch_secret(provider.crypto(), ciphersuite, epoch_secret)
-<a href=#634 id=634 data-nosnippet>634</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#635 id=635 data-nosnippet>635</a>    <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-<a href=#636 id=636 data-nosnippet>636</a>        serialized_group_context,
-<a href=#637 id=637 data-nosnippet>637</a>        TreeSize::new(<span class="number">1</span>),
-<a href=#638 id=638 data-nosnippet>638</a>        LeafNodeIndex::new(<span class="number">0</span>),
-<a href=#639 id=639 data-nosnippet>639</a>    );
-<a href=#640 id=640 data-nosnippet>640</a>    <span class="kw">let </span>initial_confirmation_tag = message_secrets
-<a href=#641 id=641 data-nosnippet>641</a>        .confirmation_key()
-<a href=#642 id=642 data-nosnippet>642</a>        .tag(provider.crypto(), ciphersuite, <span class="kw-2">&amp;</span>[])
-<a href=#643 id=643 data-nosnippet>643</a>        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-<a href=#644 id=644 data-nosnippet>644</a>    <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(
-<a href=#645 id=645 data-nosnippet>645</a>        mls_group_create_config
-<a href=#646 id=646 data-nosnippet>646</a>            .join_config
-<a href=#647 id=647 data-nosnippet>647</a>            .past_epoch_deletion_policy(),
-<a href=#648 id=648 data-nosnippet>648</a>        message_secrets,
-<a href=#649 id=649 data-nosnippet>649</a>    );
-<a href=#650 id=650 data-nosnippet>650</a>    <span class="kw">let </span>public_group = PublicGroup::new(
-<a href=#651 id=651 data-nosnippet>651</a>        provider.crypto(),
-<a href=#652 id=652 data-nosnippet>652</a>        treesync,
-<a href=#653 id=653 data-nosnippet>653</a>        group_context,
-<a href=#654 id=654 data-nosnippet>654</a>        initial_confirmation_tag,
-<a href=#655 id=655 data-nosnippet>655</a>    )<span class="question-mark">?</span>;
-<a href=#656 id=656 data-nosnippet>656</a>
-<a href=#657 id=657 data-nosnippet>657</a>    <span class="kw">let </span><span class="kw-2">mut </span>resumption_psk_store = ResumptionPskStore::new(<span class="number">32</span>);
-<a href=#658 id=658 data-nosnippet>658</a>    <span class="kw">let </span>resumption_psk = group_epoch_secrets.resumption_psk();
-<a href=#659 id=659 data-nosnippet>659</a>    resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
-<a href=#660 id=660 data-nosnippet>660</a>
-<a href=#661 id=661 data-nosnippet>661</a>    <span class="kw">let </span>mls_group = MlsGroup {
-<a href=#662 id=662 data-nosnippet>662</a>        mls_group_config: mls_group_create_config.join_config.clone(),
-<a href=#663 id=663 data-nosnippet>663</a>        own_leaf_nodes: <span class="macro">vec!</span>[],
-<a href=#664 id=664 data-nosnippet>664</a>        aad: <span class="macro">vec!</span>[],
-<a href=#665 id=665 data-nosnippet>665</a>        safe_aad: <span class="kw">crate</span>::framing::SafeAad::empty(),
-<a href=#666 id=666 data-nosnippet>666</a>        group_state: MlsGroupState::Operational,
-<a href=#667 id=667 data-nosnippet>667</a>        public_group,
-<a href=#668 id=668 data-nosnippet>668</a>        group_epoch_secrets,
-<a href=#669 id=669 data-nosnippet>669</a>        own_leaf_index: LeafNodeIndex::new(<span class="number">0</span>),
-<a href=#670 id=670 data-nosnippet>670</a>        message_secrets_store,
-<a href=#671 id=671 data-nosnippet>671</a>        resumption_psk_store,
-<a href=#672 id=672 data-nosnippet>672</a>        <span class="comment">// Reconstructed VC groups do not populate the application export tree,
-<a href=#673 id=673 data-nosnippet>673</a>        // matching the other VC group-entry paths.
-<a href=#674 id=674 data-nosnippet>674</a>        </span>application_export_tree: <span class="prelude-val">None</span>,
-<a href=#675 id=675 data-nosnippet>675</a>        <span class="comment">// A group a virtual client creates is not itself an emulation group.
-<a href=#676 id=676 data-nosnippet>676</a>        </span>emulation_group: <span class="bool-val">false</span>,
-<a href=#677 id=677 data-nosnippet>677</a>    };
-<a href=#678 id=678 data-nosnippet>678</a>
-<a href=#679 id=679 data-nosnippet>679</a>    <span class="comment">// Bind epoch 0 of the new group to the derivation epoch so later VC
-<a href=#680 id=680 data-nosnippet>680</a>    // operations in this group resolve the right derivation epoch state.
-<a href=#681 id=681 data-nosnippet>681</a>    // Written before the group itself, so an error between the writes cannot
-<a href=#682 id=682 data-nosnippet>682</a>    // leave a loadable group without a binding (a bound group is required for
-<a href=#683 id=683 data-nosnippet>683</a>    // the reuse-guard MUST).
-<a href=#684 id=684 data-nosnippet>684</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>bindings: <span class="kw">crate</span>::components::vc_derivation_info::VcEmulationBindings = provider
-<a href=#685 id=685 data-nosnippet>685</a>        .storage()
-<a href=#686 id=686 data-nosnippet>686</a>        .vc_emulation_bindings(<span class="kw-2">&amp;</span>group_id)
-<a href=#687 id=687 data-nosnippet>687</a>        .map_err(NewGroupError::StorageError)<span class="question-mark">?
-<a href=#688 id=688 data-nosnippet>688</a>        </span>.unwrap_or_default();
-<a href=#689 id=689 data-nosnippet>689</a>    <span class="kw">let </span>max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(<span class="number">1</span>);
-<a href=#690 id=690 data-nosnippet>690</a>    bindings.insert(mls_group.epoch(), epoch_id, max_entries);
-<a href=#691 id=691 data-nosnippet>691</a>    bindings
-<a href=#692 id=692 data-nosnippet>692</a>        .store(provider.storage(), <span class="kw-2">&amp;</span>group_id)
-<a href=#693 id=693 data-nosnippet>693</a>        .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
-<a href=#694 id=694 data-nosnippet>694</a>
-<a href=#695 id=695 data-nosnippet>695</a>    mls_group
-<a href=#696 id=696 data-nosnippet>696</a>        .store(provider.storage())
-<a href=#697 id=697 data-nosnippet>697</a>        .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
-<a href=#698 id=698 data-nosnippet>698</a>    mls_group
-<a href=#699 id=699 data-nosnippet>699</a>        .store_epoch_keypairs(provider.storage(), <span class="kw-2">&amp;</span>[leaf_keypair])
-<a href=#700 id=700 data-nosnippet>700</a>        .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
-<a href=#701 id=701 data-nosnippet>701</a>
-<a href=#702 id=702 data-nosnippet>702</a>    <span class="prelude-val">Ok</span>(mls_group)
-<a href=#703 id=703 data-nosnippet>703</a>}
+<a href=#592 id=592 data-nosnippet>592</a>    )<span class="question-mark">?</span>;
+<a href=#593 id=593 data-nosnippet>593</a>    <span class="kw">let </span>leaf_encryption_keypair = key_package_seed
+<a href=#594 id=594 data-nosnippet>594</a>        .derive_encryption_key_secret(provider.crypto(), ciphersuite)<span class="question-mark">?
+<a href=#595 id=595 data-nosnippet>595</a>        </span>.generate_encryption_key_pair(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
+<a href=#596 id=596 data-nosnippet>596</a>    <span class="kw">let </span>epoch_secret =
+<a href=#597 id=597 data-nosnippet>597</a>        key_package_seed.derive_group_creation_secret(provider.crypto(), ciphersuite)<span class="question-mark">?</span>;
+<a href=#598 id=598 data-nosnippet>598</a>
+<a href=#599 id=599 data-nosnippet>599</a>    <span class="comment">// Wrap the derivation info under the per-epoch AEAD key, bound to the leaf
+<a href=#600 id=600 data-nosnippet>600</a>    // via its serialized encryption key.
+<a href=#601 id=601 data-nosnippet>601</a>    </span><span class="kw">let </span>leaf_encryption_key = leaf_encryption_keypair
+<a href=#602 id=602 data-nosnippet>602</a>        .public_key()
+<a href=#603 id=603 data-nosnippet>603</a>        .tls_serialize_detached()
+<a href=#604 id=604 data-nosnippet>604</a>        .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
+<a href=#605 id=605 data-nosnippet>605</a>    <span class="kw">let </span>tbe = DerivationInfoTbe::KeyPackage {
+<a href=#606 id=606 data-nosnippet>606</a>        leaf_index: emulation_leaf_index,
+<a href=#607 id=607 data-nosnippet>607</a>        generation,
+<a href=#608 id=608 data-nosnippet>608</a>        key_package_index,
+<a href=#609 id=609 data-nosnippet>609</a>    };
+<a href=#610 id=610 data-nosnippet>610</a>    <span class="kw">let </span>derivation_info = DerivationInfo::encrypt(
+<a href=#611 id=611 data-nosnippet>611</a>        provider.crypto(),
+<a href=#612 id=612 data-nosnippet>612</a>        emulation_ciphersuite,
+<a href=#613 id=613 data-nosnippet>613</a>        <span class="kw-2">&amp;</span>epoch_encryption_key,
+<a href=#614 id=614 data-nosnippet>614</a>        epoch_id.clone(),
+<a href=#615 id=615 data-nosnippet>615</a>        <span class="kw-2">&amp;</span>leaf_encryption_key,
+<a href=#616 id=616 data-nosnippet>616</a>        <span class="kw-2">&amp;</span>tbe,
+<a href=#617 id=617 data-nosnippet>617</a>    )<span class="question-mark">?</span>;
+<a href=#618 id=618 data-nosnippet>618</a>    <span class="kw">let </span>derivation_info_bytes = derivation_info
+<a href=#619 id=619 data-nosnippet>619</a>        .tls_serialize_detached()
+<a href=#620 id=620 data-nosnippet>620</a>        .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
+<a href=#621 id=621 data-nosnippet>621</a>    <span class="kw">let </span>leaf_extensions = <span class="kw">crate</span>::components::vc_derivation_info::merge_vc_derivation_info(
+<a href=#622 id=622 data-nosnippet>622</a>        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>mls_group_create_config.leaf_node_extensions),
+<a href=#623 id=623 data-nosnippet>623</a>        resolved_dictionary,
+<a href=#624 id=624 data-nosnippet>624</a>        derivation_info_bytes,
+<a href=#625 id=625 data-nosnippet>625</a>    )<span class="question-mark">?</span>;
+<a href=#626 id=626 data-nosnippet>626</a>
+<a href=#627 id=627 data-nosnippet>627</a>    <span class="comment">// Build the single-leaf tree with the derived key_package-sourced leaf.
+<a href=#628 id=628 data-nosnippet>628</a>    </span><span class="kw">let </span>(treesync, leaf_keypair) = TreeSync::new_vc(
+<a href=#629 id=629 data-nosnippet>629</a>        provider,
+<a href=#630 id=630 data-nosnippet>630</a>        signer,
+<a href=#631 id=631 data-nosnippet>631</a>        ciphersuite,
+<a href=#632 id=632 data-nosnippet>632</a>        credential_with_key,
+<a href=#633 id=633 data-nosnippet>633</a>        <span class="kw-2">*</span>mls_group_create_config.lifetime(),
+<a href=#634 id=634 data-nosnippet>634</a>        capabilities,
+<a href=#635 id=635 data-nosnippet>635</a>        leaf_extensions,
+<a href=#636 id=636 data-nosnippet>636</a>        leaf_encryption_keypair,
+<a href=#637 id=637 data-nosnippet>637</a>    )<span class="question-mark">?</span>;
+<a href=#638 id=638 data-nosnippet>638</a>    <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
+<a href=#639 id=639 data-nosnippet>639</a>        ciphersuite,
+<a href=#640 id=640 data-nosnippet>640</a>        group_id.clone(),
+<a href=#641 id=641 data-nosnippet>641</a>        treesync.tree_hash().to_vec(),
+<a href=#642 id=642 data-nosnippet>642</a>        mls_group_create_config.group_context_extensions.clone(),
+<a href=#643 id=643 data-nosnippet>643</a>    );
+<a href=#644 id=644 data-nosnippet>644</a>    <span class="kw">let </span>serialized_group_context = group_context
+<a href=#645 id=645 data-nosnippet>645</a>        .tls_serialize_detached()
+<a href=#646 id=646 data-nosnippet>646</a>        .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+<a href=#647 id=647 data-nosnippet>647</a>
+<a href=#648 id=648 data-nosnippet>648</a>    <span class="comment">// Derive epoch-0 secrets from the epoch secret derived above.
+<a href=#649 id=649 data-nosnippet>649</a>    </span><span class="kw">let </span>epoch_secrets =
+<a href=#650 id=650 data-nosnippet>650</a>        EpochSecrets::from_epoch_secret(provider.crypto(), ciphersuite, epoch_secret)
+<a href=#651 id=651 data-nosnippet>651</a>            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#652 id=652 data-nosnippet>652</a>    <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+<a href=#653 id=653 data-nosnippet>653</a>        serialized_group_context,
+<a href=#654 id=654 data-nosnippet>654</a>        TreeSize::new(<span class="number">1</span>),
+<a href=#655 id=655 data-nosnippet>655</a>        LeafNodeIndex::new(<span class="number">0</span>),
+<a href=#656 id=656 data-nosnippet>656</a>    );
+<a href=#657 id=657 data-nosnippet>657</a>    <span class="kw">let </span>initial_confirmation_tag = message_secrets
+<a href=#658 id=658 data-nosnippet>658</a>        .confirmation_key()
+<a href=#659 id=659 data-nosnippet>659</a>        .tag(provider.crypto(), ciphersuite, <span class="kw-2">&amp;</span>[])
+<a href=#660 id=660 data-nosnippet>660</a>        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+<a href=#661 id=661 data-nosnippet>661</a>    <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(
+<a href=#662 id=662 data-nosnippet>662</a>        mls_group_create_config
+<a href=#663 id=663 data-nosnippet>663</a>            .join_config
+<a href=#664 id=664 data-nosnippet>664</a>            .past_epoch_deletion_policy(),
+<a href=#665 id=665 data-nosnippet>665</a>        message_secrets,
+<a href=#666 id=666 data-nosnippet>666</a>    );
+<a href=#667 id=667 data-nosnippet>667</a>    <span class="kw">let </span>public_group = PublicGroup::new(
+<a href=#668 id=668 data-nosnippet>668</a>        provider.crypto(),
+<a href=#669 id=669 data-nosnippet>669</a>        treesync,
+<a href=#670 id=670 data-nosnippet>670</a>        group_context,
+<a href=#671 id=671 data-nosnippet>671</a>        initial_confirmation_tag,
+<a href=#672 id=672 data-nosnippet>672</a>    )<span class="question-mark">?</span>;
+<a href=#673 id=673 data-nosnippet>673</a>
+<a href=#674 id=674 data-nosnippet>674</a>    <span class="kw">let </span><span class="kw-2">mut </span>resumption_psk_store = ResumptionPskStore::new(<span class="number">32</span>);
+<a href=#675 id=675 data-nosnippet>675</a>    <span class="kw">let </span>resumption_psk = group_epoch_secrets.resumption_psk();
+<a href=#676 id=676 data-nosnippet>676</a>    resumption_psk_store.add(public_group.group_context().epoch(), resumption_psk.clone());
+<a href=#677 id=677 data-nosnippet>677</a>
+<a href=#678 id=678 data-nosnippet>678</a>    <span class="kw">let </span>mls_group = MlsGroup {
+<a href=#679 id=679 data-nosnippet>679</a>        mls_group_config: mls_group_create_config.join_config.clone(),
+<a href=#680 id=680 data-nosnippet>680</a>        own_leaf_nodes: <span class="macro">vec!</span>[],
+<a href=#681 id=681 data-nosnippet>681</a>        aad: <span class="macro">vec!</span>[],
+<a href=#682 id=682 data-nosnippet>682</a>        safe_aad: <span class="kw">crate</span>::framing::SafeAad::empty(),
+<a href=#683 id=683 data-nosnippet>683</a>        group_state: MlsGroupState::Operational,
+<a href=#684 id=684 data-nosnippet>684</a>        public_group,
+<a href=#685 id=685 data-nosnippet>685</a>        group_epoch_secrets,
+<a href=#686 id=686 data-nosnippet>686</a>        own_leaf_index: LeafNodeIndex::new(<span class="number">0</span>),
+<a href=#687 id=687 data-nosnippet>687</a>        message_secrets_store,
+<a href=#688 id=688 data-nosnippet>688</a>        resumption_psk_store,
+<a href=#689 id=689 data-nosnippet>689</a>        <span class="comment">// Reconstructed VC groups do not populate the application export tree,
+<a href=#690 id=690 data-nosnippet>690</a>        // matching the other VC group-entry paths.
+<a href=#691 id=691 data-nosnippet>691</a>        </span>application_export_tree: <span class="prelude-val">None</span>,
+<a href=#692 id=692 data-nosnippet>692</a>        <span class="comment">// A group a virtual client creates is not itself an emulation group.
+<a href=#693 id=693 data-nosnippet>693</a>        </span>emulation_group: <span class="bool-val">false</span>,
+<a href=#694 id=694 data-nosnippet>694</a>    };
+<a href=#695 id=695 data-nosnippet>695</a>
+<a href=#696 id=696 data-nosnippet>696</a>    <span class="comment">// Bind epoch 0 of the new group to the derivation epoch so later VC
+<a href=#697 id=697 data-nosnippet>697</a>    // operations in this group resolve the right derivation epoch state.
+<a href=#698 id=698 data-nosnippet>698</a>    // Written before the group itself, so an error between the writes cannot
+<a href=#699 id=699 data-nosnippet>699</a>    // leave a loadable group without a binding (a bound group is required for
+<a href=#700 id=700 data-nosnippet>700</a>    // the reuse-guard MUST).
+<a href=#701 id=701 data-nosnippet>701</a>    </span><span class="kw">let </span>max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(<span class="number">1</span>);
+<a href=#702 id=702 data-nosnippet>702</a>    <span class="kw">crate</span>::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+<a href=#703 id=703 data-nosnippet>703</a>        provider.storage(),
+<a href=#704 id=704 data-nosnippet>704</a>        <span class="kw-2">&amp;</span>group_id,
+<a href=#705 id=705 data-nosnippet>705</a>        mls_group.epoch(),
+<a href=#706 id=706 data-nosnippet>706</a>        epoch_id,
+<a href=#707 id=707 data-nosnippet>707</a>        max_entries,
+<a href=#708 id=708 data-nosnippet>708</a>    )
+<a href=#709 id=709 data-nosnippet>709</a>    .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+<a href=#710 id=710 data-nosnippet>710</a>
+<a href=#711 id=711 data-nosnippet>711</a>    mls_group
+<a href=#712 id=712 data-nosnippet>712</a>        .store(provider.storage())
+<a href=#713 id=713 data-nosnippet>713</a>        .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+<a href=#714 id=714 data-nosnippet>714</a>    mls_group
+<a href=#715 id=715 data-nosnippet>715</a>        .store_epoch_keypairs(provider.storage(), <span class="kw-2">&amp;</span>[leaf_keypair])
+<a href=#716 id=716 data-nosnippet>716</a>        .map_err(NewGroupError::StorageError)<span class="question-mark">?</span>;
+<a href=#717 id=717 data-nosnippet>717</a>
+<a href=#718 id=718 data-nosnippet>718</a>    <span class="prelude-val">Ok</span>(mls_group)
+<a href=#719 id=719 data-nosnippet>719</a>}
 </code></pre></div></section></main></body></html>

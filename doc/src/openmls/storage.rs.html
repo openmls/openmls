@@ -160,8 +160,8 @@
 <a href=#160 id=160 data-nosnippet>160</a></span><span class="kw">mod </span>virtual_clients_storage {
 <a href=#161 id=161 data-nosnippet>161</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <a href=#162 id=162 data-nosnippet>162</a>    <span class="kw">use </span><span class="kw">crate</span>::components::vc_derivation_info::{
-<a href=#163 id=163 data-nosnippet>163</a>        EpochId, RegisteredVcDerivationEpoch, RetainedKeyPackageMaterial, VcDerivationEpochState,
-<a href=#164 id=164 data-nosnippet>164</a>        VcEmulationBindings,
+<a href=#163 id=163 data-nosnippet>163</a>        EpochId, RetainedKeyPackageMaterial, VcDerivationEpochLogEntry, VcDerivationEpochState,
+<a href=#164 id=164 data-nosnippet>164</a>        VcEmulationBinding,
 <a href=#165 id=165 data-nosnippet>165</a>    };
 <a href=#166 id=166 data-nosnippet>166</a>    <span class="kw">use </span><span class="kw">crate</span>::components::vc_operation_tree::OperationSecretTree;
 <a href=#167 id=167 data-nosnippet>167</a>
@@ -173,11 +173,11 @@
 <a href=#173 id=173 data-nosnippet>173</a>    <span class="kw">impl </span>Entity&lt;CURRENT_VERSION&gt; <span class="kw">for </span>VcDerivationEpochState {}
 <a href=#174 id=174 data-nosnippet>174</a>    <span class="kw">impl </span>traits::VcDerivationEpochState&lt;CURRENT_VERSION&gt; <span class="kw">for </span>VcDerivationEpochState {}
 <a href=#175 id=175 data-nosnippet>175</a>
-<a href=#176 id=176 data-nosnippet>176</a>    <span class="kw">impl </span>Entity&lt;CURRENT_VERSION&gt; <span class="kw">for </span>VcEmulationBindings {}
-<a href=#177 id=177 data-nosnippet>177</a>    <span class="kw">impl </span>traits::VcEmulationBindings&lt;CURRENT_VERSION&gt; <span class="kw">for </span>VcEmulationBindings {}
+<a href=#176 id=176 data-nosnippet>176</a>    <span class="kw">impl </span>Entity&lt;CURRENT_VERSION&gt; <span class="kw">for </span>VcEmulationBinding {}
+<a href=#177 id=177 data-nosnippet>177</a>    <span class="kw">impl </span>traits::VcEmulationBinding&lt;CURRENT_VERSION&gt; <span class="kw">for </span>VcEmulationBinding {}
 <a href=#178 id=178 data-nosnippet>178</a>
-<a href=#179 id=179 data-nosnippet>179</a>    <span class="kw">impl </span>Entity&lt;CURRENT_VERSION&gt; <span class="kw">for </span>RegisteredVcDerivationEpoch {}
-<a href=#180 id=180 data-nosnippet>180</a>    <span class="kw">impl </span>traits::RegisteredVcDerivationEpoch&lt;CURRENT_VERSION&gt; <span class="kw">for </span>RegisteredVcDerivationEpoch {}
+<a href=#179 id=179 data-nosnippet>179</a>    <span class="kw">impl </span>Entity&lt;CURRENT_VERSION&gt; <span class="kw">for </span>VcDerivationEpochLogEntry {}
+<a href=#180 id=180 data-nosnippet>180</a>    <span class="kw">impl </span>traits::VcDerivationEpochLogEntry&lt;CURRENT_VERSION&gt; <span class="kw">for </span>VcDerivationEpochLogEntry {}
 <a href=#181 id=181 data-nosnippet>181</a>
 <a href=#182 id=182 data-nosnippet>182</a>    <span class="kw">impl </span>Entity&lt;CURRENT_VERSION&gt; <span class="kw">for </span>OperationSecretTree {}
 <a href=#183 id=183 data-nosnippet>183</a>    <span class="kw">impl </span>traits::VcOperationTree&lt;CURRENT_VERSION&gt; <span class="kw">for </span>OperationSecretTree {}

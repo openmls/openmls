@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-2a92c202.js";
+            window.path_to_searchindex_js = "../searchindex-cefbd0aa.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-81492934.js"></script>
@@ -273,13 +273,13 @@ pub mod traits {
     pub trait LeafNode&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     pub trait ApplicationExportTree&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
-    pub trait VcEpochId&lt;const VERSION: u16&gt;: Key&lt;VERSION&gt; {}
+    pub trait VcEpochId&lt;const VERSION: u16&gt;: Key&lt;VERSION&gt; + Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcDerivationEpochState&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
-    pub trait VcEmulationBindings&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait VcEmulationBinding&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
-    pub trait RegisteredVcDerivationEpoch&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
+    pub trait VcDerivationEpochLogEntry&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
     pub trait VcOperationTree&lt;const VERSION: u16&gt;: Entity&lt;VERSION&gt; {}
     #[cfg(feature = "virtual-clients-draft")]
