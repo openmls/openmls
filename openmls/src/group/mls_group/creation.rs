@@ -693,9 +693,8 @@ impl StagedWelcome {
                     epoch_id,
                     max_entries,
                 );
-                provider
-                    .storage()
-                    .write_vc_emulation_bindings(group_id, &bindings)
+                bindings
+                    .store(provider.storage(), group_id)
                     .map_err(WelcomeError::StorageError)?;
             } else {
                 log::warn!(
