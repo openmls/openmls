@@ -663,6 +663,50 @@ impl StagedWelcome {
             )?;
         }
 
+        // A join via a virtual-client KeyPackage lands on a leaf shared with
+        // sibling emulator clients. Bind the joined epoch to the leaf's
+        // derivation epoch, as an external-commit join does, so that messages
+        // siblings send from the shared leaf can be deprotected instead of
+        // being taken for our own echo.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(derivation_info) = self
+            .public_group
+            .leaf(self.own_leaf_index)
+            .map(LeafNode::vc_derivation_info)
+            .transpose()?
+            .flatten()
+        {
+            let epoch_id = derivation_info.epoch_id().clone();
+            let group_id = self.public_group.group_id();
+            let state: Option<crate::components::vc_derivation_info::VcDerivationEpochState> =
+                provider
+                    .storage()
+                    .vc_derivation_epoch_state(&epoch_id)
+                    .map_err(WelcomeError::StorageError)?;
+            if state.is_some() {
+                let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings =
+                    provider
+                        .storage()
+                        .vc_emulation_bindings(group_id)
+                        .map_err(WelcomeError::StorageError)?
+                        .unwrap_or_default();
+                let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
+                bindings.insert(
+                    self.public_group.group_context().epoch(),
+                    epoch_id,
+                    max_entries,
+                );
+                provider
+                    .storage()
+                    .write_vc_emulation_bindings(group_id, &bindings)
+                    .map_err(WelcomeError::StorageError)?;
+            } else {
+                log::warn!(
+                    "vc: own welcome leaf carries derivation info for an unknown derivation epoch; not binding"
+                );
+            }
+        }
+
         let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
 
         let mut mls_group = MlsGroup {
@@ -1135,11 +1179,10 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     public_group: &PublicGroup,
     material: &crate::components::vc_derivation_info::VcWelcomeMaterial,
 ) -> Result<LeafNodeIndex, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
-    use tls_codec::{DeserializeBytes as _, Serialize as _};
+    use tls_codec::Serialize as _;
 
     use crate::components::vc_derivation_info::{
-        DerivationInfo, DerivationInfoTbe, VcDerivationEpochState, VirtualClientOperationType,
-        VirtualClientsError, VC_COMPONENT_ID,
+        DerivationInfoTbe, VcDerivationEpochState, VirtualClientOperationType, VirtualClientsError,
     };
 
     let crypto = provider.crypto();
@@ -1159,16 +1202,9 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
             PublicTreeError::MalformedTree,
         ))?;
 
-    let derivation_info_bytes = own_leaf
-        .extensions()
-        .app_data_dictionary()
-        .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+    let derivation_info = own_leaf
+        .vc_derivation_info()?
         .ok_or(VirtualClientsError::VcComponentNotListed)?;
-    let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
-        .map_err(|e| {
-            log::error!("vc: welcome leaf derivation info deserialize failed: {e:?}");
-            VirtualClientsError::DerivationInfoMalformed
-        })?;
     if derivation_info.epoch_id() != &material.epoch_id {
         log::error!("vc: welcome leaf epoch id does not match the retained material");
         return Err(VirtualClientsError::DerivationInfoMalformed.into());
@@ -1250,12 +1286,12 @@ impl MlsGroup {
         epoch_id: crate::components::vc_derivation_info::EpochId,
     ) -> Result<MlsGroup, crate::group::errors::VcGroupCreationJoinError<Provider::StorageError>>
     {
-        use tls_codec::{DeserializeBytes as _, Serialize as _};
+        use tls_codec::Serialize as _;
 
         use crate::{
             components::vc_derivation_info::{
-                load_vc_epoch_state_and_tree, DerivationInfo, DerivationInfoTbe,
-                VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
+                load_vc_epoch_state_and_tree, DerivationInfoTbe, VirtualClientOperationType,
+                VirtualClientsError,
             },
             group::errors::VcGroupCreationJoinError as Error,
             group::public_group::PublicGroup,
@@ -1293,13 +1329,9 @@ impl MlsGroup {
         };
 
         // Read the creator leaf's derivation info and check the derivation epoch.
-        let derivation_info_bytes = creator_leaf
-            .extensions()
-            .app_data_dictionary()
-            .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+        let derivation_info = creator_leaf
+            .vc_derivation_info()?
             .ok_or(Error::MissingDerivationInfo)?;
-        let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
-            .map_err(|_| VirtualClientsError::DerivationInfoMalformed)?;
         if derivation_info.epoch_id() != &epoch_id {
             return Err(Error::EpochIdMismatch);
         }
@@ -1522,12 +1554,7 @@ impl VcExternalCommitJoinBuilder {
         StagedVcExternalCommitJoin,
         crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>,
     > {
-        use tls_codec::DeserializeBytes as _;
-
         use crate::{
-            components::vc_derivation_info::{
-                DerivationInfo, VirtualClientsError, VC_COMPONENT_ID,
-            },
             framing::Sender,
             group::config::PastEpochDeletionPolicy,
             group::errors::{ProcessMessageError, VcExternalCommitJoinError as Error},
@@ -1627,14 +1654,13 @@ impl VcExternalCommitJoinBuilder {
         // secret generation: presence and the emulation epoch binding are
         // validated here, decryption and the consume-once secret derivation
         // happen in `StagedVcExternalCommitJoin::into_group`.
-        let derivation_info_bytes = commit
+        let derivation_info = commit
             .path
             .as_ref()
-            .and_then(|path| path.leaf_node().extensions().app_data_dictionary())
-            .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+            .map(|path| path.leaf_node().vc_derivation_info())
+            .transpose()?
+            .flatten()
             .ok_or(Error::MissingDerivationInfo)?;
-        let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
-            .map_err(|_| VirtualClientsError::DerivationInfoMalformed)?;
         if derivation_info.epoch_id() != &epoch_id {
             return Err(Error::EpochIdMismatch);
         }
