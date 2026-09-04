@@ -84,9 +84,10 @@ impl OpenMlsCrypto for CryptoProvider {
                 Err(CryptoError::UnsupportedCiphersuite)
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            HpkeKemType::MlKem768 | HpkeKemType::MlKem1024 => {
-                Err(CryptoError::UnsupportedCiphersuite)
-            }
+            HpkeKemType::MlKem768
+            | HpkeKemType::MlKem1024
+            | HpkeKemType::MlKem768P256
+            | HpkeKemType::MlKem1024P384 => Err(CryptoError::UnsupportedCiphersuite),
         }?;
 
         match ciphersuite.hpke_aead_algorithm() {
@@ -319,7 +320,7 @@ impl OpenMlsCrypto for CryptoProvider {
         aad: &[u8],
         ptxt: &[u8],
     ) -> Result<HpkeCiphertext, CryptoError> {
-        let mut config = hpke_config(config);
+        let mut config = hpke_config(config)?;
 
         let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
 
@@ -347,7 +348,7 @@ impl OpenMlsCrypto for CryptoProvider {
         info: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        let config = hpke_config(config);
+        let config = hpke_config(config)?;
 
         let sk_r = hpke_rs::HpkePrivateKey::new(sk_r.to_vec());
 
@@ -376,7 +377,7 @@ impl OpenMlsCrypto for CryptoProvider {
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<(KemOutput, ExporterSecret), CryptoError> {
-        let mut config = hpke_config(config);
+        let mut config = hpke_config(config)?;
 
         let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
 
@@ -398,7 +399,7 @@ impl OpenMlsCrypto for CryptoProvider {
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<ExporterSecret, CryptoError> {
-        let config = hpke_config(config);
+        let config = hpke_config(config)?;
 
         let sk_r = hpke_rs::HpkePrivateKey::new(sk_r.to_vec());
 
@@ -416,7 +417,7 @@ impl OpenMlsCrypto for CryptoProvider {
         config: HpkeConfig,
         ikm: &[u8],
     ) -> Result<HpkeKeyPair, CryptoError> {
-        let config = hpke_config(config);
+        let config = hpke_config(config)?;
 
         let key_pair: hpke_rs::HpkeKeyPair = config.derive_key_pair(ikm).map_err(|e| match e {
             hpke_rs::HpkeError::InvalidConfig => CryptoError::InvalidLength,
@@ -442,7 +443,7 @@ impl OpenMlsCrypto for CryptoProvider {
         psk: &[u8],
         psk_id: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        hpke_psk_from_config(config)
+        hpke_psk_from_config(config)?
             .open(
                 input.kem_output.as_slice(),
                 &sk_r.into(),
@@ -470,7 +471,8 @@ impl OpenMlsCrypto for CryptoProvider {
     where
         F: FnOnce(&[u8]) -> Result<Vec<u8>, E>,
     {
-        let mut hpke = hpke_psk_from_config(config);
+        let mut hpke =
+            hpke_psk_from_config(config).map_err(HpkeSealPskResolvedAadError::CryptoError)?;
         // Split the single-shot seal into setup and seal so the AAD can be built
         // from the KEM output. The setup and seal must share the same context.
         let (kem_output, mut context) = hpke
@@ -504,21 +506,21 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 }
 
-fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
-    let kem = hpke_kem(config.0);
+fn hpke_config(config: HpkeConfig) -> Result<hpke_rs::Hpke<HpkeLibcrux>, CryptoError> {
+    let kem = hpke_kem(config.0)?;
     let kdf = hpke_kdf(config.1);
     let aead = hpke_aead(config.2);
 
-    hpke_rs::Hpke::new(hpke_rs::Mode::Base, kem, kdf, aead)
+    Ok(hpke_rs::Hpke::new(hpke_rs::Mode::Base, kem, kdf, aead))
 }
 
 #[cfg(feature = "targeted-messages-draft")]
-fn hpke_psk_from_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
-    let kem = hpke_kem(config.0);
+fn hpke_psk_from_config(config: HpkeConfig) -> Result<hpke_rs::Hpke<HpkeLibcrux>, CryptoError> {
+    let kem = hpke_kem(config.0)?;
     let kdf = hpke_kdf(config.1);
     let aead = hpke_aead(config.2);
 
-    hpke_rs::Hpke::new(hpke_rs::Mode::Psk, kem, kdf, aead)
+    Ok(hpke_rs::Hpke::new(hpke_rs::Mode::Psk, kem, kdf, aead))
 }
 
 fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs_crypto::types::KdfAlgorithm {
@@ -529,8 +531,8 @@ fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs_crypto::types::KdfAlgorithm {
     }
 }
 
-fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
-    match kem {
+fn hpke_kem(kem: HpkeKemType) -> Result<hpke_rs_crypto::types::KemAlgorithm, CryptoError> {
+    Ok(match kem {
         HpkeKemType::DhKemP256 => hpke_rs_crypto::types::KemAlgorithm::DhKemP256,
         HpkeKemType::DhKemP384 => hpke_rs_crypto::types::KemAlgorithm::DhKemP384,
         HpkeKemType::DhKemP521 => hpke_rs_crypto::types::KemAlgorithm::DhKemP521,
@@ -542,7 +544,11 @@ fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
         HpkeKemType::MlKem768 => hpke_rs_crypto::types::KemAlgorithm::MlKem768,
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::MlKem1024 => hpke_rs_crypto::types::KemAlgorithm::MlKem1024,
-    }
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem768P256 | HpkeKemType::MlKem1024P384 => {
+            return Err(CryptoError::UnsupportedCiphersuite)
+        }
+    })
 }
 
 fn hpke_aead(aead: HpkeAeadType) -> hpke_rs_crypto::types::AeadAlgorithm {

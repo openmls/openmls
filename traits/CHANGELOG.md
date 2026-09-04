@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- [#2208](https://github.com/openmls/openmls/pull/2208): Added the three ciphersuites of draft-ietf-mls-pq-ciphersuites on the hybrid ML-KEM/P-curve KEMs, `MLS_128_MLKEM768P256_AES128GCM_SHA256_P256` (TBD3), `MLS_128_MLKEM768P256_AES256GCM_SHA384_P256` (TBD4) and `MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384` (TBD5), with provisional code points `0x0053` to `0x0055`, and the KEMs `HpkeKemType::MlKem768P256` (`0x0050`) and `HpkeKemType::MlKem1024P384` (`0x0051`) from draft-ietf-hpke-pq, behind `draft-ietf-mls-pq-ciphersuites`. Neither bundled crypto provider implements these KEMs; they report the ciphersuites as unsupported and their HPKE operations return `UnsupportedCiphersuite` for them.
+
 ## 0.6.0 (2026-08-25)
 
 ### Added

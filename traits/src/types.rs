@@ -208,6 +208,16 @@ pub enum HpkeKemType {
     /// XWing combiner for ML-KEM and X25519
     #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     XWingKemDraft6 = 0x004D,
+    /// ML-KEM-768 combined with P-256, [draft-ietf-hpke-pq]
+    ///
+    /// [draft-ietf-hpke-pq]: https://datatracker.ietf.org/doc/draft-ietf-hpke-pq
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    MlKem768P256 = 0x0050,
+    /// ML-KEM-1024 combined with P-384, [draft-ietf-hpke-pq]
+    ///
+    /// [draft-ietf-hpke-pq]: https://datatracker.ietf.org/doc/draft-ietf-hpke-pq
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    MlKem1024P384 = 0x0051,
 }
 
 /// KDF Types for HPKE
@@ -470,13 +480,6 @@ pub enum Ciphersuite {
     #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519 = 0x004E,
 
-    // TBD3, TBD4, TBD5 are currently not supported because there are no implementations for hybrid
-    // schemes MLKEM768P256 and MLKEM1024P384.
-    //
-    // MLS_128_MLKEM768P256_AES128GCM_SHA256_P256 = TBD3,
-    // MLS_128_MLKEM768P256_AES256GCM_SHA384_P256 = TBD4
-    // MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384 =TBD5,
-    //
     /// ML-KEM768 | AES-GCM256 | SHA2-384 | Ed25519
     ///
     /// [draft-ietf-mls-pq-ciphersuites] TBD6 (custom provisional code point, kept from the
@@ -525,6 +528,30 @@ pub enum Ciphersuite {
     /// [draft-ietf-mls-pq-ciphersuites]: https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites
     #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87 = 0x0907,
+
+    /// ML-KEM768 + P256 | AES-GCM128 | SHA2-256 | EcDSA P256
+    ///
+    /// [draft-ietf-mls-pq-ciphersuites] TBD3 (provisional code point)
+    ///
+    /// [draft-ietf-mls-pq-ciphersuites]: https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    MLS_128_MLKEM768P256_AES128GCM_SHA256_P256 = 0x0053,
+
+    /// ML-KEM768 + P256 | AES-GCM256 | SHA2-384 | EcDSA P256
+    ///
+    /// [draft-ietf-mls-pq-ciphersuites] TBD4 (provisional code point)
+    ///
+    /// [draft-ietf-mls-pq-ciphersuites]: https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    MLS_128_MLKEM768P256_AES256GCM_SHA384_P256 = 0x0054,
+
+    /// ML-KEM1024 + P384 | AES-GCM256 | SHA2-384 | EcDSA P384
+    ///
+    /// [draft-ietf-mls-pq-ciphersuites] TBD5 (provisional code point)
+    ///
+    /// [draft-ietf-mls-pq-ciphersuites]: https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384 = 0x0055,
 }
 
 impl core::fmt::Display for Ciphersuite {
@@ -578,6 +605,12 @@ impl TryFrom<u16> for Ciphersuite {
             0x0052 => Ok(Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             0x0907 => Ok(Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87),
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            0x0053 => Ok(Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256),
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            0x0054 => Ok(Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256),
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            0x0055 => Ok(Ciphersuite::MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             0xF042 => Ok(Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519),
             _ => Err(Self::Error::DecodingError(format!(
@@ -656,6 +689,11 @@ impl Ciphersuite {
             | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => HashType::Sha2_512,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87 => HashType::Sha2_512,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256 => HashType::Sha2_256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256
+            | Ciphersuite::MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384 => HashType::Sha2_384,
         }
     }
 
@@ -705,6 +743,15 @@ impl Ciphersuite {
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519 => SignatureScheme::ED25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256
+            | Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256 => {
+                SignatureScheme::ECDSA_SECP256R1_SHA256
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384 => {
+                SignatureScheme::ECDSA_SECP384R1_SHA384
+            }
         }
     }
 
@@ -736,6 +783,11 @@ impl Ciphersuite {
             | Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65
             | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87
             | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519 => AeadType::Aes256Gcm,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256 => AeadType::Aes128Gcm,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256
+            | Ciphersuite::MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384 => AeadType::Aes256Gcm,
         }
     }
 
@@ -769,6 +821,11 @@ impl Ciphersuite {
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87 => HpkeKdfType::HkdfSha512,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256 => HpkeKdfType::HkdfSha256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256
+            | Ciphersuite::MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384 => HpkeKdfType::HkdfSha384,
         }
     }
 
@@ -800,6 +857,11 @@ impl Ciphersuite {
             Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256
             | Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65
             | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519 => HpkeKemType::MlKem768,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256
+            | Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256 => HpkeKemType::MlKem768P256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384 => HpkeKemType::MlKem1024P384,
         }
     }
 
@@ -831,6 +893,11 @@ impl Ciphersuite {
             | Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65
             | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87
             | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519 => HpkeAeadType::AesGcm256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256 => HpkeAeadType::AesGcm128,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256
+            | Ciphersuite::MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384 => HpkeAeadType::AesGcm256,
         }
     }
 
@@ -866,5 +933,52 @@ impl Ciphersuite {
     #[inline]
     pub const fn aead_nonce_length(&self) -> usize {
         self.aead_algorithm().nonce_size()
+    }
+}
+
+#[cfg(all(test, feature = "draft-ietf-mls-pq-ciphersuites"))]
+mod pq_hybrid_p_curve_suites {
+    //! The three ciphersuites on the hybrid ML-KEM/P-curve KEMs of
+    //! draft-ietf-mls-pq-ciphersuites, TBD3 to TBD5, with the KEM identifiers
+    //! from draft-ietf-hpke-pq.
+
+    use super::*;
+
+    #[test]
+    fn parameters() {
+        let tbd3 = Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256;
+        assert_eq!(tbd3.hpke_kem_algorithm(), HpkeKemType::MlKem768P256);
+        assert_eq!(tbd3.hpke_kdf_algorithm(), HpkeKdfType::HkdfSha256);
+        assert_eq!(tbd3.aead_algorithm(), AeadType::Aes128Gcm);
+        assert_eq!(tbd3.hash_algorithm(), HashType::Sha2_256);
+        assert_eq!(
+            tbd3.signature_algorithm(),
+            SignatureScheme::ECDSA_SECP256R1_SHA256
+        );
+        assert_eq!(Ciphersuite::try_from(0x0053), Ok(tbd3));
+
+        let tbd4 = Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256;
+        assert_eq!(tbd4.hpke_kem_algorithm(), HpkeKemType::MlKem768P256);
+        assert_eq!(
+            tbd4.signature_algorithm(),
+            SignatureScheme::ECDSA_SECP256R1_SHA256
+        );
+        assert_eq!(Ciphersuite::try_from(0x0054), Ok(tbd4));
+
+        let tbd5 = Ciphersuite::MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384;
+        assert_eq!(tbd5.hpke_kem_algorithm(), HpkeKemType::MlKem1024P384);
+        assert_eq!(
+            tbd5.signature_algorithm(),
+            SignatureScheme::ECDSA_SECP384R1_SHA384
+        );
+        assert_eq!(Ciphersuite::try_from(0x0055), Ok(tbd5));
+
+        for suite in [tbd4, tbd5] {
+            assert_eq!(suite.hpke_kdf_algorithm(), HpkeKdfType::HkdfSha384);
+            assert_eq!(suite.aead_algorithm(), AeadType::Aes256Gcm);
+            assert_eq!(suite.hash_algorithm(), HashType::Sha2_384);
+        }
+        assert_eq!(HpkeKemType::MlKem768P256 as u16, 0x0050);
+        assert_eq!(HpkeKemType::MlKem1024P384 as u16, 0x0051);
     }
 }

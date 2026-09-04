@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [#2208](https://github.com/openmls/openmls/pull/2208): Added the three ciphersuites of draft-ietf-mls-pq-ciphersuites on the hybrid ML-KEM/P-curve KEMs, `MLS_128_MLKEM768P256_AES128GCM_SHA256_P256` (TBD3), `MLS_128_MLKEM768P256_AES256GCM_SHA384_P256` (TBD4) and `MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384` (TBD5), with provisional code points `0x0053` to `0x0055`, and the KEMs `HpkeKemType::MlKem768P256` (`0x0050`) and `HpkeKemType::MlKem1024P384` (`0x0051`) from draft-ietf-hpke-pq, behind `draft-ietf-mls-pq-ciphersuites`. Neither bundled crypto provider implements these KEMs; they report the ciphersuites as unsupported and their HPKE operations return `UnsupportedCiphersuite` for them.
 - [#2184](https://github.com/openmls/openmls/pull/2184): Added `PreSharedKeyProposal::psk`, a getter for the `PreSharedKeyId` of a `PreSharedKey` proposal.
 - [#2167](https://github.com/openmls/openmls/pull/2167): Added `PublicGroup::validate_key_package_for_add`, which checks whether a single `KeyPackage` is eligible to be added to the group without building a commit. Applications adding several members at once can use it to filter out candidates that a commit would reject, and to report which candidate was rejected and why. Uniqueness of the signature, init and encryption keys is not covered, since it can only be decided for a full set of proposals.
 
