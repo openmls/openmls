@@ -499,6 +499,7 @@ impl LeafNode {
     }
 
     /// The virtual-client derivation this leaf might contain.
+    #[cfg(feature = "virtual-clients-draft")]
     pub(crate) fn vc_derivation_info(
         &self,
     ) -> Result<
