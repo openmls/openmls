@@ -2,9 +2,25 @@ diff --git a/interop/test-runner/main.go b/interop/test-runner/main.go
 index f7495bf..89052d8 100644
 --- a/interop/test-runner/main.go
 +++ b/interop/test-runner/main.go
+@@ -446,7 +446,14 @@ func combinationsInner(vals int, slots int, base [][]int) [][]int {
+ 	out := make([][]int, 0, vals*len(base))
+ 	for _, tuple := range base {
+ 		for v := range ix {
+-			out = append(out, append(tuple, v))
++			// FIX: copy `tuple` before appending. `append(tuple, v)` reuses
++			// tuple's backing array across inner-loop iterations once it has
++			// spare capacity (classic Go append-aliasing bug), corrupting and
++			// deduplicating combos. In particular it drops the all-first-client
++			// assignment for >=4 actors, so OpenMLS-vs-OpenMLS (the "self"
++			// column) is never produced for larger scenarios such as branch.
++			t := append([]int(nil), tuple...)
++			out = append(out, append(t, v))
+ 		}
+ 	}
+
 @@ -1345,8 +1345,9 @@ func (config *ScriptActorConfig) Run(script Script) ScriptResult {
  }
- 
+
  func (p *ClientPool) ScriptMatrix(actors []string, clientMode ClientMode, suite int, hsMode HandshakeMode) []ScriptActorConfig {
 -	suite32 := uint32(suite)
 -	suites := []uint32{}
@@ -19,6 +35,6 @@ index f7495bf..89052d8 100644
  		panic(fmt.Sprintf("Unsupported ciphersuite: %d", suite))
  	}
 +	*/
- 
+
  	encryptOptions := []bool{true, false}
  	switch hsMode {

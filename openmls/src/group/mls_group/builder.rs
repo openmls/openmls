@@ -96,6 +96,8 @@ impl MlsGroupBuilder {
         BranchGroupBuilder {
             group_builder: self,
             branch_info,
+            extensions: None,
+            force_self_update: false,
         }
     }
 
@@ -433,15 +435,37 @@ impl MlsGroupBuilder {
 pub struct BranchGroupBuilder {
     group_builder: MlsGroupBuilder,
     branch_info: BranchInfo,
+    extensions: Option<Extensions<GroupContext>>,
+    force_self_update: bool,
 }
 
 impl BranchGroupBuilder {
+    /// Add a [`GroupContextExtensions`](crate::extensions::Extensions) proposal
+    /// to the branch commit. See
+    /// [`CommitBuilder::propose_group_context_extensions`](crate::group::CommitBuilder::propose_group_context_extensions).
+    pub fn propose_group_context_extensions(
+        mut self,
+        extensions: Extensions<GroupContext>,
+    ) -> Self {
+        self.extensions = Some(extensions);
+        self
+    }
+
+    /// Force a self-update (path) in the branch commit. See
+    /// [`CommitBuilder::force_self_update`](crate::group::CommitBuilder::force_self_update).
+    pub fn force_self_update(mut self, force_self_update: bool) -> Self {
+        self.force_self_update = force_self_update;
+        self
+    }
+
     /// Create the sub-group and the branch commit that adds `new_members` to it.
     ///
     /// This creates a fresh group with the parent's ciphersuite, adds the branch
     /// resumption PSK (mixing in the parent's resumption PSK secret), and commits
-    /// the additions. It returns the new (epoch-0) sub-group and the
-    /// [`CommitMessageBundle`] carrying the branch commit and `Welcome`.
+    /// the additions (plus any extra proposals set via
+    /// [`Self::propose_group_context_extensions`] / [`Self::force_self_update`]).
+    /// It returns the new (epoch-0) sub-group and the [`CommitMessageBundle`]
+    /// carrying the branch commit and `Welcome`.
     ///
     /// The commit is staged but **not** merged: merge it with
     /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
@@ -459,10 +483,17 @@ impl BranchGroupBuilder {
             .ciphersuite(self.branch_info.ciphersuite());
         let mut group = group_builder.build(provider, signer, credential_with_key)?;
 
-        let bundle = group
+        let mut builder = group
             .commit_builder()
             .branch(provider.rand(), &self.branch_info)?
-            .propose_adds(new_members)
+            .propose_adds(new_members);
+        if let Some(extensions) = self.extensions {
+            builder = builder.propose_group_context_extensions(extensions)?;
+        }
+        if self.force_self_update {
+            builder = builder.force_self_update(true);
+        }
+        let bundle = builder
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)?;
