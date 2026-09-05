@@ -40,6 +40,9 @@ pub enum KeyPackageVerifyError {
     /// The protocol version is not valid.
     #[error("The protocol version is not valid.")]
     InvalidProtocolVersion,
+    /// The ciphersuite is not supported by the crypto provider.
+    #[error("Ciphersuite {0:?} is not supported by the crypto provider.")]
+    UnsupportedCiphersuite(Ciphersuite),
     /// The provided extension is not allowed in key packages
     #[error(transparent)]
     ExtensionTypeNotValidInKeyPackage(#[from] ExtensionTypeNotValidInKeyPackageError),
