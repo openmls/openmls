@@ -498,7 +498,7 @@ impl LeafNode {
         &self.payload.extensions
     }
 
-    /// The virtual-client derivation this leaf might contain.
+    /// The virtual-client derivation info this leaf might contain.
     #[cfg(feature = "virtual-clients-draft")]
     pub(crate) fn vc_derivation_info(
         &self,

@@ -2630,7 +2630,7 @@ fn vc_siblings_joined_via_key_package_welcome_read_each_others_messages() {
     .expect("assemble upload");
     process_vc_key_package_upload(&alice_b_provider, &upload).expect("alice_b process upload");
 
-    // Bob founds a higher-level group and adds the virtual client.
+    // Bob creates a higher-level group and adds the virtual client.
     let (bob_credential, bob_signer) =
         new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
     let bob_group_config = MlsGroupCreateConfig::builder()

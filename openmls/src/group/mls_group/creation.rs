@@ -664,7 +664,7 @@ impl StagedWelcome {
         // sibling emulator clients. Bind the joined epoch to the leaf's
         // derivation epoch, as an external-commit join does, so that messages
         // siblings send from the shared leaf can be deprotected instead of
-        // being taken for our own echo.
+        // being mistaken for our own echo.
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(derivation_info) = self
             .public_group
