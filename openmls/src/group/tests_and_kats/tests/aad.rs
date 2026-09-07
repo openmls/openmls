@@ -9,6 +9,7 @@ use crate::{
         tests_and_kats::utils::{generate_credential_with_key, generate_key_package},
         *,
     },
+    messages::proposals::{CustomProposal, ProposalOrRefType},
 };
 
 // Tests AAD in end-to-end group creation, message and removal with three members.
@@ -786,6 +787,146 @@ fn test_aad_propose_self_update_with_new_signer() {
 
     let alice_processed_message = group
         .process_message(provider, proposal.into_protocol_message().unwrap())
+        .unwrap();
+
+    assert_eq!(alice_processed_message.aad(), AAD);
+}
+
+#[openmls_test::openmls_test]
+fn test_aad_propose_dispatch() {
+    use crate::treesync::LeafNodeParameters;
+
+    let (_, charlie_pkb, _, _) = setup_client("Charlie", ciphersuite, &Provider::default());
+
+    let extensions =
+        Extensions::from_vec(vec![Extension::Unknown(1, UnknownExtension(Vec::new()))]).unwrap();
+
+    let proposals = [
+        Propose::Add(charlie_pkb.key_package.clone()),
+        Propose::Update(LeafNodeParameters::default()),
+        Propose::Remove(1), // Remove Bob
+        // Propose::RemoveCredential(),
+        // Propose::PreSharedKey(),
+        Propose::GroupContextExtensions(extensions),
+        Propose::Custom(CustomProposal::new(0xf000, b"Custom Proposal".to_vec())),
+    ];
+
+    for proposal in proposals {
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+        let (
+            mut alice_group,
+            alice_signer,
+            bob_group,
+            _bob_signer,
+            _alice_credential_with_key,
+            _bob_credential_with_key,
+        ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+        assert_eq!(bob_group.own_leaf_index(), LeafNodeIndex::new(1));
+
+        alice_group.set_aad(AAD.to_vec());
+
+        let (proposal, _hash_reference) = alice_group
+            .propose(
+                alice_provider,
+                &alice_signer,
+                proposal,
+                ProposalOrRefType::Reference,
+            )
+            .unwrap();
+
+        assert_eq!(alice_group.aad(), b"");
+
+        let alice_processed_message = alice_group
+            .process_message(alice_provider, proposal.into_protocol_message().unwrap())
+            .unwrap();
+
+        assert_eq!(alice_processed_message.aad(), AAD);
+    }
+}
+
+#[openmls_test::openmls_test]
+fn test_aad_propose_dispatch_remove_credential() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (
+        mut alice_group,
+        alice_signer,
+        _bob_group,
+        _bob_signer,
+        _alice_credential_with_key,
+        bob_credential_with_key,
+    ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+    alice_group.set_aad(AAD.to_vec());
+
+    let (proposal, _hash_reference) = alice_group
+        .propose(
+            alice_provider,
+            &alice_signer,
+            Propose::RemoveCredential(bob_credential_with_key.credential),
+            ProposalOrRefType::Reference,
+        )
+        .unwrap();
+
+    assert_eq!(alice_group.aad(), b"");
+
+    let alice_processed_message = alice_group
+        .process_message(alice_provider, proposal.into_protocol_message().unwrap())
+        .unwrap();
+
+    assert_eq!(alice_processed_message.aad(), AAD);
+}
+
+#[openmls_test::openmls_test]
+fn test_aad_propose_dispatch_preshared_key() {
+    use crate::schedule::{ExternalPsk, PreSharedKeyId, Psk};
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (
+        mut alice_group,
+        alice_signer,
+        _bob_group,
+        _bob_signer,
+        _alice_credential_with_key,
+        _bob_credential_with_key,
+    ) = setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+    let psk_id = vec![1u8, 2, 3];
+
+    let secret =
+        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
+    let external_psk = ExternalPsk::new(psk_id);
+    let preshared_key_id = PreSharedKeyId::new(
+        ciphersuite,
+        alice_provider.rand(),
+        Psk::External(external_psk),
+    )
+    .unwrap();
+    preshared_key_id
+        .store(alice_provider, secret.as_slice())
+        .unwrap();
+    preshared_key_id
+        .store(bob_provider, secret.as_slice())
+        .unwrap();
+
+    alice_group.set_aad(AAD.to_vec());
+
+    let (proposal, _hash_reference) = alice_group
+        .propose(
+            alice_provider,
+            &alice_signer,
+            Propose::PreSharedKey(preshared_key_id),
+            ProposalOrRefType::Reference,
+        )
+        .unwrap();
+
+    assert_eq!(alice_group.aad(), b"");
+
+    let alice_processed_message = alice_group
+        .process_message(alice_provider, proposal.into_protocol_message().unwrap())
         .unwrap();
 
     assert_eq!(alice_processed_message.aad(), AAD);
