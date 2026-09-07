@@ -673,34 +673,33 @@ impl StagedWelcome {
             .transpose()?
             .flatten()
         {
+            use crate::components::vc_derivation_info::VcDerivationEpochState;
+            use crate::components::vc_derivation_info::VcEmulationBindings;
+            use crate::components::vc_derivation_info::VirtualClientsError;
+
             let epoch_id = derivation_info.epoch_id().clone();
             let group_id = self.public_group.group_id();
-            let state: Option<crate::components::vc_derivation_info::VcDerivationEpochState> =
-                provider
-                    .storage()
-                    .vc_derivation_epoch_state(&epoch_id)
-                    .map_err(WelcomeError::StorageError)?;
-            if state.is_some() {
-                let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings =
-                    provider
-                        .storage()
-                        .vc_emulation_bindings(group_id)
-                        .map_err(WelcomeError::StorageError)?
-                        .unwrap_or_default();
-                let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
-                bindings.insert(
-                    self.public_group.group_context().epoch(),
-                    epoch_id,
-                    max_entries,
-                );
-                bindings
-                    .store(provider.storage(), group_id)
-                    .map_err(WelcomeError::StorageError)?;
-            } else {
-                log::warn!(
-                    "vc: own welcome leaf carries derivation info for an unknown derivation epoch; not binding"
-                );
-            }
+            provider
+                .storage()
+                .vc_derivation_epoch_state::<_, VcDerivationEpochState>(&epoch_id)
+                .map_err(WelcomeError::StorageError)?
+                .ok_or(WelcomeError::VirtualClientsError(
+                    VirtualClientsError::MissingDerivationEpochState,
+                ))?;
+            let mut bindings: VcEmulationBindings = provider
+                .storage()
+                .vc_emulation_bindings(group_id)
+                .map_err(WelcomeError::StorageError)?
+                .unwrap_or_default();
+            let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
+            bindings.insert(
+                self.public_group.group_context().epoch(),
+                epoch_id,
+                max_entries,
+            );
+            bindings
+                .store(provider.storage(), group_id)
+                .map_err(WelcomeError::StorageError)?;
         }
 
         let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
