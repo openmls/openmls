@@ -160,8 +160,8 @@ impl traits::ApplicationExportTree<CURRENT_VERSION> for ApplicationExportTree {}
 mod virtual_clients_storage {
     use super::*;
     use crate::components::vc_derivation_info::{
-        EpochId, RegisteredVcDerivationEpoch, RetainedKeyPackageMaterial, VcDerivationEpochState,
-        VcEmulationBindings,
+        EpochId, RetainedKeyPackageMaterial, VcDerivationEpochLogEntry, VcDerivationEpochState,
+        VcEmulationBinding,
     };
     use crate::components::vc_operation_tree::OperationSecretTree;
 
@@ -173,11 +173,11 @@ mod virtual_clients_storage {
     impl Entity<CURRENT_VERSION> for VcDerivationEpochState {}
     impl traits::VcDerivationEpochState<CURRENT_VERSION> for VcDerivationEpochState {}
 
-    impl Entity<CURRENT_VERSION> for VcEmulationBindings {}
-    impl traits::VcEmulationBindings<CURRENT_VERSION> for VcEmulationBindings {}
+    impl Entity<CURRENT_VERSION> for VcEmulationBinding {}
+    impl traits::VcEmulationBinding<CURRENT_VERSION> for VcEmulationBinding {}
 
-    impl Entity<CURRENT_VERSION> for RegisteredVcDerivationEpoch {}
-    impl traits::RegisteredVcDerivationEpoch<CURRENT_VERSION> for RegisteredVcDerivationEpoch {}
+    impl Entity<CURRENT_VERSION> for VcDerivationEpochLogEntry {}
+    impl traits::VcDerivationEpochLogEntry<CURRENT_VERSION> for VcDerivationEpochLogEntry {}
 
     impl Entity<CURRENT_VERSION> for OperationSecretTree {}
     impl traits::VcOperationTree<CURRENT_VERSION> for OperationSecretTree {}

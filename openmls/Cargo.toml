@@ -98,6 +98,7 @@ js-test = [
 
 virtual-clients-draft = [
     "extensions-draft",
+    "dep:web-time",
     "openmls_traits/virtual-clients-draft",
     # The crypto providers implement the trait's FF1 small-space PRP, so
     # their `OpenMlsCrypto` impls only compile against a

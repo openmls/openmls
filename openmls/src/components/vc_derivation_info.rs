@@ -1,3 +1,7 @@
+use std::collections::{BTreeSet, VecDeque};
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::SystemTime;
+
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, CryptoError},
@@ -9,12 +13,17 @@ use tls_codec::{
     DeserializeBytes, SecretVLByteVec, Serialize as _, Size as _, TlsDeserializeBytes,
     TlsSerialize, TlsSize, VLByteSlice, VLByteVec,
 };
+#[cfg(target_arch = "wasm32")]
+use web_time::SystemTime;
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::{hash_ref::KeyPackageRef, Secret},
     components::vc_operation_tree::OperationSecretTree,
-    group::{mls_group::errors::RegisterVcDerivationEpochError, GroupEpoch, GroupId},
+    group::{
+        mls_group::errors::RegisterVcDerivationEpochError, GroupEpoch, GroupId,
+        VcDerivationEpochRetentionPolicy,
+    },
     key_packages::InitKey,
     messages::PathSecret,
     schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
@@ -604,8 +613,8 @@ pub struct RetainedKeyPackageMaterial {
 /// entry overwrite the first's retained material, so both are rejected before
 /// any state is loaded or any operation generation is consumed.
 fn validate_key_package_infos(infos: &[KeyPackageInfo]) -> Result<(), VirtualClientsError> {
-    let mut seen_indices = std::collections::BTreeSet::new();
-    let mut seen_refs = std::collections::BTreeSet::new();
+    let mut seen_indices = BTreeSet::new();
+    let mut seen_refs = BTreeSet::new();
     for info in infos {
         if !seen_indices.insert(info.key_package_index) {
             return Err(VirtualClientsError::DuplicateKeyPackageIndex(
@@ -772,38 +781,170 @@ pub(crate) struct VcWelcomeMaterial {
     pub(crate) encryption_keypair: EncryptionKeyPair,
 }
 
-/// The newest derivation epoch of an emulation group, and the group epoch it
-/// was sourced from. All virtual-client operations of the group resolve to this
-/// derivation epoch, which may be older than the group's current epoch.
-///
-/// The group epoch is retained so that a repeated registration for the same
-/// group epoch returns the existing [`EpochId`] instead of consuming the
-/// forward-secure exporter again (the exporter is punctured by the first
-/// registration and cannot be re-evaluated).
-///
-/// Not folded into [`VcEmulationBindings`]: bindings are per higher-level group
-/// and are carried forward to the new epoch when a merged commit installs no
-/// virtual-client leaf, so they cannot say which derivation epoch is newest.
+/// One registration in an emulation group's log of derivation epochs, stored
+/// as its own row keyed by `(group_id, epoch_id)`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct RegisteredVcDerivationEpoch {
+pub struct VcDerivationEpochLogEntry {
+    /// Position of this entry in the group's log, starting at 0.
+    pub(crate) sequence: u64,
     /// The emulation group's own epoch at registration time.
-    pub(crate) group_epoch: crate::group::GroupEpoch,
+    pub(crate) group_epoch: GroupEpoch,
     /// The derivation epoch id derived by that registration.
     pub(crate) epoch_id: EpochId,
+    /// When the registration happened, in local wall-clock time.
+    pub(crate) registered_at: SystemTime,
+}
+
+impl VcDerivationEpochLogEntry {
+    /// Convert a [`RegisteredVcDerivationEpoch`] into a log entry. The record
+    /// was its group's only registration, so the entry takes sequence 0.
+    pub fn from_legacy_record(
+        group_epoch: GroupEpoch,
+        epoch_id: EpochId,
+        registered_at: SystemTime,
+    ) -> Self {
+        Self {
+            sequence: 0,
+            group_epoch,
+            epoch_id,
+            registered_at,
+        }
+    }
+
+    /// The derivation epoch this entry registered.
+    pub fn epoch_id(&self) -> &EpochId {
+        &self.epoch_id
+    }
+}
+
+/// Per-emulation-group log of the derivation epochs the group registered, in
+/// registration order with the newest at the back. The newest entry is the
+/// derivation epoch all new virtual-client operations of the group resolve to,
+/// which may be older than the group's current epoch.
+#[derive(Debug, Default)]
+pub(crate) struct VcDerivationEpochLog {
+    // In registration order, oldest at the front.
+    entries: VecDeque<VcDerivationEpochLogEntry>,
+}
+
+impl VcDerivationEpochLog {
+    /// Reconstruct the log of `group_id` from its stored entries. The log is
+    /// empty for a group that never registered a derivation epoch.
+    pub(crate) fn load<Storage: crate::storage::StorageProvider>(
+        storage: &Storage,
+        group_id: &GroupId,
+    ) -> Result<Self, Storage::Error> {
+        let mut entries: Vec<VcDerivationEpochLogEntry> =
+            storage.vc_derivation_epoch_log_entries(group_id)?;
+        entries.sort_unstable_by_key(|entry| entry.sequence);
+        // Entries are keyed by their epoch id in storage, so a duplicate id
+        // cannot come from storage. It would mean two registrations derived
+        // the same id, which the exporter derivation excludes.
+        debug_assert!(
+            entries
+                .iter()
+                .map(|entry| &entry.epoch_id)
+                .collect::<BTreeSet<_>>()
+                .len()
+                == entries.len(),
+            "duplicate derivation epoch id in log"
+        );
+        Ok(Self {
+            entries: entries.into(),
+        })
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// The newest logged registration, or `None` if the log is empty.
+    pub(crate) fn newest(&self) -> Option<&VcDerivationEpochLogEntry> {
+        self.entries.back()
+    }
+
+    /// Append a registration of `epoch_id` for `group_epoch`, timestamped now
+    /// and sequenced after the current newest entry. Returns a clone of the
+    /// appended entry for the caller to persist.
+    fn push(&mut self, group_epoch: GroupEpoch, epoch_id: EpochId) -> VcDerivationEpochLogEntry {
+        let sequence = self
+            .entries
+            .back()
+            .map_or(0, |entry| entry.sequence.saturating_add(1));
+        let entry = VcDerivationEpochLogEntry {
+            sequence,
+            group_epoch,
+            epoch_id,
+            registered_at: SystemTime::now(),
+        };
+        self.entries.push_back(entry.clone());
+        entry
+    }
+
+    /// Drop the oldest entries until at most `max_entries` are left, and return
+    /// the epochs of the dropped entries. Never drops the newest entry, so the
+    /// group keeps a derivation epoch to operate on.
+    pub(crate) fn shrink_to(&mut self, max_entries: usize) -> Vec<EpochId> {
+        let excess = self.entries.len().saturating_sub(max_entries.max(1));
+        self.drop_oldest(excess)
+    }
+
+    /// Drop every entry superseded before `cutoff` and return the epochs of
+    /// the dropped entries. An entry is superseded when its successor is
+    /// registered, so entry `i` goes when entry `i + 1` was registered before
+    /// `cutoff`. The newest entry has no successor and never drops.
+    pub(crate) fn drop_superseded_before(&mut self, cutoff: SystemTime) -> Vec<EpochId> {
+        let count = self
+            .entries
+            .iter()
+            .skip(1)
+            .rposition(|successor| successor.registered_at < cutoff)
+            .map_or(0, |index| index + 1);
+        self.drop_oldest(count)
+    }
+
+    /// Drop the `count` oldest entries, keeping the newest one regardless, and
+    /// return their epochs. Each epoch appears in at most one entry.
+    fn drop_oldest(&mut self, count: usize) -> Vec<EpochId> {
+        let droppable = self.entries.len().saturating_sub(1);
+        self.entries
+            .drain(0..count.min(droppable))
+            .map(|entry| entry.epoch_id)
+            .collect()
+    }
+}
+
+/// Registration record of the storage layout that preceded the
+/// derivation-epoch log. Only for decoding stored records and converting them
+/// with [`VcDerivationEpochLogEntry::from_legacy_record`].
+#[deprecated(
+    since = "0.9.0",
+    note = "migration-only: decode pre-log registration records and convert them with \
+            `VcDerivationEpochLogEntry::from_legacy_record`. Will be removed in 0.10.0."
+)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RegisteredVcDerivationEpoch {
+    /// The emulation group's own epoch at registration time.
+    pub group_epoch: GroupEpoch,
+    /// The derivation epoch id derived by that registration.
+    pub epoch_id: EpochId,
 }
 
 /// The newest derivation epoch registered for the emulation group
 /// `emulation_group_id`, or `None` if none was registered yet.
 ///
-/// Reads the registration record, so the result reflects the emulation group's
-/// state at the time of the call.
+/// Read from storage, so the result reflects the state at the time of the
+/// call.
 pub(crate) fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     emulation_group_id: &GroupId,
 ) -> Result<Option<EpochId>, Storage::Error> {
-    let registered: Option<RegisteredVcDerivationEpoch> =
-        storage.registered_vc_derivation_epoch(emulation_group_id)?;
-    Ok(registered.map(|registered| registered.epoch_id))
+    let entries: Vec<VcDerivationEpochLogEntry> =
+        storage.vc_derivation_epoch_log_entries(emulation_group_id)?;
+    Ok(entries
+        .into_iter()
+        .max_by_key(|entry| entry.sequence)
+        .map(|entry| entry.epoch_id))
 }
 
 /// Resolve the derivation epoch a new virtual-client operation must use: the
@@ -844,17 +985,21 @@ pub(crate) struct VcDerivationEpochParams<'a> {
     pub(crate) own_leaf_index: LeafNodeIndex,
     /// Number of leaves in the emulation group's ratchet tree.
     pub(crate) tree_size: TreeSize,
+    /// How many derivation epochs the group's log may keep.
+    pub(crate) retention_policy: VcDerivationEpochRetentionPolicy,
 }
 
 impl<'a> VcDerivationEpochParams<'a> {
     /// Read the coordinates off the emulation group's public state. The caller
-    /// supplies `own_leaf_index`, which the public state does not carry.
+    /// supplies `own_leaf_index` and the retention policy, which the public
+    /// state does not carry.
     ///
     /// For a merge, pass the state after the staged diff was merged, so the
     /// coordinates describe the epoch the commit moves the group into.
     pub(crate) fn for_public_group(
         public_group: &'a crate::group::PublicGroup,
         own_leaf_index: LeafNodeIndex,
+        retention_policy: VcDerivationEpochRetentionPolicy,
     ) -> Self {
         Self {
             group_id: public_group.group_id(),
@@ -862,6 +1007,7 @@ impl<'a> VcDerivationEpochParams<'a> {
             group_epoch: public_group.group_context().epoch(),
             own_leaf_index,
             tree_size: public_group.tree_size(),
+            retention_policy,
         }
     }
 }
@@ -873,8 +1019,12 @@ impl<'a> VcDerivationEpochParams<'a> {
 /// under [`VC_COMPONENT_ID`], derives the [`EpochId`], the AEAD key, the epoch
 /// base secret and the reuse-guard and generation-id secrets, builds the
 /// per-epoch operation secret tree (sized like the emulation group's ratchet
-/// tree), and persists the tree, the per-epoch state and the
-/// newest-derivation-epoch record. Returns the derived [`EpochId`].
+/// tree), and persists the tree, the per-epoch state and the appended
+/// derivation-epoch log entry. Returns the derived [`EpochId`].
+///
+/// Appending to the log applies the group's retention policy (see
+/// [`VcDerivationEpochRetentionPolicy`]), which may delete the state of older
+/// derivation epochs.
 ///
 /// The caller owns `export_tree` and is responsible for persisting it after
 /// this call, so that the puncture is not lost. A `None` export tree fails with
@@ -888,10 +1038,7 @@ impl<'a> VcDerivationEpochParams<'a> {
 /// the persisted operation secret tree untouched. The repeat still punctures
 /// `export_tree` when it is handed a fresh, unpunctured tree for that epoch,
 /// as a retried Welcome join does. Without the puncture the caller would
-/// persist a tree that can re-derive the consumed secret. A record for the
-/// same group epoch whose [`EpochId`] does not match the tree belongs to a
-/// group instance that was never fully stored, for example a crashed group
-/// creation under a recycled group id, and is overwritten.
+/// persist a tree that can re-derive the consumed secret.
 pub(crate) fn register_vc_derivation_epoch<
     Crypto: OpenMlsCrypto,
     Storage: crate::storage::StorageProvider,
@@ -907,29 +1054,28 @@ pub(crate) fn register_vc_derivation_epoch<
         group_epoch,
         own_leaf_index,
         tree_size,
+        retention_policy,
     } = params;
     let export_tree =
         export_tree.ok_or(RegisterVcDerivationEpochError::MissingApplicationExportTree)?;
 
-    let registered: Option<RegisteredVcDerivationEpoch> = storage
-        .registered_vc_derivation_epoch(group_id)
-        .map_err(|e| {
-            log::error!("vc: load newest derivation epoch before registration failed: {e:?}");
-            RegisterVcDerivationEpochError::Storage(e)
-        })?;
+    let mut log = VcDerivationEpochLog::load(storage, group_id).map_err(|e| {
+        log::error!("vc: load derivation epoch log before registration failed: {e:?}");
+        RegisterVcDerivationEpochError::Storage(e)
+    })?;
 
-    // Puncture before consulting the record. A repeat for a registered epoch
-    // can hold a fresh, unpunctured tree, and returning early on the record
-    // alone would let the caller persist that tree with the consumed secret
-    // still derivable.
+    // Puncture before consulting the log. A repeat for a registered epoch can
+    // hold a fresh, unpunctured tree, and returning early on the log alone
+    // would let the caller persist that tree with the consumed secret still
+    // derivable.
     let bytes = match export_tree.safe_export_secret(crypto, ciphersuite, VC_COMPONENT_ID) {
         Ok(bytes) => bytes,
         Err(ApplicationExportTreeError::PuncturedInput) => {
             // The tree in hand is already consumed, so this is an in-process
-            // repeat of a completed registration and the record must agree.
-            if let Some(registered) = &registered {
-                if registered.group_epoch == group_epoch {
-                    return Ok(registered.epoch_id.clone());
+            // repeat of a completed registration and the log must agree.
+            if let Some(newest) = log.newest() {
+                if newest.group_epoch == group_epoch {
+                    return Ok(newest.epoch_id.clone());
                 }
             }
             return Err(RegisterVcDerivationEpochError::ApplicationExportTree(
@@ -940,12 +1086,13 @@ pub(crate) fn register_vc_derivation_epoch<
     };
     let emulator_epoch_secret = EmulatorEpochSecret::new(bytes.as_slice());
     let epoch_id = emulator_epoch_secret.derive_epoch_id(crypto, ciphersuite)?;
-    if let Some(registered) = registered {
-        if registered.group_epoch == group_epoch && registered.epoch_id == epoch_id {
+    if let Some(newest) = log.newest() {
+        if newest.group_epoch == group_epoch && newest.epoch_id == epoch_id {
             // A retry with identical key material, for example a Welcome join
-            // that crashed after registration. The per-epoch state is already
-            // persisted, only the fresh tree needed puncturing.
-            return Ok(registered.epoch_id);
+            // repeated because the first one committed but the application
+            // crashed before recording its success. The per-epoch state is
+            // already persisted, only the fresh tree needed puncturing.
+            return Ok(newest.epoch_id.clone());
         }
     }
     let epoch_encryption_key =
@@ -964,102 +1111,133 @@ pub(crate) fn register_vc_derivation_epoch<
         tree_size,
         ciphersuite,
     );
-    let registered = RegisteredVcDerivationEpoch {
-        group_epoch,
-        epoch_id,
-    };
+    let entry = log.push(group_epoch, epoch_id.clone());
+    let dropped = log.shrink_to(retention_policy.max_epochs().unwrap_or(usize::MAX));
 
     storage
-        .write_vc_operation_tree(&registered.epoch_id, &operation_tree)
+        .write_vc_operation_tree(&epoch_id, &operation_tree)
         .map_err(|e| {
             log::error!("vc: persist operation tree at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
         })?;
     storage
-        .write_vc_derivation_epoch_state(&registered.epoch_id, &state)
+        .write_vc_derivation_epoch_state(&epoch_id, &state)
         .map_err(|e| {
             log::error!("vc: persist derivation epoch state at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
         })?;
     storage
-        .write_registered_vc_derivation_epoch(group_id, &registered, &registered.epoch_id)
+        .write_vc_derivation_epoch_log_entry(group_id, &epoch_id, &entry)
         .map_err(|e| {
-            log::error!("vc: record newest derivation epoch at registration failed: {e:?}");
+            log::error!("vc: persist derivation epoch log entry at registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
+    if !dropped.is_empty() {
+        storage
+            .delete_vc_derivation_epoch_log_entries(group_id, &dropped)
+            .map_err(|e| {
+                log::error!("vc: prune derivation epoch log at registration failed: {e:?}");
+                RegisterVcDerivationEpochError::Storage(e)
+            })?;
+    }
+    // The sweep releases the epochs that just dropped out of the log, unless
+    // something else still references them, and collects any orphans earlier
+    // crashes left behind.
+    storage
+        .delete_unreferenced_vc_derivation_epoch_states::<EpochId>()
+        .map_err(|e| {
+            log::error!("vc: release pruned derivation epochs at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
         })?;
 
-    Ok(registered.epoch_id)
+    Ok(epoch_id)
 }
 
-/// Per-higher-level-group record of which emulation-group epoch produced the
-/// virtual-client LeafNode that was active at each recent epoch of that
-/// group.
+/// The binding of one epoch of a higher-level group to the derivation epoch
+/// whose virtual-client LeafNode was active at that epoch, stored as its own
+/// row keyed by `(group_id, group_epoch)`.
 ///
-/// Reuse guards must be resolved with the derivation epoch that was bound at
-/// the higher-level epoch a message was sent in, not the latest one: a
-/// delayed PrivateMessage from a past higher-level epoch has to be
-/// deprotected with the state that was active then. Entries are written at
-/// commit merge and retained for as many past epochs as the group's message
-/// secrets store keeps, since a binding is only useful while the matching
-/// message secrets still exist.
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+/// Bindings are kept per group epoch because a delayed PrivateMessage from a
+/// past higher-level epoch has to be deprotected with the derivation epoch
+/// that was bound then. A group retains as many bindings as its message
+/// secrets store keeps past epochs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VcEmulationBinding {
+    /// The higher-level group's epoch this binding is stored for.
+    pub(crate) group_epoch: GroupEpoch,
+    /// The derivation epoch bound at that group epoch.
+    pub(crate) epoch_id: EpochId,
+}
+
+impl VcEmulationBinding {
+    /// Build the binding of `group_epoch` to `epoch_id` from one entry of a
+    /// [`VcEmulationBindings`] record.
+    pub fn from_legacy_record(group_epoch: GroupEpoch, epoch_id: EpochId) -> Self {
+        Self {
+            group_epoch,
+            epoch_id,
+        }
+    }
+
+    /// The derivation epoch this binding names.
+    pub fn epoch_id(&self) -> &EpochId {
+        &self.epoch_id
+    }
+
+    pub(crate) fn into_epoch_id(self) -> EpochId {
+        self.epoch_id
+    }
+}
+
+/// Per-group bindings record of the storage layout that preceded per-epoch
+/// [`VcEmulationBinding`] rows. Only for decoding stored records and
+/// converting their entries with [`VcEmulationBinding::from_legacy_record`].
+#[deprecated(
+    since = "0.9.0",
+    note = "migration-only: decode pre-row bindings records and convert their entries with \
+            `VcEmulationBinding::from_legacy_record`. Will be removed in 0.10.0."
+)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VcEmulationBindings {
     // In order of insertion, oldest at the front.
-    bindings: std::collections::VecDeque<(crate::group::GroupEpoch, EpochId)>,
+    bindings: VecDeque<(GroupEpoch, EpochId)>,
 }
 
+#[allow(deprecated)]
 impl VcEmulationBindings {
-    /// Look up the derivation epoch bound at the given higher-level epoch.
-    pub fn get(&self, epoch: crate::group::GroupEpoch) -> Option<&EpochId> {
-        for (bound_epoch, epoch_id) in &self.bindings {
-            if *bound_epoch == epoch {
-                return Some(epoch_id);
-            }
-        }
-        None
+    /// The `(group_epoch, epoch_id)` pairs of the record, oldest first.
+    pub fn into_entries(self) -> Vec<(GroupEpoch, EpochId)> {
+        self.bindings.into()
     }
+}
 
-    /// The derivation epochs this record binds, without duplicates and in
-    /// sorted order. A derivation epoch stays bound while the virtual-client
-    /// LeafNode it produced is active, so the same epoch id usually appears
-    /// under several higher-level epochs.
-    pub fn bound_epoch_ids(&self) -> Vec<EpochId> {
-        let mut epoch_ids: Vec<EpochId> = self
-            .bindings
+/// Bind `group_epoch` of the higher-level group `group_id` to `epoch_id`, then
+/// prune the group's bindings to at most `max_entries` by deleting the ones
+/// with the lowest group epochs. `max_entries` follows the group's
+/// message-secrets retention, so bindings age out in lockstep with the message
+/// secrets they are needed for.
+pub(crate) fn write_vc_emulation_binding_with_pruning<Storage: crate::storage::StorageProvider>(
+    storage: &Storage,
+    group_id: &GroupId,
+    group_epoch: GroupEpoch,
+    epoch_id: EpochId,
+    max_entries: usize,
+) -> Result<(), Storage::Error> {
+    let binding = VcEmulationBinding {
+        group_epoch,
+        epoch_id: epoch_id.clone(),
+    };
+    storage.write_vc_emulation_binding(group_id, &group_epoch, &epoch_id, &binding)?;
+    let mut bindings: Vec<VcEmulationBinding> = storage.vc_emulation_bindings(group_id)?;
+    if bindings.len() > max_entries {
+        bindings.sort_unstable_by_key(|binding| binding.group_epoch.as_u64());
+        let stale: Vec<GroupEpoch> = bindings[..bindings.len() - max_entries]
             .iter()
-            .map(|(_, epoch_id)| epoch_id.clone())
+            .map(|binding| binding.group_epoch)
             .collect();
-        epoch_ids.sort_unstable();
-        epoch_ids.dedup();
-        epoch_ids
+        storage.delete_vc_emulation_bindings(group_id, &stale)?;
     }
-
-    /// Persist this record for `group_id`, together with the derivation epochs
-    /// it binds. Storage keeps the state of a bound epoch alive, so the two
-    /// have to be written from the same record.
-    pub(crate) fn store<Storage: crate::storage::StorageProvider>(
-        &self,
-        storage: &Storage,
-        group_id: &GroupId,
-    ) -> Result<(), Storage::Error> {
-        storage.write_vc_emulation_bindings(group_id, self, &self.bound_epoch_ids())
-    }
-
-    /// Record `epoch_id` as the binding for `epoch`, keeping at most
-    /// `max_entries` entries by dropping the oldest ones.
-    pub(crate) fn insert(
-        &mut self,
-        epoch: crate::group::GroupEpoch,
-        epoch_id: EpochId,
-        max_entries: usize,
-    ) {
-        self.bindings
-            .retain(|(bound_epoch, _)| *bound_epoch != epoch);
-        self.bindings.push_back((epoch, epoch_id));
-        while self.bindings.len() > max_entries {
-            self.bindings.pop_front();
-        }
-    }
+    Ok(())
 }
 
 /// Per-epoch secret from which the sender derives the AEAD key and nonce
@@ -2653,5 +2831,195 @@ mod tests {
             )
             .expect("sibling derive generation id");
         assert_eq!(base, sibling_id);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn legacy_registration_record_layout_is_frozen() {
+        let record = RegisteredVcDerivationEpoch {
+            group_epoch: GroupEpoch::from(7),
+            epoch_id: EpochId::new(vec![1, 2, 3]),
+        };
+        let json = serde_json::to_string(&record).expect("serialize legacy record");
+        assert_eq!(json, r#"{"group_epoch":7,"epoch_id":[1,2,3]}"#);
+        let decoded: RegisteredVcDerivationEpoch =
+            serde_json::from_str(&json).expect("deserialize legacy record");
+        assert_eq!(decoded, record);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn legacy_bindings_record_layout_is_frozen() {
+        let record = VcEmulationBindings {
+            bindings: VecDeque::from([
+                (GroupEpoch::from(7), EpochId::new(vec![1, 2, 3])),
+                (GroupEpoch::from(8), EpochId::new(vec![4, 5, 6])),
+            ]),
+        };
+        let json = serde_json::to_string(&record).expect("serialize legacy record");
+        assert_eq!(json, r#"{"bindings":[[7,[1,2,3]],[8,[4,5,6]]]}"#);
+        let decoded: VcEmulationBindings =
+            serde_json::from_str(&json).expect("deserialize legacy record");
+        assert_eq!(decoded, record);
+
+        let entries = decoded.into_entries();
+        assert_eq!(
+            entries,
+            vec![
+                (GroupEpoch::from(7), EpochId::new(vec![1, 2, 3])),
+                (GroupEpoch::from(8), EpochId::new(vec![4, 5, 6])),
+            ]
+        );
+    }
+
+    #[test]
+    fn log_entry_layout_is_frozen() {
+        let entry = VcDerivationEpochLogEntry {
+            sequence: 2,
+            group_epoch: GroupEpoch::from(7),
+            epoch_id: EpochId::new(vec![1, 2, 3]),
+            registered_at: SystemTime::UNIX_EPOCH + std::time::Duration::new(1_700_000_000, 42),
+        };
+        let json = serde_json::to_string(&entry).expect("serialize log entry");
+        assert_eq!(
+            json,
+            r#"{"sequence":2,"group_epoch":7,"epoch_id":[1,2,3],"registered_at":{"secs_since_epoch":1700000000,"nanos_since_epoch":42}}"#
+        );
+        let decoded: VcDerivationEpochLogEntry =
+            serde_json::from_str(&json).expect("deserialize log entry");
+        assert_eq!(decoded, entry);
+    }
+
+    #[test]
+    fn binding_layout_is_frozen() {
+        let binding = VcEmulationBinding {
+            group_epoch: GroupEpoch::from(7),
+            epoch_id: EpochId::new(vec![1, 2, 3]),
+        };
+        let json = serde_json::to_string(&binding).expect("serialize binding");
+        assert_eq!(json, r#"{"group_epoch":7,"epoch_id":[1,2,3]}"#);
+        let decoded: VcEmulationBinding = serde_json::from_str(&json).expect("deserialize binding");
+        assert_eq!(decoded, binding);
+    }
+
+    #[test]
+    fn binding_from_legacy_record() {
+        let epoch_id = EpochId::new(vec![4, 5, 6]);
+        let binding = VcEmulationBinding::from_legacy_record(GroupEpoch::from(3), epoch_id.clone());
+        assert_eq!(binding.group_epoch, GroupEpoch::from(3));
+        assert_eq!(binding.epoch_id(), &epoch_id);
+    }
+
+    #[test]
+    fn log_entry_from_legacy_record() {
+        let epoch_id = EpochId::new(vec![4, 5, 6]);
+        let registered_at = SystemTime::UNIX_EPOCH;
+        let entry = VcDerivationEpochLogEntry::from_legacy_record(
+            GroupEpoch::from(3),
+            epoch_id.clone(),
+            registered_at,
+        );
+
+        assert_eq!(entry.sequence, 0);
+        assert_eq!(entry.group_epoch, GroupEpoch::from(3));
+        assert_eq!(entry.epoch_id(), &epoch_id);
+        assert_eq!(entry.registered_at, registered_at);
+
+        // A log holding only the converted entry treats it as the newest one,
+        // so neither pruning path drops it.
+        let mut log = VcDerivationEpochLog {
+            entries: VecDeque::from([entry]),
+        };
+        assert!(log.shrink_to(1).is_empty());
+        assert!(log.drop_superseded_before(SystemTime::now()).is_empty());
+        assert_eq!(
+            log.newest().map(|entry| entry.epoch_id.clone()),
+            Some(epoch_id)
+        );
+    }
+
+    fn log_entry(
+        group_epoch: u64,
+        epoch_id: &EpochId,
+        registered_at: SystemTime,
+    ) -> VcDerivationEpochLogEntry {
+        VcDerivationEpochLogEntry {
+            sequence: group_epoch,
+            group_epoch: GroupEpoch::from(group_epoch),
+            epoch_id: epoch_id.clone(),
+            registered_at,
+        }
+    }
+
+    #[test]
+    fn log_reconstruction_orders_by_sequence() {
+        let provider = OpenMlsRustCrypto::default();
+        let group_id = GroupId::from_slice(b"emulation-group");
+        let first = log_entry(0, &EpochId::new(vec![1]), SystemTime::UNIX_EPOCH);
+        let second = log_entry(1, &EpochId::new(vec![2]), SystemTime::UNIX_EPOCH);
+        let third = log_entry(2, &EpochId::new(vec![3]), SystemTime::UNIX_EPOCH);
+        // Written out of order. The provider returns entries unordered anyway,
+        // so the sort must come from the sequence numbers alone.
+        for entry in [&second, &third, &first] {
+            <MemoryStorage as StorageProvider<CURRENT_VERSION>>::write_vc_derivation_epoch_log_entry(
+                provider.storage(),
+                &group_id,
+                &entry.epoch_id,
+                entry,
+            )
+            .expect("write log entry");
+        }
+
+        let log = VcDerivationEpochLog::load(provider.storage(), &group_id).expect("load the log");
+        assert_eq!(
+            log.newest().map(|entry| entry.epoch_id.clone()),
+            Some(third.epoch_id.clone())
+        );
+        assert_eq!(
+            newest_vc_derivation_epoch(provider.storage(), &group_id).expect("newest epoch"),
+            Some(third.epoch_id.clone())
+        );
+
+        // Pruning drops the entries with the lowest sequences first.
+        let mut log = log;
+        assert_eq!(log.shrink_to(2), vec![first.epoch_id.clone()]);
+        assert_eq!(
+            log.newest().map(|entry| entry.epoch_id.clone()),
+            Some(third.epoch_id)
+        );
+    }
+
+    #[test]
+    fn wall_clock_sweep_measures_from_supersession() {
+        let old = EpochId::new(vec![1]);
+        let mid = EpochId::new(vec![2]);
+        let new = EpochId::new(vec![3]);
+        let start = SystemTime::UNIX_EPOCH;
+        let minutes = |m: u64| std::time::Duration::from_secs(m * 60);
+        // `old` lives from `start` until `mid` supersedes it 10 minutes before
+        // the 24 h mark, where `new` in turn supersedes `mid`.
+        let mut log = VcDerivationEpochLog {
+            entries: VecDeque::from([
+                log_entry(0, &old, start),
+                log_entry(1, &mid, start + minutes(23 * 60 + 50)),
+                log_entry(2, &new, start + minutes(24 * 60)),
+            ]),
+        };
+
+        // A 24 h sweep 5 minutes past the day puts the cutoff well after
+        // `old`'s registration, but `old` was only just superseded and stays.
+        assert!(log.drop_superseded_before(start + minutes(5)).is_empty());
+        // Once the cutoff passes `old`'s supersession, `old` goes. `mid` was
+        // superseded later and stays.
+        assert_eq!(
+            log.drop_superseded_before(start + minutes(23 * 60 + 55)),
+            vec![old]
+        );
+        // The newest entry has no successor and survives any cutoff.
+        assert_eq!(
+            log.drop_superseded_before(start + minutes(48 * 60)),
+            vec![mid]
+        );
+        assert_eq!(log.newest().map(|entry| entry.epoch_id.clone()), Some(new));
     }
 }
