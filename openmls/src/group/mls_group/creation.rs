@@ -677,7 +677,6 @@ impl StagedWelcome {
             .flatten()
         {
             use crate::components::vc_derivation_info::VcDerivationEpochState;
-            use crate::components::vc_derivation_info::VcEmulationBindings;
             use crate::components::vc_derivation_info::VirtualClientsError;
 
             let epoch_id = derivation_info.epoch_id().clone();
@@ -689,20 +688,17 @@ impl StagedWelcome {
                 .ok_or(WelcomeError::VirtualClientsError(
                     VirtualClientsError::MissingDerivationEpochState,
                 ))?;
-            let mut bindings: VcEmulationBindings = provider
-                .storage()
-                .vc_emulation_bindings(group_id)
-                .map_err(WelcomeError::StorageError)?
-                .unwrap_or_default();
+            // Keep one binding per retained message-secrets epoch plus the
+            // current one, matching the other VC group-entry paths.
             let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
-            bindings.insert(
+            crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+                provider.storage(),
+                group_id,
                 self.public_group.group_context().epoch(),
                 epoch_id,
                 max_entries,
-            );
-            bindings
-                .store(provider.storage(), group_id)
-                .map_err(WelcomeError::StorageError)?;
+            )
+            .map_err(WelcomeError::StorageError)?;
         }
 
         let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
