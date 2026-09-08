@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/process.rs`."><title>process.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.100.0-nightly (a69a63265 2026-09-03)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/public_group/</div>process.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module contains the implementation of the processing functions for
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/process.rs`."><title>process.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.100.0-nightly (cea272fa3 2026-09-07)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/group/public_group/</div>process.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module contains the implementation of the processing functions for
 <a href=#2 id=2 data-nosnippet>2</a>//! public groups.
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a></span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
@@ -462,14 +462,35 @@
 <a href=#462 id=462 data-nosnippet>462</a>                    </span><span class="prelude-val">None</span>,
 <a href=#463 id=463 data-nosnippet>463</a>                ))
 <a href=#464 id=464 data-nosnippet>464</a>            }
-<a href=#465 id=465 data-nosnippet>465</a>            <span class="comment">// TODO #151/#106
-<a href=#466 id=466 data-nosnippet>466</a>            </span>FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; {
-<a href=#467 id=467 data-nosnippet>467</a>                <span class="prelude-val">Err</span>(PublicProcessMessageError::UnsupportedProposalType)
-<a href=#468 id=468 data-nosnippet>468</a>            }
-<a href=#469 id=469 data-nosnippet>469</a>            FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
-<a href=#470 id=470 data-nosnippet>470</a>                <span class="prelude-val">Err</span>(PublicProcessMessageError::UnauthorizedExternalCommitMessage)
-<a href=#471 id=471 data-nosnippet>471</a>            }
-<a href=#472 id=472 data-nosnippet>472</a>        }
-<a href=#473 id=473 data-nosnippet>473</a>    }
-<a href=#474 id=474 data-nosnippet>474</a>}
+<a href=#465 id=465 data-nosnippet>465</a>            <span class="comment">// RFC 9420 §12.1.8 permits external senders to send PreSharedKey
+<a href=#466 id=466 data-nosnippet>466</a>            // proposals.
+<a href=#467 id=467 data-nosnippet>467</a>            </span>FramedContentBody::Proposal(Proposal::PreSharedKey(<span class="kw">_</span>)) =&gt; {
+<a href=#468 id=468 data-nosnippet>468</a>                <span class="kw">let </span>content = ProcessedMessageContent::ProposalMessage(Box::new(
+<a href=#469 id=469 data-nosnippet>469</a>                    QueuedProposal::from_authenticated_content_by_ref(
+<a href=#470 id=470 data-nosnippet>470</a>                        <span class="self">self</span>.ciphersuite(),
+<a href=#471 id=471 data-nosnippet>471</a>                        crypto,
+<a href=#472 id=472 data-nosnippet>472</a>                        content,
+<a href=#473 id=473 data-nosnippet>473</a>                    )<span class="question-mark">?</span>,
+<a href=#474 id=474 data-nosnippet>474</a>                ));
+<a href=#475 id=475 data-nosnippet>475</a>                <span class="prelude-val">Ok</span>(ProcessedMessage::new(
+<a href=#476 id=476 data-nosnippet>476</a>                    <span class="self">self</span>.group_id().clone(),
+<a href=#477 id=477 data-nosnippet>477</a>                    <span class="self">self</span>.group_context().epoch(),
+<a href=#478 id=478 data-nosnippet>478</a>                    sender,
+<a href=#479 id=479 data-nosnippet>479</a>                    data,
+<a href=#480 id=480 data-nosnippet>480</a>                    content,
+<a href=#481 id=481 data-nosnippet>481</a>                    credential,
+<a href=#482 id=482 data-nosnippet>482</a>                    <span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#483 id=483 data-nosnippet>483</a>                    </span><span class="prelude-val">None</span>,
+<a href=#484 id=484 data-nosnippet>484</a>                ))
+<a href=#485 id=485 data-nosnippet>485</a>            }
+<a href=#486 id=486 data-nosnippet>486</a>            <span class="comment">// TODO #151/#106
+<a href=#487 id=487 data-nosnippet>487</a>            </span>FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; {
+<a href=#488 id=488 data-nosnippet>488</a>                <span class="prelude-val">Err</span>(PublicProcessMessageError::UnsupportedProposalType)
+<a href=#489 id=489 data-nosnippet>489</a>            }
+<a href=#490 id=490 data-nosnippet>490</a>            FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
+<a href=#491 id=491 data-nosnippet>491</a>                <span class="prelude-val">Err</span>(PublicProcessMessageError::UnauthorizedExternalCommitMessage)
+<a href=#492 id=492 data-nosnippet>492</a>            }
+<a href=#493 id=493 data-nosnippet>493</a>        }
+<a href=#494 id=494 data-nosnippet>494</a>    }
+<a href=#495 id=495 data-nosnippet>495</a>}
 </code></pre></div></section></main></body></html>
