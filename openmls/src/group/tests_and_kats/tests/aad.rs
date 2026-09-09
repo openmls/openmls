@@ -1,3 +1,7 @@
+use std::{cell::RefCell, collections::HashMap};
+
+use openmls_rust_crypto::RustCrypto;
+
 // Import necessary modules and dependencies
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -930,4 +934,50 @@ fn test_aad_propose_dispatch_preshared_key() {
         .unwrap();
 
     assert_eq!(alice_processed_message.aad(), AAD);
+}
+
+#[openmls_test::openmls_test]
+fn test_aad_error_commit() {
+    use crate::group::tests_and_kats::utils::storage_error::{
+        TestProvider, TestStorageError, TestStorageProvider,
+    };
+
+    // Group with Alice
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    // Storage provider that will fail to write group state
+    let delegate_provider = Provider::default();
+    let test_provider = TestProvider {
+        storage: TestStorageProvider {
+            delegate: delegate_provider.storage(),
+            errors: RefCell::new(HashMap::from([(
+                "write_group_state",
+                vec![TestStorageError::Injected("writing group state")],
+            )])),
+        },
+        crypto_rand: RustCrypto::default(),
+    };
+
+    group.set_aad(AAD.to_vec());
+
+    // Create commit, stage using modified provider
+    let err = group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+            true
+        })
+        .unwrap()
+        .stage_commit(&test_provider)
+        .expect_err("expected error");
+
+    // The test error should propagate to the builder result
+    assert_eq!(
+        err,
+        CommitBuilderStageError::KeyStoreError(TestStorageError::Injected("writing group state"))
+    );
+    // The AAD should not be reset
+    assert_eq!(group.aad(), AAD);
 }
