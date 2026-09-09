@@ -80,7 +80,7 @@ impl OpenMlsCrypto for CryptoProvider {
         }?;
 
         // The hpke-rs libcrux backend only implements these KEMs (pure ML-KEM
-        // needs its `draft-connolly-cfrg-hpke-mlkem` feature, which
+        // needs its `draft-ietf-hpke-pq` feature, which
         // `draft-ietf-mls-pq-ciphersuites` enables).
         match ciphersuite.hpke_kem_algorithm() {
             HpkeKemType::DhKemP256 | HpkeKemType::DhKem25519 => Ok(()),
@@ -295,7 +295,7 @@ impl OpenMlsCrypto for CryptoProvider {
                 // verification key.
                 let mut seed = [0u8; libcrux_ml_dsa::KEY_GENERATION_RANDOMNESS_SIZE];
                 self.fill_random(&mut seed)?;
-                let pk = ml_dsa::verification_key(alg, &seed)?;
+                let pk = ml_dsa::verification_key(alg, seed)?;
                 Ok((seed.to_vec(), pk))
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
@@ -343,7 +343,7 @@ impl OpenMlsCrypto for CryptoProvider {
                 // Hedged signing (FIPS 204 §3.4): fresh randomness per signature.
                 let mut rnd = [0u8; libcrux_ml_dsa::SIGNING_RANDOMNESS_SIZE];
                 self.fill_random(&mut rnd)?;
-                ml_dsa::sign(alg, &seed, data, &rnd)
+                ml_dsa::sign(alg, seed, data, rnd)
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
@@ -733,22 +733,22 @@ mod ml_dsa {
     /// The encoded verification key derived from `seed`.
     pub(super) fn verification_key(
         alg: SignatureScheme,
-        seed: &[u8; KEY_GENERATION_RANDOMNESS_SIZE],
+        seed: [u8; KEY_GENERATION_RANDOMNESS_SIZE],
     ) -> Result<Vec<u8>, CryptoError> {
         with_parameter_set!(alg, m => Ok(
-            m::generate_key_pair(*seed).verification_key.as_slice().to_vec()
+            m::generate_key_pair(seed).verification_key.as_slice().to_vec()
         ))
     }
 
     pub(super) fn sign(
         alg: SignatureScheme,
-        seed: &[u8; KEY_GENERATION_RANDOMNESS_SIZE],
+        seed: [u8; KEY_GENERATION_RANDOMNESS_SIZE],
         data: &[u8],
-        randomness: &[u8; SIGNING_RANDOMNESS_SIZE],
+        randomness: [u8; SIGNING_RANDOMNESS_SIZE],
     ) -> Result<Vec<u8>, CryptoError> {
         with_parameter_set!(alg, m => {
-            let key_pair = m::generate_key_pair(*seed);
-            m::sign(&key_pair.signing_key, data, CONTEXT, *randomness)
+            let key_pair = m::generate_key_pair(seed);
+            m::sign(&key_pair.signing_key, data, CONTEXT, randomness)
                 .map(|sig| sig.as_slice().to_vec())
                 .map_err(|_| CryptoError::SigningError)
         })
