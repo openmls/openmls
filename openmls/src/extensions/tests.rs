@@ -47,6 +47,34 @@ fn application_id_in_leaf_node_extensions() {
         .build();
 }
 
+// `Extensions::unknown()` has to find GREASE extensions, not only unknown ones.
+#[test]
+fn grease_extension_is_available_through_unknown_getter() {
+    const GREASE: u16 = 0x8A8A;
+    let payload = vec![0xca, 0xfe];
+
+    let extensions = Extensions::<AnyObject>::single(Extension::Unknown(
+        GREASE,
+        UnknownExtension(payload.clone()),
+    ))
+    .expect("failed to create GREASE extension list");
+
+    assert_eq!(extensions.unknown(GREASE), Some(&UnknownExtension(payload)));
+}
+
+// The per-context validators also run on deserialization, so they have to
+// accept GREASE wherever they accept an unknown extension type.
+#[test]
+fn grease_extension_validators_match_unknown_handling() {
+    const GREASE: u16 = 0x8A8A;
+    let grease = Extension::Unknown(GREASE, UnknownExtension(vec![0xca, 0xfe]));
+
+    assert!(Extensions::<GroupContext>::single(grease.clone()).is_ok());
+    assert!(Extensions::<GroupInfo>::single(grease.clone()).is_ok());
+    assert!(Extensions::<LeafNode>::single(grease.clone()).is_ok());
+    assert!(Extensions::<KeyPackage>::single(grease).is_ok());
+}
+
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[openmls_test::openmls_test]
