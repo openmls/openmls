@@ -6,7 +6,7 @@
 //! derivation uses the same `"tree"` label with `"left"` / `"right"`
 //! context, and each leaf is expanded once it is first used. It differs
 //! from the RFC 9420 secret tree in two ways: the root is the
-//! per-emulation-epoch `epoch_base_secret` rather than a secret derived
+//! per-derivation-epoch `epoch_base_secret` rather than a secret derived
 //! from `encryption_secret`, and each leaf expands into one operation
 //! ratchet per `VirtualClientOperationType` instead of a handshake and an
 //! application sender ratchet.
@@ -81,12 +81,12 @@ const MAXIMUM_FORWARD_DISTANCE: u32 = 1024;
 /// retained entries first, after which they fail with
 /// [`VirtualClientsError::OperationGenerationConsumed`]. The draft says
 /// implementations SHOULD bound how many skipped generations they retain,
-/// since every retained secret weakens forward secrecy within the emulation
+/// since every retained secret weakens forward secrecy within the derivation
 /// epoch. See [`MAXIMUM_FORWARD_DISTANCE`] for why legitimate gaps stay
 /// small and for the plan to make both bounds configurable.
 const OUT_OF_ORDER_TOLERANCE: usize = 32;
 
-/// Per-emulation-epoch Virtual Client Operation Secret Tree.
+/// Per-derivation-epoch Virtual Client Operation Secret Tree.
 ///
 /// Rooted at the epoch's `epoch_base_secret` and shaped like the emulation
 /// group's ratchet tree at the corresponding epoch (sized by the leaf
@@ -99,7 +99,7 @@ const OUT_OF_ORDER_TOLERANCE: usize = 32;
 ///
 /// One tree is shared by all higher-level groups the virtual client is a
 /// member of. Every derivation mutates it, so a load-derive-store cycle
-/// against the storage provider must be atomic per emulation epoch.
+/// against the storage provider must be atomic per derivation epoch.
 /// Applications that process messages for multiple higher-level groups in
 /// parallel must serialize these cycles. Two concurrent cycles on separate
 /// copies of the tree can allocate the same generation for two different
@@ -155,7 +155,7 @@ impl OperationSecretTree {
     ///
     /// This mutates the tree: it advances and punctures ratchets. The caller
     /// MUST persist the mutated tree before any other cycle reads it, as a
-    /// single atomic load-derive-store per emulation epoch. Deriving against
+    /// single atomic load-derive-store per derivation epoch. Deriving against
     /// a stale copy, or not persisting before the next derive, re-serves a
     /// consumed generation and reuses key material, the reuse the draft
     /// forbids. See the type-level `# Concurrency` note.

@@ -745,3 +745,85 @@ fn test_valsem010() {
         .process_message(bob_provider, ProtocolMessage::from(original_message))
         .expect("Unexpected error.");
 }
+
+// ValSem004 Sender: Member: an index no tree could contain must still be rejected as an
+// unknown member. `is_node_in_tree` requires `node_index.valid()`, so above 2^31 the
+// `self.0 * 2` in `to_tree_index` overflows.
+#[openmls_test::openmls_test]
+fn test_valsem004_sender_index_out_of_range() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let ValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+        _alice_credential,
+        _bob_credential: _,
+        _alice_key_package: _,
+        _bob_key_package: _,
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
+
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(
+            alice_provider,
+            &_alice_credential.signer,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not self-update.")
+        .into_contents();
+
+    let serialized_message = message
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
+
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
+
+    // `1 << 31` is the smallest triggering value, `u32::MAX` the extreme one.
+    for bogus_index in [1u32 << 31, u32::MAX] {
+        let mut plaintext = plaintext.clone();
+        plaintext.set_sender(Sender::build_member(LeafNodeIndex::new(bogus_index)));
+
+        // The membership tag is checked before the sender, so we need to re-calculate it
+        plaintext
+            .set_membership_tag(
+                alice_provider.crypto(),
+                ciphersuite,
+                alice_group.message_secrets().membership_key(),
+                alice_group.message_secrets().serialized_context(),
+            )
+            .expect("Error setting membership tag.");
+
+        let err = bob_group
+            .process_message(bob_provider, ProtocolMessage::from(plaintext))
+            .expect_err("Processed a message from an out-of-range sender index.");
+
+        assert!(
+            matches!(
+                err,
+                ProcessMessageError::ValidationError(ValidationError::UnknownMember)
+            ),
+            "expected UnknownMember for sender index {bogus_index}, got {err:?}"
+        );
+    }
+
+    // Positive case
+    plaintext
+        .set_membership_tag(
+            alice_provider.crypto(),
+            ciphersuite,
+            alice_group.message_secrets().membership_key(),
+            alice_group.message_secrets().serialized_context(),
+        )
+        .expect("Error setting membership tag.");
+    bob_group
+        .process_message(bob_provider, ProtocolMessage::from(plaintext))
+        .expect("Unmodified message should still process.");
+}

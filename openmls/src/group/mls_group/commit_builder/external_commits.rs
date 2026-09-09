@@ -77,6 +77,10 @@ pub struct ExternalCommitBuilder {
     config: MlsGroupJoinConfig,
     validate_lifetimes: LeafNodeLifetimePolicy,
     aad: Vec<u8>,
+    /// Whether to join the group as an emulation group of a virtual client. Set
+    /// by [`Self::emulation_group`].
+    #[cfg(feature = "virtual-clients-draft")]
+    emulation_group: bool,
 }
 
 impl MlsGroup {
@@ -124,6 +128,22 @@ impl ExternalCommitBuilder {
         self
     }
 
+    /// Join the group as an emulation group of a virtual client. See
+    /// [`MlsGroupCreateConfigBuilder::emulation_group`] for what an emulation
+    /// group is.
+    ///
+    /// Nothing on the wire marks a group as an emulation group, so an emulator
+    /// client resyncing into one has to set this itself. The external commit
+    /// changes membership, so merging it registers the epoch it creates as a
+    /// derivation epoch, converging with the members already in the group.
+    ///
+    /// [`MlsGroupCreateConfigBuilder::emulation_group`]: crate::group::MlsGroupCreateConfigBuilder::emulation_group
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(mut self, emulation_group: bool) -> Self {
+        self.emulation_group = emulation_group;
+        self
+    }
+
     /// Skip the validation of lifetimes in leaf nodes in the ratchet tree.
     /// Note that only the leaf nodes are checked that were never updated.
     ///
@@ -153,6 +173,8 @@ impl ExternalCommitBuilder {
             mut config,
             aad,
             validate_lifetimes,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group,
         } = self;
 
         let group_ciphersuite = verifiable_group_info.ciphersuite();
@@ -309,6 +331,8 @@ impl ExternalCommitBuilder {
             // commit is merged.
             #[cfg(feature = "extensions-draft")]
             application_export_tree: None,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group,
         };
 
         // Add all proposals to the proposal store.

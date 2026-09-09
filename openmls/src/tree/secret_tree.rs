@@ -184,6 +184,11 @@ impl SecretTree {
         secret_tree
     }
 
+    /// The leaf index this tree was built for.
+    pub(crate) fn own_index(&self) -> LeafNodeIndex {
+        self.own_index
+    }
+
     /// Get current generation for a specific SenderRatchet
     #[cfg(test)]
     pub(crate) fn generation(&self, index: LeafNodeIndex, secret_type: SecretType) -> u32 {

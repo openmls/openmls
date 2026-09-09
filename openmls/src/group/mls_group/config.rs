@@ -192,6 +192,95 @@ impl PastEpochDeletionPolicy {
     }
 }
 
+/// Configures how many virtual-clients derivation epochs an emulation group
+/// keeps, so that delayed messages from sibling emulator clients can still be
+/// processed.
+///
+/// Registering a new derivation epoch drops the epochs beyond the window. Their
+/// key material is deleted unless a higher-level group or a retained KeyPackage
+/// still references it.
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum VcDerivationEpochRetentionPolicy {
+    /// Keep at most `n` derivation epochs.
+    MaxEpochs(usize),
+    /// Keep every derivation epoch. The application deletes them with
+    /// [`MlsGroup::delete_vc_derivation_epochs()`].
+    KeepAll,
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl Default for VcDerivationEpochRetentionPolicy {
+    fn default() -> Self {
+        Self::MaxEpochs(5)
+    }
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl VcDerivationEpochRetentionPolicy {
+    pub(crate) fn max_epochs(&self) -> Option<usize> {
+        match self {
+            Self::MaxEpochs(epochs) => Some(*epochs),
+            Self::KeepAll => None,
+        }
+    }
+}
+
+/// Selects the derivation epochs [`MlsGroup::delete_vc_derivation_epochs()`]
+/// deletes: those superseded before a point in time, optionally capped to a
+/// number of surviving epochs. An epoch is superseded when the next one is
+/// registered. The newest epoch is never selected.
+#[cfg(feature = "virtual-clients-draft")]
+pub struct VcDerivationEpochDeletion {
+    pub(crate) time: VcDerivationEpochDeletionTime,
+    pub(crate) max_epochs: Option<usize>,
+}
+
+/// A duration or timestamp before which superseded derivation epochs are
+/// deleted.
+#[cfg(feature = "virtual-clients-draft")]
+pub(crate) enum VcDerivationEpochDeletionTime {
+    OlderThanDuration(std::time::Duration),
+    BeforeTimestamp(SystemTime),
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+impl VcDerivationEpochDeletion {
+    /// Delete all derivation epochs superseded more than `duration` ago.
+    pub fn older_than_duration(duration: std::time::Duration) -> Self {
+        Self {
+            time: VcDerivationEpochDeletionTime::OlderThanDuration(duration),
+            max_epochs: None,
+        }
+    }
+
+    /// Delete all derivation epochs superseded before `timestamp`.
+    pub fn before_timestamp(timestamp: SystemTime) -> Self {
+        Self {
+            time: VcDerivationEpochDeletionTime::BeforeTimestamp(timestamp),
+            max_epochs: None,
+        }
+    }
+
+    /// Additionally cap the number of derivation epochs that survive.
+    pub fn max_epochs(mut self, max_epochs: usize) -> Self {
+        self.max_epochs = Some(max_epochs);
+        self
+    }
+}
+
+/// Returned by [`MlsGroup::delete_vc_derivation_epochs()`]. Selected epochs
+/// whose per-epoch state was already absent appear in neither list.
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct VcDerivationEpochDeletionResult {
+    /// The derivation epochs whose per-epoch state was deleted.
+    pub deleted: Vec<crate::components::vc_derivation_info::EpochId>,
+    /// The derivation epochs whose per-epoch state was kept because something
+    /// still references it.
+    pub kept: Vec<crate::components::vc_derivation_info::EpochId>,
+}
+
 /// The [`MlsGroupJoinConfig`] contains all configuration parameters that are
 /// relevant to group operation at runtime. It is used to configure the group's
 /// behaviour when joining an existing group. To configure a newly created
@@ -214,6 +303,11 @@ pub struct MlsGroupJoinConfig {
     pub(crate) use_ratchet_tree_extension: bool,
     /// Sender ratchet configuration
     pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
+    /// Derivation-epoch retention policy, only consulted on emulation groups.
+    /// See [`VcDerivationEpochRetentionPolicy`].
+    #[cfg(feature = "virtual-clients-draft")]
+    #[serde(default)]
+    pub(crate) vc_derivation_epoch_retention_policy: VcDerivationEpochRetentionPolicy,
 }
 
 impl MlsGroupJoinConfig {
@@ -245,6 +339,13 @@ impl MlsGroupJoinConfig {
     pub(crate) fn past_epoch_deletion_policy(&self) -> &PastEpochDeletionPolicy {
         &self.past_epoch_deletion_policy
     }
+
+    /// Returns the derivation-epoch retention policy set in this
+    /// [`MlsGroupJoinConfig`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_derivation_epoch_retention_policy(&self) -> &VcDerivationEpochRetentionPolicy {
+        &self.vc_derivation_epoch_retention_policy
+    }
 }
 
 /// Specifies configuration for the creation of an [`MlsGroup`]. Refer to the
@@ -264,6 +365,11 @@ pub struct MlsGroupCreateConfig {
     pub(crate) group_context_extensions: Extensions<GroupContext>,
     /// List of initial leaf node extensions
     pub(crate) leaf_node_extensions: Extensions<LeafNode>,
+    /// Flag marking the created group as an emulation group of a virtual
+    /// client. Only consulted at group creation, the group keeps the flag
+    /// itself afterwards.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) emulation_group: bool,
 }
 
 impl Default for MlsGroupCreateConfig {
@@ -275,6 +381,8 @@ impl Default for MlsGroupCreateConfig {
             join_config: MlsGroupJoinConfig::default(),
             group_context_extensions: Extensions::default(),
             leaf_node_extensions: Extensions::default(),
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group: false,
         }
     }
 }
@@ -339,6 +447,17 @@ impl MlsGroupJoinConfigBuilder {
     /// as low as possible.
     pub fn set_past_epoch_deletion_policy(mut self, policy: PastEpochDeletionPolicy) -> Self {
         self.join_config.past_epoch_deletion_policy = policy;
+        self
+    }
+
+    /// Sets the derivation-epoch retention policy. See
+    /// [`VcDerivationEpochRetentionPolicy`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn set_vc_derivation_epoch_retention_policy(
+        mut self,
+        policy: VcDerivationEpochRetentionPolicy,
+    ) -> Self {
+        self.join_config.vc_derivation_epoch_retention_policy = policy;
         self
     }
 
@@ -422,6 +541,13 @@ impl MlsGroupCreateConfig {
         self.ciphersuite
     }
 
+    /// Returns whether groups created with this config are emulation groups of
+    /// a virtual client. See [`MlsGroupCreateConfigBuilder::emulation_group`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(&self) -> bool {
+        self.emulation_group
+    }
+
     #[cfg(any(feature = "test-utils", test))]
     pub fn test_default(ciphersuite: Ciphersuite) -> Self {
         Self::builder()
@@ -503,6 +629,17 @@ impl MlsGroupCreateConfigBuilder {
         self
     }
 
+    /// Sets the derivation-epoch retention policy. See
+    /// [`VcDerivationEpochRetentionPolicy`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn set_vc_derivation_epoch_retention_policy(
+        mut self,
+        policy: VcDerivationEpochRetentionPolicy,
+    ) -> Self {
+        self.config.join_config.vc_derivation_epoch_retention_policy = policy;
+        self
+    }
+
     /// Sets the `number_of_resumption_psks` property of the MlsGroupCreateConfig.
     pub fn number_of_resumption_psks(mut self, number_of_resumption_psks: usize) -> Self {
         self.config.join_config.number_of_resumption_psks = number_of_resumption_psks;
@@ -518,6 +655,38 @@ impl MlsGroupCreateConfigBuilder {
     /// Sets the `capabilities` of the group creator's leaf node.
     pub fn capabilities(mut self, capabilities: Capabilities) -> Self {
         self.config.capabilities = capabilities;
+        self
+    }
+
+    /// Marks the group as an emulation group of a virtual client.
+    ///
+    /// This is the application's declaration that the group's members are the
+    /// emulator clients of one virtual client. It is local state, nothing about
+    /// it travels on the wire, and every member of an emulation group has to
+    /// set it. Members that join by Welcome set it on the
+    /// [`StagedWelcome`](crate::group::StagedWelcome) instead, and members that
+    /// join by external commit on the
+    /// [`ExternalCommitBuilder`](crate::group::ExternalCommitBuilder).
+    ///
+    /// An emulation group derives the virtual client's secrets from its
+    /// derivation epochs. The initial epoch is a derivation epoch, and so is
+    /// the output epoch of every commit that changes membership or that carries
+    /// a `new_derivation_epoch` action in its virtual-clients Safe AAD item
+    /// (see [`CommitBuilder::derivation_epoch`]). OpenMLS derives and
+    /// persists the derivation-epoch state itself at group creation, at a
+    /// Welcome join, and when such a commit is merged.
+    ///
+    /// Use [`MlsGroup::newest_vc_derivation_epoch`] to look up the derivation
+    /// epoch that virtual-client operations resolve to. It may be older than
+    /// the group's current epoch.
+    ///
+    /// Groups without this flag never write virtual-clients state.
+    ///
+    /// [`CommitBuilder::derivation_epoch`]: crate::group::CommitBuilder::derivation_epoch
+    /// [`MlsGroup::newest_vc_derivation_epoch`]: crate::group::MlsGroup::newest_vc_derivation_epoch
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn emulation_group(mut self, emulation_group: bool) -> Self {
+        self.config.emulation_group = emulation_group;
         self
     }
 

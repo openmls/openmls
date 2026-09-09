@@ -1,13 +1,14 @@
 //! This module contains validation functions for incoming messages
 //! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::signature::SignaturePublicKey,
     extensions::RequiredCapabilitiesExtension,
     framing::{
         mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
@@ -20,11 +21,13 @@ use crate::{
         proposal_store::ProposalQueue,
         GroupContextExtensionsProposalValidationError, Member,
     },
+    key_packages::KeyPackage,
     messages::{
         proposals::{Proposal, ProposalOrRefType, ProposalType},
         Commit,
     },
     prelude::LibraryError,
+    schedule::{errors::PskError, psk::ResumptionPskUsage, Psk},
     treesync::{errors::LeafNodeValidationError, LeafNode},
 };
 
@@ -191,6 +194,11 @@ impl PublicGroup {
     ///  - [valn0111]: Verify that the following fields are unique among the members of the group: `signature_key`
     ///  - [valn0112]: Verify that the following fields are unique among the members of the group: `encryption_key`
     ///
+    /// `path_leaf_signature_key` is the signature key of the leaf node the
+    /// commit's path installs for `sender`. It is passed separately from
+    /// `commit` because the path of a commit under construction does not exist
+    /// yet. The signature key of its leaf node is already fixed, though.
+    ///
     /// [valn0111]: https://validation.openmls.tech/#valn0111
     /// [valn0112]: https://validation.openmls.tech/#valn0112
     /// [valn1208]: https://validation.openmls.tech/#valn1208
@@ -198,17 +206,27 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
         commit: Option<&Commit>,
+        sender: &Sender,
+        path_leaf_signature_key: Option<&SignaturePublicKey>,
     ) -> Result<(), ProposalValidationError> {
         let mut signature_key_set = HashSet::new();
         let mut init_key_set = HashSet::new();
         let mut encryption_key_set = HashSet::new();
 
         // Handle the exceptions needed for https://validation.openmls.tech/#valn0306
-        let remove_proposals = HashSet::<LeafNodeIndex>::from_iter(
-            proposal_queue
-                .remove_proposals()
-                .map(|remove_proposal| remove_proposal.remove_proposal().removed),
-        );
+        let removed_members = proposal_queue
+            .remove_proposals()
+            .map(|remove_proposal| remove_proposal.remove_proposal().removed)
+            .chain(
+                proposal_queue
+                    .filtered_by_type(ProposalType::SelfRemove)
+                    .filter_map(|self_remove| self_remove.sender().as_member()),
+            )
+            .collect::<HashSet<LeafNodeIndex>>();
+
+        // The leaf node in the path replaces the committer's leaf, so the
+        // committer's current signature key is not compared with it.
+        let replaced_leaf = path_leaf_signature_key.and_then(|_| sender.as_member());
 
         // Initialize the sets with the current members, filtered by the
         // remove proposals.
@@ -219,22 +237,29 @@ impl PublicGroup {
             ..
         } in self.treesync().full_leaf_members()
         {
-            if !remove_proposals.contains(&index) {
+            if removed_members.contains(&index) {
+                continue;
+            }
+            encryption_key_set.insert(encryption_key);
+            if replaced_leaf != Some(index) {
                 signature_key_set.insert(signature_key);
-                encryption_key_set.insert(encryption_key);
             }
         }
 
-        // Collect signature keys from add proposals
-        let signature_keys = proposal_queue.add_proposals().map(|add_proposal| {
-            add_proposal
-                .add_proposal()
-                .key_package()
-                .leaf_node()
-                .signature_key()
-                .as_slice()
-                .to_vec()
-        });
+        // Collect signature keys from add proposals and the commit path leaf
+        // node
+        let signature_keys = proposal_queue
+            .add_proposals()
+            .map(|add_proposal| {
+                add_proposal
+                    .add_proposal()
+                    .key_package()
+                    .leaf_node()
+                    .signature_key()
+                    .as_slice()
+                    .to_vec()
+            })
+            .chain(path_leaf_signature_key.map(|signature_key| signature_key.as_slice().to_vec()));
 
         // Collect encryption keys from add proposals, update proposals, the
         // commit leaf node and path keys
@@ -293,6 +318,7 @@ impl PublicGroup {
         //  - https://validation.openmls.tech/#valn0111
         //  - https://validation.openmls.tech/#valn0305
         //  - https://validation.openmls.tech/#valn0306
+        //  - https://validation.openmls.tech/#valn1207
         for signature_key in signature_keys {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKey);
@@ -367,6 +393,55 @@ impl PublicGroup {
             })
     }
 
+    /// Checks whether `key_package` is eligible to be added to this group
+    ///
+    /// This runs the checks that a commit with an Add proposal for
+    /// `key_package` performs on that key package alone:
+    ///
+    /// - the ciphersuite and the protocol version match the group,
+    /// - the leaf node supports all extensions in the group context,
+    /// - the leaf node is valid for this group, which covers its capabilities,
+    ///   the required capabilities of the group, mutual support of the
+    ///   credential types in use with the existing members, and the lifetime of
+    ///   the leaf node.
+    ///
+    /// Checks that concern a set of proposals as a whole are not covered. In
+    /// particular the signature key, the init key and the encryption key of the
+    /// added member have to be unique among the group members and the other
+    /// proposals in the commit, which can only be decided once all proposals are
+    /// known. Passing this check therefore does not guarantee that a commit
+    /// adding `key_package` can be built.
+    pub fn validate_key_package_for_add(
+        &self,
+        key_package: &KeyPackage,
+    ) -> Result<(), ProposalValidationError> {
+        // ValSem105: Check if ciphersuite and version of the group are correct:
+        // https://validation.openmls.tech/#valn0201
+        if key_package.ciphersuite() != self.ciphersuite()
+            || key_package.protocol_version() != self.version()
+        {
+            return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
+        }
+
+        // Check that the leaf node of the added key package supports all extensions in the group
+        // context.
+        // https://validation.openmls.tech/#valn0502
+        let added_leaf_supports_all_group_context_extensions =
+            self.group_context().extensions().iter().all(|extension| {
+                key_package
+                    .leaf_node()
+                    .supports_extension(&extension.extension_type())
+            });
+        if !added_leaf_supports_all_group_context_extensions {
+            return Err(ProposalValidationError::InsufficientCapabilities);
+        }
+
+        // https://validation.openmls.tech/#valn0202
+        self.validate_leaf_node(key_package.leaf_node())?;
+
+        Ok(())
+    }
+
     /// Validate Add proposals. This function implements the following checks:
     ///  - ValSem105: Add Proposal: Ciphersuite & protocol version must match the group
     pub(crate) fn validate_add_proposals(
@@ -378,31 +453,7 @@ impl PublicGroup {
         // We do the key package validation checks here inline
         // https://validation.openmls.tech/#valn0501
         for add_proposal in add_proposals {
-            // ValSem105: Check if ciphersuite and version of the group are correct:
-            // https://validation.openmls.tech/#valn0201
-            if add_proposal.add_proposal().key_package().ciphersuite() != self.ciphersuite()
-                || add_proposal.add_proposal().key_package().protocol_version() != self.version()
-            {
-                return Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion);
-            }
-
-            // Check that the leaf node of the added key package supports all extensions in the group
-            // context.
-            // https://validation.openmls.tech/#valn0502
-            let added_leaf_supports_all_group_context_extensions =
-                self.group_context().extensions().iter().all(|extension| {
-                    add_proposal
-                        .add_proposal()
-                        .key_package
-                        .leaf_node()
-                        .supports_extension(&extension.extension_type())
-                });
-            if !added_leaf_supports_all_group_context_extensions {
-                return Err(ProposalValidationError::InsufficientCapabilities);
-            }
-
-            // https://validation.openmls.tech/#valn0202
-            self.validate_leaf_node(add_proposal.add_proposal().key_package().leaf_node())?;
+            self.validate_key_package_for_add(add_proposal.add_proposal().key_package())?;
         }
         Ok(())
     }
@@ -515,13 +566,37 @@ impl PublicGroup {
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
+        // ValSem403 (1/2)
+        // TODO(#1335): Duplicate proposals are (likely) filtered.
+        //              Let's do this check here until we haven't made sure.
+        let mut visited_psk_ids = BTreeSet::new();
+
         for proposal in proposal_queue.psk_proposals() {
             let psk_id = proposal.psk_proposal().clone().into_psk_id();
 
             // ValSem401
             // ValSem402
             // https://validation.openmls.tech/#valn0803
-            psk_id.validate_in_proposal(self.ciphersuite())?;
+            let psk_id = psk_id.validate_in_proposal(self.ciphersuite())?;
+            if let Psk::Resumption(psk) = psk_id.psk() {
+                if matches!(psk.usage(), ResumptionPskUsage::Branch) {
+                    // https://validation.openmls.tech/#valn0802
+                    // Branching PSKs must only be processed as part of the
+                    // initial commit, adding the other members.
+                    if self.group_context.epoch().as_u64() != 0 {
+                        return Err(PskError::NotAllowed.into());
+                    }
+                    // Note: branch/reinit exclusivity (valn1401) is enforced for
+                    // the Welcome PSK list in `PreSharedKeyId::validate_in_welcome`.
+                }
+            }
+
+            // ValSem403 (2/2)
+            if !visited_psk_ids.contains(&psk_id) {
+                visited_psk_ids.insert(psk_id);
+            } else {
+                return Err(PskError::Duplicate { first: psk_id }.into());
+            }
         }
 
         Ok(())

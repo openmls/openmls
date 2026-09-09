@@ -74,4 +74,7 @@ fn read_write_delete() {
 
     let proposals_read: Vec<(ProposalRef, Proposal)> = storage.queued_proposals(&group_id).unwrap();
     assert!(proposals_read.is_empty());
+
+    // Clearing the queue must also remove the proposal values, not only their refs.
+    assert!(storage.values.read().unwrap().is_empty());
 }

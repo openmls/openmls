@@ -4,7 +4,7 @@
 
 #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
 use errors::EmptyInputError;
-use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
+use openmls_traits::signatures::Signer;
 use proposal_store::QueuedRemoveProposal;
 
 #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]

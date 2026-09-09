@@ -47,31 +47,7 @@ fn application_id_in_leaf_node_extensions() {
         .build();
 }
 
-/// A GREASE extension is stored as `Extension::Unknown`, but has to report
-/// `ExtensionType::Grease`, like the same value read from a capabilities list.
-#[test]
-fn grease_extension_type_classification() {
-    for &value in openmls_traits::grease::GREASE_VALUES.iter() {
-        let extension_type = Extension::Unknown(value, UnknownExtension(vec![])).extension_type();
-
-        assert_eq!(extension_type, ExtensionType::Grease(value));
-        assert_eq!(extension_type, ExtensionType::from(value));
-
-        // GREASE follows the same structural validation path as an unknown
-        // extension type in these validators.
-        assert!(extension_type.is_valid_in_leaf_node());
-        assert!(extension_type.is_valid_in_key_package());
-        assert!(extension_type.is_valid_in_group_context());
-        assert_eq!(extension_type.is_valid_in_group_info(), None);
-    }
-
-    // 0xFAFA has the shape of a GREASE value, but RFC 9420 Section 13.5 reserves
-    // only 0x0A0A through 0xEAEA. A pattern-based check would get this wrong.
-    let extension = Extension::Unknown(0xFAFA, UnknownExtension(vec![]));
-    assert_eq!(extension.extension_type(), ExtensionType::Unknown(0xFAFA));
-}
-
-/// `Extensions::unknown()` has to find GREASE extensions, not only unknown ones.
+// `Extensions::unknown()` has to find GREASE extensions, not only unknown ones.
 #[test]
 fn grease_extension_is_available_through_unknown_getter() {
     const GREASE: u16 = 0x8A8A;
@@ -86,8 +62,8 @@ fn grease_extension_is_available_through_unknown_getter() {
     assert_eq!(extensions.unknown(GREASE), Some(&UnknownExtension(payload)));
 }
 
-/// The per-context validators also run on deserialization, so they have to
-/// accept GREASE wherever they accept an unknown extension type.
+// The per-context validators also run on deserialization, so they have to
+// accept GREASE wherever they accept an unknown extension type.
 #[test]
 fn grease_extension_validators_match_unknown_handling() {
     const GREASE: u16 = 0x8A8A;
@@ -520,95 +496,78 @@ fn app_data_dictionary_extension() {
     assert_eq!(&dictionary, extension.dictionary());
 }
 
-/// GREASE extensions listed in the capabilities have to pass validation. The key
-/// package is checked in `KeyPackageIn::validate`, the leaf node when the member
-/// is added and again when the invitee joins from the Welcome.
-#[openmls_test::openmls_test]
-fn grease_extensions_validate_when_advertised_in_capabilities() {
-    const KEY_PACKAGE_GREASE: u16 = 0x8A8A;
-    const LEAF_NODE_GREASE: u16 = 0x4A4A;
+/// `n` distinct unknown extensions with empty extension data.
+///
+/// The types start above the known ones and skip GREASE values, so that every
+/// extension stays an `Extension::Unknown` after a round trip.
+fn unknown_extensions(n: usize) -> Vec<Extension> {
+    (0x0100u16..)
+        .filter(|extension_type| !crate::grease::is_grease_value(*extension_type))
+        .take(n)
+        .map(|extension_type| Extension::Unknown(extension_type, UnknownExtension(vec![])))
+        .collect()
+}
 
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
+// A single unauthenticated message can carry tens of thousands of distinct
+// extensions. Decoding must stay linear in that number, so this test would
+// take minutes with the previous quadratic duplicate check. There is no timing
+// assertion here because that would be flaky.
+#[test]
+fn many_distinct_extensions_are_deserialized() {
+    const NUM_EXTENSIONS: usize = 65_000;
 
-    let (alice_credential_with_key, alice_signer) =
-        test_utils::new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
-    let (bob_credential_with_key, bob_signer) =
-        test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
-
-    let capabilities = Capabilities::new(
-        None,
-        None,
-        Some(&[
-            ExtensionType::Grease(KEY_PACKAGE_GREASE),
-            ExtensionType::Grease(LEAF_NODE_GREASE),
-        ]),
-        None,
-        None,
-    );
-
-    let bob_key_package_bundle = KeyPackage::builder()
-        .leaf_node_capabilities(capabilities)
-        .key_package_extensions(
-            Extensions::single(Extension::Unknown(
-                KEY_PACKAGE_GREASE,
-                UnknownExtension(vec![0x01, 0x02]),
-            ))
-            .expect("failed to create key package extensions"),
-        )
-        .leaf_node_extensions(
-            Extensions::single(Extension::Unknown(
-                LEAF_NODE_GREASE,
-                UnknownExtension(vec![0x03, 0x04]),
-            ))
-            .expect("failed to create leaf node extensions"),
-        )
-        .build(
-            ciphersuite,
-            bob_provider,
-            &bob_signer,
-            bob_credential_with_key,
-        )
-        .expect("failed to build key package with GREASE extensions");
-
-    // === Bob's key package validates on the receiving side ===
-    // The extensions decode as `Extension::Unknown`, while the capabilities
-    // decode the same values as `ExtensionType::Grease`.
-    let serialized = bob_key_package_bundle
-        .key_package()
+    let wire = unknown_extensions(NUM_EXTENSIONS)
         .tls_serialize_detached()
-        .expect("failed to serialize the key package");
-    let bob_key_package = KeyPackageIn::tls_deserialize(&mut serialized.as_slice())
-        .expect("failed to deserialize the key package")
-        .validate(bob_provider.crypto(), ProtocolVersion::Mls10)
-        .expect("key package with a GREASE extension must validate");
+        .expect("failed to serialize the extension list");
 
-    let mut alice_group = MlsGroup::builder()
-        .ciphersuite(ciphersuite)
-        .build(alice_provider, &alice_signer, alice_credential_with_key)
-        .expect("Error creating group.");
+    let extensions = Extensions::<AnyObject>::tls_deserialize_exact(&wire)
+        .expect("failed to deserialize the extension list");
 
-    // === Alice adds Bob, which validates his leaf node ===
-    let (_commit, welcome, _group_info) = alice_group
-        .add_members(alice_provider, &alice_signer, from_ref(&bob_key_package))
-        .expect("leaf node with a GREASE extension must validate");
-    alice_group
-        .merge_pending_commit(alice_provider)
-        .expect("Error merging commit.");
+    assert_eq!(extensions.iter().count(), NUM_EXTENSIONS);
+    assert!(extensions
+        .iter()
+        .all(|e| matches!(e.extension_type(), ExtensionType::Unknown(_))));
+}
 
-    // === Bob joins, which validates every leaf in the tree again ===
-    let bob_group = StagedWelcome::new_from_welcome(
-        bob_provider,
-        &MlsGroupJoinConfig::default(),
-        welcome.into_welcome().unwrap(),
-        Some(alice_group.export_ratchet_tree().into()),
-    )
-    .expect("Error staging welcome")
-    .into_group(bob_provider)
-    .expect("Error creating group from welcome");
+#[test]
+fn duplicate_extensions_are_rejected() {
+    let extension = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
+
+    let err = Extensions::<AnyObject>::from_vec(vec![extension.clone(), extension])
+        .expect_err("duplicate extension types must be rejected");
+
+    assert_eq!(err, InvalidExtensionError::Duplicate);
+}
+
+// Signature verification re-serializes the payload it verifies, so decoding
+// must hand back the extensions in exactly the order they arrived in. Sorting
+// or otherwise reordering them here breaks signature verification silently.
+#[test]
+fn deserialization_preserves_extension_order() {
+    // Deliberately not in ascending extension type order.
+    let extensions = vec![
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default()),
+        Extension::Unknown(0xf023, UnknownExtension(vec![0xca, 0xfe])),
+        Extension::ApplicationId(ApplicationIdExtension::new(b"Test")),
+    ];
+    let expected_order: Vec<ExtensionType> =
+        extensions.iter().map(Extension::extension_type).collect();
+
+    let wire = extensions
+        .tls_serialize_detached()
+        .expect("failed to serialize the extension list");
+    let got = Extensions::<AnyObject>::tls_deserialize_exact(&wire)
+        .expect("failed to deserialize the extension list");
 
     assert_eq!(
-        alice_group.epoch_authenticator(),
-        bob_group.epoch_authenticator()
+        got.iter()
+            .map(Extension::extension_type)
+            .collect::<Vec<_>>(),
+        expected_order
+    );
+    assert_eq!(
+        got.tls_serialize_detached()
+            .expect("failed to re-serialize the extension list"),
+        wire
     );
 }

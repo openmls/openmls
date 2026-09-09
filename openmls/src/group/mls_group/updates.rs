@@ -5,9 +5,6 @@ use errors::ProposeSelfUpdateError;
 use errors::SelfUpdateError;
 use openmls_traits::signatures::Signer;
 
-#[cfg(feature = "migration-import")]
-use openmls_traits::storage::StorageProvider as _;
-
 use crate::{credentials::NewSignerBundle, storage::OpenMlsProvider, treesync::LeafNodeParameters};
 
 use super::*;

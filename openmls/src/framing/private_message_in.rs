@@ -218,7 +218,7 @@ impl PrivateMessageIn {
             if n_e == 0 {
                 log::error!("vc: emulation_group_size is zero (corrupt state)");
                 return Err(LibraryError::custom(
-                    "EmulationEpochState has zero emulation_group_size",
+                    "VcDerivationEpochState has zero emulation_group_size",
                 )
                 .into());
             }

@@ -1,4 +1,6 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
+use std::collections::HashSet;
+
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, types::Ciphersuite,
 };
@@ -496,6 +498,35 @@ impl LeafNode {
         &self.payload.extensions
     }
 
+    /// The virtual-client derivation info this leaf might contain.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn vc_derivation_info(
+        &self,
+    ) -> Result<
+        Option<crate::components::vc_derivation_info::DerivationInfo>,
+        crate::components::vc_derivation_info::VirtualClientsError,
+    > {
+        use tls_codec::DeserializeBytes as _;
+
+        use crate::components::vc_derivation_info::{
+            DerivationInfo, VirtualClientsError, VC_COMPONENT_ID,
+        };
+
+        let Some(bytes) = self
+            .extensions()
+            .app_data_dictionary()
+            .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+        else {
+            return Ok(None);
+        };
+        DerivationInfo::tls_deserialize_exact_bytes(bytes)
+            .map(Some)
+            .map_err(|e| {
+                log::error!("vc: leaf derivation info deserialize failed: {e:?}");
+                VirtualClientsError::DerivationInfoMalformed
+            })
+    }
+
     /// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
     pub(crate) fn supports_extension(&self, extension_type: &ExtensionType) -> bool {
         extension_type.is_default()
@@ -512,17 +543,31 @@ impl LeafNode {
         &self,
         extensions: &[ExtensionType],
     ) -> Result<(), LeafNodeValidationError> {
-        for required in extensions.iter() {
-            if !self.supports_extension(required) {
-                log::error!(
-                    "Leaf node does not support required extension {:?}\n
-                    Supported extensions: {:?}",
-                    required,
-                    self.payload.capabilities.extensions
-                );
-                return Err(LeafNodeValidationError::UnsupportedExtensions);
-            }
+        let mut required = extensions.iter().filter(|e| !e.is_default()).peekable();
+
+        // Skip building the lookup if there are no non-default extensions.
+        if required.peek().is_none() {
+            return Ok(());
         }
+
+        let supported: HashSet<ExtensionType> = self
+            .payload
+            .capabilities
+            .extensions
+            .iter()
+            .copied()
+            .collect();
+
+        if let Some(unsupported) = required.find(|e| !supported.contains(e)) {
+            log::error!(
+                "Leaf node does not support required extension {:?}\n
+                    Supported extensions: {:?}",
+                unsupported,
+                self.payload.capabilities.extensions
+            );
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        }
+
         Ok(())
     }
 

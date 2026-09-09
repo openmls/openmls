@@ -77,7 +77,7 @@ impl LibraryError {
         #[cfg(feature = "backtrace")]
         let display_string = format!(
             "Error description: {s}\n Backtrace:\n{:?}",
-            backtrace::Backtrace::new()
+            std::backtrace::Backtrace::force_capture()
         );
         #[cfg(not(feature = "backtrace"))]
         let display_string = format!("Error description: {s}");

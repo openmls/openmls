@@ -1,8 +1,14 @@
+use std::{
+    fmt::{Debug, Formatter},
+    marker::PhantomData,
+};
+
 use errors::{ExportGroupInfoError, ExportSecretError};
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
+use zeroize::ZeroizeOnDrop;
 
 use crate::{
-    ciphersuite::HpkePublicKey,
+    ciphersuite::{HpkePublicKey, Secret},
     extensions::errors::InvalidExtensionError,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
 };
@@ -12,17 +18,91 @@ use crate::{
     group::{PendingSafeExportSecretError, SafeExportSecretError},
 };
 
-#[cfg(feature = "virtual-clients-draft")]
-use crate::{
-    components::vc_derivation_info::{
-        EmulationEpochState, EmulatorEpochSecret, EpochId, RegisteredVcEmulationEpoch,
-        VC_COMPONENT_ID,
-    },
-    components::vc_operation_tree::OperationSecretTree,
-    group::mls_group::errors::RegisterVcEmulationEpochError,
-};
-
 use super::*;
+
+/// A secret exported from a group.
+///
+/// The marker type `T` records which export function produced the secret, so
+/// secrets from different export paths cannot be confused.
+pub struct ExportedSecret<T> {
+    secret: Secret,
+    _marker: PhantomData<T>,
+}
+
+/// Marker for secrets exported via [`MlsGroup::export_secret`].
+pub struct GroupExport;
+
+/// Marker for secrets exported via [`StagedCommit::export_secret`].
+pub struct StagedCommitExport;
+
+/// Marker for secrets exported via [`StagedWelcome::export_secret`].
+pub struct StagedWelcomeExport;
+
+/// Marker for secrets exported via [`ProcessedWelcome::export_secret`].
+pub struct ProcessedWelcomeExport;
+
+/// Marker for secrets exported via [`MlsGroup::safe_export_secret`].
+#[cfg(feature = "extensions-draft")]
+pub struct GroupSafeExport;
+
+/// Marker for secrets exported via
+/// [`MlsGroup::safe_export_secret_from_pending`].
+#[cfg(feature = "extensions-draft")]
+pub struct PendingSafeExport;
+
+/// Marker for secrets exported via [`StagedCommit::safe_export_secret`] or
+/// [`ProcessedMessage::safe_export_secret`].
+///
+/// [`ProcessedMessage::safe_export_secret`]: crate::framing::ProcessedMessage::safe_export_secret
+#[cfg(feature = "extensions-draft")]
+pub struct StagedCommitSafeExport;
+
+impl<T> ExportedSecret<T> {
+    pub(crate) fn new(secret: Secret) -> Self {
+        Self {
+            secret,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Returns the secret bytes.
+    pub fn as_slice(&self) -> &[u8] {
+        self.secret.as_slice()
+    }
+}
+
+#[cfg(feature = "extensions-draft")]
+impl ExportedSecret<StagedCommitSafeExport> {
+    /// Re-wraps a safe export of a staged commit as a safe export of the
+    /// pending commit, for [`MlsGroup::safe_export_secret_from_pending`].
+    pub(crate) fn into_pending_safe_export(self) -> ExportedSecret<PendingSafeExport> {
+        ExportedSecret::new(self.secret)
+    }
+}
+
+impl<T> AsRef<[u8]> for ExportedSecret<T> {
+    fn as_ref(&self) -> &[u8] {
+        self.secret.as_slice()
+    }
+}
+
+// The inner [`Secret`] is zeroized when dropped.
+impl<T> ZeroizeOnDrop for ExportedSecret<T> {}
+
+impl<T> Debug for ExportedSecret<T> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_struct("ExportedSecret")
+            .field("secret", &self.secret)
+            .finish()
+    }
+}
+
+impl<T, U> PartialEq<ExportedSecret<U>> for ExportedSecret<T> {
+    // Constant time comparison.
+    fn eq(&self, other: &ExportedSecret<U>) -> bool {
+        self.secret == other.secret
+    }
+}
 
 impl MlsGroup {
     // === Export secrets ===
@@ -38,18 +118,19 @@ impl MlsGroup {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ExportSecretError> {
+    ) -> Result<ExportedSecret<GroupExport>, ExportSecretError> {
         if key_length > u16::MAX as usize {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExportSecretError::KeyLengthTooLong);
         }
 
         if self.is_active() {
-            Ok(self
-                .group_epoch_secrets
-                .exporter_secret()
-                .derive_exported_secret(self.ciphersuite(), crypto, label, context, key_length)
-                .map_err(LibraryError::unexpected_crypto_error)?)
+            Ok(ExportedSecret::new(
+                self.group_epoch_secrets
+                    .exporter_secret()
+                    .derive_exported_secret(self.ciphersuite(), crypto, label, context, key_length)
+                    .map_err(LibraryError::unexpected_crypto_error)?,
+            ))
         } else {
             Err(ExportSecretError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
@@ -65,7 +146,7 @@ impl MlsGroup {
         crypto: &Crypto,
         storage: &Storage,
         component_id: ComponentId,
-    ) -> Result<Vec<u8>, SafeExportSecretError<Storage::Error>> {
+    ) -> Result<ExportedSecret<GroupSafeExport>, SafeExportSecretError<Storage::Error>> {
         if !self.is_active() {
             return Err(SafeExportSecretError::GroupState(
                 MlsGroupStateError::UseAfterEviction,
@@ -82,7 +163,7 @@ impl MlsGroup {
             .write_application_export_tree(group_id, application_export_tree)
             .map_err(SafeExportSecretError::Storage)?;
 
-        Ok(component_secret.as_slice().to_vec())
+        Ok(ExportedSecret::new(component_secret))
     }
 
     /// Export a secret from the forward secure exporter of the pending commit
@@ -93,7 +174,8 @@ impl MlsGroup {
         crypto: &impl OpenMlsCrypto,
         storage: &Provider,
         component_id: ComponentId,
-    ) -> Result<Vec<u8>, PendingSafeExportSecretError<Provider::Error>> {
+    ) -> Result<ExportedSecret<PendingSafeExport>, PendingSafeExportSecretError<Provider::Error>>
+    {
         let group_id = self.group_id().clone();
         let MlsGroupState::PendingCommit(ref mut group_state) = self.group_state else {
             return Err(PendingSafeExportSecretError::NoPendingCommit);
@@ -105,113 +187,7 @@ impl MlsGroup {
         storage
             .write_group_state(&group_id, &self.group_state)
             .map_err(PendingSafeExportSecretError::Storage)?;
-        Ok(secret.as_slice().to_vec())
-    }
-
-    /// Register a new virtual-clients emulation epoch for this *emulation*
-    /// group.
-    ///
-    /// Sources the per-emulation-epoch root secret from
-    /// `self.safe_export_secret(crypto, storage, VC_COMPONENT_ID)`,
-    /// derives the [`EpochId`], the AEAD key, and the epoch base secret,
-    /// builds the per-epoch operation secret tree (sized like the emulation
-    /// group's ratchet tree), and persists the tree and the per-epoch state
-    /// in the storage provider keyed on the derived `EpochId`. Returns the
-    /// `EpochId` so the caller can reference this emulation epoch on
-    /// subsequent virtual-clients commits.
-    ///
-    /// Idempotent per *group epoch*: the registration is recorded keyed on the
-    /// group id, and a repeated call in the same group epoch returns the
-    /// recorded `EpochId` without touching the exporter (which the first
-    /// call punctured and which cannot be re-evaluated). The already
-    /// persisted operation secret tree keeps its state, so a caller retrying
-    /// an operation allocates the next generation rather than re-deriving a
-    /// consumed one.
-    ///
-    /// The emulation group must support `safe_export_secret`, which requires
-    /// the appropriate `AppDataDictionary` capability and extension wiring at
-    /// group creation. Otherwise this returns
-    /// [`SafeExportSecretError::Unsupported`] via
-    /// [`RegisterVcEmulationEpochError::SafeExportSecret`].
-    #[cfg(feature = "virtual-clients-draft")]
-    pub fn register_vc_emulation_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
-        &mut self,
-        crypto: &Crypto,
-        storage: &Storage,
-    ) -> Result<EpochId, RegisterVcEmulationEpochError<Storage::Error>> {
-        // A registration consumes the forward-secure exporter, so it can run
-        // at most once per group epoch. Return the recorded epoch id if *this*
-        // epoch is already registered.
-        let registered: Option<RegisteredVcEmulationEpoch> = storage
-            .registered_vc_emulation_epoch(self.group_id())
-            .map_err(|e| {
-                log::error!(
-                    "vc: load registered emulation epoch in register_vc_emulation_epoch \
-                     failed: {e:?}"
-                );
-                RegisterVcEmulationEpochError::Storage(e)
-            })?;
-        if let Some(registered) = registered {
-            if registered.group_epoch == self.epoch() {
-                return Ok(registered.epoch_id);
-            }
-        }
-
-        let ciphersuite = self.ciphersuite();
-        let leaf_index = self.own_leaf_index();
-        let emulation_group_size = self.public_group().tree_size();
-        let bytes = self.safe_export_secret(crypto, storage, VC_COMPONENT_ID)?;
-        let emulator_epoch_secret = EmulatorEpochSecret::new(&bytes);
-        let epoch_id = emulator_epoch_secret.derive_epoch_id(crypto, ciphersuite)?;
-        let epoch_encryption_key =
-            emulator_epoch_secret.derive_epoch_encryption_key(crypto, ciphersuite)?;
-        let epoch_base_secret =
-            emulator_epoch_secret.derive_epoch_base_secret(crypto, ciphersuite)?;
-        let reuse_guard_secret =
-            emulator_epoch_secret.derive_reuse_guard_secret(crypto, ciphersuite)?;
-        let generation_id_secret =
-            emulator_epoch_secret.derive_generation_id_secret(crypto, ciphersuite)?;
-        let operation_tree = OperationSecretTree::new(epoch_base_secret, emulation_group_size);
-        let state = EmulationEpochState::new(
-            leaf_index,
-            epoch_encryption_key,
-            reuse_guard_secret,
-            generation_id_secret,
-            emulation_group_size,
-            ciphersuite,
-        );
-        let registered = RegisteredVcEmulationEpoch {
-            group_epoch: self.epoch(),
-            epoch_id,
-        };
-
-        storage
-            .write_vc_operation_tree(&registered.epoch_id, &operation_tree)
-            .map_err(|e| {
-                log::error!(
-                    "vc: persist operation tree in register_vc_emulation_epoch failed: {e:?}"
-                );
-                RegisterVcEmulationEpochError::Storage(e)
-            })?;
-        storage
-            .write_vc_emulation_epoch_state(&registered.epoch_id, &state)
-            .map_err(|e| {
-                log::error!(
-                    "vc: persist emulation epoch state in register_vc_emulation_epoch failed: {e:?}"
-                );
-                RegisterVcEmulationEpochError::Storage(e)
-            })?;
-        storage
-            .write_registered_vc_emulation_epoch(self.group_id(), &registered)
-            .map_err(|e| {
-                log::error!(
-                    "vc: record registered emulation epoch in register_vc_emulation_epoch \
-                     failed: {e:?}"
-                );
-                RegisterVcEmulationEpochError::Storage(e)
-            })?;
-
-        Ok(registered.epoch_id)
+        Ok(secret.into_pending_safe_export())
     }
 
     /// Returns the epoch authenticator of the current epoch.
@@ -222,6 +198,29 @@ impl MlsGroup {
     /// Returns the resumption PSK secret of the current epoch.
     pub fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
         self.group_epoch_secrets().resumption_psk()
+    }
+
+    /// Export the information a sub-group branch needs from this (parent) group,
+    /// as described in [RFC 9420 §11.3].
+    ///
+    /// Hand the resulting [`BranchInfo`] to the sender
+    /// ([`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch)) and to
+    /// the receiver
+    /// ([`StagedWelcome::build_from_branch`](crate::group::StagedWelcome::build_from_branch)).
+    ///
+    /// The returned [`BranchInfo`] carries this group's resumption PSK secret,
+    /// which is sensitive key material.
+    ///
+    /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+    pub fn branch_info(&self) -> BranchInfo {
+        BranchInfo {
+            version: self.version(),
+            ciphersuite: self.ciphersuite(),
+            group_id: self.group_id().clone(),
+            epoch: self.epoch(),
+            resumption_psk_secret: self.resumption_psk_secret().clone(),
+            member_credentials: self.members().map(|m| m.credential).collect(),
+        }
     }
 
     /// Returns a resumption psk for a given epoch. If no resumption psk
