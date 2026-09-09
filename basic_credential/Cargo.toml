@@ -29,7 +29,11 @@ test-utils = [] # Only use for tests!
 draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
     "dep:ml-dsa",
+    "openmls_rust_crypto/draft-ietf-mls-pq-ciphersuites",
+    "openmls_libcrux_crypto/draft-ietf-mls-pq-ciphersuites",
 ]
 
 [dev-dependencies]
 serde_json = "1.0.149"
+openmls_rust_crypto = { workspace = true }
+openmls_libcrux_crypto = { workspace = true }
