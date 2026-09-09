@@ -96,6 +96,8 @@ impl MlsGroupBuilder {
         BranchGroupBuilder {
             group_builder: self,
             branch_info,
+            extensions: None,
+            force_self_update: false,
         }
     }
 
@@ -259,6 +261,10 @@ impl MlsGroupBuilder {
                 crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
                     &public_group,
                     LeafNodeIndex::new(0),
+                    mls_group_create_config
+                        .join_config
+                        .vc_derivation_epoch_retention_policy()
+                        .clone(),
                 ),
             )?;
         }
@@ -353,6 +359,19 @@ impl MlsGroupBuilder {
         self
     }
 
+    /// Sets the derivation-epoch retention policy. See
+    /// [`VcDerivationEpochRetentionPolicy`](crate::group::VcDerivationEpochRetentionPolicy).
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn set_vc_derivation_epoch_retention_policy(
+        mut self,
+        policy: crate::group::VcDerivationEpochRetentionPolicy,
+    ) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .set_vc_derivation_epoch_retention_policy(policy);
+        self
+    }
+
     /// Sets the `number_of_resumption_psks` property of the MlsGroup.
     pub fn number_of_resumption_psks(mut self, number_of_resumption_psks: usize) -> Self {
         self.mls_group_create_config_builder = self
@@ -433,15 +452,37 @@ impl MlsGroupBuilder {
 pub struct BranchGroupBuilder {
     group_builder: MlsGroupBuilder,
     branch_info: BranchInfo,
+    extensions: Option<Extensions<GroupContext>>,
+    force_self_update: bool,
 }
 
 impl BranchGroupBuilder {
+    /// Add a [`GroupContextExtensions`](crate::extensions::Extensions) proposal
+    /// to the branch commit. See
+    /// [`CommitBuilder::propose_group_context_extensions`](crate::group::CommitBuilder::propose_group_context_extensions).
+    pub fn propose_group_context_extensions(
+        mut self,
+        extensions: Extensions<GroupContext>,
+    ) -> Self {
+        self.extensions = Some(extensions);
+        self
+    }
+
+    /// Force a self-update (path) in the branch commit. See
+    /// [`CommitBuilder::force_self_update`](crate::group::CommitBuilder::force_self_update).
+    pub fn force_self_update(mut self, force_self_update: bool) -> Self {
+        self.force_self_update = force_self_update;
+        self
+    }
+
     /// Create the sub-group and the branch commit that adds `new_members` to it.
     ///
     /// This creates a fresh group with the parent's ciphersuite, adds the branch
     /// resumption PSK (mixing in the parent's resumption PSK secret), and commits
-    /// the additions. It returns the new (epoch-0) sub-group and the
-    /// [`CommitMessageBundle`] carrying the branch commit and `Welcome`.
+    /// the additions (plus any extra proposals set via
+    /// [`Self::propose_group_context_extensions`] / [`Self::force_self_update`]).
+    /// It returns the new (epoch-0) sub-group and the [`CommitMessageBundle`]
+    /// carrying the branch commit and `Welcome`.
     ///
     /// The commit is staged but **not** merged: merge it with
     /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
@@ -459,10 +500,17 @@ impl BranchGroupBuilder {
             .ciphersuite(self.branch_info.ciphersuite());
         let mut group = group_builder.build(provider, signer, credential_with_key)?;
 
-        let bundle = group
+        let mut builder = group
             .commit_builder()
             .branch(provider.rand(), &self.branch_info)?
-            .propose_adds(new_members)
+            .propose_adds(new_members);
+        if let Some(extensions) = self.extensions {
+            builder = builder.propose_group_context_extensions(extensions)?;
+        }
+        if self.force_self_update {
+            builder = builder.force_self_update(true);
+        }
+        let bundle = builder
             .load_psks(provider.storage())?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
             .stage_commit(provider)?;
@@ -681,16 +729,15 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     // Written before the group itself, so an error between the writes cannot
     // leave a loadable group without a binding (a bound group is required for
     // the reuse-guard MUST).
-    let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
-        .storage()
-        .vc_emulation_bindings(&group_id)
-        .map_err(NewGroupError::StorageError)?
-        .unwrap_or_default();
     let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
-    bindings.insert(mls_group.epoch(), epoch_id, max_entries);
-    bindings
-        .store(provider.storage(), &group_id)
-        .map_err(NewGroupError::StorageError)?;
+    crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+        provider.storage(),
+        &group_id,
+        mls_group.epoch(),
+        epoch_id,
+        max_entries,
+    )
+    .map_err(NewGroupError::StorageError)?;
 
     mls_group
         .store(provider.storage())

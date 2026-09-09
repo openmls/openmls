@@ -274,6 +274,21 @@ impl RatchetTreeIn {
         })
     }
 
+    /// Returns an iterator over all non-blank leaf nodes together with their
+    /// real [`LeafNodeIndex`], unlike [`Self::leaves`] whose positions are
+    /// compacted by skipping blank tree slots.
+    pub fn full_leaves(&self) -> impl Iterator<Item = (LeafNodeIndex, &LeafNodeIn)> {
+        self.0
+            .iter()
+            .enumerate()
+            .filter_map(|(node_index, slot)| match slot {
+                Some(NodeIn::LeafNode(leaf_node)) => {
+                    Some((LeafNodeIndex::new((node_index / 2) as u32), &**leaf_node))
+                }
+                _ => None,
+            })
+    }
+
     /// Returns an iterator over all parent nodes in the ratchet tree.
     pub fn parents(&self) -> impl Iterator<Item = &ParentNode> {
         self.nodes().filter_map(|node| match node {
@@ -945,5 +960,30 @@ mod test {
     /// This should not panic in release-builds.
     fn test_ratchet_tree_internal_empty_after_trim() {
         RatchetTree::trimmed(vec![None]);
+    }
+
+    #[openmls_test::openmls_test]
+    fn test_ratchet_tree_in_full_leaves_reports_real_index_past_a_blank_leaf() {
+        let provider = &Provider::default();
+        let (key_package, credential, _) =
+            crate::key_packages::tests::key_package(ciphersuite, provider);
+        let node_in = NodeIn::from(Node::leaf_node(LeafNode::from(key_package)));
+
+        // A 2-leaf tree whose first leaf (index 0) is blank and whose second
+        // leaf (index 1) is the only non-blank one: flat positions
+        // 0 = leaf 0 (blank), 1 = parent (blank), 2 = leaf 1 (node_in).
+        let ratchet_tree = RatchetTreeIn(vec![None, None, Some(node_in)]);
+
+        // `leaves()` skips the blank slot, so its position is compacted and no
+        // longer matches the leaf's real index -- exactly the bug `full_leaves()`
+        // fixes for callers that need the real `LeafNodeIndex`.
+        let compacted: Vec<_> = ratchet_tree.leaves().collect();
+        assert_eq!(compacted.len(), 1);
+
+        let full: Vec<_> = ratchet_tree.full_leaves().collect();
+        assert_eq!(full.len(), 1);
+        let (index, leaf) = full[0];
+        assert_eq!(index, LeafNodeIndex::new(1));
+        assert_eq!(leaf.credential(), &credential);
     }
 }

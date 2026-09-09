@@ -1,7 +1,9 @@
 #![cfg(feature = "virtual-clients-draft")]
 use openmls::{
     component::{ComponentData, ComponentId},
-    components::vc_derivation_info::{EpochId, VcEmulationBindings, VC_COMPONENT_ID},
+    components::vc_derivation_info::{
+        EpochId, VcDerivationEpochState, VcEmulationBinding, VC_COMPONENT_ID,
+    },
     credentials::NewSignerBundle,
     extensions::{
         AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
@@ -10,8 +12,9 @@ use openmls::{
     group::{
         AppDataUpdates, ConfirmMessageError, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
         MlsGroupJoinConfig, Propose, StageCommitError, StagedVcExternalCommitJoin, StagedWelcome,
-        VcExternalCommitJoinError, MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
-        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        VcDerivationEpochDeletion, VcDerivationEpochRetentionPolicy, VcExternalCommitJoinError,
+        MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     messages::{
@@ -31,6 +34,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_test::openmls_test;
 use openmls_traits::storage::StorageProvider as _;
 use openmls_traits::OpenMlsProvider;
+use std::time::{Duration, SystemTime};
 use tls_codec::Serialize as _;
 
 mod mls_group;
@@ -2570,6 +2574,259 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
     }
 }
 
+/// A Welcome for a virtual client whose retained KeyPackage material is the
+/// only reference its derivation epoch has left. Returned to the tests that
+/// exercise the hand-over of that reference to the joined group.
+struct RetainedMaterialWelcome {
+    vc_signer: SignatureKeyPair,
+    epoch_id: EpochId,
+    key_package_ref: openmls::prelude::KeyPackageRef,
+    welcome: openmls::messages::Welcome,
+    ratchet_tree: openmls::treesync::RatchetTree,
+}
+
+/// alice_a publishes a KeyPackage and alice_b retains its material. alice_b
+/// then deletes its emulation group, so the retained material becomes the
+/// epoch's only reference. Bob adds the virtual client through the published
+/// KeyPackage and the returned Welcome is addressed to it.
+fn retained_material_welcome<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_a_provider: &P,
+    alice_b_provider: &P,
+    bob_provider: &P,
+) -> RetainedMaterialWelcome {
+    use openmls::components::vc_derivation_info::{
+        assemble_vc_key_package_upload, process_vc_key_package_upload,
+    };
+
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, alice_a_provider, alice_b_provider);
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, alice_a_provider, b"AliceEmulatorA", true);
+    let (_e_commit, mut emulator_b, _emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        alice_a_provider,
+        &emulator_a_signer,
+        alice_b_provider,
+        b"AliceEmulatorB",
+    );
+    let epoch_id = newest_epoch(&emulator_b, alice_b_provider);
+
+    let mut batch = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            ciphersuite,
+            alice_a_provider,
+            &vc_signer,
+            vc_credential.clone(),
+            emulator_a.group_id(),
+            1,
+        )
+        .expect("alice_a build_vc_batch");
+    let generation = batch.generation;
+    let batch_epoch_id = batch.epoch_id.clone();
+    let (vc_key_package_bundle, kp_info) = batch.key_packages.remove(0);
+    let upload = assemble_vc_key_package_upload(
+        alice_a_provider.storage(),
+        batch_epoch_id,
+        generation,
+        vec![kp_info],
+    )
+    .expect("assemble upload");
+    process_vc_key_package_upload(alice_b_provider, &upload).expect("alice_b process upload");
+    let key_package_ref = vc_key_package_bundle
+        .key_package()
+        .hash_ref(alice_b_provider.crypto())
+        .expect("key package ref");
+
+    // The retained material keeps the epoch state alive through the
+    // delete-time sweep.
+    emulator_b
+        .delete(alice_b_provider.storage())
+        .expect("alice_b delete emulation group");
+    let state: Option<VcDerivationEpochState> = alice_b_provider
+        .storage()
+        .vc_derivation_epoch_state(&epoch_id)
+        .expect("read epoch state after group delete");
+    assert!(
+        state.is_some(),
+        "the retained material must keep the epoch state alive"
+    );
+
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut bob_main = MlsGroup::new(bob_provider, &bob_signer, &bob_group_config, bob_credential)
+        .expect("bob create higher-level group");
+    let (_commit, welcome, _gi) = bob_main
+        .add_members(
+            bob_provider,
+            &bob_signer,
+            &[vc_key_package_bundle.key_package().clone()],
+        )
+        .expect("bob add virtual client");
+    bob_main
+        .merge_pending_commit(bob_provider)
+        .expect("bob merge add");
+
+    RetainedMaterialWelcome {
+        vc_signer,
+        epoch_id,
+        key_package_ref,
+        welcome: welcome.into_welcome().expect("welcome present"),
+        ratchet_tree: bob_main.export_ratchet_tree(),
+    }
+}
+
+#[openmls_test]
+fn welcome_join_takes_over_epoch_reference_from_retained_material() {
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let RetainedMaterialWelcome {
+        vc_signer,
+        epoch_id,
+        welcome,
+        ratchet_tree,
+        ..
+    } = retained_material_welcome(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &bob_provider,
+    );
+
+    // The join consumes the material and binds the joined group to the epoch,
+    // so the epoch state survives the join.
+    let mut alice_b_main = StagedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &vc_join_config(),
+        welcome,
+        Some(ratchet_tree.into()),
+    )
+    .expect("alice_b stage welcome")
+    .into_group(&alice_b_provider)
+    .expect("alice_b join higher-level group");
+
+    let state: Option<VcDerivationEpochState> = alice_b_provider
+        .storage()
+        .vc_derivation_epoch_state(&epoch_id)
+        .expect("read epoch state after the join");
+    assert!(
+        state.is_some(),
+        "the joined group's binding must keep the epoch state alive"
+    );
+    let unconfirmed = alice_b_main
+        .create_unconfirmed_message(&alice_b_provider, &vc_signer, b"bound send")
+        .expect("alice_b create unconfirmed message");
+    assert!(
+        unconfirmed.generation_id.is_some(),
+        "a group joined through a virtual client's KeyPackage must be bound"
+    );
+
+    // Deleting the joined group drops the binding, the epoch's last reference.
+    alice_b_main
+        .delete(alice_b_provider.storage())
+        .expect("alice_b delete higher-level group");
+    let state: Option<VcDerivationEpochState> = alice_b_provider
+        .storage()
+        .vc_derivation_epoch_state(&epoch_id)
+        .expect("read epoch state after the group delete");
+    assert!(
+        state.is_none(),
+        "deleting the last group bound to the epoch must release its key material"
+    );
+}
+
+#[openmls_test]
+fn welcome_join_keeps_epoch_referenced_until_bound() {
+    use openmls::components::vc_derivation_info::RetainedKeyPackageMaterial;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let RetainedMaterialWelcome {
+        vc_signer,
+        epoch_id,
+        key_package_ref,
+        welcome,
+        ratchet_tree,
+    } = retained_material_welcome(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &bob_provider,
+    );
+    let storage = alice_b_provider.storage();
+    let retained_material = |key_package_ref| -> Option<RetainedKeyPackageMaterial> {
+        storage
+            .retained_key_package_material(key_package_ref)
+            .expect("read retained material")
+    };
+    let epoch_state = |epoch_id| -> Option<VcDerivationEpochState> {
+        storage
+            .vc_derivation_epoch_state(epoch_id)
+            .expect("read epoch state")
+    };
+    let sweep = || -> Vec<EpochId> {
+        storage
+            .delete_unreferenced_vc_derivation_epoch_states()
+            .expect("sweep unreferenced epochs")
+    };
+
+    let processed = openmls::group::ProcessedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &vc_join_config(),
+        welcome,
+    )
+    .expect("alice_b process welcome");
+    assert!(
+        retained_material(&key_package_ref).is_some(),
+        "processing the Welcome must leave the retained material in place"
+    );
+    assert!(
+        sweep().is_empty(),
+        "a sweep after processing must not release the epoch"
+    );
+
+    let staged = processed
+        .into_staged_welcome(&alice_b_provider, Some(ratchet_tree.into()))
+        .expect("alice_b stage welcome");
+    assert!(
+        sweep().is_empty(),
+        "a sweep after staging must not release the epoch"
+    );
+
+    let mut alice_b_main = staged
+        .into_group(&alice_b_provider)
+        .expect("alice_b join higher-level group");
+    assert!(
+        retained_material(&key_package_ref).is_none(),
+        "joining must consume the retained material"
+    );
+    assert!(
+        sweep().is_empty(),
+        "the joined group's binding must reference the epoch"
+    );
+    assert!(
+        epoch_state(&epoch_id).is_some(),
+        "the epoch state must survive the join"
+    );
+    let unconfirmed = alice_b_main
+        .create_unconfirmed_message(&alice_b_provider, &vc_signer, b"bound send")
+        .expect("alice_b create unconfirmed message");
+    assert!(
+        unconfirmed.generation_id.is_some(),
+        "a group joined through a virtual client's KeyPackage must be bound"
+    );
+}
+
 /// Regression test for the batch-model switch. A virtual client builds one
 /// batch of KeyPackages larger than the operation tree's
 /// `OUT_OF_ORDER_TOLERANCE` (32), so the old per-KeyPackage-generation model
@@ -3432,52 +3689,57 @@ fn bound_group_fails_closed_when_derivation_state_missing_on_send() {
     let epoch_id = newest_epoch(&emulator_group, &provider);
     let _commit_msg = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
 
-    // The group's binding keeps the epoch state alive, so the guarded delete
-    // refuses while the binding is stored.
-    let bindings: VcEmulationBindings = provider
+    // The group's binding keeps the epoch state alive, so the sweep leaves
+    // the epoch untouched while the binding is stored.
+    let bound_epoch = alice_group.epoch();
+    let binding: VcEmulationBinding = provider
         .storage()
-        .vc_emulation_bindings(alice_group.group_id())
-        .expect("read emulation bindings")
+        .vc_emulation_binding(alice_group.group_id(), &bound_epoch)
+        .expect("read emulation binding")
         .expect("the VC commit bound the group");
-    assert!(!provider
+    let swept: Vec<EpochId> = provider
         .storage()
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .expect("guarded delete while bound"));
+        .delete_unreferenced_vc_derivation_epoch_states()
+        .expect("sweep while bound");
+    assert!(!swept.contains(&epoch_id));
 
-    // Drop the binding. The emulator group's registration record alone still
+    // Drop the binding. The emulator group's derivation-epoch log alone still
     // keeps the epoch state alive.
     provider
         .storage()
-        .delete_vc_emulation_bindings(alice_group.group_id())
+        .delete_all_vc_emulation_bindings(alice_group.group_id())
         .expect("drop emulation bindings");
-    assert!(!provider
+    let swept: Vec<EpochId> = provider
         .storage()
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .expect("guarded delete while registered"));
+        .delete_unreferenced_vc_derivation_epoch_states()
+        .expect("sweep while logged");
+    assert!(!swept.contains(&epoch_id));
 
-    // Drop the registration too, delete the state, then put the binding back.
-    // That leaves the group bound to an epoch whose state is gone, which is
-    // the situation a corrupted or partially restored store can produce.
+    // Drop the emulator group's log too, sweep the state away, then put the
+    // binding back. That leaves the group bound to an epoch whose state is
+    // gone, which is the situation a corrupted or partially restored store can
+    // produce.
     provider
         .storage()
-        .delete_registered_vc_derivation_epoch(emulator_group.group_id())
-        .expect("drop registered derivation epoch");
-    let deleted = provider
+        .delete_vc_derivation_epoch_log(emulator_group.group_id())
+        .expect("drop derivation epoch log");
+    let swept: Vec<EpochId> = provider
         .storage()
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id)
-        .expect("delete derivation epoch state");
+        .delete_unreferenced_vc_derivation_epoch_states()
+        .expect("sweep the unreferenced epoch");
     assert!(
-        deleted,
-        "nothing references the epoch, so the epoch state is deleted"
+        swept.contains(&epoch_id),
+        "nothing references the epoch, so the sweep deletes its state"
     );
     provider
         .storage()
-        .write_vc_emulation_bindings(
+        .write_vc_emulation_binding(
             alice_group.group_id(),
-            &bindings,
-            &bindings.bound_epoch_ids(),
+            &bound_epoch,
+            binding.epoch_id(),
+            &binding,
         )
-        .expect("restore emulation bindings");
+        .expect("restore emulation binding");
 
     let err = alice_group
         .create_message(&provider, &alice_signer, b"must not send")
@@ -3506,8 +3768,25 @@ fn aged_out_binding_releases_derivation_epoch_state() {
 
     let mut alice_group =
         new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
-    let (mut emulator_group, emulator_signer) =
-        make_emulator_group(ciphersuite, &provider, b"AliceEmulator", true);
+    // The emulation group retains only the derivation epoch it operates on, so
+    // that once it moves on, the group's binding is the last reference to the
+    // first epoch. Under the default retention policy the emulation group's own
+    // log would keep holding it.
+    let (emulator_credential, emulator_signer) = new_credential(
+        &provider,
+        b"AliceEmulator",
+        ciphersuite.signature_algorithm(),
+    );
+    let emulation_config = emulation_config_builder(ciphersuite, true, true)
+        .set_vc_derivation_epoch_retention_policy(VcDerivationEpochRetentionPolicy::MaxEpochs(1))
+        .build();
+    let mut emulator_group = MlsGroup::new(
+        &provider,
+        &emulator_signer,
+        &emulation_config,
+        emulator_credential,
+    )
+    .expect("create emulation group");
 
     let epoch_id_one = newest_epoch(&emulator_group, &provider);
     let _commit = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
@@ -3532,32 +3811,42 @@ fn aged_out_binding_releases_derivation_epoch_state() {
         .expect("emulator merge marker commit");
     let epoch_id_two = newest_epoch(&emulator_group, &provider);
     assert_ne!(epoch_id_one, epoch_id_two);
-    assert!(!provider
+    // The registration pruned the first epoch from the emulator's log, but the
+    // higher-level group's binding still keeps its state alive.
+    let swept: Vec<EpochId> = provider
         .storage()
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id_one)
-        .expect("guarded delete while bound"));
+        .delete_unreferenced_vc_derivation_epoch_states()
+        .expect("sweep while bound");
+    assert!(!swept.contains(&epoch_id_one));
 
-    // The second VC commit rewrites the bindings. The group retains no past
-    // message secrets, so the record keeps a single entry and the rewrite
-    // drops the first epoch from the bound-epochs list.
+    // The second VC commit rebinds the group. The group retains no past
+    // message secrets, so a single binding row survives, and the merge-time
+    // sweep releases the first epoch's state.
     let _commit = send_vc_commit(&mut alice_group, &emulator_group, &provider, &alice_signer);
-    let bindings: VcEmulationBindings = provider
+    let bound: Vec<EpochId> = provider
         .storage()
         .vc_emulation_bindings(alice_group.group_id())
         .expect("read emulation bindings")
-        .expect("emulation bindings present");
-    assert_eq!(bindings.bound_epoch_ids(), vec![epoch_id_two.clone()]);
+        .into_iter()
+        .map(|binding: VcEmulationBinding| binding.epoch_id().clone())
+        .collect();
+    assert_eq!(bound, vec![epoch_id_two.clone()]);
 
-    // Nothing references the first epoch anymore, so its state is deletable.
-    // The second epoch stays alive through the new binding.
-    assert!(provider
+    // The first epoch's state is gone, and the second epoch stays alive
+    // through the new binding.
+    let first_state: Option<VcDerivationEpochState> = provider
         .storage()
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id_one)
-        .expect("guarded delete of the aged-out epoch"));
-    assert!(!provider
+        .vc_derivation_epoch_state(&epoch_id_one)
+        .expect("read first epoch state");
+    assert!(
+        first_state.is_none(),
+        "the merge-time sweep releases the aged-out epoch"
+    );
+    let second_state: Option<VcDerivationEpochState> = provider
         .storage()
-        .delete_vc_derivation_epoch_state_if_unreferenced(&epoch_id_two)
-        .expect("guarded delete of the still-bound epoch"));
+        .vc_derivation_epoch_state(&epoch_id_two)
+        .expect("read second epoch state");
+    assert!(second_state.is_some(), "the bound epoch keeps its state");
 }
 
 /// On a group bound to a derivation epoch, `create_unconfirmed_message`
@@ -3837,7 +4126,6 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
         vc_credential.clone(),
     )
     .expect("alice_a create main group");
-    let main_group_id = alice_a_main.group_id().clone();
 
     // alice_b joins the emulation group and resyncs into the higher-level
     // group. Its resync keeps two past epochs so it can still decrypt the
@@ -3924,13 +4212,18 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
     process_and_merge_commit(&mut alice_b_main, &alice_b_provider, commit_two);
 
     // ---- Both bindings are recorded, each under its own epoch. ----
-    let bindings: VcEmulationBindings = alice_b_provider
-        .storage()
-        .vc_emulation_bindings(&main_group_id)
-        .expect("read emulation bindings")
-        .expect("emulation bindings present");
-    assert_eq!(bindings.get(first_bound_epoch), Some(&epoch_id_one));
-    assert_eq!(bindings.get(second_bound_epoch), Some(&epoch_id_two));
+    assert_eq!(
+        alice_b_main
+            .vc_derivation_epoch_at(alice_b_provider.storage(), first_bound_epoch)
+            .expect("read binding at first epoch"),
+        Some(epoch_id_one.clone())
+    );
+    assert_eq!(
+        alice_b_main
+            .vc_derivation_epoch_at(alice_b_provider.storage(), second_bound_epoch)
+            .expect("read binding at second epoch"),
+        Some(epoch_id_two.clone())
+    );
 
     // ---- The delayed message is attributed via the first derivation
     // epoch's state. ----
@@ -5732,14 +6025,11 @@ fn vc_commit_uses_newest_derivation_epoch_after_membership_change() {
     );
     let bound_epoch = main_a.epoch();
     process_and_merge_commit(&mut main_b, &provider_b, commit);
-    let bindings: VcEmulationBindings = provider_b
-        .storage()
-        .vc_emulation_bindings(main_b.group_id())
-        .expect("read emulation bindings")
-        .expect("emulation bindings present");
     assert_eq!(
-        bindings.get(bound_epoch),
-        Some(&new_epoch_id),
+        main_b
+            .vc_derivation_epoch_at(provider_b.storage(), bound_epoch)
+            .expect("read binding at bound epoch"),
+        Some(new_epoch_id.clone()),
         "the receiver must read the new epoch id out of the commit's leaf"
     );
 
@@ -5748,12 +6038,12 @@ fn vc_commit_uses_newest_derivation_epoch_after_membership_change() {
         send_vc_commit_at_epoch(&mut main_a, &provider_a, &vc_signer, old_epoch_id.clone());
     let delayed_bound_epoch = main_a.epoch();
     process_and_merge_commit(&mut main_b, &provider_b, delayed_commit);
-    let bindings: VcEmulationBindings = provider_b
-        .storage()
-        .vc_emulation_bindings(main_b.group_id())
-        .expect("read emulation bindings")
-        .expect("emulation bindings present");
-    assert_eq!(bindings.get(delayed_bound_epoch), Some(&old_epoch_id));
+    assert_eq!(
+        main_b
+            .vc_derivation_epoch_at(provider_b.storage(), delayed_bound_epoch)
+            .expect("read binding at delayed epoch"),
+        Some(old_epoch_id.clone())
+    );
 }
 
 /// A commit that both changes membership and carries the marker registers the
@@ -5902,12 +6192,12 @@ fn non_emulation_group_writes_no_vc_state() {
             None,
             "a non-emulation group must not register a derivation epoch"
         );
-        let bindings: Option<VcEmulationBindings> = provider
+        let bindings: Vec<VcEmulationBinding> = provider
             .storage()
             .vc_emulation_bindings(group.group_id())
             .expect("read emulation bindings");
         assert!(
-            bindings.is_none(),
+            bindings.is_empty(),
             "a non-emulation group must not write emulation bindings"
         );
     }
@@ -6473,4 +6763,163 @@ fn vc_application_secret_requires_emulation_group() {
         .next_vc_application_secret(&provider, b"ctx")
         .expect_err("a group without a derivation epoch has no application ratchet");
     assert_eq!(err, VirtualClientsError::NoDerivationEpoch);
+}
+
+/// Whether the per-derivation-epoch state for `epoch_id` is still stored.
+fn epoch_state_exists<P: OpenMlsProvider>(provider: &P, epoch_id: &EpochId) -> bool {
+    let state: Option<VcDerivationEpochState> = provider
+        .storage()
+        .vc_derivation_epoch_state(epoch_id)
+        .expect("read derivation epoch state");
+    state.is_some()
+}
+
+#[openmls_test]
+fn registration_prunes_derivation_epochs_beyond_the_window() {
+    let provider = Provider::default();
+    let (mut emulator, signer) = make_emulator_group(ciphersuite, &provider, b"Emulator", true);
+    assert_eq!(
+        emulator.vc_derivation_epoch_retention_policy(),
+        &VcDerivationEpochRetentionPolicy::MaxEpochs(5)
+    );
+
+    let mut epochs = vec![newest_epoch(&emulator, &provider)];
+    for _ in 0..5 {
+        let _commit = send_emulation_commit(&mut emulator, &provider, &signer, true);
+        epochs.push(newest_epoch(&emulator, &provider));
+    }
+
+    assert!(
+        !epoch_state_exists(&provider, &epochs[0]),
+        "the epoch that dropped out of the window is released"
+    );
+    for epoch_id in &epochs[1..] {
+        assert!(
+            epoch_state_exists(&provider, epoch_id),
+            "epochs inside the window keep their state"
+        );
+    }
+}
+
+#[openmls_test]
+fn aging_out_a_binding_releases_the_derivation_epoch() {
+    let provider = Provider::default();
+
+    // The emulation group logs only the epoch it operates on, so the binding is
+    // the last reference once the group moves on.
+    let (emulator_credential, emulator_signer) =
+        new_credential(&provider, b"Emulator", ciphersuite.signature_algorithm());
+    let emulation_config = emulation_config_builder(ciphersuite, true, true)
+        .set_vc_derivation_epoch_retention_policy(VcDerivationEpochRetentionPolicy::MaxEpochs(1))
+        .build();
+    let mut emulator = MlsGroup::new(
+        &provider,
+        &emulator_signer,
+        &emulation_config,
+        emulator_credential,
+    )
+    .expect("create emulation group");
+    let first_epoch = newest_epoch(&emulator, &provider);
+
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+    let mut main_group = new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
+    let _commit = send_vc_commit(&mut main_group, &emulator, &provider, &alice_signer);
+    assert!(epoch_state_exists(&provider, &first_epoch));
+
+    // The emulation group moves to a fresh derivation epoch, which prunes the
+    // first one from its log. The binding still holds it.
+    let _commit = send_emulation_commit(&mut emulator, &provider, &emulator_signer, true);
+    let second_epoch = newest_epoch(&emulator, &provider);
+    assert_ne!(first_epoch, second_epoch);
+    assert!(
+        epoch_state_exists(&provider, &first_epoch),
+        "the binding of the higher-level group still holds the epoch"
+    );
+
+    // The main group retains no past message secrets, so it keeps a single
+    // binding entry. The next VC commit re-binds it and drops the last
+    // reference to the first epoch.
+    let _commit = send_vc_commit(&mut main_group, &emulator, &provider, &alice_signer);
+    assert!(!epoch_state_exists(&provider, &first_epoch));
+    assert!(epoch_state_exists(&provider, &second_epoch));
+}
+
+#[openmls_test]
+fn deleting_an_emulation_group_releases_its_derivation_epochs() {
+    let provider = Provider::default();
+    let (mut emulator, signer) = make_emulator_group(ciphersuite, &provider, b"Emulator", true);
+    let first_epoch = newest_epoch(&emulator, &provider);
+    let _commit = send_emulation_commit(&mut emulator, &provider, &signer, true);
+    let second_epoch = newest_epoch(&emulator, &provider);
+    assert!(epoch_state_exists(&provider, &first_epoch));
+    assert!(epoch_state_exists(&provider, &second_epoch));
+
+    emulator
+        .delete(provider.storage())
+        .expect("delete emulation group");
+
+    assert!(!epoch_state_exists(&provider, &first_epoch));
+    assert!(!epoch_state_exists(&provider, &second_epoch));
+}
+
+#[openmls_test]
+fn manual_wall_clock_deletion_of_derivation_epochs() {
+    let provider = Provider::default();
+    let (mut emulator, emulator_signer) =
+        make_emulator_group(ciphersuite, &provider, b"Emulator", true);
+    let first_epoch = newest_epoch(&emulator, &provider);
+
+    // Bind a higher-level group to the first epoch, so the deletion below has
+    // one epoch it can remove and one it has to keep.
+    let (alice_credential, alice_signer) =
+        new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
+    let mut main_group = new_vc_main_group(ciphersuite, &provider, &alice_signer, alice_credential);
+    let _commit = send_vc_commit(&mut main_group, &emulator, &provider, &alice_signer);
+
+    let _commit = send_emulation_commit(&mut emulator, &provider, &emulator_signer, true);
+    let second_epoch = newest_epoch(&emulator, &provider);
+    let _commit = send_emulation_commit(&mut emulator, &provider, &emulator_signer, true);
+    let third_epoch = newest_epoch(&emulator, &provider);
+
+    // Nothing was superseded an hour ago.
+    let result = emulator
+        .delete_vc_derivation_epochs(
+            &provider,
+            VcDerivationEpochDeletion::older_than_duration(Duration::from_secs(3600)),
+        )
+        .expect("delete derivation epochs by age");
+    assert!(result.deleted.is_empty());
+    assert!(result.kept.is_empty());
+    assert!(epoch_state_exists(&provider, &first_epoch));
+
+    // A cutoff in the future selects every entry. The newest survives it, the
+    // bound first epoch is dropped from the log but kept in storage, and the
+    // second epoch is deleted.
+    let result = emulator
+        .delete_vc_derivation_epochs(
+            &provider,
+            VcDerivationEpochDeletion::before_timestamp(
+                SystemTime::now() + Duration::from_secs(3600),
+            ),
+        )
+        .expect("delete derivation epochs before a timestamp");
+    assert_eq!(result.deleted, vec![second_epoch.clone()]);
+    assert_eq!(result.kept, vec![first_epoch.clone()]);
+    assert!(epoch_state_exists(&provider, &first_epoch));
+    assert!(!epoch_state_exists(&provider, &second_epoch));
+    assert_eq!(newest_epoch(&emulator, &provider), third_epoch);
+
+    // The optional cap applies on top of the time condition, which on its own
+    // selects nothing here.
+    let _commit = send_emulation_commit(&mut emulator, &provider, &emulator_signer, true);
+    let fourth_epoch = newest_epoch(&emulator, &provider);
+    let result = emulator
+        .delete_vc_derivation_epochs(
+            &provider,
+            VcDerivationEpochDeletion::before_timestamp(SystemTime::UNIX_EPOCH).max_epochs(1),
+        )
+        .expect("delete derivation epochs beyond the cap");
+    assert_eq!(result.deleted, vec![third_epoch]);
+    assert_eq!(newest_epoch(&emulator, &provider), fourth_epoch);
 }

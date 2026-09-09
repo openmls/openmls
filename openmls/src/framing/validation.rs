@@ -42,6 +42,7 @@ use crate::{
     group::{
         errors::StageCommitError,
         mls_group::{errors::ResolveAppDataCommitError, processing::UnresolvedAppDataCommit},
+        ExportedSecret, StagedCommitSafeExport,
     },
 };
 
@@ -555,7 +556,7 @@ impl ProcessedMessage {
         &mut self,
         crypto: &Crypto,
         component_id: ComponentId,
-    ) -> Result<Vec<u8>, ProcessedMessageSafeExportSecretError> {
+    ) -> Result<ExportedSecret<StagedCommitSafeExport>, ProcessedMessageSafeExportSecretError> {
         if let ProcessedMessageContent::StagedCommitMessage(ref mut staged_commit) =
             &mut self.content
         {
