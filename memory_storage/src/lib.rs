@@ -261,10 +261,16 @@ const GROUP_CONTEXT_LABEL: &[u8] = b"GroupContext";
 const APPLICATION_EXPORT_TREE_LABEL: &[u8] = b"ApplicationExportTree";
 #[cfg(feature = "virtual-clients-draft")]
 const VC_DERIVATION_EPOCH_STATE_LABEL: &[u8] = b"VcDerivationEpochState";
+// One row per (higher-level group, group epoch), stored as an epoch-tagged
+// value (see `epoch_tagged_value`) so the sweep can read the bound epoch
+// without decoding the opaque binding.
 #[cfg(feature = "virtual-clients-draft")]
 const VC_EMULATION_BINDING_LABEL: &[u8] = b"VcEmulationBinding";
+// One row per (emulation group, derivation epoch), stored as an epoch-tagged
+// value (see `epoch_tagged_value`) so the sweep can read the logged epoch
+// without decoding the opaque entry.
 #[cfg(feature = "virtual-clients-draft")]
-const REGISTERED_VC_DERIVATION_EPOCH_LABEL: &[u8] = b"RegisteredVcDerivationEpoch";
+const VC_DERIVATION_EPOCH_LOG_ENTRY_LABEL: &[u8] = b"VcDerivationEpochLogEntry";
 #[cfg(feature = "virtual-clients-draft")]
 const VC_OPERATION_TREE_LABEL: &[u8] = b"VcOperationTree";
 #[cfg(feature = "virtual-clients-draft")]
@@ -874,7 +880,8 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         for proposal_ref in proposal_refs {
             // Delete all proposals.
             let key = serde_json::to_vec(&(group_id, proposal_ref))?;
-            values.remove(&key);
+            let storage_key = build_key_from_vec::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, key);
+            values.remove(&storage_key);
         }
 
         // Delete the proposal refs from the store.
@@ -1078,118 +1085,240 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_derivation_epoch_state_if_unreferenced<
+    fn delete_unreferenced_vc_derivation_epoch_states<
         EpochId: traits::VcEpochId<CURRENT_VERSION>,
     >(
         &self,
-        epoch_id: &EpochId,
-    ) -> Result<bool, Self::Error> {
-        let serialized_epoch_id = serde_json::to_vec(epoch_id)?;
-        // Hold the write lock across the liveness check and the deletion so a
-        // material stored concurrently cannot be orphaned.
+    ) -> Result<Vec<EpochId>, Self::Error> {
+        // Hold the write lock across the reference checks and the deletions so
+        // a material, binding, or log entry stored concurrently cannot be
+        // orphaned.
         let mut values = self.values.write().unwrap();
-        let referenced = values
-            .iter()
-            .any(|(key, value)| is_epoch_tag(key) && value == &serialized_epoch_id);
-        if referenced {
-            return Ok(false);
+        let version_suffix = u16::to_be_bytes(CURRENT_VERSION);
+        // A state or tree row alone makes an epoch a candidate, so a sweep
+        // also collects rows a crashed registration left behind.
+        let mut candidates: std::collections::BTreeSet<Vec<u8>> = std::collections::BTreeSet::new();
+        for key in values.keys() {
+            for label in [VC_DERIVATION_EPOCH_STATE_LABEL, VC_OPERATION_TREE_LABEL] {
+                if key.starts_with(label) && key.len() > label.len() + version_suffix.len() {
+                    candidates.insert(key[label.len()..key.len() - version_suffix.len()].to_vec());
+                }
+            }
         }
-        let state_key = build_key_from_vec::<CURRENT_VERSION>(
-            VC_DERIVATION_EPOCH_STATE_LABEL,
-            serialized_epoch_id.clone(),
-        );
-        let tree_key =
-            build_key_from_vec::<CURRENT_VERSION>(VC_OPERATION_TREE_LABEL, serialized_epoch_id);
-        values.remove(&state_key);
-        values.remove(&tree_key);
-        Ok(true)
+        let mut deleted = Vec::new();
+        for serialized_epoch_id in candidates {
+            let referenced = any_entry_under_label(
+                &values,
+                RETAINED_KEY_PACKAGE_EPOCH_LABEL,
+                &serialized_epoch_id,
+            ) || any_epoch_tagged_under_label(
+                &values,
+                VC_DERIVATION_EPOCH_LOG_ENTRY_LABEL,
+                &serialized_epoch_id,
+            )? || any_epoch_tagged_under_label(
+                &values,
+                VC_EMULATION_BINDING_LABEL,
+                &serialized_epoch_id,
+            )?;
+            if referenced {
+                continue;
+            }
+            values.remove(&build_key_from_vec::<CURRENT_VERSION>(
+                VC_DERIVATION_EPOCH_STATE_LABEL,
+                serialized_epoch_id.clone(),
+            ));
+            values.remove(&build_key_from_vec::<CURRENT_VERSION>(
+                VC_OPERATION_TREE_LABEL,
+                serialized_epoch_id.clone(),
+            ));
+            deleted.push(serde_json::from_slice(&serialized_epoch_id)?);
+        }
+        Ok(deleted)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_emulation_bindings<
+    fn write_vc_emulation_binding<
         GroupId: traits::GroupId<CURRENT_VERSION>,
-        VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
+        EpochKey: traits::EpochKey<CURRENT_VERSION>,
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcEmulationBinding: traits::VcEmulationBinding<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-        bindings: &VcEmulationBindings,
+        group_epoch: &EpochKey,
+        epoch_id: &EpochId,
+        binding: &VcEmulationBinding,
     ) -> Result<(), Self::Error> {
-        self.write::<CURRENT_VERSION>(
+        let key = build_composite_key::<CURRENT_VERSION>(
             VC_EMULATION_BINDING_LABEL,
-            &serde_json::to_vec(group_id).unwrap(),
-            serde_json::to_vec(bindings).unwrap(),
-        )
+            &serde_json::to_vec(group_id)?,
+            &serde_json::to_vec(group_epoch)?,
+        );
+        let value = epoch_tagged_value(
+            &serde_json::to_vec(epoch_id)?,
+            &serde_json::to_vec(binding)?,
+        )?;
+        let mut values = self.values.write().unwrap();
+        values.insert(key, value);
+        Ok(())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_binding<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        EpochKey: traits::EpochKey<CURRENT_VERSION>,
+        VcEmulationBinding: traits::VcEmulationBinding<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_epoch: &EpochKey,
+    ) -> Result<Option<VcEmulationBinding>, Self::Error> {
+        let key = build_composite_key::<CURRENT_VERSION>(
+            VC_EMULATION_BINDING_LABEL,
+            &serde_json::to_vec(group_id)?,
+            &serde_json::to_vec(group_epoch)?,
+        );
+        let values = self.values.read().unwrap();
+        let Some(value) = values.get(&key) else {
+            return Ok(None);
+        };
+        let (_, serialized_binding) = decode_epoch_tagged_value(value)?;
+        Ok(Some(serde_json::from_slice(&serialized_binding)?))
     }
 
     #[cfg(feature = "virtual-clients-draft")]
     fn vc_emulation_bindings<
         GroupId: traits::GroupId<CURRENT_VERSION>,
-        VcEmulationBindings: traits::VcEmulationBindings<CURRENT_VERSION>,
+        VcEmulationBinding: traits::VcEmulationBinding<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<VcEmulationBindings>, Self::Error> {
+    ) -> Result<Vec<VcEmulationBinding>, Self::Error> {
+        let mut prefix = VC_EMULATION_BINDING_LABEL.to_vec();
+        prefix.extend_from_slice(&serde_json::to_vec(group_id)?);
         let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &GroupId>(VC_EMULATION_BINDING_LABEL, group_id);
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        Ok(serde_json::from_slice(value).unwrap())
+        let mut bindings = Vec::new();
+        for (key, value) in values.iter() {
+            if !key.starts_with(&prefix) {
+                continue;
+            }
+            let (_, serialized_binding) = decode_epoch_tagged_value(value)?;
+            bindings.push(serde_json::from_slice(&serialized_binding)?);
+        }
+        Ok(bindings)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_bindings<GroupId: traits::GroupId<CURRENT_VERSION>>(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(
-            VC_EMULATION_BINDING_LABEL,
-            &serde_json::to_vec(group_id).unwrap(),
-        )
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
-    fn write_registered_vc_derivation_epoch<
+    fn delete_vc_emulation_bindings<
         GroupId: traits::GroupId<CURRENT_VERSION>,
-        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<CURRENT_VERSION>,
+        EpochKey: traits::EpochKey<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-        registered: &RegisteredVcDerivationEpoch,
+        group_epochs: &[EpochKey],
     ) -> Result<(), Self::Error> {
-        self.write::<CURRENT_VERSION>(
-            REGISTERED_VC_DERIVATION_EPOCH_LABEL,
-            &serde_json::to_vec(group_id).unwrap(),
-            serde_json::to_vec(registered).unwrap(),
-        )
+        let serialized_group_id = serde_json::to_vec(group_id)?;
+        let mut values = self.values.write().unwrap();
+        for group_epoch in group_epochs {
+            let key = build_composite_key::<CURRENT_VERSION>(
+                VC_EMULATION_BINDING_LABEL,
+                &serialized_group_id,
+                &serde_json::to_vec(group_epoch)?,
+            );
+            values.remove(&key);
+        }
+        Ok(())
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn registered_vc_derivation_epoch<
+    fn delete_all_vc_emulation_bindings<GroupId: traits::GroupId<CURRENT_VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        let mut prefix = VC_EMULATION_BINDING_LABEL.to_vec();
+        prefix.extend_from_slice(&serde_json::to_vec(group_id)?);
+        let mut values = self.values.write().unwrap();
+        values.retain(|key, _| !key.starts_with(&prefix));
+        Ok(())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_derivation_epoch_log_entry<
         GroupId: traits::GroupId<CURRENT_VERSION>,
-        RegisteredVcDerivationEpoch: traits::RegisteredVcDerivationEpoch<CURRENT_VERSION>,
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+        VcDerivationEpochLogEntry: traits::VcDerivationEpochLogEntry<CURRENT_VERSION>,
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<RegisteredVcDerivationEpoch>, Self::Error> {
+        epoch_id: &EpochId,
+        entry: &VcDerivationEpochLogEntry,
+    ) -> Result<(), Self::Error> {
+        let serialized_epoch_id = serde_json::to_vec(epoch_id)?;
+        let key = build_composite_key::<CURRENT_VERSION>(
+            VC_DERIVATION_EPOCH_LOG_ENTRY_LABEL,
+            &serde_json::to_vec(group_id)?,
+            &serialized_epoch_id,
+        );
+        let value = epoch_tagged_value(&serialized_epoch_id, &serde_json::to_vec(entry)?)?;
+        let mut values = self.values.write().unwrap();
+        values.insert(key, value);
+        Ok(())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_derivation_epoch_log_entries<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        VcDerivationEpochLogEntry: traits::VcDerivationEpochLogEntry<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<VcDerivationEpochLogEntry>, Self::Error> {
+        let mut prefix = VC_DERIVATION_EPOCH_LOG_ENTRY_LABEL.to_vec();
+        prefix.extend_from_slice(&serde_json::to_vec(group_id)?);
         let values = self.values.read().unwrap();
-        let key =
-            build_key::<CURRENT_VERSION, &GroupId>(REGISTERED_VC_DERIVATION_EPOCH_LABEL, group_id);
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        Ok(serde_json::from_slice(value).unwrap())
+        let mut entries = Vec::new();
+        for (key, value) in values.iter() {
+            if !key.starts_with(&prefix) {
+                continue;
+            }
+            let (_, serialized_entry) = decode_epoch_tagged_value(value)?;
+            entries.push(serde_json::from_slice(&serialized_entry)?);
+        }
+        Ok(entries)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_registered_vc_derivation_epoch<GroupId: traits::GroupId<CURRENT_VERSION>>(
+    fn delete_vc_derivation_epoch_log_entries<
+        GroupId: traits::GroupId<CURRENT_VERSION>,
+        EpochId: traits::VcEpochId<CURRENT_VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        epoch_ids: &[EpochId],
+    ) -> Result<(), Self::Error> {
+        let serialized_group_id = serde_json::to_vec(group_id)?;
+        let mut values = self.values.write().unwrap();
+        for epoch_id in epoch_ids {
+            let key = build_composite_key::<CURRENT_VERSION>(
+                VC_DERIVATION_EPOCH_LOG_ENTRY_LABEL,
+                &serialized_group_id,
+                &serde_json::to_vec(epoch_id)?,
+            );
+            values.remove(&key);
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_derivation_epoch_log<GroupId: traits::GroupId<CURRENT_VERSION>>(
         &self,
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
-        self.delete::<CURRENT_VERSION>(
-            REGISTERED_VC_DERIVATION_EPOCH_LABEL,
-            &serde_json::to_vec(group_id).unwrap(),
-        )
+        let mut prefix = VC_DERIVATION_EPOCH_LOG_ENTRY_LABEL.to_vec();
+        prefix.extend_from_slice(&serde_json::to_vec(group_id)?);
+        let mut values = self.values.write().unwrap();
+        values.retain(|key, _| !key.starts_with(&prefix));
+        Ok(())
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -1282,19 +1411,6 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn has_retained_key_package_material_for_epoch<EpochId: traits::VcEpochId<CURRENT_VERSION>>(
-        &self,
-        epoch_id: &EpochId,
-    ) -> Result<bool, Self::Error> {
-        let serialized_epoch_id = serde_json::to_vec(epoch_id)?;
-        let values = self.values.read().unwrap();
-        let referenced = values
-            .iter()
-            .any(|(key, value)| is_epoch_tag(key) && value == &serialized_epoch_id);
-        Ok(referenced)
-    }
-
-    #[cfg(feature = "virtual-clients-draft")]
     fn delete_retained_key_package_material<
         KeyPackageRef: traits::HashReference<CURRENT_VERSION>,
     >(
@@ -1315,10 +1431,68 @@ fn build_key_from_vec<const V: u16>(label: &[u8], key: Vec<u8>) -> Vec<u8> {
     key_out
 }
 
-/// Whether a storage key belongs to a retained-KeyPackage epoch tag entry.
+/// Whether any entry stored under `label` holds exactly `serialized_value`.
+/// The entries that reference a derivation epoch by id are stored this way,
+/// one per referrer, so this answers whether a referrer of that kind is left.
 #[cfg(feature = "virtual-clients-draft")]
-fn is_epoch_tag(storage_key: &[u8]) -> bool {
-    storage_key.starts_with(RETAINED_KEY_PACKAGE_EPOCH_LABEL)
+fn any_entry_under_label(
+    values: &HashMap<Vec<u8>, Vec<u8>>,
+    label: &[u8],
+    serialized_value: &[u8],
+) -> bool {
+    values
+        .iter()
+        .any(|(key, value)| key.starts_with(label) && value == serialized_value)
+}
+
+/// Build a key from a label and two serialized key parts, with the version
+/// appended. Used for the rows keyed by a group id plus a second key (log
+/// entries, emulation bindings).
+#[cfg(feature = "virtual-clients-draft")]
+fn build_composite_key<const V: u16>(label: &[u8], first: &[u8], second: &[u8]) -> Vec<u8> {
+    let mut key = label.to_vec();
+    key.extend_from_slice(first);
+    key.extend_from_slice(second);
+    key.extend_from_slice(&u16::to_be_bytes(V));
+    key
+}
+
+/// Encode an opaque entity value next to the serialized derivation epoch id it
+/// references, so the sweep can check the reference without decoding the
+/// entity.
+#[cfg(feature = "virtual-clients-draft")]
+fn epoch_tagged_value(
+    serialized_epoch_id: &[u8],
+    serialized_entity: &[u8],
+) -> Result<Vec<u8>, serde_json::Error> {
+    serde_json::to_vec(&(serialized_epoch_id, serialized_entity))
+}
+
+/// Split an epoch-tagged value (see [`epoch_tagged_value`]) back into the
+/// serialized epoch id and the serialized entity.
+#[cfg(feature = "virtual-clients-draft")]
+fn decode_epoch_tagged_value(value: &[u8]) -> Result<(Vec<u8>, Vec<u8>), serde_json::Error> {
+    serde_json::from_slice(value)
+}
+
+/// Whether any epoch-tagged value stored under `label` references the
+/// derivation epoch with the given serialized id.
+#[cfg(feature = "virtual-clients-draft")]
+fn any_epoch_tagged_under_label(
+    values: &HashMap<Vec<u8>, Vec<u8>>,
+    label: &[u8],
+    serialized_epoch_id: &[u8],
+) -> Result<bool, serde_json::Error> {
+    for (key, value) in values.iter() {
+        if !key.starts_with(label) {
+            continue;
+        }
+        let (epoch_id, _) = decode_epoch_tagged_value(value)?;
+        if epoch_id == serialized_epoch_id {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Build a key with version and label.

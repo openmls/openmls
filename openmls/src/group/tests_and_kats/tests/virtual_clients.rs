@@ -9,7 +9,7 @@ use crate::{
         vc_commit_data::{VirtualClientAction, VirtualClientCommitData},
         vc_derivation_info::{
             load_vc_epoch_state_and_tree, register_vc_derivation_epoch, EpochId,
-            RegisteredVcDerivationEpoch, VcDerivationEpochParams, VirtualClientOperationType,
+            VcDerivationEpochLogEntry, VcDerivationEpochParams, VirtualClientOperationType,
             VC_COMPONENT_ID,
         },
     },
@@ -20,7 +20,8 @@ use crate::{
     framing::{MlsMessageIn, ProcessedMessageContent},
     group::{
         GroupContext, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
-        MlsGroupCreateConfigBuilder, StagedWelcome, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        MlsGroupCreateConfigBuilder, StagedWelcome, VcDerivationEpochRetentionPolicy,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     messages::PathSecret,
@@ -197,16 +198,26 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     .expect("derive reference parent keypair");
 
     // Actual: send the VC commit.
-    main_group
+    let builder = main_group
         .commit_builder()
         .vc_emulation(
             provider.crypto(),
             provider.storage(),
             emulator_group.group_id(),
         )
-        .expect("vc_emulation")
-        .load_psks(provider.storage())
-        .expect("load psks")
+        .expect("vc_emulation");
+    assert_eq!(
+        builder.vc_epoch_id(),
+        Some(&epoch_id),
+        "the builder must expose the derivation epoch the commit acts from"
+    );
+    let builder = builder.load_psks(provider.storage()).expect("load psks");
+    assert_eq!(
+        builder.vc_epoch_id(),
+        Some(&epoch_id),
+        "the resolved derivation epoch must survive the stage transition"
+    );
+    builder
         .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
         .expect("build vc commit")
         .stage_commit(provider)
@@ -238,7 +249,8 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
 /// the per-KeyPackage seed (dedicated `key_package` operation, index 0),
 /// imported into the created group's ciphersuite. The encryption key secret
 /// and the "Group Creation" epoch secret both derive from that seed under
-/// the created group's ciphersuite.
+/// the created group's ciphersuite. The group's binding at epoch 0 names the
+/// derivation epoch the creation consumed.
 #[openmls_test::openmls_test]
 fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
@@ -298,6 +310,14 @@ fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
         expected_leaf_keypair.public_key(),
         "the creator leaf's encryption key secret must derive from the \
          per-KeyPackage seed imported into the created group's ciphersuite"
+    );
+    assert_eq!(
+        main_group
+            .vc_derivation_epoch_at(provider.storage(), GroupEpoch::from(0))
+            .expect("read the binding at epoch 0"),
+        Some(epoch_id),
+        "the binding at epoch 0 must name the derivation epoch the creation \
+         consumed"
     );
 }
 
@@ -457,6 +477,7 @@ fn repeated_registration_with_fresh_tree_punctures_it() {
         group_epoch: GroupEpoch::from(5),
         own_leaf_index: LeafNodeIndex::new(0),
         tree_size: TreeSize::from_leaf_count(2),
+        retention_policy: VcDerivationEpochRetentionPolicy::default(),
     };
 
     let mut tree_a = fresh_export_tree(ciphersuite, 1);
@@ -493,19 +514,16 @@ fn repeated_registration_with_fresh_tree_punctures_it() {
     .expect("repeat with the already-punctured tree");
     assert_eq!(id_c, id_a);
 
-    let registered: Option<RegisteredVcDerivationEpoch> = provider
+    let entries: Vec<VcDerivationEpochLogEntry> = provider
         .storage()
-        .registered_vc_derivation_epoch(&group_id)
-        .expect("read registration record");
-    assert_eq!(registered.expect("record must exist").epoch_id, id_a);
+        .vc_derivation_epoch_log_entries(&group_id)
+        .expect("read derivation epoch log entries");
+    assert_eq!(entries.len(), 1, "a repeat must not create a second row");
+    assert_eq!(entries[0].epoch_id(), &id_a);
 }
 
-/// A registration record whose [`EpochId`] does not match the export tree for
-/// the same group epoch is stale state from a group instance that was never
-/// fully stored, for example a crashed creation under a recycled group id. The
-/// registration derives fresh state and overwrites the record.
 #[openmls_test::openmls_test]
-fn stale_registration_record_is_overwritten() {
+fn stale_log_entry_is_appended_past() {
     let provider = Provider::default();
     let group_id = GroupId::from_slice(b"vc recycled group id");
     let params = || VcDerivationEpochParams {
@@ -514,8 +532,11 @@ fn stale_registration_record_is_overwritten() {
         group_epoch: GroupEpoch::from(0),
         own_leaf_index: LeafNodeIndex::new(0),
         tree_size: TreeSize::from_leaf_count(1),
+        retention_policy: VcDerivationEpochRetentionPolicy::default(),
     };
 
+    // An earlier group instance under the same group id registered an epoch
+    // and was never deleted, so its log entry is still stored.
     let mut tree_old = fresh_export_tree(ciphersuite, 2);
     let id_old = register_vc_derivation_epoch(
         provider.crypto(),
@@ -523,7 +544,7 @@ fn stale_registration_record_is_overwritten() {
         Some(&mut tree_old),
         params(),
     )
-    .expect("registration of the crashed instance");
+    .expect("registration of the earlier instance");
 
     let mut tree_new = fresh_export_tree(ciphersuite, 3);
     let id_new = register_vc_derivation_epoch(
@@ -535,9 +556,14 @@ fn stale_registration_record_is_overwritten() {
     .expect("registration of the recreated instance");
     assert_ne!(id_old, id_new);
 
-    let registered: Option<RegisteredVcDerivationEpoch> = provider
+    let mut entries: Vec<VcDerivationEpochLogEntry> = provider
         .storage()
-        .registered_vc_derivation_epoch(&group_id)
-        .expect("read registration record");
-    assert_eq!(registered.expect("record must exist").epoch_id, id_new);
+        .vc_derivation_epoch_log_entries(&group_id)
+        .expect("read derivation epoch log entries");
+    entries.sort_unstable_by_key(|entry| entry.sequence);
+    let epoch_ids: Vec<EpochId> = entries
+        .iter()
+        .map(|entry| entry.epoch_id().clone())
+        .collect();
+    assert_eq!(epoch_ids, vec![id_old, id_new]);
 }

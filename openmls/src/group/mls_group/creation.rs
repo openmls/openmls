@@ -9,12 +9,13 @@ use crate::{
         commit_builder::external_commits::ExternalCommitBuilder,
         errors::{ExportSecretError, ExternalCommitError, WelcomeError},
     },
+    key_packages::KeyPackage,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
     },
     schedule::{
-        psk::{store::ResumptionPskStore, PreSharedKeyId},
+        psk::{store::ResumptionPskStore, PreSharedKeyId, Psk, ResumptionPskUsage},
         EpochSecretsResult,
     },
     storage::OpenMlsProvider,
@@ -25,14 +26,32 @@ use crate::{
     },
 };
 
-use crate::key_packages::KeyPackage;
-
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
+    ciphersuite::hash_ref::KeyPackageRef,
     component::ComponentId,
-    framing::mls_auth_content::AuthenticatedContent,
-    group::mls_group::processing::{AppDataDictionaryUpdater, AppDataUpdates},
-    messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal},
+    components::vc_derivation_info::{
+        load_vc_epoch_state_and_tree, register_vc_derivation_epoch,
+        write_vc_emulation_binding_with_pruning, DerivationInfoTbe, EpochId,
+        RetainedKeyPackageMaterial, VcDerivationEpochParams, VcDerivationEpochState,
+        VcWelcomeMaterial, VirtualClientOperationType, VirtualClientsError,
+    },
+    framing::{mls_auth_content::AuthenticatedContent, ProtocolMessage, SafeAad, Sender},
+    group::{
+        config::PastEpochDeletionPolicy,
+        errors::{
+            ProcessMessageError, StageCommitError, VcExternalCommitJoinError,
+            VcGroupCreationJoinError,
+        },
+        mls_group::processing::{
+            committed_app_data_update_proposals, AppDataDictionaryUpdater, AppDataUpdates,
+        },
+        public_group::{errors::ApplyAppDataUpdateError, PublicGroup},
+    },
+    messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal, Proposal, ProposalOrRef},
+    prelude::mls_content::FramedContentBody,
+    schedule::{EpochSecrets, InitSecret},
+    treesync::node::leaf_node::LeafNodeSource,
 };
 
 impl MlsGroup {
@@ -152,125 +171,35 @@ impl ProcessedWelcome {
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        let ciphersuite = welcome.ciphersuite();
-        // Check this before touching any stored key material: `keys_for_welcome`
-        // consumes a matching (non-last-resort) key package.
-        provider
-            .crypto()
-            .supports(ciphersuite)
-            .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
+        Self::new_from_welcome_inner(provider, mls_group_config, welcome, None)
+    }
 
-        let (resumption_psk_store, key_material) =
-            keys_for_welcome(mls_group_config, &welcome, provider)?;
+    /// Like [`ProcessedWelcome::new_from_welcome`], but allows injecting a
+    /// resumption PSK secret that is not held in storage.
+    ///
+    /// This is used for subgroup branching (RFC 9420 §11.3): the branch PSK
+    /// secret comes from the parent group and is injected at the sentinel epoch
+    /// 0, where [`load_psks`](crate::schedule::psk::load_psks) looks it up for
+    /// branch usage. See [`StagedWelcome::build_from_branch`].
+    pub(crate) fn new_from_welcome_inner<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+        branch_info: Option<&BranchInfo>,
+    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
+        let (resumption_psk_store, key_material, group_secrets) =
+            decrypt_group_secrets(provider, mls_group_config, &welcome)?;
 
-        let Some(egs) =
-            welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
-        else {
-            return Err(WelcomeError::JoinerSecretNotFound);
-        };
-
-        // This check seems to be superfluous from the perspective of the RFC, but still doesn't
-        // seem like a bad idea. There is no local KeyPackage to compare against on the
-        // virtual-client path, where the derived material is implicitly the welcome's ciphersuite.
-        if let Some(key_package_bundle) = key_material.key_package_bundle() {
-            if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
-                let e = WelcomeError::CiphersuiteMismatch;
-                log::debug!("new_from_welcome {e:?}");
-                return Err(e);
-            }
-        }
-
-        let group_secrets = GroupSecrets::try_from_ciphertext(
-            key_material.init_private_key(),
-            egs.encrypted_group_secrets(),
-            welcome.encrypted_group_info(),
-            ciphersuite,
-            provider.crypto(),
-        )?;
-
-        // Validate PSKs
-        PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
-
-        let psk_secret = {
-            let psks = load_psks(
-                provider.storage(),
-                &resumption_psk_store,
-                &group_secrets.psks,
-            )?;
-
-            PskSecret::new(provider.crypto(), ciphersuite, psks)?
-        };
-
-        // prepare the key schedule
-        let mut key_schedule = KeySchedule::init(
-            ciphersuite,
-            provider.crypto(),
-            &group_secrets.joiner_secret,
-            psk_secret,
-        )?;
-
-        // derive the keys for decrypting the group info
-        let (welcome_key, welcome_nonce) = key_schedule
-            .welcome(provider.crypto(), ciphersuite)
-            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
-            .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
-            .map_err(LibraryError::unexpected_crypto_error)?;
-
-        let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
-            &welcome_key,
-            &welcome_nonce,
-            welcome.encrypted_group_info(),
-            &[],
-            provider.crypto(),
-        )?;
-
-        let serialized_group_context = verifiable_group_info
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-
-        // TODO #751: Implement PSK
-        key_schedule.add_context(provider.crypto(), &serialized_group_context)?;
-
-        let epoch_secrets = key_schedule.epoch_secrets(provider.crypto(), ciphersuite)?;
-
-        // On the bundle path, check the required capabilities and the
-        // ciphersuite against the local KeyPackage. On the virtual-client path
-        // there is no local KeyPackage: these are checked in staging against
-        // the own tree leaf instead.
-        if let Some(key_package_bundle) = key_material.key_package_bundle() {
-            if let Some(required_capabilities) =
-                verifiable_group_info.extensions().required_capabilities()
-            {
-                // Also check that our key package actually supports the extensions.
-                // As per the spec, the sender must have checked this. But you never know.
-                key_package_bundle
-                    .key_package()
-                    .leaf_node()
-                    .capabilities()
-                    .supports_required_capabilities(required_capabilities)?;
-            }
-
-            // https://validation.openmls.tech/#valn1404
-            // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
-            // KeyPackage.
-            if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite()
-            {
-                let e = WelcomeError::CiphersuiteMismatch;
-                log::debug!("new_from_welcome {e:?}");
-                return Err(e);
-            }
-        }
-
-        Ok(Self {
-            mls_group_config: mls_group_config.clone(),
-            ciphersuite,
-            group_secrets,
-            epoch_secrets,
-            verifiable_group_info,
+        finish_processed_welcome(
+            provider,
+            mls_group_config,
+            welcome.ciphersuite(),
             resumption_psk_store,
             key_material,
-        })
+            group_secrets,
+            &welcome,
+            branch_info,
+        )
     }
 
     /// Get a reference to the GroupInfo in this Welcome message.
@@ -513,18 +442,19 @@ impl ProcessedWelcome {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ExportSecretError> {
+    ) -> Result<ExportedSecret<ProcessedWelcomeExport>, ExportSecretError> {
         if key_length > u16::MAX as usize {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExportSecretError::KeyLengthTooLong);
         }
 
-        Ok(self
-            .epoch_secrets
-            .epoch_secrets
-            .exporter_secret()
-            .derive_exported_secret(self.ciphersuite, crypto, label, context, key_length)
-            .map_err(LibraryError::unexpected_crypto_error)?)
+        Ok(ExportedSecret::new(
+            self.epoch_secrets
+                .epoch_secrets
+                .exporter_secret()
+                .derive_exported_secret(self.ciphersuite, crypto, label, context, key_length)
+                .map_err(LibraryError::unexpected_crypto_error)?,
+        ))
     }
 
     /// Retrieve a reference to the own [`KeyPackage`] that was retrieved from local storage as
@@ -564,13 +494,96 @@ impl StagedWelcome {
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        // ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
         let processed_welcome =
             ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
 
         // processed_welcome.into_staged_welcome(provider, ratchet_tree)
         Ok(JoinBuilder::new(provider, processed_welcome))
+    }
+
+    /// Builder to create a [`StagedWelcome`] for a subgroup branched from a
+    /// parent group, as described in [RFC 9420 §11.3].
+    ///
+    /// The parent group's parameters are provided via `branch_info`, which the
+    /// parent exports with
+    /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info).
+    ///
+    /// In addition to the regular [`StagedWelcome::build_from_welcome`]
+    /// processing, this injects the parent's resumption PSK secret (which is
+    /// required to derive the subgroup's key schedule from the branch PSK) and
+    /// enforces the receiver-side checks the RFC mandates when joining a branched
+    /// subgroup.
+    ///
+    /// The branch PSK carried in the `Welcome` must reference the same parent
+    /// group and epoch as the supplied `branch_info`; otherwise the injected
+    /// resumption PSK secret would be for the wrong epoch. This is checked here,
+    /// before the secret is mixed into the key schedule, and fails with
+    /// [`WelcomeError::SubgroupParentMismatch`].
+    ///
+    /// The remaining checks run when [`JoinBuilder::build`] is called:
+    ///
+    /// * the protocol version and ciphersuite match the parent group,
+    /// * the subgroup is at epoch 1, and
+    /// * every member of the subgroup matches a member of the parent group
+    ///   (unless disabled via [`JoinBuilder::check_members`]).
+    ///
+    /// Matching members is left to the application by the RFC; here we use
+    /// credential equality for equivalent identifiers.
+    ///
+    /// If the receiver does not yet know which parent epoch the branch was taken
+    /// from (its own view of the parent group may have advanced), use
+    /// [`StagedWelcome::process_branch_welcome`] to read the parent reference
+    /// from the `Welcome` first and then pick the matching `branch_info`. That
+    /// path decrypts the `Welcome` only once. This one-shot method is a
+    /// convenience for callers that already know the parent epoch; it also
+    /// decrypts only once, via the same carrier.
+    ///
+    /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+    pub fn build_from_branch<'a, Provider: OpenMlsProvider>(
+        provider: &'a Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+        branch_info: BranchInfo,
+    ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
+        Self::process_branch_welcome(provider, mls_group_config, welcome)?
+            .build_from_branch(provider, branch_info)
+    }
+
+    /// Decrypt a subgroup-branch `Welcome` once so its parent reference can be
+    /// inspected before selecting the matching [`BranchInfo`].
+    ///
+    /// The branch PSK's parent group and epoch live inside the `Welcome`'s
+    /// encrypted `GroupSecrets`, so reading them requires decryption. This
+    /// returns a [`PendingBranchWelcome`] holding the decrypted state: call
+    /// [`PendingBranchWelcome::parent`] to read the parent `(group_id, epoch)`
+    /// the branch derives from (RFC 9420 §8.4), select the `BranchInfo` for that
+    /// parent epoch (e.g. from a sliding window of recent epochs), then finish
+    /// with [`PendingBranchWelcome::build_from_branch`] — without decrypting the
+    /// `Welcome` a second time.
+    ///
+    /// **Note:** like [`StagedWelcome::build_from_branch`], this path assumes a
+    /// subgroup-branch `Welcome`. It consumes the matching key package from
+    /// storage. If [`PendingBranchWelcome::parent`] returns `None` the `Welcome`
+    /// is not a branch welcome and the carrier cannot complete a regular join
+    /// (the key package is already consumed); use the normal
+    /// [`ProcessedWelcome`] flow when the message may not be a branch welcome.
+    pub fn process_branch_welcome<Provider: OpenMlsProvider>(
+        provider: &Provider,
+        mls_group_config: &MlsGroupJoinConfig,
+        welcome: Welcome,
+    ) -> Result<PendingBranchWelcome, WelcomeError<Provider::StorageError>> {
+        let (resumption_psk_store, key_material, group_secrets) =
+            decrypt_group_secrets(provider, mls_group_config, &welcome)?;
+
+        Ok(PendingBranchWelcome {
+            mls_group_config: mls_group_config.clone(),
+            ciphersuite: welcome.ciphersuite(),
+            welcome,
+            resumption_psk_store,
+            key_material,
+            group_secrets,
+        })
     }
 
     /// Returns the [`LeafNodeIndex`] of the group member that authored the [`Welcome`] message.
@@ -655,15 +668,53 @@ impl StagedWelcome {
         // group: the commit that created it added us, so it changed membership.
         #[cfg(feature = "virtual-clients-draft")]
         if self.emulation_group {
-            crate::components::vc_derivation_info::register_vc_derivation_epoch(
+            register_vc_derivation_epoch(
                 provider.crypto(),
                 provider.storage(),
                 Some(&mut application_export_tree),
-                crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
+                VcDerivationEpochParams::for_public_group(
                     &self.public_group,
                     self.own_leaf_index,
+                    self.mls_group_config
+                        .vc_derivation_epoch_retention_policy()
+                        .clone(),
                 ),
             )?;
+        }
+
+        // A join via a virtual-client KeyPackage lands on a leaf shared with
+        // sibling emulator clients. Bind the joined epoch to the leaf's
+        // derivation epoch, as an external-commit join does, so that messages
+        // siblings send from the shared leaf can be deprotected instead of
+        // being mistaken for our own echo.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(derivation_info) = self
+            .public_group
+            .leaf(self.own_leaf_index)
+            .map(LeafNode::vc_derivation_info)
+            .transpose()?
+            .flatten()
+        {
+            let epoch_id = derivation_info.epoch_id().clone();
+            let group_id = self.public_group.group_id();
+            provider
+                .storage()
+                .vc_derivation_epoch_state::<_, VcDerivationEpochState>(&epoch_id)
+                .map_err(WelcomeError::StorageError)?
+                .ok_or(WelcomeError::VirtualClientsError(
+                    VirtualClientsError::MissingDerivationEpochState,
+                ))?;
+            // Keep one binding per retained message-secrets epoch plus the
+            // current one, matching the other VC group-entry paths.
+            let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
+            write_vc_emulation_binding_with_pruning(
+                provider.storage(),
+                group_id,
+                self.public_group.group_context().epoch(),
+                epoch_id,
+                max_entries,
+            )
+            .map_err(WelcomeError::StorageError)?;
         }
 
         let past_epoch_deletion_policy = self.mls_group_config.past_epoch_deletion_policy().clone();
@@ -673,7 +724,7 @@ impl StagedWelcome {
             own_leaf_nodes: vec![],
             aad: vec![],
             #[cfg(feature = "extensions-draft")]
-            safe_aad: crate::framing::SafeAad::empty(),
+            safe_aad: SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group: self.public_group,
             group_epoch_secrets: self.group_epoch_secrets,
@@ -692,6 +743,28 @@ impl StagedWelcome {
         // resize the store
         mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
 
+        // A join through a virtual client's KeyPackage binds the joined epoch
+        // to the KeyPackage's derivation epoch. The binding takes over the
+        // epoch reference from the retained KeyPackage material, which
+        // `keys_for_welcome` left in storage for that purpose. (a bound group
+        // is required for the reuse-guard MUST).
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(material) = self.key_material.vc_welcome_material() {
+            let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
+            write_vc_emulation_binding_with_pruning(
+                provider.storage(),
+                mls_group.group_id(),
+                mls_group.epoch(),
+                material.epoch_id.clone(),
+                max_entries,
+            )
+            .map_err(WelcomeError::StorageError)?;
+            provider
+                .storage()
+                .delete_retained_key_package_material(&material.key_package_ref)
+                .map_err(WelcomeError::StorageError)?;
+        }
+
         mls_group
             .store(provider.storage())
             .map_err(WelcomeError::StorageError)?;
@@ -709,26 +782,286 @@ impl StagedWelcome {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ExportSecretError> {
+    ) -> Result<ExportedSecret<StagedWelcomeExport>, ExportSecretError> {
         if key_length > u16::MAX as usize {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExportSecretError::KeyLengthTooLong);
         }
 
-        Ok(self
-            .group_epoch_secrets
-            .exporter_secret()
-            .derive_exported_secret(
-                self.group_context().ciphersuite(),
-                crypto,
-                label,
-                context,
-                key_length,
-            )
-            .map_err(LibraryError::unexpected_crypto_error)?)
+        Ok(ExportedSecret::new(
+            self.group_epoch_secrets
+                .exporter_secret()
+                .derive_exported_secret(
+                    self.group_context().ciphersuite(),
+                    crypto,
+                    label,
+                    context,
+                    key_length,
+                )
+                .map_err(LibraryError::unexpected_crypto_error)?,
+        ))
     }
 }
 
+/// A subgroup-branch `Welcome` whose `GroupSecrets` have been decrypted but not
+/// yet staged.
+///
+/// This lets a receiver read which parent group and epoch the branch derives
+/// from before committing to a [`BranchInfo`].
+/// The decrypted state is carried here and reused when finishing the join.
+/// Create it with [`StagedWelcome::process_branch_welcome`], read the parent
+/// reference with [`Self::parent`], then finish with [`Self::build_from_branch`].
+pub struct PendingBranchWelcome {
+    mls_group_config: MlsGroupJoinConfig,
+    ciphersuite: Ciphersuite,
+    welcome: Welcome,
+    resumption_psk_store: ResumptionPskStore,
+    key_material: WelcomeKeyMaterial,
+    group_secrets: GroupSecrets,
+}
+
+impl PendingBranchWelcome {
+    /// The parent group and epoch this branch derives from, read from the branch
+    /// resumption PSK carried in the `Welcome`.
+    ///
+    /// Use this to select the [`BranchInfo`] exported from the matching parent
+    /// epoch before calling [`Self::build_from_branch`].
+    ///
+    /// Returns `None` if the `Welcome` carries no branch resumption PSK, i.e. it
+    /// is not a subgroup-branch welcome.
+    pub fn parent(&self) -> Option<(GroupId, GroupEpoch)> {
+        self.group_secrets
+            .psks
+            .iter()
+            .find_map(|id| match id.psk() {
+                Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Branch => {
+                    Some((r.psk_group_id().clone(), r.psk_epoch()))
+                }
+                _ => None,
+            })
+    }
+
+    /// Finish the subgroup-branch join with the selected [`BranchInfo`], reusing
+    /// the already-decrypted state (no second decrypt of the `Welcome`).
+    ///
+    /// The branch PSK's parent reference is checked against `branch_info` (see
+    /// [`StagedWelcome::build_from_branch`]); a `branch_info` from the wrong
+    /// parent epoch fails with [`WelcomeError::SubgroupParentMismatch`]. The
+    /// remaining receiver checks run when [`JoinBuilder::build`] is called.
+    pub fn build_from_branch<'a, Provider: OpenMlsProvider>(
+        self,
+        provider: &'a Provider,
+        branch_info: BranchInfo,
+    ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
+        let processed_welcome = finish_processed_welcome(
+            provider,
+            &self.mls_group_config,
+            self.ciphersuite,
+            self.resumption_psk_store,
+            self.key_material,
+            self.group_secrets,
+            &self.welcome,
+            Some(&branch_info),
+        )?;
+
+        Ok(JoinBuilder::new(provider, processed_welcome).with_branch_info(branch_info))
+    }
+}
+
+/// Decrypt a `Welcome`'s `GroupSecrets`.
+///
+/// This is the first half of welcome processing, shared between the regular
+/// join and the subgroup-branch peek (see [`PendingBranchWelcome`]). It consumes
+/// the matching (non-last-resort) key package from storage via
+/// [`keys_for_welcome`] and decrypts the encrypted group secrets addressed to
+/// it. Retained virtual-client material is read but not consumed, see
+/// [`keys_for_welcome`]. The branch resumption PSK secret is not injected
+/// here: injection and the parent-reference check happen in
+/// [`finish_processed_welcome`], so this step is identical on both paths.
+fn decrypt_group_secrets<Provider: OpenMlsProvider>(
+    provider: &Provider,
+    mls_group_config: &MlsGroupJoinConfig,
+    welcome: &Welcome,
+) -> Result<
+    (ResumptionPskStore, WelcomeKeyMaterial, GroupSecrets),
+    WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
+> {
+    let ciphersuite = welcome.ciphersuite();
+    // Check this before touching any stored key material: `keys_for_welcome`
+    // consumes a matching (non-last-resort) key package.
+    provider
+        .crypto()
+        .supports(ciphersuite)
+        .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
+
+    let (resumption_psk_store, key_material) =
+        keys_for_welcome(mls_group_config, welcome, provider)?;
+
+    let Some(egs) =
+        welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
+    else {
+        return Err(WelcomeError::JoinerSecretNotFound);
+    };
+
+    // This check seems to be superfluous from the perspective of the RFC, but still doesn't
+    // seem like a bad idea. There is no local KeyPackage to compare against on the
+    // virtual-client path, where the derived material is implicitly the welcome's ciphersuite.
+    if let Some(key_package_bundle) = key_material.key_package_bundle() {
+        if welcome.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+            let e = WelcomeError::CiphersuiteMismatch;
+            log::debug!("new_from_welcome {e:?}");
+            return Err(e);
+        }
+    }
+
+    let group_secrets = GroupSecrets::try_from_ciphertext(
+        key_material.init_private_key(),
+        egs.encrypted_group_secrets(),
+        welcome.encrypted_group_info(),
+        ciphersuite,
+        provider.crypto(),
+    )?;
+
+    // Validate PSKs
+    PreSharedKeyId::validate_in_welcome(&group_secrets.psks, ciphersuite)?;
+
+    Ok((resumption_psk_store, key_material, group_secrets))
+}
+
+/// Finish processing a `Welcome` from its already-decrypted `GroupSecrets`.
+///
+/// This is the second half of welcome processing (the tail of
+/// [`ProcessedWelcome::new_from_welcome_inner`]): it derives the key schedule,
+/// decrypts the group info, and runs the capability/ciphersuite checks,
+/// producing a [`ProcessedWelcome`]. It still needs the `welcome` for its
+/// encrypted group info.
+///
+/// For subgroup branching (`branch_info` set), the parent group's resumption
+/// PSK secret is injected at the sentinel epoch 0 and the branch PSK carried in
+/// the `Welcome` is checked to reference the same parent group and epoch as
+/// `branch_info` — both before the secret is mixed into the key schedule, so a
+/// wrong-epoch secret fails cleanly with [`WelcomeError::SubgroupParentMismatch`]
+/// rather than as an opaque group-info decryption failure further down.
+#[allow(clippy::too_many_arguments)]
+fn finish_processed_welcome<Provider: OpenMlsProvider>(
+    provider: &Provider,
+    mls_group_config: &MlsGroupJoinConfig,
+    ciphersuite: Ciphersuite,
+    mut resumption_psk_store: ResumptionPskStore,
+    key_material: WelcomeKeyMaterial,
+    group_secrets: GroupSecrets,
+    welcome: &Welcome,
+    branch_info: Option<&BranchInfo>,
+) -> Result<ProcessedWelcome, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
+    // For subgroup branching, inject the parent group's resumption PSK at
+    // the sentinel epoch 0 before the PSKs are loaded.
+    if let Some(branch_info) = branch_info {
+        resumption_psk_store.add(0.into(), branch_info.resumption_psk_secret().clone());
+    }
+
+    // When joining a subgroup branch, the branch resumption
+    // PSK carried in the Welcome must reference the same parent group and
+    // epoch the receiver is branching from. This must be checked here, before
+    // the injected PSK secret is mixed into the key schedule: a wrong-epoch
+    // secret would otherwise only surface as an opaque group-info decryption
+    // failure further down.
+    if let Some(branch_info) = branch_info {
+        let parent_matches = group_secrets
+            .psks
+            .iter()
+            .filter_map(|id| match id.psk() {
+                Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Branch => Some(r),
+                _ => None,
+            })
+            .any(|r| {
+                r.psk_group_id() == branch_info.group_id() && r.psk_epoch() == branch_info.epoch()
+            });
+        if !parent_matches {
+            return Err(WelcomeError::SubgroupParentMismatch);
+        }
+    }
+
+    let psk_secret = {
+        let psks = load_psks(
+            provider.storage(),
+            &resumption_psk_store,
+            &group_secrets.psks,
+        )?;
+
+        PskSecret::new(provider.crypto(), ciphersuite, psks)?
+    };
+
+    // prepare the key schedule
+    let mut key_schedule = KeySchedule::init(
+        ciphersuite,
+        provider.crypto(),
+        &group_secrets.joiner_secret,
+        psk_secret,
+    )?;
+
+    // derive the keys for decrypting the group info
+    let (welcome_key, welcome_nonce) = key_schedule
+        .welcome(provider.crypto(), ciphersuite)
+        .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?
+        .derive_welcome_key_nonce(provider.crypto(), ciphersuite)
+        .map_err(LibraryError::unexpected_crypto_error)?;
+
+    let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+        &welcome_key,
+        &welcome_nonce,
+        welcome.encrypted_group_info(),
+        &[],
+        provider.crypto(),
+    )?;
+
+    let serialized_group_context = verifiable_group_info
+        .group_context()
+        .tls_serialize_detached()
+        .map_err(LibraryError::missing_bound_check)?;
+
+    key_schedule.add_context(provider.crypto(), &serialized_group_context)?;
+
+    let epoch_secrets = key_schedule.epoch_secrets(provider.crypto(), ciphersuite)?;
+
+    // On the bundle path, check the required capabilities and the
+    // ciphersuite against the local KeyPackage. On the virtual-client path
+    // there is no local KeyPackage: these are checked in staging against
+    // the own tree leaf instead.
+    if let Some(key_package_bundle) = key_material.key_package_bundle() {
+        if let Some(required_capabilities) =
+            verifiable_group_info.extensions().required_capabilities()
+        {
+            // Also check that our key package actually supports the extensions.
+            // As per the spec, the sender must have checked this. But you never know.
+            key_package_bundle
+                .key_package()
+                .leaf_node()
+                .capabilities()
+                .supports_required_capabilities(required_capabilities)?;
+        }
+
+        // https://validation.openmls.tech/#valn1404
+        // Verify that the cipher_suite in the GroupInfo matches the cipher_suite in the
+        // KeyPackage.
+        if verifiable_group_info.ciphersuite() != key_package_bundle.key_package().ciphersuite() {
+            let e = WelcomeError::CiphersuiteMismatch;
+            log::debug!("new_from_welcome {e:?}");
+            return Err(e);
+        }
+    }
+
+    Ok(ProcessedWelcome {
+        mls_group_config: mls_group_config.clone(),
+        ciphersuite,
+        group_secrets,
+        epoch_secrets,
+        verifiable_group_info,
+        resumption_psk_store,
+        key_material,
+    })
+}
+
+/// Read keys for decrypting the welcome message.
 fn keys_for_welcome<Provider: OpenMlsProvider>(
     mls_group_config: &MlsGroupJoinConfig,
     welcome: &Welcome,
@@ -767,17 +1100,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         if let Some(material) =
             resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref)?
         {
-            provider
-                .storage()
-                .delete_retained_key_package_material(&hash_ref)
-                .map_err(|e| {
-                    use crate::components::vc_derivation_info::VirtualClientsError;
-
-                    log::error!(
-                        "vc: delete retained key package material in welcome failed: {e:?}"
-                    );
-                    VirtualClientsError::StorageError
-                })?;
+            // The retained material stays in storage for now.
             return Ok((
                 resumption_psk_store,
                 WelcomeKeyMaterial::with_vc_welcome_material(material),
@@ -799,18 +1122,13 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
 /// generation was already consumed once when the upload was processed, and the
 /// seed is enough to reproduce the keys.
 ///
-/// [`RetainedKeyPackageMaterial`]: crate::components::vc_derivation_info::RetainedKeyPackageMaterial
+/// [`RetainedKeyPackageMaterial`]: RetainedKeyPackageMaterial
 #[cfg(feature = "virtual-clients-draft")]
 pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
     provider: &Provider,
     ciphersuite: Ciphersuite,
-    hash_ref: &crate::ciphersuite::hash_ref::KeyPackageRef,
-) -> Result<
-    Option<crate::components::vc_derivation_info::VcWelcomeMaterial>,
-    WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
-> {
-    use crate::components::vc_derivation_info::{RetainedKeyPackageMaterial, VcWelcomeMaterial};
-
+    hash_ref: &KeyPackageRef,
+) -> Result<Option<VcWelcomeMaterial>, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
     let storage = provider.storage();
     let Some(material) = storage
         .retained_key_package_material::<_, RetainedKeyPackageMaterial>(hash_ref)
@@ -864,14 +1182,9 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
 fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     provider: &Provider,
     public_group: &PublicGroup,
-    material: &crate::components::vc_derivation_info::VcWelcomeMaterial,
+    material: &VcWelcomeMaterial,
 ) -> Result<LeafNodeIndex, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
-    use tls_codec::{DeserializeBytes as _, Serialize as _};
-
-    use crate::components::vc_derivation_info::{
-        DerivationInfo, DerivationInfoTbe, VcDerivationEpochState, VirtualClientOperationType,
-        VirtualClientsError, VC_COMPONENT_ID,
-    };
+    use tls_codec::Serialize as _;
 
     let crypto = provider.crypto();
     let derived_encryption_key = material.encryption_keypair.public_key().as_slice().to_vec();
@@ -890,16 +1203,9 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
             PublicTreeError::MalformedTree,
         ))?;
 
-    let derivation_info_bytes = own_leaf
-        .extensions()
-        .app_data_dictionary()
-        .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+    let derivation_info = own_leaf
+        .vc_derivation_info()?
         .ok_or(VirtualClientsError::VcComponentNotListed)?;
-    let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
-        .map_err(|e| {
-            log::error!("vc: welcome leaf derivation info deserialize failed: {e:?}");
-            VirtualClientsError::DerivationInfoMalformed
-        })?;
     if derivation_info.epoch_id() != &material.epoch_id {
         log::error!("vc: welcome leaf epoch id does not match the retained material");
         return Err(VirtualClientsError::DerivationInfoMalformed.into());
@@ -978,21 +1284,11 @@ impl MlsGroup {
         join_config: &MlsGroupJoinConfig,
         verifiable_group_info: VerifiableGroupInfo,
         ratchet_tree: Option<RatchetTreeIn>,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
-    ) -> Result<MlsGroup, crate::group::errors::VcGroupCreationJoinError<Provider::StorageError>>
-    {
-        use tls_codec::{DeserializeBytes as _, Serialize as _};
+        epoch_id: EpochId,
+    ) -> Result<MlsGroup, VcGroupCreationJoinError<Provider::StorageError>> {
+        use tls_codec::Serialize as _;
 
-        use crate::{
-            components::vc_derivation_info::{
-                load_vc_epoch_state_and_tree, DerivationInfo, DerivationInfoTbe,
-                VirtualClientOperationType, VirtualClientsError, VC_COMPONENT_ID,
-            },
-            group::errors::VcGroupCreationJoinError as Error,
-            group::public_group::PublicGroup,
-            schedule::EpochSecrets,
-            treesync::node::leaf_node::LeafNodeSource,
-        };
+        type Error<S> = VcGroupCreationJoinError<S>;
 
         // Resolve the ratchet tree (from the GroupInfo extension or the
         // argument) and verify the GroupInfo and tree.
@@ -1024,13 +1320,9 @@ impl MlsGroup {
         };
 
         // Read the creator leaf's derivation info and check the derivation epoch.
-        let derivation_info_bytes = creator_leaf
-            .extensions()
-            .app_data_dictionary()
-            .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+        let derivation_info = creator_leaf
+            .vc_derivation_info()?
             .ok_or(Error::MissingDerivationInfo)?;
-        let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
-            .map_err(|_| VirtualClientsError::DerivationInfoMalformed)?;
         if derivation_info.epoch_id() != &epoch_id {
             return Err(Error::EpochIdMismatch);
         }
@@ -1142,24 +1434,22 @@ impl MlsGroup {
         // Written before the group itself, so an error between the writes
         // cannot leave a loadable group without a binding (a bound group is
         // required for the reuse-guard MUST).
-        let mut bindings: crate::components::vc_derivation_info::VcEmulationBindings = provider
-            .storage()
-            .vc_emulation_bindings(public_group.group_id())
-            .map_err(Error::StorageError)?
-            .unwrap_or_default();
         let max_entries = message_secrets_store.max_epochs.saturating_add(1);
-        bindings.insert(public_group.group_context().epoch(), epoch_id, max_entries);
-        provider
-            .storage()
-            .write_vc_emulation_bindings(public_group.group_id(), &bindings)
-            .map_err(Error::StorageError)?;
+        write_vc_emulation_binding_with_pruning(
+            provider.storage(),
+            public_group.group_id(),
+            public_group.group_context().epoch(),
+            epoch_id,
+            max_entries,
+        )
+        .map_err(Error::StorageError)?;
 
         let mls_group = MlsGroup {
             mls_group_config: join_config.clone(),
             own_leaf_nodes: vec![],
             aad: vec![],
             #[cfg(feature = "extensions-draft")]
-            safe_aad: crate::framing::SafeAad::empty(),
+            safe_aad: SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group,
             group_epoch_secrets,
@@ -1249,26 +1539,10 @@ impl VcExternalCommitJoinBuilder {
         self,
         provider: &Provider,
         verifiable_group_info: VerifiableGroupInfo,
-        external_commit: impl Into<crate::framing::ProtocolMessage>,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
-    ) -> Result<
-        StagedVcExternalCommitJoin,
-        crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>,
-    > {
-        use tls_codec::DeserializeBytes as _;
-
-        use crate::{
-            components::vc_derivation_info::{
-                DerivationInfo, VirtualClientsError, VC_COMPONENT_ID,
-            },
-            framing::Sender,
-            group::config::PastEpochDeletionPolicy,
-            group::errors::{ProcessMessageError, VcExternalCommitJoinError as Error},
-            group::mls_group::processing::committed_app_data_update_proposals,
-            group::public_group::PublicGroup,
-            prelude::mls_content::FramedContentBody,
-            schedule::{EpochSecrets, InitSecret},
-        };
+        external_commit: impl Into<ProtocolMessage>,
+        epoch_id: EpochId,
+    ) -> Result<StagedVcExternalCommitJoin, VcExternalCommitJoinError<Provider::StorageError>> {
+        type Error<S> = VcExternalCommitJoinError<S>;
 
         let Self {
             join_config,
@@ -1324,7 +1598,7 @@ impl VcExternalCommitJoinBuilder {
             own_leaf_nodes: vec![],
             aad: vec![],
             #[cfg(feature = "extensions-draft")]
-            safe_aad: crate::framing::SafeAad::empty(),
+            safe_aad: SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group,
             group_epoch_secrets,
@@ -1360,14 +1634,13 @@ impl VcExternalCommitJoinBuilder {
         // secret generation: presence and the emulation epoch binding are
         // validated here, decryption and the consume-once secret derivation
         // happen in `StagedVcExternalCommitJoin::into_group`.
-        let derivation_info_bytes = commit
+        let derivation_info = commit
             .path
             .as_ref()
-            .and_then(|path| path.leaf_node().extensions().app_data_dictionary())
-            .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+            .map(|path| path.leaf_node().vc_derivation_info())
+            .transpose()?
+            .flatten()
             .ok_or(Error::MissingDerivationInfo)?;
-        let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
-            .map_err(|_| VirtualClientsError::DerivationInfoMalformed)?;
         if derivation_info.epoch_id() != &epoch_id {
             return Err(Error::EpochIdMismatch);
         }
@@ -1455,11 +1728,6 @@ impl StagedVcExternalCommitJoin {
         &self,
         component_id: ComponentId,
     ) -> impl Iterator<Item = &AppEphemeralProposal> {
-        use crate::{
-            messages::proposals::{Proposal, ProposalOrRef},
-            prelude::mls_content::FramedContentBody,
-        };
-
         let proposals = match self.content.content() {
             FramedContentBody::Commit(commit) => commit.proposals.as_slice(),
             // `process_commit` only constructs staged joins from commits.
@@ -1504,13 +1772,8 @@ impl StagedVcExternalCommitJoin {
     pub fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
-    ) -> Result<MlsGroup, crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>>
-    {
-        use crate::{
-            group::errors::{StageCommitError, VcExternalCommitJoinError as Error},
-            group::public_group::errors::ApplyAppDataUpdateError,
-            prelude::mls_content::FramedContentBody,
-        };
+    ) -> Result<MlsGroup, VcExternalCommitJoinError<Provider::StorageError>> {
+        type Error<S> = VcExternalCommitJoinError<S>;
 
         let Self {
             mut group,
@@ -1583,6 +1846,12 @@ pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
     ratchet_tree: Option<RatchetTreeIn>,
     validate_lifetimes: LeafNodeLifetimePolicy,
     replace_old_group: bool,
+    /// Set when joining a subgroup branch (see [`StagedWelcome::build_from_branch`]).
+    /// Triggers the receiver checks in [`Self::build`].
+    branch: Option<BranchInfo>,
+    /// Whether to check that every subgroup member is also a parent-group
+    /// member. Only relevant when [`Self::branch`] is set. Defaults to `true`.
+    check_members: bool,
 }
 
 impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
@@ -1594,7 +1863,26 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             ratchet_tree: None,
             replace_old_group: false,
             validate_lifetimes: LeafNodeLifetimePolicy::Verify,
+            branch: None,
+            check_members: true,
         }
+    }
+
+    /// Seed this builder with the parent group's [`BranchInfo`], turning it into
+    /// a subgroup-branch join (see [`StagedWelcome::build_from_branch`]).
+    fn with_branch_info(mut self, branch_info: BranchInfo) -> Self {
+        self.branch = Some(branch_info);
+        self
+    }
+
+    /// When joining a subgroup branch, controls whether [`Self::build`] checks
+    /// that every subgroup member is also a member of the parent group receiver
+    /// check (c)). Defaults to `true`.
+    ///
+    /// This has no effect on a regular (non-branch) join.
+    pub fn check_members(mut self, check_members: bool) -> Self {
+        self.check_members = check_members;
+        self
     }
 
     /// The ratchet tree to use for the new group.
@@ -1627,11 +1915,43 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
 
     /// Build the [`StagedWelcome`].
     pub fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
-        self.processed_welcome.into_staged_welcome_inner(
+        // Receiver checks (a) and (b): when joining a subgroup branch, the
+        // version and ciphersuite must match the parent group, and the subgroup
+        // must be at epoch 1.
+        if let Some(branch_info) = &self.branch {
+            let group_info = self.processed_welcome.unverified_group_info();
+            if group_info.group_context().protocol_version() != branch_info.version()
+                || group_info.ciphersuite() != branch_info.ciphersuite()
+            {
+                return Err(WelcomeError::SubgroupParameterMismatch);
+            }
+            if group_info.group_context().epoch().as_u64() != 1 {
+                return Err(WelcomeError::SubgroupEpochInvalid);
+            }
+        }
+
+        let staged_welcome = self.processed_welcome.into_staged_welcome_inner(
             self.provider,
             self.ratchet_tree,
             self.validate_lifetimes,
             self.replace_old_group,
-        )
+        )?;
+
+        // Receiver check (c): every LeafNode in the subgroup must
+        // match a LeafNode in the parent group.
+        if let Some(branch_info) = &self.branch {
+            if self.check_members {
+                for member in staged_welcome.members() {
+                    if !branch_info
+                        .member_credentials()
+                        .contains(&member.credential)
+                    {
+                        return Err(WelcomeError::SubgroupLeafMismatch);
+                    }
+                }
+            }
+        }
+
+        Ok(staged_welcome)
     }
 }
