@@ -9,6 +9,7 @@ use crate::{
         commit_builder::external_commits::ExternalCommitBuilder,
         errors::{ExportSecretError, ExternalCommitError, WelcomeError},
     },
+    key_packages::KeyPackage,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         Welcome,
@@ -25,14 +26,32 @@ use crate::{
     },
 };
 
-use crate::key_packages::KeyPackage;
-
 #[cfg(feature = "virtual-clients-draft")]
 use crate::{
+    ciphersuite::hash_ref::KeyPackageRef,
     component::ComponentId,
-    framing::mls_auth_content::AuthenticatedContent,
-    group::mls_group::processing::{AppDataDictionaryUpdater, AppDataUpdates},
-    messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal},
+    components::vc_derivation_info::{
+        load_vc_epoch_state_and_tree, register_vc_derivation_epoch,
+        write_vc_emulation_binding_with_pruning, DerivationInfoTbe, EpochId,
+        RetainedKeyPackageMaterial, VcDerivationEpochParams, VcDerivationEpochState,
+        VcWelcomeMaterial, VirtualClientOperationType, VirtualClientsError,
+    },
+    framing::{mls_auth_content::AuthenticatedContent, ProtocolMessage, SafeAad, Sender},
+    group::{
+        config::PastEpochDeletionPolicy,
+        errors::{
+            ProcessMessageError, StageCommitError, VcExternalCommitJoinError,
+            VcGroupCreationJoinError,
+        },
+        mls_group::processing::{
+            committed_app_data_update_proposals, AppDataDictionaryUpdater, AppDataUpdates,
+        },
+        public_group::{errors::ApplyAppDataUpdateError, PublicGroup},
+    },
+    messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal, Proposal, ProposalOrRef},
+    prelude::mls_content::FramedContentBody,
+    schedule::{EpochSecrets, InitSecret},
+    treesync::node::leaf_node::LeafNodeSource,
 };
 
 impl MlsGroup {
@@ -649,11 +668,11 @@ impl StagedWelcome {
         // group: the commit that created it added us, so it changed membership.
         #[cfg(feature = "virtual-clients-draft")]
         if self.emulation_group {
-            crate::components::vc_derivation_info::register_vc_derivation_epoch(
+            register_vc_derivation_epoch(
                 provider.crypto(),
                 provider.storage(),
                 Some(&mut application_export_tree),
-                crate::components::vc_derivation_info::VcDerivationEpochParams::for_public_group(
+                VcDerivationEpochParams::for_public_group(
                     &self.public_group,
                     self.own_leaf_index,
                     self.mls_group_config
@@ -676,9 +695,6 @@ impl StagedWelcome {
             .transpose()?
             .flatten()
         {
-            use crate::components::vc_derivation_info::VcDerivationEpochState;
-            use crate::components::vc_derivation_info::VirtualClientsError;
-
             let epoch_id = derivation_info.epoch_id().clone();
             let group_id = self.public_group.group_id();
             provider
@@ -691,7 +707,7 @@ impl StagedWelcome {
             // Keep one binding per retained message-secrets epoch plus the
             // current one, matching the other VC group-entry paths.
             let max_entries = self.message_secrets_store.max_epochs.saturating_add(1);
-            crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+            write_vc_emulation_binding_with_pruning(
                 provider.storage(),
                 group_id,
                 self.public_group.group_context().epoch(),
@@ -708,7 +724,7 @@ impl StagedWelcome {
             own_leaf_nodes: vec![],
             aad: vec![],
             #[cfg(feature = "extensions-draft")]
-            safe_aad: crate::framing::SafeAad::empty(),
+            safe_aad: SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group: self.public_group,
             group_epoch_secrets: self.group_epoch_secrets,
@@ -735,7 +751,7 @@ impl StagedWelcome {
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(material) = self.key_material.vc_welcome_material() {
             let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
-            crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+            write_vc_emulation_binding_with_pruning(
                 provider.storage(),
                 mls_group.group_id(),
                 mls_group.epoch(),
@@ -1106,18 +1122,13 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
 /// generation was already consumed once when the upload was processed, and the
 /// seed is enough to reproduce the keys.
 ///
-/// [`RetainedKeyPackageMaterial`]: crate::components::vc_derivation_info::RetainedKeyPackageMaterial
+/// [`RetainedKeyPackageMaterial`]: RetainedKeyPackageMaterial
 #[cfg(feature = "virtual-clients-draft")]
 pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
     provider: &Provider,
     ciphersuite: Ciphersuite,
-    hash_ref: &crate::ciphersuite::hash_ref::KeyPackageRef,
-) -> Result<
-    Option<crate::components::vc_derivation_info::VcWelcomeMaterial>,
-    WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
-> {
-    use crate::components::vc_derivation_info::{RetainedKeyPackageMaterial, VcWelcomeMaterial};
-
+    hash_ref: &KeyPackageRef,
+) -> Result<Option<VcWelcomeMaterial>, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
     let storage = provider.storage();
     let Some(material) = storage
         .retained_key_package_material::<_, RetainedKeyPackageMaterial>(hash_ref)
@@ -1171,13 +1182,9 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
 fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     provider: &Provider,
     public_group: &PublicGroup,
-    material: &crate::components::vc_derivation_info::VcWelcomeMaterial,
+    material: &VcWelcomeMaterial,
 ) -> Result<LeafNodeIndex, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
     use tls_codec::Serialize as _;
-
-    use crate::components::vc_derivation_info::{
-        DerivationInfoTbe, VcDerivationEpochState, VirtualClientOperationType, VirtualClientsError,
-    };
 
     let crypto = provider.crypto();
     let derived_encryption_key = material.encryption_keypair.public_key().as_slice().to_vec();
@@ -1277,21 +1284,11 @@ impl MlsGroup {
         join_config: &MlsGroupJoinConfig,
         verifiable_group_info: VerifiableGroupInfo,
         ratchet_tree: Option<RatchetTreeIn>,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
-    ) -> Result<MlsGroup, crate::group::errors::VcGroupCreationJoinError<Provider::StorageError>>
-    {
+        epoch_id: EpochId,
+    ) -> Result<MlsGroup, VcGroupCreationJoinError<Provider::StorageError>> {
         use tls_codec::Serialize as _;
 
-        use crate::{
-            components::vc_derivation_info::{
-                load_vc_epoch_state_and_tree, DerivationInfoTbe, VirtualClientOperationType,
-                VirtualClientsError,
-            },
-            group::errors::VcGroupCreationJoinError as Error,
-            group::public_group::PublicGroup,
-            schedule::EpochSecrets,
-            treesync::node::leaf_node::LeafNodeSource,
-        };
+        type Error<S> = VcGroupCreationJoinError<S>;
 
         // Resolve the ratchet tree (from the GroupInfo extension or the
         // argument) and verify the GroupInfo and tree.
@@ -1438,7 +1435,7 @@ impl MlsGroup {
         // cannot leave a loadable group without a binding (a bound group is
         // required for the reuse-guard MUST).
         let max_entries = message_secrets_store.max_epochs.saturating_add(1);
-        crate::components::vc_derivation_info::write_vc_emulation_binding_with_pruning(
+        write_vc_emulation_binding_with_pruning(
             provider.storage(),
             public_group.group_id(),
             public_group.group_context().epoch(),
@@ -1452,7 +1449,7 @@ impl MlsGroup {
             own_leaf_nodes: vec![],
             aad: vec![],
             #[cfg(feature = "extensions-draft")]
-            safe_aad: crate::framing::SafeAad::empty(),
+            safe_aad: SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group,
             group_epoch_secrets,
@@ -1542,21 +1539,10 @@ impl VcExternalCommitJoinBuilder {
         self,
         provider: &Provider,
         verifiable_group_info: VerifiableGroupInfo,
-        external_commit: impl Into<crate::framing::ProtocolMessage>,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
-    ) -> Result<
-        StagedVcExternalCommitJoin,
-        crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>,
-    > {
-        use crate::{
-            framing::Sender,
-            group::config::PastEpochDeletionPolicy,
-            group::errors::{ProcessMessageError, VcExternalCommitJoinError as Error},
-            group::mls_group::processing::committed_app_data_update_proposals,
-            group::public_group::PublicGroup,
-            prelude::mls_content::FramedContentBody,
-            schedule::{EpochSecrets, InitSecret},
-        };
+        external_commit: impl Into<ProtocolMessage>,
+        epoch_id: EpochId,
+    ) -> Result<StagedVcExternalCommitJoin, VcExternalCommitJoinError<Provider::StorageError>> {
+        type Error<S> = VcExternalCommitJoinError<S>;
 
         let Self {
             join_config,
@@ -1612,7 +1598,7 @@ impl VcExternalCommitJoinBuilder {
             own_leaf_nodes: vec![],
             aad: vec![],
             #[cfg(feature = "extensions-draft")]
-            safe_aad: crate::framing::SafeAad::empty(),
+            safe_aad: SafeAad::empty(),
             group_state: MlsGroupState::Operational,
             public_group,
             group_epoch_secrets,
@@ -1742,11 +1728,6 @@ impl StagedVcExternalCommitJoin {
         &self,
         component_id: ComponentId,
     ) -> impl Iterator<Item = &AppEphemeralProposal> {
-        use crate::{
-            messages::proposals::{Proposal, ProposalOrRef},
-            prelude::mls_content::FramedContentBody,
-        };
-
         let proposals = match self.content.content() {
             FramedContentBody::Commit(commit) => commit.proposals.as_slice(),
             // `process_commit` only constructs staged joins from commits.
@@ -1791,13 +1772,8 @@ impl StagedVcExternalCommitJoin {
     pub fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
-    ) -> Result<MlsGroup, crate::group::errors::VcExternalCommitJoinError<Provider::StorageError>>
-    {
-        use crate::{
-            group::errors::{StageCommitError, VcExternalCommitJoinError as Error},
-            group::public_group::errors::ApplyAppDataUpdateError,
-            prelude::mls_content::FramedContentBody,
-        };
+    ) -> Result<MlsGroup, VcExternalCommitJoinError<Provider::StorageError>> {
+        type Error<S> = VcExternalCommitJoinError<S>;
 
         let Self {
             mut group,
