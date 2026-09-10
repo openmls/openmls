@@ -67,7 +67,7 @@ impl OpenMlsCrypto for CryptoProvider {
         }?;
 
         match ciphersuite.signature_algorithm() {
-            SignatureScheme::ED25519 => Ok(()),
+            SignatureScheme::ED25519 | SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(()),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
                 Ok(())
@@ -115,8 +115,7 @@ impl OpenMlsCrypto for CryptoProvider {
             Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
-            // TODO: enable
-            //Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         ]
     }
 
@@ -288,6 +287,30 @@ impl OpenMlsCrypto for CryptoProvider {
 
                 Ok((sk.to_vec(), pk.to_vec()))
             }
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                // Like the Ed25519 arm, sample through the DRBG so a reseed
+                // failure is propagated as an error. Rejection-sample until the
+                // scalar is a valid P-256 private key.
+                const LIMIT: usize = 100;
+                let mut candidate = [0u8; 32];
+                for _ in 0..LIMIT {
+                    self.fill_random(&mut candidate)?;
+                    if libcrux_ecdsa::p256::PrivateKey::try_from(&candidate[..]).is_ok() {
+                        // Same wire format as the RustCrypto provider: the
+                        // private key is the raw 32-byte scalar, the public key
+                        // the uncompressed SEC1 point.
+                        let pk = libcrux_ecdh::p256_secret_to_public(
+                            &libcrux_ecdh::P256PrivateKey(candidate),
+                        )
+                        .map_err(|_| CryptoError::SigningError)?;
+                        let mut pk_sec1 = Vec::with_capacity(65);
+                        pk_sec1.push(0x04);
+                        pk_sec1.extend_from_slice(pk.as_ref());
+                        return Ok((candidate.to_vec(), pk_sec1));
+                    }
+                }
+                Err(CryptoError::SigningError)
+            }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
                 // Same wire format as the RustCrypto provider: the private key
@@ -320,6 +343,18 @@ impl OpenMlsCrypto for CryptoProvider {
                     _ => CryptoError::SigningError,
                 })
             }
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                let pk = libcrux_ecdsa::p256::uncompressed_to_coordinates(pk)
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                let (r, s) = ecdsa_der::decode(signature)?;
+                libcrux_ecdsa::p256::verify(
+                    libcrux_ecdsa::DigestAlgorithm::Sha256,
+                    data,
+                    &libcrux_ecdsa::p256::Signature::from_raw(r, s),
+                    &libcrux_ecdsa::p256::PublicKey(pk),
+                )
+                .map_err(|_| CryptoError::InvalidSignature)
+            }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
                 ml_dsa::verify(alg, pk, data, signature)
@@ -335,6 +370,24 @@ impl OpenMlsCrypto for CryptoProvider {
                 libcrux_ed25519::sign(data, key)
                     .map_err(|_| CryptoError::SigningError)
                     .map(|sig| sig.to_vec())
+            }
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                let sk = libcrux_ecdsa::p256::PrivateKey::try_from(key)
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                // The ECDSA nonce is rejection-sampled inside libcrux from the
+                // OS rng (the API takes an infallible `CryptoRng`, which the
+                // DRBG behind `fill_random` cannot provide without panicking on
+                // reseed failure).
+                let mut rng = rand::rand_core::UnwrapErr(rand::rngs::SysRng);
+                let signature = libcrux_ecdsa::p256::rand::sign(
+                    libcrux_ecdsa::DigestAlgorithm::Sha256,
+                    data,
+                    &sk,
+                    &mut rng,
+                )
+                .map_err(|_| CryptoError::SigningError)?;
+                let (r, s) = signature.as_bytes();
+                Ok(ecdsa_der::encode(r, s))
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
@@ -773,5 +826,110 @@ mod ml_dsa {
             )
             .map_err(|_| CryptoError::InvalidSignature)
         })
+    }
+}
+
+/// Minimal DER encoding of an `ECDSA-Sig-Value` (SEQUENCE of two INTEGERs), the
+/// signature format MLS uses for ECDSA (matching the RustCrypto provider).
+mod ecdsa_der {
+    use openmls_traits::types::CryptoError;
+
+    /// Strip leading zeros, then prepend one zero byte if the high bit is set,
+    /// as DER's minimal-length INTEGER encoding requires.
+    fn push_integer(out: &mut Vec<u8>, scalar: &[u8; 32]) {
+        let start = scalar.iter().position(|&b| b != 0).unwrap_or(31);
+        let body = &scalar[start..];
+        out.push(0x02);
+        if body[0] & 0x80 != 0 {
+            out.push(body.len() as u8 + 1);
+            out.push(0x00);
+        } else {
+            out.push(body.len() as u8);
+        }
+        out.extend_from_slice(body);
+    }
+
+    pub(super) fn encode(r: &[u8; 32], s: &[u8; 32]) -> Vec<u8> {
+        let mut body = Vec::with_capacity(70);
+        push_integer(&mut body, r);
+        push_integer(&mut body, s);
+        let mut out = Vec::with_capacity(body.len() + 2);
+        out.push(0x30);
+        out.push(body.len() as u8);
+        out.extend_from_slice(&body);
+        out
+    }
+
+    /// One INTEGER, returned left-padded to 32 bytes. Enforces DER's minimal
+    /// encoding.
+    fn parse_integer(input: &[u8]) -> Result<([u8; 32], &[u8]), CryptoError> {
+        let [0x02, len, rest @ ..] = input else {
+            return Err(CryptoError::InvalidSignature);
+        };
+        let len = *len as usize;
+        if len == 0 || len > rest.len() {
+            return Err(CryptoError::InvalidSignature);
+        }
+        let (body, rest) = rest.split_at(len);
+        // No negative scalars, no non-minimal encodings. A single 0x00 byte
+        // is the minimal encoding of zero; a 0x00 prefix is only allowed when
+        // the next byte has its high bit set.
+        if body[0] & 0x80 != 0 || (body[0] == 0 && len > 1 && body[1] & 0x80 == 0) {
+            return Err(CryptoError::InvalidSignature);
+        }
+        let body = if body[0] == 0 { &body[1..] } else { body };
+        if body.len() > 32 {
+            return Err(CryptoError::InvalidSignature);
+        }
+        let mut scalar = [0u8; 32];
+        scalar[32 - body.len()..].copy_from_slice(body);
+        Ok((scalar, rest))
+    }
+
+    pub(super) fn decode(input: &[u8]) -> Result<([u8; 32], [u8; 32]), CryptoError> {
+        let [0x30, len, body @ ..] = input else {
+            return Err(CryptoError::InvalidSignature);
+        };
+        if *len as usize != body.len() {
+            return Err(CryptoError::InvalidSignature);
+        }
+        let (r, rest) = parse_integer(body)?;
+        let (s, rest) = parse_integer(rest)?;
+        if !rest.is_empty() {
+            return Err(CryptoError::InvalidSignature);
+        }
+        Ok((r, s))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn round_trip_edge_scalars() {
+            for (r, s) in [
+                ([0u8; 32], [0u8; 32]),
+                ([0xffu8; 32], [0x7fu8; 32]),
+                (
+                    {
+                        let mut a = [0u8; 32];
+                        a[31] = 1;
+                        a
+                    },
+                    [0x80u8; 32],
+                ),
+            ] {
+                let der = super::encode(&r, &s);
+                assert_eq!(super::decode(&der).unwrap(), (r, s));
+            }
+        }
+
+        #[test]
+        fn rejects_trailing_bytes_and_non_minimal() {
+            let mut der = super::encode(&[7u8; 32], &[9u8; 32]);
+            der.push(0);
+            assert!(super::decode(&der).is_err());
+            // Non-minimal: 0x00 prefix on a low byte.
+            let bad = [0x30, 0x08, 0x02, 0x02, 0x00, 0x01, 0x02, 0x02, 0x00, 0x01];
+            assert!(super::decode(&bad).is_err());
+        }
     }
 }

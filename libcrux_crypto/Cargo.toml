@@ -18,6 +18,8 @@ libcrux-sha2 = { version = "0.0.8" }
 libcrux-hmac = { version = "0.0.8" }
 libcrux-hmac-drbg = { version = "0.0.1", features = ["rand"] }
 libcrux-traits = { version = "0.0.8" }
+libcrux-ecdsa = { version = "0.0.8", features = ["rand"] }
+libcrux-ecdh = { version = "0.0.8" }
 libcrux-ml-dsa = { version = "0.0.10", optional = true }
 
 openmls_traits = { workspace = true }
