@@ -9,7 +9,7 @@ use crate::{
         vc_commit_data::{VirtualClientAction, VirtualClientCommitData},
         vc_derivation_info::{
             load_vc_epoch_state_and_tree, register_vc_derivation_epoch, EpochId,
-            RegisteredVcDerivationEpoch, VcDerivationEpochParams, VirtualClientOperationType,
+            VcDerivationEpochLogEntry, VcDerivationEpochParams, VirtualClientOperationType,
             VC_COMPONENT_ID,
         },
     },
@@ -20,7 +20,8 @@ use crate::{
     framing::{MlsMessageIn, ProcessedMessageContent},
     group::{
         GroupContext, GroupEpoch, GroupId, MlsGroup, MlsGroupCreateConfig,
-        MlsGroupCreateConfigBuilder, StagedWelcome, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        MlsGroupCreateConfigBuilder, StagedWelcome, VcDerivationEpochRetentionPolicy,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::KeyPackage,
     messages::PathSecret,
@@ -476,6 +477,7 @@ fn repeated_registration_with_fresh_tree_punctures_it() {
         group_epoch: GroupEpoch::from(5),
         own_leaf_index: LeafNodeIndex::new(0),
         tree_size: TreeSize::from_leaf_count(2),
+        retention_policy: VcDerivationEpochRetentionPolicy::default(),
     };
 
     let mut tree_a = fresh_export_tree(ciphersuite, 1);
@@ -512,19 +514,16 @@ fn repeated_registration_with_fresh_tree_punctures_it() {
     .expect("repeat with the already-punctured tree");
     assert_eq!(id_c, id_a);
 
-    let registered: Option<RegisteredVcDerivationEpoch> = provider
+    let entries: Vec<VcDerivationEpochLogEntry> = provider
         .storage()
-        .registered_vc_derivation_epoch(&group_id)
-        .expect("read registration record");
-    assert_eq!(registered.expect("record must exist").epoch_id, id_a);
+        .vc_derivation_epoch_log_entries(&group_id)
+        .expect("read derivation epoch log entries");
+    assert_eq!(entries.len(), 1, "a repeat must not create a second row");
+    assert_eq!(entries[0].epoch_id(), &id_a);
 }
 
-/// A registration record whose [`EpochId`] does not match the export tree for
-/// the same group epoch is stale state from a group instance that was never
-/// fully stored, for example a crashed creation under a recycled group id. The
-/// registration derives fresh state and overwrites the record.
 #[openmls_test::openmls_test]
-fn stale_registration_record_is_overwritten() {
+fn stale_log_entry_is_appended_past() {
     let provider = Provider::default();
     let group_id = GroupId::from_slice(b"vc recycled group id");
     let params = || VcDerivationEpochParams {
@@ -533,8 +532,11 @@ fn stale_registration_record_is_overwritten() {
         group_epoch: GroupEpoch::from(0),
         own_leaf_index: LeafNodeIndex::new(0),
         tree_size: TreeSize::from_leaf_count(1),
+        retention_policy: VcDerivationEpochRetentionPolicy::default(),
     };
 
+    // An earlier group instance under the same group id registered an epoch
+    // and was never deleted, so its log entry is still stored.
     let mut tree_old = fresh_export_tree(ciphersuite, 2);
     let id_old = register_vc_derivation_epoch(
         provider.crypto(),
@@ -542,7 +544,7 @@ fn stale_registration_record_is_overwritten() {
         Some(&mut tree_old),
         params(),
     )
-    .expect("registration of the crashed instance");
+    .expect("registration of the earlier instance");
 
     let mut tree_new = fresh_export_tree(ciphersuite, 3);
     let id_new = register_vc_derivation_epoch(
@@ -554,9 +556,14 @@ fn stale_registration_record_is_overwritten() {
     .expect("registration of the recreated instance");
     assert_ne!(id_old, id_new);
 
-    let registered: Option<RegisteredVcDerivationEpoch> = provider
+    let mut entries: Vec<VcDerivationEpochLogEntry> = provider
         .storage()
-        .registered_vc_derivation_epoch(&group_id)
-        .expect("read registration record");
-    assert_eq!(registered.expect("record must exist").epoch_id, id_new);
+        .vc_derivation_epoch_log_entries(&group_id)
+        .expect("read derivation epoch log entries");
+    entries.sort_unstable_by_key(|entry| entry.sequence);
+    let epoch_ids: Vec<EpochId> = entries
+        .iter()
+        .map(|entry| entry.epoch_id().clone())
+        .collect();
+    assert_eq!(epoch_ids, vec![id_old, id_new]);
 }

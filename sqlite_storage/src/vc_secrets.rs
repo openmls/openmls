@@ -1,7 +1,8 @@
 use std::marker::PhantomData;
 
 use openmls_traits::storage::{
-    traits::GroupId as GroupIdTrait, traits::HashReference as HashReferenceTrait,
+    traits::EpochKey as EpochKeyTrait, traits::GroupId as GroupIdTrait,
+    traits::HashReference as HashReferenceTrait,
     traits::VcDerivationEpochState as VcDerivationEpochStateTrait,
     traits::VcEpochId as VcEpochIdTrait, Entity as EntityTrait, Key,
 };
@@ -89,25 +90,6 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
         .optional()
     }
 
-    pub(super) fn delete_vc_derivation_epoch_state<C: Codec>(
-        &self,
-        connection: &rusqlite::Connection,
-    ) -> Result<(), rusqlite::Error> {
-        let Self(epoch_id) = self;
-        connection.execute(
-            "DELETE FROM vc_derivation_epoch_secrets
-            WHERE epoch_id = ?1
-                AND provider_version = ?2
-                AND secret_type = ?3",
-            params![
-                KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
-                STORAGE_PROVIDER_VERSION,
-                SecretType::DerivationEpochState
-            ],
-        )?;
-        Ok(())
-    }
-
     pub(super) fn load_vc_operation_tree<
         C: Codec,
         VcOperationTree: EntityTrait<STORAGE_PROVIDER_VERSION>,
@@ -134,177 +116,193 @@ impl<VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, VcE
         )
         .optional()
     }
-
-    pub(super) fn delete_vc_operation_tree<C: Codec>(
-        &self,
-        connection: &rusqlite::Connection,
-    ) -> Result<(), rusqlite::Error> {
-        let Self(epoch_id) = self;
-        connection.execute(
-            "DELETE FROM vc_operation_trees
-            WHERE epoch_id = ?1
-                AND provider_version = ?2",
-            params![
-                KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
-                STORAGE_PROVIDER_VERSION
-            ],
-        )?;
-        Ok(())
-    }
-
-    /// Runs an `EXISTS` query that takes this epoch id as `?1` and the
-    /// provider version as `?2`.
-    fn epoch_reference_exists<C: Codec>(
-        &self,
-        connection: &rusqlite::Connection,
-        exists_query: &str,
-    ) -> Result<bool, rusqlite::Error> {
-        let Self(epoch_id) = self;
-        let mut stmt = connection.prepare(exists_query)?;
-        stmt.query_row(
-            params![
-                KeyRefWrapper::<C, VcEpochId>(epoch_id, PhantomData),
-                STORAGE_PROVIDER_VERSION
-            ],
-            |row| row.get::<_, bool>(0),
-        )
-    }
-
-    pub(super) fn has_retained_key_package_material_for_epoch<C: Codec>(
-        &self,
-        connection: &rusqlite::Connection,
-    ) -> Result<bool, rusqlite::Error> {
-        self.epoch_reference_exists::<C>(
-            connection,
-            "SELECT EXISTS(
-                SELECT 1 FROM vc_retained_key_package_material
-                WHERE epoch_id = ?1
-                    AND provider_version = ?2
-            )",
-        )
-    }
-
-    pub(super) fn has_vc_emulation_binding_for_epoch<C: Codec>(
-        &self,
-        connection: &rusqlite::Connection,
-    ) -> Result<bool, rusqlite::Error> {
-        self.epoch_reference_exists::<C>(
-            connection,
-            "SELECT EXISTS(
-                SELECT 1 FROM vc_emulation_binding_epochs
-                WHERE epoch_id = ?1
-                    AND provider_version = ?2
-            )",
-        )
-    }
-
-    pub(super) fn has_registered_vc_derivation_epoch_for_epoch<C: Codec>(
-        &self,
-        connection: &rusqlite::Connection,
-    ) -> Result<bool, rusqlite::Error> {
-        self.epoch_reference_exists::<C>(
-            connection,
-            "SELECT EXISTS(
-                SELECT 1 FROM registered_vc_derivation_epochs
-                WHERE epoch_id = ?1
-                    AND provider_version = ?2
-            )",
-        )
-    }
 }
 
-/// Per-epoch bindings from a higher-level group to derivation epochs. One row
-/// per higher-level group, holding the serialized binding record, plus one row
-/// per bound derivation epoch in `vc_emulation_binding_epochs` so the record
-/// can be queried by epoch. Written on every commit merge.
+/// The sweep behind `StorageProvider::delete_unreferenced_vc_derivation_epoch_states`.
+/// The reference checks and the deletions are separate statements, so the
+/// caller must run it within a transaction.
+pub(super) fn delete_unreferenced_vc_derivation_epoch_states<
+    C: Codec,
+    VcEpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>,
+>(
+    connection: &rusqlite::Connection,
+) -> Result<Vec<VcEpochId>, rusqlite::Error> {
+    let mut stmt = connection.prepare(
+        "SELECT DISTINCT epoch_id FROM (
+            SELECT epoch_id, provider_version FROM vc_derivation_epoch_secrets
+            UNION ALL
+            SELECT epoch_id, provider_version FROM vc_operation_trees
+        ) AS candidates
+        WHERE provider_version = ?1
+            AND NOT EXISTS (
+                SELECT 1 FROM vc_derivation_epoch_log_entries entries
+                WHERE entries.epoch_id = candidates.epoch_id
+                    AND entries.provider_version = ?1
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM vc_emulation_bindings bindings
+                WHERE bindings.epoch_id = candidates.epoch_id
+                    AND bindings.provider_version = ?1
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM vc_retained_key_package_material material
+                WHERE material.epoch_id = candidates.epoch_id
+                    AND material.provider_version = ?1
+            )",
+    )?;
+    let rows = stmt.query_map(params![STORAGE_PROVIDER_VERSION], |row| {
+        let serialized: Vec<u8> = row.get(0)?;
+        let EntityWrapper::<C, VcEpochId>(epoch_id, ..) = row.get(0)?;
+        Ok((serialized, epoch_id))
+    })?;
+    let unreferenced: Vec<(Vec<u8>, VcEpochId)> = rows.collect::<Result<_, _>>()?;
+    let mut delete_state = connection.prepare(
+        "DELETE FROM vc_derivation_epoch_secrets
+        WHERE epoch_id = ?1
+            AND provider_version = ?2",
+    )?;
+    let mut delete_tree = connection.prepare(
+        "DELETE FROM vc_operation_trees
+        WHERE epoch_id = ?1
+            AND provider_version = ?2",
+    )?;
+    let mut deleted = Vec::with_capacity(unreferenced.len());
+    for (serialized, epoch_id) in unreferenced {
+        delete_state.execute(params![serialized, STORAGE_PROVIDER_VERSION])?;
+        delete_tree.execute(params![serialized, STORAGE_PROVIDER_VERSION])?;
+        deleted.push(epoch_id);
+    }
+    Ok(deleted)
+}
+
+/// A row of `vc_emulation_bindings`: one per (higher-level group, group
+/// epoch), holding the opaque binding next to the derivation epoch id it names
+/// so the sweep can query by epoch.
 pub(super) struct StorableEmulationBindingRef<
     'a,
-    VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>,
->(pub &'a VcEmulationBindings);
+    VcEmulationBinding: EntityTrait<STORAGE_PROVIDER_VERSION>,
+>(pub &'a VcEmulationBinding);
 
-impl<'a, VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>>
-    StorableEmulationBindingRef<'a, VcEmulationBindings>
+impl<'a, VcEmulationBinding: EntityTrait<STORAGE_PROVIDER_VERSION>>
+    StorableEmulationBindingRef<'a, VcEmulationBinding>
 {
-    pub(super) fn store_vc_emulation_bindings<
+    pub(super) fn store_vc_emulation_binding<
         C: Codec,
         GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>,
+        EpochKey: EpochKeyTrait<STORAGE_PROVIDER_VERSION>,
         EpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         connection: &rusqlite::Connection,
         group_id: &GroupId,
-        bound_epochs: &[EpochId],
+        group_epoch: &EpochKey,
+        epoch_id: &EpochId,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO vc_emulation_bindings (provider_version, group_id, bindings)
-            VALUES (?1, ?2, ?3)
-            ON CONFLICT(group_id) DO UPDATE SET
-                bindings = excluded.bindings,
+            "INSERT INTO vc_emulation_bindings
+                (provider_version, group_id, group_epoch, epoch_id, binding)
+            VALUES (?1, ?2, ?3, ?4, ?5)
+            ON CONFLICT(group_id, group_epoch) DO UPDATE SET
+                epoch_id = excluded.epoch_id,
+                binding = excluded.binding,
                 provider_version = excluded.provider_version",
             params![
                 STORAGE_PROVIDER_VERSION,
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
+                KeyRefWrapper::<C, _>(group_epoch, PhantomData),
+                KeyRefWrapper::<C, _>(epoch_id, PhantomData),
                 EntityRefWrapper::<C, _>(self.0, PhantomData)
             ],
         )?;
-        // The record above replaces the previous one wholesale, so the
-        // projection is rebuilt rather than added to. That also drops the
-        // epochs whose bindings aged out of the record.
-        connection.execute(
-            "DELETE FROM vc_emulation_binding_epochs
-            WHERE group_id = ?1
-                AND provider_version = ?2",
-            params![
-                KeyRefWrapper::<C, _>(group_id, PhantomData),
-                STORAGE_PROVIDER_VERSION
-            ],
-        )?;
-        let mut stmt = connection.prepare(
-            "INSERT INTO vc_emulation_binding_epochs (provider_version, group_id, epoch_id)
-            VALUES (?1, ?2, ?3)
-            ON CONFLICT(group_id, epoch_id) DO UPDATE SET
-                provider_version = excluded.provider_version",
-        )?;
-        for epoch_id in bound_epochs {
-            stmt.execute(params![
-                STORAGE_PROVIDER_VERSION,
-                KeyRefWrapper::<C, _>(group_id, PhantomData),
-                KeyRefWrapper::<C, _>(epoch_id, PhantomData)
-            ])?;
-        }
         Ok(())
     }
 }
 
 impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
-    pub(super) fn load_vc_emulation_bindings<
+    pub(super) fn load_vc_emulation_binding<
         C: Codec,
-        VcEmulationBindings: EntityTrait<STORAGE_PROVIDER_VERSION>,
+        EpochKey: EpochKeyTrait<STORAGE_PROVIDER_VERSION>,
+        VcEmulationBinding: EntityTrait<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         connection: &rusqlite::Connection,
-    ) -> Result<Option<VcEmulationBindings>, rusqlite::Error> {
+        group_epoch: &EpochKey,
+    ) -> Result<Option<VcEmulationBinding>, rusqlite::Error> {
         let Self(group_id) = self;
         let mut stmt = connection.prepare(
-            "SELECT bindings
+            "SELECT binding
             FROM vc_emulation_bindings
             WHERE group_id = ?1
-                AND provider_version = ?2",
+                AND group_epoch = ?2
+                AND provider_version = ?3",
         )?;
         stmt.query_row(
             params![
                 KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
+                KeyRefWrapper::<C, EpochKey>(group_epoch, PhantomData),
                 STORAGE_PROVIDER_VERSION
             ],
             |row| {
-                let EntityWrapper::<C, VcEmulationBindings>(bindings, ..) = row.get(0)?;
-                Ok(bindings)
+                let EntityWrapper::<C, VcEmulationBinding>(binding, ..) = row.get(0)?;
+                Ok(binding)
             },
         )
         .optional()
     }
 
-    pub(super) fn delete_vc_emulation_bindings<C: Codec>(
+    pub(super) fn load_vc_emulation_bindings<
+        C: Codec,
+        VcEmulationBinding: EntityTrait<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        connection: &rusqlite::Connection,
+    ) -> Result<Vec<VcEmulationBinding>, rusqlite::Error> {
+        let Self(group_id) = self;
+        let mut stmt = connection.prepare(
+            "SELECT binding
+            FROM vc_emulation_bindings
+            WHERE group_id = ?1
+                AND provider_version = ?2",
+        )?;
+        let rows = stmt.query_map(
+            params![
+                KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ],
+            |row| {
+                let EntityWrapper::<C, VcEmulationBinding>(binding, ..) = row.get(0)?;
+                Ok(binding)
+            },
+        )?;
+        rows.collect()
+    }
+
+    pub(super) fn delete_vc_emulation_bindings<
+        C: Codec,
+        EpochKey: EpochKeyTrait<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        connection: &rusqlite::Connection,
+        group_epochs: &[EpochKey],
+    ) -> Result<(), rusqlite::Error> {
+        let Self(group_id) = self;
+        let mut stmt = connection.prepare(
+            "DELETE FROM vc_emulation_bindings
+            WHERE group_id = ?1
+                AND group_epoch = ?2
+                AND provider_version = ?3",
+        )?;
+        for group_epoch in group_epochs {
+            stmt.execute(params![
+                KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
+                KeyRefWrapper::<C, EpochKey>(group_epoch, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ])?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn delete_all_vc_emulation_bindings<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
@@ -318,32 +316,22 @@ impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId
                 STORAGE_PROVIDER_VERSION
             ],
         )?;
-        connection.execute(
-            "DELETE FROM vc_emulation_binding_epochs
-            WHERE group_id = ?1
-                AND provider_version = ?2",
-            params![
-                KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
-                STORAGE_PROVIDER_VERSION
-            ],
-        )?;
         Ok(())
     }
 }
 
-/// The derivation epoch an emulation group registered for its current group
-/// epoch. One row per emulation group, holding the serialized registration
-/// record plus the epoch id it names so the record can be queried by epoch.
-/// Written when a derivation epoch is registered.
-pub(super) struct StorableRegisteredVcDerivationEpochRef<
+/// A row of `vc_derivation_epoch_log_entries`: one per (emulation group,
+/// derivation epoch), holding the opaque log entry keyed by the epoch id it
+/// names so the sweep can query by epoch.
+pub(super) struct StorableVcDerivationEpochLogEntryRef<
     'a,
-    RegisteredVcDerivationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>,
->(pub &'a RegisteredVcDerivationEpoch);
+    VcDerivationEpochLogEntry: EntityTrait<STORAGE_PROVIDER_VERSION>,
+>(pub &'a VcDerivationEpochLogEntry);
 
-impl<'a, RegisteredVcDerivationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>>
-    StorableRegisteredVcDerivationEpochRef<'a, RegisteredVcDerivationEpoch>
+impl<'a, VcDerivationEpochLogEntry: EntityTrait<STORAGE_PROVIDER_VERSION>>
+    StorableVcDerivationEpochLogEntryRef<'a, VcDerivationEpochLogEntry>
 {
-    pub(super) fn store_registered_vc_derivation_epoch<
+    pub(super) fn store_vc_derivation_epoch_log_entry<
         C: Codec,
         GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>,
         EpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>,
@@ -354,18 +342,17 @@ impl<'a, RegisteredVcDerivationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>>
         epoch_id: &EpochId,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT INTO registered_vc_derivation_epochs
-                (provider_version, group_id, registration, epoch_id)
+            "INSERT INTO vc_derivation_epoch_log_entries
+                (provider_version, group_id, epoch_id, entry)
             VALUES (?1, ?2, ?3, ?4)
-            ON CONFLICT(group_id) DO UPDATE SET
-                registration = excluded.registration,
-                epoch_id = excluded.epoch_id,
+            ON CONFLICT(group_id, epoch_id) DO UPDATE SET
+                entry = excluded.entry,
                 provider_version = excluded.provider_version",
             params![
                 STORAGE_PROVIDER_VERSION,
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
-                EntityRefWrapper::<C, _>(self.0, PhantomData),
-                KeyRefWrapper::<C, _>(epoch_id, PhantomData)
+                KeyRefWrapper::<C, _>(epoch_id, PhantomData),
+                EntityRefWrapper::<C, _>(self.0, PhantomData)
             ],
         )?;
         Ok(())
@@ -373,41 +360,65 @@ impl<'a, RegisteredVcDerivationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>>
 }
 
 impl<GroupId: GroupIdTrait<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
-    pub(super) fn load_registered_vc_derivation_epoch<
+    pub(super) fn load_vc_derivation_epoch_log_entries<
         C: Codec,
-        RegisteredVcDerivationEpoch: EntityTrait<STORAGE_PROVIDER_VERSION>,
+        VcDerivationEpochLogEntry: EntityTrait<STORAGE_PROVIDER_VERSION>,
     >(
         &self,
         connection: &rusqlite::Connection,
-    ) -> Result<Option<RegisteredVcDerivationEpoch>, rusqlite::Error> {
+    ) -> Result<Vec<VcDerivationEpochLogEntry>, rusqlite::Error> {
         let Self(group_id) = self;
         let mut stmt = connection.prepare(
-            "SELECT registration
-            FROM registered_vc_derivation_epochs
+            "SELECT entry
+            FROM vc_derivation_epoch_log_entries
             WHERE group_id = ?1
                 AND provider_version = ?2",
         )?;
-        stmt.query_row(
+        let rows = stmt.query_map(
             params![
                 KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
                 STORAGE_PROVIDER_VERSION
             ],
             |row| {
-                let EntityWrapper::<C, RegisteredVcDerivationEpoch>(registration, ..) =
-                    row.get(0)?;
-                Ok(registration)
+                let EntityWrapper::<C, VcDerivationEpochLogEntry>(entry, ..) = row.get(0)?;
+                Ok(entry)
             },
-        )
-        .optional()
+        )?;
+        rows.collect()
     }
 
-    pub(super) fn delete_registered_vc_derivation_epoch<C: Codec>(
+    pub(super) fn delete_vc_derivation_epoch_log_entries<
+        C: Codec,
+        EpochId: VcEpochIdTrait<STORAGE_PROVIDER_VERSION>,
+    >(
+        &self,
+        connection: &rusqlite::Connection,
+        epoch_ids: &[EpochId],
+    ) -> Result<(), rusqlite::Error> {
+        let Self(group_id) = self;
+        let mut stmt = connection.prepare(
+            "DELETE FROM vc_derivation_epoch_log_entries
+            WHERE group_id = ?1
+                AND epoch_id = ?2
+                AND provider_version = ?3",
+        )?;
+        for epoch_id in epoch_ids {
+            stmt.execute(params![
+                KeyRefWrapper::<C, GroupId>(group_id, PhantomData),
+                KeyRefWrapper::<C, EpochId>(epoch_id, PhantomData),
+                STORAGE_PROVIDER_VERSION
+            ])?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn delete_vc_derivation_epoch_log<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
         let Self(group_id) = self;
         connection.execute(
-            "DELETE FROM registered_vc_derivation_epochs
+            "DELETE FROM vc_derivation_epoch_log_entries
             WHERE group_id = ?1
                 AND provider_version = ?2",
             params![

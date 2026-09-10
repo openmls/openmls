@@ -915,9 +915,16 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         // ValSem102
         // ValSem103
         // ValSem104
-        group
-            .public_group
-            .validate_key_uniqueness(&proposal_queue, None)?;
+        let path_leaf_signature_key = cur_stage
+            .leaf_node_parameters
+            .credential_with_key()
+            .map(|credential_with_key| &credential_with_key.signature_key);
+        group.public_group.validate_key_uniqueness(
+            &proposal_queue,
+            None,
+            &sender,
+            path_leaf_signature_key,
+        )?;
         // ValSem105
         group.public_group.validate_add_proposals(&proposal_queue)?;
         // ValSem106
