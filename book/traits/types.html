@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-cefbd0aa.js";
+            window.path_to_searchindex_js = "../searchindex-3511d293.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-81492934.js"></script>
@@ -264,16 +264,16 @@ pub enum HpkeKemType {
     MlKem1024 = 0x0042,
 
     /// XWing combiner for ML-KEM and X25519
-    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]</code></pre>
+    ///</code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">
-    /// HKDF SHA 512
-    HkdfSha512 = 0x0003,
-}</code></pre>
-<pre><code class="language-rust no_run noplayground">#[repr(u16)]
-pub enum HpkeAeadType {
-    /// AES GCM 128
-    AesGcm128 = 0x0001,</code></pre>
+<pre><code class="language-rust no_run noplayground">    /// HKDF SHA 256
+    HkdfSha256 = 0x0001,
+
+    /// HKDF SHA 384</code></pre>
+<pre><code class="language-rust no_run noplayground">    HkdfSha512 = 0x0003,
+}
+
+/// AEAD Types for HPKE.</code></pre>
 
                     </main>
 
