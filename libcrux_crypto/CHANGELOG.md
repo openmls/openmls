@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- [#2170](https://github.com/openmls/openmls/pull/2170): ML-DSA-44/65/87 signatures via `libcrux-ml-dsa`, and pure ML-KEM KEMs via `hpke-rs-libcrux`'s `draft-connolly-cfrg-hpke-mlkem`, so the ML-DSA ciphersuites from `draft-ietf-mls-pq-ciphersuites` are now supported by the libcrux provider (behind the `draft-ietf-mls-pq-ciphersuites` feature flag). Key and signature encodings match the RustCrypto provider.
+- [#2170](https://github.com/openmls/openmls/pull/2170): ML-DSA-44/65/87 signatures via `libcrux-ml-dsa`, and pure ML-KEM KEMs via `hpke-rs-libcrux`'s `draft-ietf-hpke-pq`, so the ML-DSA ciphersuites from `draft-ietf-mls-pq-ciphersuites` are now supported by the libcrux provider (behind the `draft-ietf-mls-pq-ciphersuites` feature flag). Key and signature encodings match the RustCrypto provider.
 
 ## 0.4.0 (2026-08-25)
 
