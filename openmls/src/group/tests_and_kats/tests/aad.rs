@@ -1,7 +1,5 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use openmls_rust_crypto::RustCrypto;
-
 // Import necessary modules and dependencies
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -944,16 +942,21 @@ fn test_aad_error_commit() {
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
 
     // Storage provider that will fail to write group state
-    let delegate_provider = Provider::default();
-    let test_provider = TestProvider {
-        storage: TestStorageProvider {
-            delegate: delegate_provider.storage(),
-            errors: RefCell::new(HashMap::from([(
+    let test_storage = TestStorageProvider {
+        delegate: provider.storage(),
+        errors: RefCell::new(HashMap::from([
+            // First invocation of [`StorageProvider::write_group_state`] returns custom error.
+            // Returned errors are popped from the end of the [`Vec`], hence they occur in reverse order.
+            (
                 "write_group_state",
                 vec![TestStorageError::Injected("writing group state")],
-            )])),
-        },
-        crypto_rand: RustCrypto::default(),
+            ),
+        ])),
+    };
+    let test_provider = TestProvider {
+        storage: &test_storage,
+        crypto: provider.crypto(),
+        rand: provider.rand(),
     };
 
     group.set_aad(TEST_AAD.to_vec());
@@ -961,12 +964,14 @@ fn test_aad_error_commit() {
     // Create commit, stage using modified provider
     let err = group
         .commit_builder()
+        // use the normal storage first...
         .load_psks(provider.storage())
         .unwrap()
         .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
             true
         })
         .unwrap()
+        // ...then switch to error storage
         .stage_commit(&test_provider)
         .expect_err("expected error");
 

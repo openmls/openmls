@@ -364,42 +364,103 @@ pub(crate) fn resign_external_commit(
 }
 
 pub(crate) mod storage_error {
+    //! This module implements a customizable [`OpenMlsProvider`] with storage that
+    //! delegates methods to a different provider but can inject errors on chosen method calls.
+    //!
+    //! It is used to test error handling.
+    //!
+    //! Example:
+    //! ```
+    //! const TEST_AAD: &[u8] = b"Test AAD";
+    //!
+    //! #[openmls_test::openmls_test]
+    //! fn test_aad_error_commit() {
+    //!     // Group with Alice
+    //!     let provider = &Provider::default();
+    //!     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+    //!
+    //!     // Storage provider that will fail to write group state
+    //!     let test_storage = TestStorageProvider {
+    //!         delegate: provider.storage(),
+    //!         errors: RefCell::new(HashMap::from([
+    //!             // First invocation of [`StorageProvider::write_group_state`] returns custom error.
+    //!             // Returned errors are popped from the end of the [`Vec`], hence they occur in reverse order.
+    //!             ("write_group_state", vec![TestStorageError::Injected("writing group state")])
+    //!         ])),
+    //!     };
+    //!     let test_provider = TestProvider {
+    //!         storage: &test_storage,
+    //!         crypto: provider.crypto(),
+    //!         rand: provider.rand(),
+    //!     };
+    //!
+    //!     group.set_aad(TEST_AAD.to_vec());
+    //!
+    //!     // Create commit, stage using modified provider
+    //!     let err = group
+    //!         .commit_builder()
+    //!         // use the normal storage first...
+    //!         .load_psks(provider.storage())
+    //!         .unwrap()
+    //!         .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+    //!             true
+    //!         })
+    //!         .unwrap()
+    //!         // ...then switch to error storage
+    //!         .stage_commit(&test_provider)
+    //!         .expect_err("expected error");
+    //!
+    //!     // The test error should propagate to the builder result
+    //!     assert_eq!(
+    //!         err,
+    //!         CommitBuilderStageError::KeyStoreError(TestStorageError::Injected("writing group state"))
+    //!     );
+    //!     // The AAD should not be reset
+    //!     assert_eq!(group.aad(), TEST_AAD);
+    //! }
+    //! ```
+    //!
+
     use std::{cell::RefCell, collections::HashMap};
 
-    use openmls_rust_crypto::RustCrypto;
     use openmls_traits::{storage::CURRENT_VERSION, OpenMlsProvider};
 
-    // Customizable provider for use in tests
-    pub(crate) struct TestProvider<S>
+    /// Customizable [`OpenMlsProvider`] for use in tests
+    pub(crate) struct TestProvider<'a, S, R, C>
     where
-        S: openmls_traits::storage::StorageProvider<CURRENT_VERSION>,
+        S: openmls_traits::storage::StorageProvider<CURRENT_VERSION> + 'a,
+        R: openmls_traits::random::OpenMlsRand + 'a,
+        C: openmls_traits::crypto::OpenMlsCrypto + 'a,
     {
-        pub(crate) storage: S,
-        pub(crate) crypto_rand: RustCrypto,
+        pub(crate) storage: &'a S,
+        pub(crate) crypto: &'a C,
+        pub(crate) rand: &'a R,
     }
 
-    impl<S> OpenMlsProvider for TestProvider<S>
+    impl<'a, S, R, C> OpenMlsProvider for TestProvider<'a, S, R, C>
     where
-        S: openmls_traits::storage::StorageProvider<CURRENT_VERSION>,
+        S: openmls_traits::storage::StorageProvider<CURRENT_VERSION> + 'a,
+        R: openmls_traits::random::OpenMlsRand + 'a,
+        C: openmls_traits::crypto::OpenMlsCrypto + 'a,
     {
-        type CryptoProvider = RustCrypto;
-        type RandProvider = RustCrypto;
+        type CryptoProvider = C;
+        type RandProvider = R;
         type StorageProvider = S;
 
         fn storage(&self) -> &Self::StorageProvider {
-            &self.storage
+            self.storage
         }
 
         fn crypto(&self) -> &Self::CryptoProvider {
-            &self.crypto_rand
+            self.crypto
         }
 
         fn rand(&self) -> &Self::RandProvider {
-            &self.crypto_rand
+            self.rand
         }
     }
 
-    // Storage provider for use in tests, can be configured to return custom errors on method calls.
+    /// Storage provider for use in tests, can be configured to return custom errors on method calls.
     pub(crate) struct TestStorageProvider<
         'a,
         D: openmls_traits::storage::StorageProvider<CURRENT_VERSION>,
@@ -416,7 +477,7 @@ pub(crate) mod storage_error {
         >,
     }
 
-    // Custom errors that can wrap the errors of the inner provider or custom strings
+    /// Custom errors that can wrap the errors of the inner provider or custom strings
     #[derive(thiserror::Error, Debug, Copy, Clone, PartialEq, Eq)]
     pub(crate) enum TestStorageError<D>
     where
