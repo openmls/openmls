@@ -4,7 +4,14 @@
 //! using the same parameters as the old group.
 //! <https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching>
 
-use openmls::{prelude::*, test_utils::single_group_test_framework::generate_credential};
+use openmls::{
+    prelude::*,
+    schedule::{
+        errors::PskError,
+        psk::{PreSharedKeyId, Psk, ResumptionPsk, ResumptionPskUsage},
+    },
+    test_utils::single_group_test_framework::generate_credential,
+};
 use openmls_test::openmls_test;
 use openmls_traits::signatures::Signer;
 
@@ -172,6 +179,69 @@ fn subgroup_branching() {
     assert_eq!(
         alice_bob_sub_group.confirmation_tag(),
         bob_alice_sub_group.confirmation_tag()
+    );
+}
+
+/// A resumption PSK of usage `Branch` must only appear in the initial commit of
+/// a subgroup (i.e. at epoch 0). Using it in any later commit must be rejected.
+#[openmls_test]
+fn subgroup_branch_psk_rejected_outside_initial_commit() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build();
+
+    // `alice_group` is at epoch 1 after adding Bob and Charlie, so a branch PSK
+    // in a commit on it must be rejected.
+    let ((_alice_credential, alice_signer), _, mut alice_group, _bob_group) = setup_group(
+        ciphersuite,
+        &mls_group_create_config,
+        alice_provider,
+        bob_provider,
+        charlie_provider,
+    );
+
+    // A new group always keeps its own epoch-0 resumption secret in the
+    // rollover store (see `MlsGroupBuilder::build`), so a branch-usage PSK
+    // (which is always looked up at the sentinel epoch 0) resolves via
+    // `load_psks` without needing an actual subgroup branch. This lets us
+    // reach the proposal validation directly.
+    let psk_id = PreSharedKeyId::new(
+        ciphersuite,
+        alice_provider.rand(),
+        Psk::Resumption(ResumptionPsk::new(
+            ResumptionPskUsage::Branch,
+            alice_group.group_id().clone(),
+            alice_group.epoch(),
+        )),
+    )
+    .unwrap();
+
+    let result = alice_group
+        .commit_builder()
+        .propose_psks([psk_id])
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        );
+
+    assert!(
+        matches!(
+            result,
+            Err(CreateCommitError::ProposalValidationError(
+                ProposalValidationError::Psk(PskError::NotAllowed)
+            ))
+        ),
+        "expected a branch PSK outside the initial commit to be rejected, got {result:?}"
     );
 }
 

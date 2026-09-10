@@ -611,12 +611,11 @@ impl MlsGroup {
         commit: &Commit,
     ) -> Result<Option<crate::components::vc_derivation_info::VcCommitMaterial>, StageCommitError>
     {
-        use tls_codec::{DeserializeBytes, Serialize as _};
+        use tls_codec::Serialize as _;
 
         use crate::{
             components::vc_derivation_info::{
-                DerivationInfo, VcDerivationEpochState, VirtualClientOperationType,
-                VirtualClientsError, VC_COMPONENT_ID,
+                VcDerivationEpochState, VirtualClientOperationType, VirtualClientsError,
             },
             components::vc_operation_tree::OperationSecretTree,
             treesync::node::leaf_node::LeafNodeSource,
@@ -625,17 +624,9 @@ impl MlsGroup {
         let Some(path) = commit.path.as_ref() else {
             return Ok(None);
         };
-        let Some(app_data_dict) = path.leaf_node().extensions().app_data_dictionary() else {
+        let Some(derivation_info) = path.leaf_node().vc_derivation_info()? else {
             return Ok(None);
         };
-        let Some(derivation_info_bytes) = app_data_dict.dictionary().get(&VC_COMPONENT_ID) else {
-            return Ok(None);
-        };
-        let derivation_info = DerivationInfo::tls_deserialize_exact_bytes(derivation_info_bytes)
-            .map_err(|e| {
-                log::error!("vc: derivation info deserialize failed: {e:?}");
-                VirtualClientsError::DerivationInfoMalformed
-            })?;
 
         let epoch_id = derivation_info.epoch_id();
         let storage = provider.storage();
@@ -1093,6 +1084,27 @@ impl MlsGroup {
                 ))
             }
             FramedContentBody::Proposal(Proposal::Add(_)) => {
+                let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                    QueuedProposal::from_authenticated_content_by_ref(
+                        self.ciphersuite(),
+                        provider.crypto(),
+                        content,
+                    )?,
+                ));
+                Ok(ProcessedMessage::new(
+                    self.group_id().clone(),
+                    self.context().epoch(),
+                    sender,
+                    data,
+                    content,
+                    credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    emulator_sender_leaf_index,
+                ))
+            }
+            // RFC 9420 §12.1.8 permits external senders to send PreSharedKey
+            // proposals.
+            FramedContentBody::Proposal(Proposal::PreSharedKey(_)) => {
                 let content = ProcessedMessageContent::ProposalMessage(Box::new(
                     QueuedProposal::from_authenticated_content_by_ref(
                         self.ciphersuite(),
