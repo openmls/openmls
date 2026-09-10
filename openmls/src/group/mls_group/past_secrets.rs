@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -145,6 +146,118 @@ impl MessageSecretsStore {
             self.max_epochs,
             self.past_epoch_trees.len()
         );
+    }
+
+    /// Seeds this (freshly created) store's past epochs from `past_store`,
+    /// the store of a previous incarnation of the same group, when a client
+    /// rejoins the group via an external commit.
+    ///
+    /// `past_epoch` is the epoch of `past_store`'s current message secrets
+    /// and `past_leaves` are the members of the group at that epoch; together
+    /// they are folded in as one more past epoch. `rejoin_epoch` is the epoch
+    /// the external commit creates. `past_context_matches` says whether the
+    /// past state's group context equals the group context the external
+    /// commit is built against; the caller compares the two.
+    ///
+    /// Only secrets for epochs before the epoch the external commit was
+    /// built against (`rejoin_epoch - 1`) are carried over as past epochs,
+    /// and only if they fall within this store's own retention window
+    /// measured against `rejoin_epoch`, i.e. the window a member that had
+    /// stayed caught up would have. Secrets for the pre-rejoin epoch itself
+    /// instead replace this store's current message secrets, which until
+    /// then are placeholder secrets derived from an all-zero epoch secret
+    /// that cannot decrypt anything (see #767): from the past state's
+    /// current message secrets if it is exactly at the pre-rejoin epoch with
+    /// a matching group context, or from its retained tree for that epoch if
+    /// it had moved beyond the group state the external commit is built
+    /// against (e.g. because the `GroupInfo` was stale). Merging the
+    /// external commit then retains the pre-rejoin epoch like any other past
+    /// epoch, bounded by this store's policy.
+    pub(crate) fn inherit_past_epochs(
+        &mut self,
+        past_store: MessageSecretsStore,
+        past_epoch: impl Into<GroupEpoch>,
+        past_leaves: Vec<Member>,
+        rejoin_epoch: impl Into<GroupEpoch>,
+        past_context_matches: bool,
+    ) {
+        debug_assert!(
+            self.past_epoch_trees.is_empty(),
+            "past epochs must be inherited into a freshly created store"
+        );
+        let past_epoch = past_epoch.into().as_u64();
+        let rejoin_epoch = rejoin_epoch.into().as_u64();
+        // The epoch of the group state the external commit was built against.
+        // An external commit always advances the epoch, so `rejoin_epoch` is
+        // at least 1; returning without inheriting anything is safe either
+        // way.
+        let Some(pre_rejoin_epoch) = rejoin_epoch.checked_sub(1) else {
+            return;
+        };
+
+        let MessageSecretsStore {
+            mut past_epoch_trees,
+            message_secrets,
+            // The retention window is this store's, not the past store's.
+            max_epochs: _,
+        } = past_store;
+
+        match past_epoch.cmp(&pre_rejoin_epoch) {
+            // The past state had fallen behind the group; its current
+            // secrets become one more past epoch.
+            Ordering::Less => past_epoch_trees.push_back(EpochTree {
+                epoch: past_epoch,
+                message_secrets,
+                leaves: past_leaves,
+            }),
+            // The past state is exactly at the epoch the external commit was
+            // built against, so its current secrets are the real message
+            // secrets for the epoch this store carries placeholder secrets
+            // for — unless the group contexts differ, in which case the past
+            // state sits on a fork and its secrets for this epoch cannot
+            // decrypt anything sealed on this branch.
+            Ordering::Equal => {
+                if past_context_matches {
+                    self.message_secrets = message_secrets;
+                }
+            }
+            // The past state had moved beyond the group state the external
+            // commit was built against (e.g. because the `GroupInfo` was
+            // stale). Its current secrets are of no use on this branch, but
+            // its retained tree for the pre-rejoin epoch — if it still holds
+            // one — takes the placeholder's place. Leaving that tree in the
+            // deque instead would collide with the entry the merge pushes
+            // for the same epoch.
+            Ordering::Greater => {
+                if let Some(position) = past_epoch_trees
+                    .iter()
+                    .position(|tree| tree.epoch == pre_rejoin_epoch)
+                {
+                    if let Some(tree) = past_epoch_trees.remove(position) {
+                        self.message_secrets = tree.message_secrets;
+                    }
+                }
+            }
+        }
+
+        // Keep only epochs within this store's retention window relative to
+        // the epoch the rejoining member ends up in. The pre-rejoin epoch is
+        // excluded: it lives in the current message secrets now and is
+        // pushed by the merge, so an entry for it here would be a duplicate.
+        past_epoch_trees.retain(|tree| {
+            tree.epoch < pre_rejoin_epoch
+                && tree.epoch.saturating_add(self.max_epochs as u64) >= rejoin_epoch
+        });
+
+        // Defense in depth: a well-formed past store cannot exceed this
+        // store's capacity after the filter above, but if it does, drop the
+        // oldest entries, as the store itself does when an epoch is added at
+        // capacity.
+        if past_epoch_trees.len() > self.max_epochs {
+            let excess = past_epoch_trees.len() - self.max_epochs;
+            past_epoch_trees.drain(0..excess);
+        }
+        self.past_epoch_trees = past_epoch_trees;
     }
 
     /// Get a mutable reference to a secret tree for a given epoch `group_epoch`.

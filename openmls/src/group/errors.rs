@@ -206,6 +206,16 @@ impl<StorageError> From<ExternalCommitBuilderError<StorageError>>
                     "Error creating external commit",
                 ))
             }
+            // These should not happen since `join_by_external_commit` doesn't
+            // carry past epoch secrets over.
+            ExternalCommitBuilderError::PastEpochsGroupIdMismatch
+            | ExternalCommitBuilderError::PastEpochsCiphersuiteMismatch
+            | ExternalCommitBuilderError::PastEpochsSignatureKeyMismatch => {
+                log::error!("Unexpected past epochs mismatch in external commit");
+                ExternalCommitError::LibraryError(LibraryError::custom(
+                    "Error creating external commit",
+                ))
+            }
         }
     }
 }
