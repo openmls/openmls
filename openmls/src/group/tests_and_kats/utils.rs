@@ -127,6 +127,7 @@ pub(crate) fn setup(
             .ciphersuite(group_config.ciphersuite)
             .use_ratchet_tree_extension(group_config.use_ratchet_tree_extension)
             .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .with_capabilities(minimal_capabilities_for(group_config.ciphersuite).build())
             .build(
                 provider,
                 &credential_with_key_and_signer.signer,
@@ -281,6 +282,8 @@ pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
     }
 }
 
+pub(crate) use crate::test_utils::minimal_capabilities_for;
+
 // Helper function to generate a KeyPackageBundle
 pub(crate) fn generate_key_package<Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
@@ -290,6 +293,7 @@ pub(crate) fn generate_key_package<Provider: OpenMlsProvider>(
 ) -> KeyPackageBundle {
     KeyPackage::builder()
         .key_package_extensions(extensions)
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             provider,

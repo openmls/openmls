@@ -185,7 +185,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         .ciphersuite(ciphersuite)
         .with_capabilities(Capabilities::new(
             None,
-            None,
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xf042)]),
             None,
             None,
@@ -211,7 +211,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
     let bob_kpb = KeyPackageBuilder::new()
         .leaf_node_capabilities(Capabilities::new(
             None,
-            None,
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xf042)]),
             None,
             None,
@@ -292,7 +292,7 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
     let charlie_kpb = KeyPackageBuilder::new()
         .leaf_node_capabilities(Capabilities::new(
             None,
-            None,
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xf042)]),
             None,
             None,

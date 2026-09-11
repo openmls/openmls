@@ -1,3 +1,4 @@
+use crate::test_utils::minimal_capabilities_for;
 use std::slice::from_ref;
 
 use openmls_basic_credential::SignatureKeyPair;
@@ -45,6 +46,7 @@ fn test_welcome_context_mismatch() {
 
     let group_id = GroupId::random(alice_provider.rand());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 
@@ -311,6 +313,7 @@ fn test_welcome_processing() {
     let bob_provider = &Provider::default();
     let group_id = GroupId::random(alice_provider.rand());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 
@@ -379,6 +382,7 @@ fn no_external_pub_in_welcome() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 

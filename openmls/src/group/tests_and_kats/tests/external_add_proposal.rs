@@ -23,6 +23,7 @@ fn new_test_group(
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(
             Extensions::single(Extension::ExternalSenders(external_senders))

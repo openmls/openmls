@@ -1,5 +1,6 @@
 //! This module tests the classification of remove operations with RemoveOperation
 
+use crate::test_utils::minimal_capabilities_for;
 use crate::group::tests_and_kats::utils::{generate_credential_with_key, generate_key_package};
 use crate::{framing::*, group::*};
 
@@ -46,6 +47,7 @@ fn remove_blank() {
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 
@@ -171,6 +173,7 @@ fn test_remove_operation_variants() {
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build();
 

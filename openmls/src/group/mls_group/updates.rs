@@ -123,6 +123,7 @@ impl MlsGroup {
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
+        let required_capabilities = self.public_group().required_capabilities().cloned();
 
         if let Some(new_signer) = new_signer {
             if self.ciphersuite().signature_algorithm() != new_signer.signer.signature_scheme() {
@@ -147,6 +148,7 @@ impl MlsGroup {
                 self.group_id().clone(),
                 self.own_leaf_index(),
                 leaf_node_parameters,
+                required_capabilities.as_ref(),
             )?;
         } else {
             own_leaf.update(
@@ -156,6 +158,7 @@ impl MlsGroup {
                 self.group_id().clone(),
                 self.own_leaf_index(),
                 leaf_node_parameters,
+                required_capabilities.as_ref(),
             )?;
         }
 

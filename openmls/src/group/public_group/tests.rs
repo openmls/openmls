@@ -1,3 +1,4 @@
+use crate::test_utils::minimal_capabilities_for;
 use crate::{
     binary_tree::{array_representation::direct_path, LeafNodeIndex},
     framing::{
@@ -34,6 +35,7 @@ fn public_group() {
     // Set plaintext wire format policy s.t. the public group can track changes.
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 
@@ -363,6 +365,7 @@ fn old_messages_with_blank_leaves() {
     let david_pre_group = david_party.generate_pre_group(ciphersuite);
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .max_past_epochs(1)

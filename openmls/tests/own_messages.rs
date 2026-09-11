@@ -3,6 +3,7 @@
 //! derivation epoch state, so this also holds under the `virtual-clients-draft`
 //! feature whenever the message cannot be decrypted (the dual-use ratchet
 //! there still decrypts own messages whose secrets are retained).
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::prelude::*;
 use openmls_test::openmls_test;
 use test_utils::new_credential;
@@ -23,6 +24,7 @@ fn own_messages_surface_as_own_private_message() {
 
     // Generate KeyPackage for Bob
     let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(Extensions::empty())
         .build(
             ciphersuite,
@@ -36,6 +38,7 @@ fn own_messages_surface_as_own_private_message() {
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 
@@ -187,6 +190,7 @@ fn own_private_commit_surfaces_as_own_private_message() {
         new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
 
     let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(Extensions::empty())
         .build(
             ciphersuite,
@@ -200,6 +204,7 @@ fn own_private_commit_surfaces_as_own_private_message() {
 
     // Use a pure-ciphertext policy so commits are sent as PrivateMessage.
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
         .build();

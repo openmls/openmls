@@ -1,4 +1,5 @@
 // Import necessary modules and dependencies
+use crate::test_utils::minimal_capabilities_for;
 use crate::{
     binary_tree::LeafNodeIndex,
     framing::*,
@@ -56,6 +57,7 @@ fn test_add_member_with_aad() {
 
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .wire_format_policy(wire_format_policy)
             .build();

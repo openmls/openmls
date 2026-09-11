@@ -435,6 +435,11 @@ impl TreeSyncDiff<'_> {
                     .map_err(|e| match e {
                         TreeSyncAddLeaf::LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
                         TreeSyncAddLeaf::TreeFull => ApplyUpdatePathError::TreeFull,
+                        // Unreachable here: this inserts an already-built,
+                        // already-signed leaf, never constructs one.
+                        TreeSyncAddLeaf::LeafNodeBuild(_) => ApplyUpdatePathError::LibraryError(
+                            LibraryError::custom("Unexpected leaf node build error"),
+                        ),
                     })?;
             // The new member should have the same index as the claimed sender index.
             if sender_leaf_index != new_leaf_index {

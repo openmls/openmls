@@ -5,7 +5,7 @@ use crate::{
     group::*,
     messages::external_proposals::*,
     messages::proposals::Proposal,
-    prelude::{Capabilities, KeyPackage},
+    prelude::KeyPackage,
 };
 
 use openmls_traits::types::Ciphersuite;
@@ -32,7 +32,7 @@ fn new_test_group(
         .wire_format_policy(wire_format_policy)
         .ciphersuite(ciphersuite)
         .capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![ExtensionType::Unknown(0xf001)])
                 .build(),
         )
@@ -90,7 +90,7 @@ fn validation_test_setup(
     let bob_key_package = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
         .leaf_node_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![ExtensionType::Unknown(0xf001)])
                 .build(),
         )

@@ -181,6 +181,7 @@ pub fn run_test_vector(
         );
 
         let mut group = MlsGroup::builder()
+            .with_capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .with_wire_format_policy(MIXED_PLAINTEXT_WIRE_FORMAT_POLICY)
             .build(

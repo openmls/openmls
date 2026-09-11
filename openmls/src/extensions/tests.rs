@@ -2,6 +2,7 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
+use crate::test_utils::minimal_capabilities_for;
 use std::slice::from_ref;
 
 use tls_codec::{Deserialize, Serialize};
@@ -62,6 +63,11 @@ fn ratchet_tree_extension() {
     let (bob_credential_with_key, bob_signature_keys) =
         test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
 
+    let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .build();
+
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::generate(
         bob_provider,
@@ -74,6 +80,7 @@ fn ratchet_tree_extension() {
     // === Alice creates a group with the ratchet tree extension ===
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(capabilities.clone())
         .use_ratchet_tree_extension(true)
         .build(
             alice_provider,
@@ -130,6 +137,7 @@ fn ratchet_tree_extension() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(capabilities)
         .use_ratchet_tree_extension(false)
         .build(
             alice_provider,
@@ -222,6 +230,7 @@ fn with_group_context_extensions() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(extensions)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 
@@ -309,7 +318,7 @@ fn last_resort_extension() {
         Extensions::single(last_resort).expect("failed to create single-element extensions list");
     let capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         // Add last resort extension as supported extension
         Some(&[ExtensionType::LastResort]),
         None,
@@ -317,7 +326,7 @@ fn last_resort_extension() {
     );
     let kp = KeyPackage::builder()
         .key_package_extensions(extensions)
-        .leaf_node_capabilities(capabilities)
+        .leaf_node_capabilities(capabilities.clone())
         .build(
             ciphersuite,
             bob_provider,
@@ -350,6 +359,7 @@ fn last_resort_extension() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(capabilities)
         .build();
 
     // === Alice creates a group ===

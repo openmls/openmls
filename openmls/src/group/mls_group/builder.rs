@@ -172,10 +172,12 @@ impl MlsGroupBuilder {
                 .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())
                 .with_lifetime(*mls_group_create_config.lifetime())
                 .with_capabilities(mls_group_create_config.capabilities.clone())
+                .with_capabilities_policy(mls_group_create_config.capabilities_policy)
                 .get_secrets(provider, signer)
                 .map_err(|e| match e {
                     PublicGroupBuildError::LibraryError(e) => NewGroupError::LibraryError(e),
                     PublicGroupBuildError::InvalidExtensions(e) => e.into(),
+                    PublicGroupBuildError::LeafNodeBuild(e) => e.into(),
                 })?;
 
         let serialized_group_context = public_group_builder
@@ -665,6 +667,11 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         capabilities,
         leaf_extensions,
         leaf_encryption_keypair,
+        mls_group_create_config
+            .group_context_extensions
+            .required_capabilities()
+            .cloned(),
+        mls_group_create_config.capabilities_policy,
     )?;
     let group_context = GroupContext::create_initial_group_context(
         ciphersuite,

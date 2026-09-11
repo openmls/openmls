@@ -1,5 +1,6 @@
 use std::slice::from_ref;
 
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::{
     prelude::{test_utils::new_credential, *},
     storage::OpenMlsProvider,
@@ -17,6 +18,7 @@ pub fn generate_key_package<Provider: OpenMlsProvider>(
     signer: &impl Signer,
 ) -> KeyPackage {
     KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()
@@ -60,6 +62,7 @@ fn mls_duplicate_signature_key_detection_same_key_package() {
 
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build();
 
@@ -232,6 +235,7 @@ fn mls_duplicate_signature_key_detection_different_key_package() {
 
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build();
 
@@ -403,6 +407,7 @@ fn mls_group_operations() {
 
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build();
 
@@ -1366,6 +1371,7 @@ fn addition_order() {
 
         let mls_group_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build();
 
@@ -1475,6 +1481,7 @@ fn more_remove_than_add_proposals_in_commit() {
             // Define the MlsGroup configuration
             let mls_group_create_config = MlsGroupCreateConfig::builder()
                 .wire_format_policy(*wire_format_policy)
+                .capabilities(minimal_capabilities_for(ciphersuite).build())
                 .ciphersuite(ciphersuite)
                 .build();
 
@@ -1620,6 +1627,7 @@ fn mls_group_ratchet_tree_extension() {
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(*wire_format_policy)
             .use_ratchet_tree_extension(true)
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build();
 
@@ -1719,6 +1727,7 @@ fn group_context_extensions_proposal() {
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build(alice_provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group using builder");

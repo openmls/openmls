@@ -1,3 +1,4 @@
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::{prelude::*, test_utils::single_group_test_framework::*};
 use openmls_test::openmls_test;
 
@@ -17,6 +18,7 @@ fn swap() {
 
     // Define the MlsGroup configuration
     let group_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();
@@ -85,6 +87,7 @@ fn swap() {
 
     // Bob re-adds alice and yuk
     let alice_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             &alice_party.provider,
@@ -93,6 +96,7 @@ fn swap() {
         )
         .unwrap();
     let yuk_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             &yuk_party.provider,

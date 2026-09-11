@@ -7,6 +7,7 @@ use thiserror::Error;
 use super::*;
 use crate::{
     binary_tree::MlsBinaryTreeDiffError, ciphersuite::signable::SignatureError, error::LibraryError,
+    treesync::node::leaf_node::LeafNodeBuildError,
 };
 
 // === Public errors ===
@@ -140,6 +141,9 @@ pub enum TreeSyncAddLeaf {
     /// The tree is full, we cannot add any more leaves.
     #[error("The tree is full, we cannot add any more leaves.")]
     TreeFull,
+    /// The leaf node's capabilities don't cover what the leaf itself uses.
+    #[error(transparent)]
+    LeafNodeBuild(#[from] LeafNodeBuildError),
 }
 
 /// TreeSync from nodes error

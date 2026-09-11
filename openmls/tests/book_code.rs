@@ -1,3 +1,4 @@
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::{
     prelude::{tls_codec::*, CustomProposal, *},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
@@ -51,6 +52,7 @@ fn generate_key_package(
     // ANCHOR: create_key_package
     // Create the key package
     KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()
@@ -139,7 +141,7 @@ fn book_operations() {
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
             Some(&[CredentialType::Basic]),
@@ -220,6 +222,7 @@ fn book_operations() {
                 2000, // maximum_forward_distance
             ))
             .ciphersuite(ciphersuite)
+            .with_capabilities(minimal_capabilities_for(ciphersuite).build())
             .use_ratchet_tree_extension(true)
             .build(
                 alice_provider,
@@ -321,6 +324,11 @@ fn book_operations() {
         .with_config(mls_group_config.clone())
         .build_group(dave_provider, verifiable_group_info, dave_credential)
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(dave_provider.storage())
         .unwrap()
         .build(
@@ -1581,7 +1589,7 @@ fn custom_proposal_usage() {
     // Define capabilities supporting the custom proposal type
     let capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         None,
         Some(&[ProposalType::Custom(custom_proposal_type)]),
         None,
@@ -1737,7 +1745,7 @@ fn commit_builder() {
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
             Some(&[CredentialType::Basic]),
@@ -1795,6 +1803,7 @@ fn new_signer() {
     );
 
     let config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
     let mut alice_group = MlsGroup::new(
@@ -1860,6 +1869,8 @@ fn external_commit_builder() {
 
     // Make sure we support SelfRemoves
     let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
         .proposals(vec![ProposalType::SelfRemove])
         .build();
 
@@ -1995,6 +2006,11 @@ fn external_commit_builder() {
         )
         .unwrap()
         .add_psk_proposal(PreSharedKeyProposal::new(psk))
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(charlie_provider.storage())
         .unwrap()
         .build(

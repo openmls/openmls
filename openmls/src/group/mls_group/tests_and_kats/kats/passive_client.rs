@@ -340,6 +340,7 @@ impl PassiveClient {
 #[cfg(feature = "generate-kats")]
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> PassiveClientWelcomeTestVector {
     let group_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();

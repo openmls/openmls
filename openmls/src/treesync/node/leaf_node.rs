@@ -20,11 +20,12 @@ use crate::{
     },
     credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
-    extensions::{ExtensionType, Extensions},
+    extensions::{ExtensionType, Extensions, RequiredCapabilitiesExtension},
     group::GroupId,
     key_packages::{KeyPackage, Lifetime},
     prelude::KeyPackageBundle,
     storage::OpenMlsProvider,
+    versions::ProtocolVersion,
 };
 
 use crate::treesync::errors::LeafNodeValidationError;
@@ -41,6 +42,12 @@ pub(crate) struct NewLeafNodeParams {
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions<LeafNode>,
     pub(crate) tree_info_tbs: TreeInfoTbs,
+    /// The group's required capabilities, if any is known at this point.
+    /// `None` for a bare `KeyPackage`, which has no group context.
+    pub(crate) required_capabilities: Option<RequiredCapabilitiesExtension>,
+    /// How `capabilities` is reconciled against the leaf/group's
+    /// requirements. See [`Capabilities::reconcile`].
+    pub(crate) capabilities_policy: CapabilitiesPolicy,
 }
 
 /// Set of LeafNode parameters that are used when regenerating a LeafNodes
@@ -50,6 +57,11 @@ pub(crate) struct UpdateLeafNodeParams {
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions<LeafNode>,
+    /// The group's required capabilities, if any.
+    pub(crate) required_capabilities: Option<RequiredCapabilitiesExtension>,
+    /// How `capabilities` is reconciled against the leaf/group's
+    /// requirements. See [`Capabilities::reconcile`].
+    pub(crate) capabilities_policy: CapabilitiesPolicy,
 }
 
 impl UpdateLeafNodeParams {
@@ -62,6 +74,10 @@ impl UpdateLeafNodeParams {
             },
             capabilities: leaf_node.payload.capabilities.clone(),
             extensions: leaf_node.payload.extensions.clone(),
+            // This reconstructs an already-consistent leaf; there's no group
+            // context available here to source required capabilities from.
+            required_capabilities: None,
+            capabilities_policy: CapabilitiesPolicy::Reject,
         }
     }
 }
@@ -72,6 +88,7 @@ pub struct LeafNodeParameters {
     credential_with_key: Option<CredentialWithKey>,
     capabilities: Option<Capabilities>,
     extensions: Option<Extensions<LeafNode>>,
+    capabilities_policy: Option<CapabilitiesPolicy>,
 }
 
 impl LeafNodeParameters {
@@ -93,6 +110,12 @@ impl LeafNodeParameters {
     /// Returns the extensions.
     pub fn extensions(&self) -> Option<&Extensions<LeafNode>> {
         self.extensions.as_ref()
+    }
+
+    /// Returns the capabilities policy, defaulting to
+    /// [`CapabilitiesPolicy::Reject`] if none was set.
+    pub(crate) fn capabilities_policy(&self) -> CapabilitiesPolicy {
+        self.capabilities_policy.unwrap_or_default()
     }
 
     pub(crate) fn is_empty(&self) -> bool {
@@ -117,6 +140,7 @@ pub struct LeafNodeParametersBuilder {
     credential_with_key: Option<CredentialWithKey>,
     capabilities: Option<Capabilities>,
     extensions: Option<Extensions<LeafNode>>,
+    capabilities_policy: Option<CapabilitiesPolicy>,
 }
 
 impl LeafNodeParametersBuilder {
@@ -140,12 +164,21 @@ impl LeafNodeParametersBuilder {
         self
     }
 
+    /// Set how `capabilities` is reconciled against the leaf/group's
+    /// requirements at construction time. Defaults to
+    /// [`CapabilitiesPolicy::Reject`] if never called.
+    pub fn with_capabilities_policy(mut self, policy: CapabilitiesPolicy) -> Self {
+        self.capabilities_policy = Some(policy);
+        self
+    }
+
     /// Build the [`LeafNodeParameters`].
     pub fn build(self) -> LeafNodeParameters {
         LeafNodeParameters {
             credential_with_key: self.credential_with_key,
             capabilities: self.capabilities,
             extensions: self.extensions,
+            capabilities_policy: self.capabilities_policy,
         }
     }
 }
@@ -183,6 +216,19 @@ pub struct LeafNode {
     signature: Signature,
 }
 
+/// Error building a [`LeafNode`]: either the leaf's capabilities don't
+/// satisfy [`Capabilities::reconcile`] under [`CapabilitiesPolicy::Reject`],
+/// or an unrelated library error occurred (key generation, signing).
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum LeafNodeBuildError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    Validation(#[from] LeafNodeValidationError),
+}
+
 impl LeafNode {
     /// Create a new [`LeafNode`].
     /// This first creates a `LeadNodeTbs` and returns the result of signing
@@ -195,7 +241,7 @@ impl LeafNode {
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         new_leaf_node_params: NewLeafNodeParams,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+    ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         let NewLeafNodeParams {
             ciphersuite,
             credential_with_key,
@@ -203,6 +249,8 @@ impl LeafNode {
             capabilities,
             extensions,
             tree_info_tbs,
+            required_capabilities,
+            capabilities_policy,
         } = new_leaf_node_params;
 
         // Create a new encryption key pair.
@@ -210,12 +258,15 @@ impl LeafNode {
             EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)?;
 
         let leaf_node = Self::new_with_key(
+            ciphersuite,
             encryption_key_pair.public_key().clone(),
             credential_with_key,
             leaf_node_source,
             capabilities,
             extensions,
             tree_info_tbs,
+            required_capabilities.as_ref(),
+            capabilities_policy,
             signer,
         )?;
 
@@ -233,23 +284,28 @@ impl LeafNode {
         signer: &impl Signer,
         new_leaf_node_params: NewLeafNodeParams,
         encryption_key_pair: EncryptionKeyPair,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+    ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         let NewLeafNodeParams {
-            ciphersuite: _,
+            ciphersuite,
             credential_with_key,
             leaf_node_source,
             capabilities,
             extensions,
             tree_info_tbs,
+            required_capabilities,
+            capabilities_policy,
         } = new_leaf_node_params;
 
         let leaf_node = Self::new_with_key(
+            ciphersuite,
             encryption_key_pair.public_key().clone(),
             credential_with_key,
             leaf_node_source,
             capabilities,
             extensions,
             tree_info_tbs,
+            required_capabilities.as_ref(),
+            capabilities_policy,
             signer,
         )?;
 
@@ -279,27 +335,34 @@ impl LeafNode {
 
     /// Create a new leaf node with a given HPKE encryption key pair.
     /// The key pair must be stored in the key store by the caller.
+    #[allow(clippy::too_many_arguments)]
     fn new_with_key(
+        ciphersuite: Ciphersuite,
         encryption_key: EncryptionKey,
         credential_with_key: CredentialWithKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
+        required_capabilities: Option<&RequiredCapabilitiesExtension>,
+        capabilities_policy: CapabilitiesPolicy,
         signer: &impl Signer,
-    ) -> Result<Self, LibraryError> {
+    ) -> Result<Self, LeafNodeBuildError> {
         let leaf_node_tbs = LeafNodeTbs::new(
+            ciphersuite,
             encryption_key,
             credential_with_key,
             capabilities,
             leaf_node_source,
             extensions,
             tree_info_tbs,
-        );
+            required_capabilities,
+            capabilities_policy,
+        )?;
 
         leaf_node_tbs
             .sign(signer)
-            .map_err(|_| LibraryError::custom("Signing failed"))
+            .map_err(|_| LibraryError::custom("Signing failed").into())
     }
 
     /// New [`LeafNode`] with a parent hash.
@@ -321,7 +384,7 @@ impl LeafNode {
         #[cfg(feature = "virtual-clients-draft")] encryption_key_pair_override: Option<
             EncryptionKeyPair,
         >,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+    ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         #[cfg(feature = "virtual-clients-draft")]
         let encryption_key_pair = match encryption_key_pair_override {
             Some(kp) => kp,
@@ -331,6 +394,7 @@ impl LeafNode {
         let encryption_key_pair = EncryptionKeyPair::random(rand, crypto, ciphersuite)?;
 
         let leaf_node_tbs = LeafNodeTbs::new(
+            ciphersuite,
             encryption_key_pair.public_key().clone(),
             leaf_node_params.credential_with_key,
             leaf_node_params.capabilities,
@@ -340,7 +404,9 @@ impl LeafNode {
                 group_id,
                 leaf_index,
             }),
-        );
+            leaf_node_params.required_capabilities.as_ref(),
+            leaf_node_params.capabilities_policy,
+        )?;
 
         // Sign the leaf node
         let leaf_node = leaf_node_tbs
@@ -377,6 +443,11 @@ impl LeafNode {
             capabilities,
             extensions,
             tree_info_tbs,
+            // KAT generation only; there's no group context to source
+            // required capabilities from, and the leaf built here is
+            // expected to already be self-consistent.
+            required_capabilities: None,
+            capabilities_policy: CapabilitiesPolicy::Reject,
         };
 
         let (leaf_node, encryption_key_pair) = Self::new(provider, signer, new_leaf_node_params)?;
@@ -396,6 +467,7 @@ impl LeafNode {
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn update<Provider: OpenMlsProvider>(
         &mut self,
         ciphersuite: Ciphersuite,
@@ -404,8 +476,10 @@ impl LeafNode {
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
         leaf_node_parmeters: LeafNodeParameters,
+        required_capabilities: Option<&RequiredCapabilitiesExtension>,
     ) -> Result<EncryptionKeyPair, LeafNodeUpdateError<Provider::StorageError>> {
         let tree_info = TreeInfoTbs::Update(TreePosition::new(group_id, leaf_index));
+        let capabilities_policy = leaf_node_parmeters.capabilities_policy();
         let mut leaf_node_tbs = LeafNodeTbs::from(self.clone(), tree_info);
 
         // Update credential
@@ -436,6 +510,17 @@ impl LeafNode {
 
         // Set the leaf node source to update
         leaf_node_tbs.payload.leaf_node_source = LeafNodeSource::Update;
+
+        // `LeafNodeTbs::from` above bypasses `LeafNodeTbs::new`, the usual
+        // enforcement chokepoint, so it's applied here explicitly instead.
+        leaf_node_tbs.payload.capabilities.reconcile(
+            ciphersuite,
+            leaf_node_tbs.payload.credential.credential_type(),
+            ProtocolVersion::default(),
+            &leaf_node_tbs.payload.extensions,
+            required_capabilities,
+            capabilities_policy,
+        )?;
 
         // Sign the leaf node
         let leaf_node = leaf_node_tbs.sign(signer)?;
@@ -736,14 +821,33 @@ impl LeafNodeTbs {
 
     /// Build a new [`LeafNodeTbs`] from a [`KeyPackage`] and [`Credential`].
     /// To get the [`LeafNode`] call [`LeafNode::sign`].
+    ///
+    /// This is the single point through which every leaf node the library
+    /// creates is built, so it is where we enforce that a leaf's capabilities
+    /// are consistent with the leaf itself and the group's requirements —
+    /// see [`Capabilities::reconcile`] for what that covers and how
+    /// `capabilities_policy` changes the enforcement.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
+        ciphersuite: Ciphersuite,
         encryption_key: EncryptionKey,
         credential_with_key: CredentialWithKey,
-        capabilities: Capabilities,
+        mut capabilities: Capabilities,
         leaf_node_source: LeafNodeSource,
         extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
-    ) -> Self {
+        required_capabilities: Option<&RequiredCapabilitiesExtension>,
+        capabilities_policy: CapabilitiesPolicy,
+    ) -> Result<Self, LeafNodeValidationError> {
+        capabilities.reconcile(
+            ciphersuite,
+            credential_with_key.credential.credential_type(),
+            ProtocolVersion::default(),
+            &extensions,
+            required_capabilities,
+            capabilities_policy,
+        )?;
+
         let payload = LeafNodePayload {
             encryption_key,
             signature_key: credential_with_key.signature_key,
@@ -753,10 +857,10 @@ impl LeafNodeTbs {
             extensions,
         };
 
-        LeafNodeTbs {
+        Ok(LeafNodeTbs {
             payload,
             tree_info_tbs,
-        }
+        })
     }
 }
 
@@ -1111,6 +1215,10 @@ pub enum LeafNodeGenerationError<StorageError> {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
 
+    /// See [`LeafNodeBuildError`] for more details.
+    #[error(transparent)]
+    Build(#[from] LeafNodeBuildError),
+
     /// Error storing leaf private key in storage.
     #[error("Error storing leaf private key.")]
     StorageError(StorageError),
@@ -1130,4 +1238,8 @@ pub enum LeafNodeUpdateError<StorageError> {
     /// Signature error.
     #[error(transparent)]
     Signature(#[from] crate::ciphersuite::signable::SignatureError),
+
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    Validation(#[from] LeafNodeValidationError),
 }

@@ -1,4 +1,5 @@
 //! A couple of simple tests on how to interact with the key store.
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
@@ -15,6 +16,7 @@ fn test_store_key_package() {
     // This key package includes the private init and encryption key as well.
     // See [`KeyPackageBundle`].
     let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             provider,

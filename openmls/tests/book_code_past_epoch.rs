@@ -5,6 +5,7 @@ use std::time::SystemTime;
 #[cfg(target_arch = "wasm32")]
 use web_time::SystemTime;
 
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::prelude::*;
 use openmls::test_utils::single_group_test_framework::*;
 use openmls_test::openmls_test;
@@ -24,6 +25,7 @@ fn book_example_past_epoch() {
     // ANCHOR: config_keep_all
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::KeepAll)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
     // ANCHOR_END: config_keep_all
@@ -101,6 +103,7 @@ fn book_example_past_epoch() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         // keep at most 3 past epoch secrets
         .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::MaxEpochs(3))
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
     // ANCHOR_END: config_max_epochs

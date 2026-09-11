@@ -271,6 +271,7 @@ impl VcKeyPackageBatchBuilder {
             lifetime: builder.key_package_lifetime.unwrap_or_default(),
             capabilities: builder.leaf_node_capabilities.unwrap_or_default(),
             extensions: leaf_node_extensions,
+            capabilities_policy: builder.capabilities_policy.unwrap_or_default(),
         };
         let (key_package, encryption_key_pair) = KeyPackage::new_from_vc_keys(
             ciphersuite,

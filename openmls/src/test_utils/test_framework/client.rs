@@ -67,6 +67,9 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
         .unwrap();
 
         let key_package = KeyPackage::builder()
+            .leaf_node_capabilities(
+                crate::test_utils::minimal_capabilities_for(ciphersuite).build(),
+            )
             .build(
                 ciphersuite,
                 &self.provider,

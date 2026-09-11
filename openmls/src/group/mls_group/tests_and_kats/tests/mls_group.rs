@@ -25,6 +25,7 @@ use crate::{
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
     test_utils::{
         frankenstein::{FrankenFramedContentBody, FrankenPublicMessage},
+        minimal_capabilities_for,
         single_group_test_framework::{AddMemberConfig, CorePartyState, GroupState},
         test_framework::{
             errors::ClientError, noop_authentication_service, ActionType::Commit, CodecUse,
@@ -99,6 +100,7 @@ fn remover() {
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .build();
 
     // === Alice creates a group ===
@@ -370,6 +372,7 @@ fn safe_export_secret() {
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build();
 
@@ -1306,6 +1309,7 @@ fn key_package_deletion() {
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .build();
 
     // === Alice creates a group ===
@@ -1372,6 +1376,7 @@ fn remove_prosposal_by_ref() {
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .build();
 
     // === Alice creates a group ===
@@ -1505,7 +1510,7 @@ fn builder_pattern() {
     let test_number_of_resumption_psks = 5;
     let test_capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         Some(&[ExtensionType::Unknown(0xff00)]),
         None,
         None,
@@ -1599,7 +1604,13 @@ fn builder_pattern() {
         .filter(|cred| !cred.is_grease())
         .copied()
         .collect();
-    assert_eq!(filtered_ciphersuites, test_capabilities.ciphersuites());
+    // The creator's own leaf node always advertises the group's ciphersuite,
+    // even if it wasn't included in the explicitly configured capabilities.
+    let mut expected_ciphersuites = test_capabilities.ciphersuites().to_vec();
+    if !expected_ciphersuites.contains(&test_ciphersuite.into()) {
+        expected_ciphersuites.push(test_ciphersuite.into());
+    }
+    assert_eq!(filtered_ciphersuites, expected_ciphersuites);
     assert_eq!(filtered_extensions, test_capabilities.extensions());
     assert_eq!(filtered_proposals, test_capabilities.proposals());
     assert_eq!(filtered_credentials, test_capabilities.credentials());
@@ -1640,7 +1651,7 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     let required_capabilities = Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]),
     );
-    let capabilities = Capabilities::new(None, None, Some(required_extension_types), None, None);
+    let capabilities = Capabilities::new(None, Some(&[ciphersuite]), Some(required_extension_types), None, None);
     let test_gc_extensions = Extensions::from_vec(vec![
         unknown_gc_extension.clone(),
         required_capabilities.clone(),
@@ -1838,6 +1849,7 @@ fn update_proposal_bob() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .build();
 
     // === Alice creates a group ===
@@ -1855,6 +1867,7 @@ fn update_proposal_bob() {
         setup_client("Bob", ciphersuite, bob_provider);
 
     let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             bob_provider,
@@ -1944,6 +1957,7 @@ fn update_proposal_alice() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .build();
 
     // === Alice creates a group ===
@@ -1961,6 +1975,7 @@ fn update_proposal_alice() {
         setup_client("Bob", ciphersuite, bob_provider);
 
     let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             bob_provider,
@@ -2066,7 +2081,7 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     let required_capabilities = Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]),
     );
-    let capabilities = Capabilities::new(None, None, Some(required_extension_types), None, None);
+    let capabilities = Capabilities::new(None, Some(&[ciphersuite]), Some(required_extension_types), None, None);
     let test_gc_extensions = Extensions::from_vec(vec![
         unknown_gc_extension.clone(),
         required_capabilities.clone(),
@@ -2199,7 +2214,7 @@ fn unknown_extensions() {
     ];
     let required_capabilities =
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(&[], &[], &[]));
-    let capabilities = Capabilities::new(None, None, Some(required_extensions), None, None);
+    let capabilities = Capabilities::new(None, Some(&[ciphersuite]), Some(required_extensions), None, None);
     let test_gc_extensions = Extensions::from_vec(vec![
         unknown_gc_extension.clone(),
         required_capabilities.clone(),
@@ -2295,18 +2310,20 @@ fn join_multiple_groups_last_resort_extension() {
     let (charlie_credential_with_key, _charlie_kpb, charlie_signer, _charlie_pk) =
         setup_client("charlie", ciphersuite, charlie_provider);
     let leaf_capabilities =
-        Capabilities::new(None, None, Some(&[ExtensionType::LastResort]), None, None);
+        Capabilities::new(None, Some(&[ciphersuite]), Some(&[ExtensionType::LastResort]), None, None);
     let keypkg_extensions = Extensions::single(Extension::LastResort(LastResortExtension::new()))
         .expect("failed to create single-element extensions list");
     // alice creates MlsGroup
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build(alice_provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group for alice using builder");
     // bob creates MlsGroup
     let mut bob_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build(bob_provider, &bob_signer, bob_credential_with_key)
         .expect("error creating group for bob using builder");
@@ -2400,6 +2417,7 @@ fn deletion() {
     // alice creates MlsGroup
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build(alice_provider, &alice_signer, alice_credential_with_key)
         .expect("error creating group for alice using builder");
@@ -2613,6 +2631,7 @@ fn update_path() {
             bob_group.group_id().clone(),
             bob_group.own_leaf_index(),
             LeafNodeParameters::default(),
+            None,
         )
         .unwrap();
 
@@ -2709,6 +2728,7 @@ fn psks() {
         .unwrap();
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -2798,6 +2818,7 @@ fn application_psks() {
         .unwrap();
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -2913,6 +2934,7 @@ fn staged_commit_creation() {
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -2968,6 +2990,7 @@ fn own_commit_processing() {
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -3016,6 +3039,7 @@ fn own_commit_mismatch() {
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -3103,6 +3127,7 @@ fn own_commit_without_update_path_without_pending_is_staged() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -3190,6 +3215,7 @@ fn proposal_application_after_self_was_removed() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -3364,6 +3390,7 @@ fn proposal_application_after_self_was_removed_ref() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -3554,6 +3581,7 @@ fn signature_key_rotation() {
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build();
 
@@ -3697,6 +3725,7 @@ fn group_replacement() {
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build();
 
@@ -3721,6 +3750,7 @@ fn group_replacement() {
     // Creating a new group with the same ID should fail
     let err = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_group_id(group_id.clone())
         .use_ratchet_tree_extension(true)
         .build(
@@ -3734,6 +3764,7 @@ fn group_replacement() {
     let mut alice_group = MlsGroup::builder()
         .replace_old_group()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_group_id(group_id.clone())
         .use_ratchet_tree_extension(true)
         .build(
@@ -3767,6 +3798,7 @@ fn group_replacement() {
     let mut alice_group = MlsGroup::builder()
         .replace_old_group()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_group_id(group_id)
         .use_ratchet_tree_extension(true)
         .build(
@@ -3814,6 +3846,7 @@ fn propose_self_update_with_new_signer_mismatched_credential() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build();
     let mls_group_join_config = mls_group_create_config.join_config().clone();
@@ -3876,6 +3909,7 @@ fn propose_self_update_with_new_signer_mismatched_ciphersuite() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build();
     let mls_group_join_config = mls_group_create_config.join_config().clone();
@@ -3938,6 +3972,7 @@ fn commit_with_new_signer_mismatched_ciphersuite() {
         setup_client("Alice", ciphersuite, provider);
     let mut group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(provider, &signer, credential_with_key)
         .unwrap();
 
@@ -3985,6 +4020,7 @@ fn commit_with_new_signer_mismatched_credential() {
         setup_client("Alice", ciphersuite, provider);
     let mut group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(provider, &signer, credential_with_key.clone())
         .unwrap();
 
@@ -4067,6 +4103,7 @@ fn propose_self_update_with_new_signer_roundtrip() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build();
     let mls_group_join_config = mls_group_create_config.join_config().clone();
@@ -4205,6 +4242,7 @@ fn propose_self_update_with_new_signer_committed_by_proposer() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build();
     let mls_group_join_config = mls_group_create_config.join_config().clone();
@@ -4312,6 +4350,7 @@ fn commit_with_new_signer_signs_group_info_with_new_signer() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .use_ratchet_tree_extension(true)
         .build();
     let mls_group_join_config = mls_group_create_config.join_config().clone();

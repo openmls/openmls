@@ -4,6 +4,7 @@
 //! using the same parameters as the old group.
 //! <https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching>
 
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::{
     prelude::*,
     schedule::{
@@ -48,6 +49,7 @@ fn setup_group(
     );
 
     let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             bob_provider,
@@ -56,6 +58,7 @@ fn setup_group(
         )
         .unwrap();
     let charlie_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             charlie_provider,
@@ -117,6 +120,7 @@ fn subgroup_branching() {
     let charlie_provider = &Provider::default();
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
@@ -133,6 +137,7 @@ fn subgroup_branching() {
 
     // === Alice creates a subgroup with Alice and Bob ===
     let bob_new_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
         .unwrap();
 
@@ -141,6 +146,7 @@ fn subgroup_branching() {
     let (mut alice_bob_sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -191,6 +197,7 @@ fn subgroup_branch_psk_rejected_outside_initial_commit() {
     let charlie_provider = &Provider::default();
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
@@ -255,6 +262,7 @@ fn subgroup_branch_rejects_non_matching_leaf() {
     let dave_provider = &Provider::default();
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
@@ -276,10 +284,12 @@ fn subgroup_branch_rejects_non_matching_leaf() {
         dave_provider,
     );
     let dave_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(ciphersuite, dave_provider, &dave_signer, dave_credential)
         .unwrap();
 
     let bob_new_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
         .unwrap();
 
@@ -287,6 +297,7 @@ fn subgroup_branch_rejects_non_matching_leaf() {
     let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -335,6 +346,7 @@ fn subgroup_branch_rejects_parent_epoch_mismatch() {
     let charlie_provider = &Provider::default();
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
@@ -355,12 +367,14 @@ fn subgroup_branch_rejects_parent_epoch_mismatch() {
 
     // Alice branches a subgroup from the parent's current epoch.
     let bob_new_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
         .unwrap();
 
     let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -413,6 +427,7 @@ fn build_from_branch_rejects_non_branch_welcome() {
     let eve_provider = &Provider::default();
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
@@ -434,6 +449,7 @@ fn build_from_branch_rejects_non_branch_welcome() {
         eve_provider,
     );
     let eve_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(ciphersuite, eve_provider, &eve_signer, eve_credential)
         .unwrap();
 
@@ -476,6 +492,7 @@ fn subgroup_branch_peek_parent_then_build() {
     let charlie_provider = &Provider::default();
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
@@ -495,12 +512,14 @@ fn subgroup_branch_peek_parent_then_build() {
     let parent_epoch = alice_group.epoch();
 
     let bob_new_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
         .unwrap();
 
     let (mut alice_bob_sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -561,6 +580,7 @@ fn subgroup_branch_carrier_rejects_wrong_epoch() {
     let charlie_provider = &Provider::default();
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
@@ -580,12 +600,14 @@ fn subgroup_branch_carrier_rejects_wrong_epoch() {
     );
 
     let bob_new_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
         .unwrap();
 
     let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -636,6 +658,7 @@ fn process_branch_welcome_parent_none_for_plain_welcome() {
     let eve_provider = &Provider::default();
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
@@ -656,6 +679,7 @@ fn process_branch_welcome_parent_none_for_plain_welcome() {
         eve_provider,
     );
     let eve_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(ciphersuite, eve_provider, &eve_signer, eve_credential)
         .unwrap();
 

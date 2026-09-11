@@ -1,3 +1,4 @@
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::{
     prelude::*, test_utils::single_group_test_framework::*,
     test_utils::storage_state::GroupStorageState, *,
@@ -40,6 +41,7 @@ fn generate_key_package(
     // ANCHOR: create_key_package
     // Create the key package
     KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()
@@ -59,6 +61,7 @@ fn not_join_group() {
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true) // NOTE: important
         .build();

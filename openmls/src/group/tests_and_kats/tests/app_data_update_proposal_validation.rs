@@ -16,7 +16,7 @@ fn setup<'a, Provider: OpenMlsProvider>(
     // Required capabilities for leaf node
     let capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         Some(&[ExtensionType::AppDataDictionary]),
         Some(&[ProposalType::AppDataUpdate]),
         None,
@@ -816,7 +816,7 @@ fn test_external_commit_with_app_data_update_proposal() {
     // group to allow committing AppDataUpdate proposals.
     let capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         Some(&[ExtensionType::AppDataDictionary]),
         Some(&[ProposalType::AppDataUpdate]),
         None,

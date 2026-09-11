@@ -1,6 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
+use crate::test_utils::minimal_capabilities_for;
 use std::slice::from_ref;
 
 use crate::{
@@ -68,6 +69,7 @@ fn create_group_with_members<Provider: OpenMlsProvider>(
         provider,
         &alice_credential_with_key_and_signer.signer,
         &MlsGroupCreateConfig::builder()
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build(),
         GroupId::random(provider.rand()),
@@ -114,6 +116,7 @@ fn new_test_group(
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 
@@ -381,6 +384,7 @@ fn test_valsem101a() {
     // Now let's create a second proposal and insert it into the commit. We want
     // a different hpke key, different identity, but the same signature key.
     let dave_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             charlie_provider,
@@ -690,6 +694,7 @@ fn test_valsem101b() {
             alice_provider,
             &alice_credential_with_key.signer,
             &MlsGroupCreateConfig::builder()
+                .capabilities(minimal_capabilities_for(ciphersuite).build())
                 .ciphersuite(ciphersuite)
                 .build(),
             GroupId::random(alice_provider.rand()),
@@ -2256,7 +2261,7 @@ fn valsem113() {
 
     let capabilities_with_support = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         None,
         Some(&[ProposalType::Custom(custom_proposal_type)]),
         None,
@@ -2283,7 +2288,10 @@ fn valsem113() {
 
         // Generate Bob's KeyPackage depending on the test mode
         let bob_key_package = if matches!(test_mode, TestMode::Unsupported) {
+            // Advertise everything except the proposal type under test, so the
+            // leaf is rejected for the proposal, not for its own ciphersuite.
             KeyPackageBuilder::new()
+                .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         } else {
             KeyPackageBuilder::new().leaf_node_capabilities(capabilities_with_support.clone())
         }
@@ -2297,7 +2305,9 @@ fn valsem113() {
 
         // Create a group with the defined capabilities
         let mut alice_group = if matches!(test_mode, TestMode::Unsupported) {
+            // Advertise everything except the proposal type under test.
             MlsGroup::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         } else {
             MlsGroup::builder().with_capabilities(capabilities_with_support.clone())
         }
@@ -2410,6 +2420,7 @@ fn validate_key_package_for_add() {
     let capabilities = |ciphersuite, extension_types: Vec<ExtensionType>| {
         Capabilities::builder()
             .ciphersuites(vec![ciphersuite])
+            .credentials(vec![CredentialType::Basic])
             .extensions(extension_types)
             .build()
     };

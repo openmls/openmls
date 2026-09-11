@@ -1,3 +1,4 @@
+use crate::test_utils::minimal_capabilities_for;
 use crate::{
     group::{
         tests_and_kats::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
@@ -15,6 +16,7 @@ mod test_unmerged_leaves;
 #[openmls_test::openmls_test]
 fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();
@@ -39,6 +41,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
             &provider,
         );
         let key_package = KeyPackage::builder()
+            .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
             .build(
                 ciphersuite,
                 &provider,

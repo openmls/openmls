@@ -1,4 +1,5 @@
 use mls_group::tests_and_kats::utils::setup_client;
+use crate::group::tests_and_kats::utils::minimal_capabilities_for;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
 use openmls_traits::types::Ciphersuite;
@@ -12,9 +13,7 @@ use crate::{
     key_packages::{errors::KeyPackageVerifyError, *},
     messages::group_info::GroupInfo,
     test_utils::frankenstein::{self, FrankenMlsMessage},
-    treesync::{
-        errors::LeafNodeValidationError, node::leaf_node::Capabilities, LeafNodeParameters,
-    },
+    treesync::{errors::LeafNodeValidationError, LeafNodeParameters},
 };
 
 /// The state of a group member: A PartyState and the corresponding MlsGroup.
@@ -57,7 +56,10 @@ impl<Provider: crate::storage::OpenMlsProvider + Default> PartyState<Provider> {
         ciphersuite: Ciphersuite,
         f: F,
     ) -> KeyPackageBundle {
-        f(KeyPackage::builder())
+        // Seeded before `f` runs so a caller that sets its own capabilities
+        // still wins.
+        f(KeyPackage::builder()
+            .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build()))
             .build(
                 ciphersuite,
                 &self.provider,
@@ -84,13 +86,14 @@ fn setup<Provider: crate::storage::OpenMlsProvider + Default>(
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(WireFormatPolicy::new(
             OutgoingWireFormatPolicy::AlwaysPlaintext,
             IncomingWireFormatPolicy::Mixed,
         ))
         .with_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![
                     ExtensionType::Unknown(0xf001),
                     ExtensionType::Unknown(0xf002),
@@ -112,7 +115,7 @@ fn setup<Provider: crate::storage::OpenMlsProvider + Default>(
     // === Alice adds Bob ===
     let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
         builder.leaf_node_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![
                     ExtensionType::Unknown(0xf001),
                     ExtensionType::Unknown(0xf002),
@@ -348,6 +351,7 @@ fn self_update_happy_case_simple() {
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(WireFormatPolicy::new(
             OutgoingWireFormatPolicy::AlwaysPlaintext,
@@ -479,7 +483,7 @@ fn fail_insufficient_extensiontype_capabilities_add_valn0103() {
     let charlie = PartyState::<Provider>::generate("charlie", ciphersuite);
     let charlie_kpb = charlie.key_package(ciphersuite, |builder| {
         builder.leaf_node_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![ExtensionType::Unknown(0xf001)])
                 .build(),
         )
@@ -1189,13 +1193,14 @@ fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502() {
     .expect("unknown extensions should be considered valid in group context");
 
     let alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(WireFormatPolicy::new(
             OutgoingWireFormatPolicy::AlwaysPlaintext,
             IncomingWireFormatPolicy::Mixed,
         ))
         .with_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![
                     ExtensionType::Unknown(0xf001),
                     ExtensionType::Unknown(0xf002),
@@ -1219,7 +1224,7 @@ fn fail_insufficient_extensiontype_capabilities_update_proposal_valn0502() {
     // Bob joins the group with support for extension 0xf003
     let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
         builder.leaf_node_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![
                     ExtensionType::Unknown(0xf001),
                     ExtensionType::Unknown(0xf002),
@@ -1427,13 +1432,14 @@ fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
     .expect("unknown extensions should be considered valid in group context");
 
     let alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(WireFormatPolicy::new(
             OutgoingWireFormatPolicy::AlwaysPlaintext,
             IncomingWireFormatPolicy::Mixed,
         ))
         .with_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![
                     ExtensionType::Unknown(0xf001),
                     ExtensionType::Unknown(0xf002),
@@ -1457,7 +1463,7 @@ fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
     // Bob joins the group with support for extension 0xf003
     let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
         builder.leaf_node_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![
                     ExtensionType::Unknown(0xf001),
                     ExtensionType::Unknown(0xf002),
@@ -1624,13 +1630,14 @@ fn fail_create_update_proposal_insufficient_capabilities() {
     .expect("unknown extensions should be considered valid in group context");
 
     let alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(WireFormatPolicy::new(
             OutgoingWireFormatPolicy::AlwaysPlaintext,
             IncomingWireFormatPolicy::Mixed,
         ))
         .with_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![
                     ExtensionType::Unknown(0xf001),
                     ExtensionType::Unknown(0xf002),
@@ -1654,7 +1661,7 @@ fn fail_create_update_proposal_insufficient_capabilities() {
     // Bob joins the group with support for extension 0xf003
     let bob_key_package = bob_party.key_package(ciphersuite, |builder| {
         builder.leaf_node_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![
                     ExtensionType::Unknown(0xf001),
                     ExtensionType::Unknown(0xf002),
@@ -1693,7 +1700,7 @@ fn fail_create_update_proposal_insufficient_capabilities() {
     // that don't support extension 0xf003 (only supports 0xf001 and 0xf002)
     let bad_params = LeafNodeParameters::builder()
         .with_capabilities(
-            Capabilities::builder()
+            minimal_capabilities_for(ciphersuite)
                 .extensions(vec![
                     ExtensionType::Unknown(0xf001),
                     ExtensionType::Unknown(0xf002),
@@ -1732,6 +1739,7 @@ fn join_rejects_unsupported_group_context_extension() {
     .expect("unknown extensions should be considered valid in group context");
 
     let alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(WireFormatPolicy::new(
             OutgoingWireFormatPolicy::AlwaysPlaintext,

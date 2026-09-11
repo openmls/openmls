@@ -142,6 +142,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     // Let's create a group
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .max_past_epochs(2)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)

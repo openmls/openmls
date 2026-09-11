@@ -499,6 +499,7 @@ fn generate_key_package(
     // ANCHOR: create_key_package
     // Create the key package
     KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()

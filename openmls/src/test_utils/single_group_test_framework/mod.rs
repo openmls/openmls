@@ -13,6 +13,7 @@ use crate::{
     prelude::{commit_builder::*, *},
 };
 
+pub use crate::test_utils::minimal_capabilities_for;
 use crate::test_utils::storage_state::GroupStorageState;
 
 mod assertions;
@@ -55,7 +56,9 @@ pub(crate) fn generate_key_package(
     lifetime: impl Into<Option<Lifetime>>,
     signer: &impl Signer,
 ) -> KeyPackageBundle {
-    let mut builder = KeyPackage::builder().key_package_extensions(extensions);
+    let mut builder = KeyPackage::builder()
+        .key_package_extensions(extensions)
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build());
 
     if let Some(lifetime) = lifetime.into() {
         builder = builder.key_package_lifetime(lifetime);
@@ -139,7 +142,10 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
         let mut builder = KeyPackage::builder()
             .leaf_node_extensions(self.leaf_node_extensions.unwrap_or_default())
             .key_package_extensions(self.key_package_extensions.unwrap_or_default())
-            .leaf_node_capabilities(self.leaf_node_capabilities.unwrap_or_default());
+            .leaf_node_capabilities(
+                self.leaf_node_capabilities
+                    .unwrap_or_else(|| minimal_capabilities_for(self.ciphersuite).build()),
+            );
 
         if let Some(lifetime) = self.lifetime {
             builder = builder.key_package_lifetime(lifetime);
@@ -487,6 +493,7 @@ impl MlsGroupCreateConfig {
     /// Default config for test framework
     pub fn test_default_from_ciphersuite(ciphersuite: Ciphersuite) -> Self {
         MlsGroupCreateConfig::builder()
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY) // Important because the secret tree might diverge otherwise
@@ -521,6 +528,7 @@ mod test {
 
         // Create config
         let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             .build();
@@ -586,6 +594,7 @@ mod test {
 
         // Create config
         let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             .build();
@@ -635,6 +644,7 @@ mod test {
 
         // Create config
         let mls_group_create_config = MlsGroupCreateConfig::builder()
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             .build();

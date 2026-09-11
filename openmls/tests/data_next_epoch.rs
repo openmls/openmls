@@ -1,6 +1,7 @@
 //! Tests for StagedCommit next epoch access APIs and StagedWelcome export secret API
 //! using the single group test framework
 
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::{
     prelude::*,
     test_utils::single_group_test_framework::{AddMemberConfig, CorePartyState, GroupState},
@@ -24,6 +25,7 @@ fn staged_commit_next_epoch_values_match_merged_group() {
 
     // 3. Create group config with ratchet tree extension
     let create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();
@@ -149,6 +151,7 @@ fn staged_commit_self_removed_returns_none() {
 
     // 3. Create group config
     let create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();
@@ -245,6 +248,7 @@ fn staged_welcome_export_secret_matches_created_group() {
 
     // 3. Create group config with ratchet tree extension
     let create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .build();

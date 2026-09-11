@@ -1,3 +1,4 @@
+use crate::test_utils::minimal_capabilities_for;
 use crate::{
     credentials::test_utils::new_credential,
     framing::errors::{MessageDecryptionError, SecretTreeError},
@@ -26,6 +27,7 @@ fn test_secret_tree_persistence() {
 
     // Generate KeyPackage for Bob
     let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(Extensions::empty())
         .build(
             ciphersuite,
@@ -39,6 +41,7 @@ fn test_secret_tree_persistence() {
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 

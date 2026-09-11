@@ -81,6 +81,8 @@
 
 use itertools::izip;
 use openmls_basic_credential::SignatureKeyPair;
+
+use crate::test_utils::minimal_capabilities_for;
 use openmls_traits::{
     signatures::Signer,
     types::{Ciphersuite, SignatureScheme},
@@ -169,6 +171,7 @@ fn group(
     );
 
     let group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build(provider, &signer, credential_with_key.clone())
         .unwrap();
@@ -189,6 +192,7 @@ fn receiver_group(
     );
 
     let group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_group_id(group_id)
         .replace_old_group()

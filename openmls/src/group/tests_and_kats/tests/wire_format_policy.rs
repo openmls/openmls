@@ -1,5 +1,6 @@
 //! This module tests the different values for `WireFormatPolicy`
 
+use crate::test_utils::minimal_capabilities_for;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 
 use crate::{framing::*, group::*, treesync::LeafNodeParameters};
@@ -24,6 +25,7 @@ fn create_group(
     let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
         .use_ratchet_tree_extension(true)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 

@@ -1,3 +1,4 @@
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::{
     credentials::test_utils::new_credential,
     messages::group_info::VerifiableGroupInfo,
@@ -14,6 +15,7 @@ fn create_alice_group(
 ) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let group_config = MlsGroupCreateConfig::builder()
         .use_ratchet_tree_extension(use_ratchet_tree_extension)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 
@@ -83,6 +85,11 @@ fn test_external_commit() {
         let (_bob_group, _) = MlsGroup::external_commit_builder()
             .build_group(bob_provider, verifiable_group_info, bob_credential)
             .unwrap()
+            .leaf_node_parameters(
+                LeafNodeParameters::builder()
+                    .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                    .build(),
+            )
             .load_psks(bob_provider.storage())
             .unwrap()
             .build(
@@ -145,6 +152,11 @@ fn test_group_info() {
         )
         .build_group(bob_provider, verifiable_group_info, bob_credential)
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -200,6 +212,11 @@ fn test_group_info() {
     let _ = MlsGroup::external_commit_builder()
         .build_group(bob_provider, verifiable_group_info, bob_credential)
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(

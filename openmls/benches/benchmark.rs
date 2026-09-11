@@ -4,6 +4,7 @@ extern crate openmls;
 extern crate rand;
 
 use criterion::{measurement::WallTime, BenchmarkGroup, BenchmarkId, Criterion};
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -35,6 +36,7 @@ fn criterion_key_package(
                 },
                 |(credential_with_key, signer)| {
                     let _key_package = KeyPackage::builder()
+                        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
                         .build(ciphersuite, provider, &signer, credential_with_key)
                         .expect("An unexpected error occurred.");
                 },
@@ -68,6 +70,7 @@ fn create_welcome(
                         signature_key: bob_signer.to_public_vec().into(),
                     };
                     let bob_key_package = KeyPackage::builder()
+                        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
                         .build(
                             ciphersuite,
                             provider,
@@ -78,6 +81,7 @@ fn create_welcome(
 
                     let mls_group_create_config = MlsGroupCreateConfig::builder()
                         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+                        .capabilities(minimal_capabilities_for(ciphersuite).build())
                         .ciphersuite(ciphersuite)
                         .build();
 
@@ -132,6 +136,7 @@ fn join_group(
                         signature_key: bob_signer.to_public_vec().into(),
                     };
                     let bob_key_package = KeyPackage::builder()
+                        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
                         .build(
                             ciphersuite,
                             provider,
@@ -142,6 +147,7 @@ fn join_group(
 
                     let mls_group_create_config = MlsGroupCreateConfig::builder()
                         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+                        .capabilities(minimal_capabilities_for(ciphersuite).build())
                         .ciphersuite(ciphersuite)
                         .build();
 
@@ -218,6 +224,7 @@ fn create_commit(
                         signature_key: bob_signer.to_public_vec().into(),
                     };
                     let bob_key_package = KeyPackage::builder()
+                        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
                         .build(
                             ciphersuite,
                             provider,
@@ -228,6 +235,7 @@ fn create_commit(
 
                     let mls_group_create_config = MlsGroupCreateConfig::builder()
                         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+                        .capabilities(minimal_capabilities_for(ciphersuite).build())
                         .ciphersuite(ciphersuite)
                         .build();
 

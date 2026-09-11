@@ -15,6 +15,7 @@ pub(crate) fn key_package(
 
     // Generate a valid KeyPackage.
     let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             provider,
@@ -64,6 +65,7 @@ fn key_package_rejects_unsupported_ciphersuite() {
     let credential = BasicCredential::new(b"Sasha".to_vec());
 
     let err = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             &provider,
@@ -118,6 +120,7 @@ fn application_id_extension() {
     // Generate a valid KeyPackage.
     let id = b"application id" as &[u8];
     let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .leaf_node_extensions(
             Extensions::single(Extension::ApplicationId(ApplicationIdExtension::new(id)))
                 .expect("failed to create single-element extensions list"),
@@ -272,6 +275,7 @@ fn last_resort_key_package() {
 
     // build without any other extensions
     let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .mark_as_last_resort()
         .build(
             ciphersuite,
@@ -287,6 +291,7 @@ fn last_resort_key_package() {
 
     // build with empty extensions
     let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(Extensions::empty())
         .mark_as_last_resort()
         .build(
@@ -303,6 +308,7 @@ fn last_resort_key_package() {
 
     // build with extension
     let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(
             Extensions::single(Extension::Unknown(0xFF00, UnknownExtension(vec![0x00])))
                 .expect("failed to create single-element extensions list"),
@@ -338,7 +344,7 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
             DerivationInfo, DerivationInfoTbe, VcDerivationEpochState, VirtualClientOperationType,
             VC_COMPONENT_ID,
         },
-        credentials::test_utils::new_credential,
+        credentials::{test_utils::new_credential, CredentialType},
         extensions::{AppDataDictionary, AppDataDictionaryExtension},
         group::{MlsGroup, MlsGroupCreateConfig, PURE_PLAINTEXT_WIRE_FORMAT_POLICY},
         key_packages::errors::KeyPackageNewError,
@@ -351,6 +357,8 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
     // VC-capable leaf config: declares AppDataDictionary support and lists
     // VC_COMPONENT_ID in its AppComponents entry (component id 1).
     let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
         .extensions(vec![ExtensionType::AppDataDictionary])
         .build();
     let vc_leaf_extensions = {

@@ -2,6 +2,7 @@
 //!
 //! Keep the anchors in sync with `book/src/user_manual/sub-groups.md`.
 
+use openmls::test_utils::minimal_capabilities_for;
 use openmls::{group::BranchInfo, prelude::*};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_test::openmls_test;
@@ -24,6 +25,7 @@ fn book_example_sub_group_branching() {
     );
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         // Sub-group branching relies on resumption PSKs, so make sure the group
@@ -97,6 +99,7 @@ fn book_example_sub_group_branching() {
     let (mut alice_sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .branch(alice_branch_info)
         .build_branch(
             alice_provider,
@@ -203,6 +206,7 @@ fn generate_key_package(
     signer: &impl Signer,
 ) -> KeyPackageBundle {
     KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .key_package_extensions(extensions)
         .build(ciphersuite, provider, signer, credential_with_key)
         .unwrap()

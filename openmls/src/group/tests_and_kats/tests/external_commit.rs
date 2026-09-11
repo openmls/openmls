@@ -1,4 +1,6 @@
 //! This module contains tests for external commit messages
+use crate::treesync::LeafNodeParameters;
+use crate::test_utils::minimal_capabilities_for;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -39,6 +41,7 @@ fn test_external_commit() {
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 
@@ -71,6 +74,11 @@ fn test_external_commit() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -146,6 +154,11 @@ fn test_external_commit() {
             charlie_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(charlie_provider.storage())
         .unwrap()
         .build(
@@ -229,6 +242,11 @@ fn test_external_commit() {
             alice_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(alice_provider.storage())
         .unwrap()
         .build(

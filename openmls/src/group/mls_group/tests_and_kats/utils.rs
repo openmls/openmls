@@ -26,6 +26,7 @@ pub(crate) fn setup_alice_group(
     // Alice creates a group
     let group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             provider,
             &alice_signature_keys,
@@ -142,6 +143,7 @@ pub(crate) fn setup_alice_bob_group<Provider: OpenMlsProvider>(
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             alice_provider,
             &alice_signature_keys,

@@ -3,6 +3,7 @@
 use openmls_test::openmls_test;
 
 use crate::{
+    credentials::CredentialType,
     extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
     group::{
         errors::CreateCommitError, GroupId, MlsGroupCreateConfig, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
@@ -11,7 +12,10 @@ use crate::{
     test_utils::single_group_test_framework::{
         AddMemberConfig, CorePartyState, GroupError, GroupState,
     },
-    treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
+    treesync::{
+        errors::{LeafNodeValidationError, TreeSyncAddLeaf},
+        node::leaf_node::{Capabilities, LeafNodeBuildError},
+    },
 };
 
 /// Test that building a commit with a leaf node that doesn't support required extensions fails.
@@ -32,6 +36,8 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabi
     // Create capabilities that support the required extension
     let supporting_caps = Capabilities::builder()
         .extensions(vec![ExtensionType::Unknown(0xf001)])
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
         .build();
 
     // Generate pre-group states with supporting capabilities
@@ -75,7 +81,10 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabi
         .expect("Could not add member");
 
     // Create bad capabilities (without the required extension)
-    let bad_caps = Capabilities::builder().build(); // No extensions supported
+    let bad_caps = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .build(); // No extensions supported
     let bad_params = LeafNodeParameters::builder()
         .with_capabilities(bad_caps)
         .build();
@@ -94,8 +103,10 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabi
     assert!(
         matches!(
             err,
-            GroupError::<Provider>::CreateCommit(CreateCommitError::LeafNodeValidation(
-                LeafNodeValidationError::UnsupportedExtensions
+            GroupError::<Provider>::CreateCommit(CreateCommitError::TreeSyncAddLeaf(
+                TreeSyncAddLeaf::LeafNodeBuild(LeafNodeBuildError::Validation(
+                    LeafNodeValidationError::UnsupportedExtensions,
+                )),
             ))
         ),
         "Expected UnsupportedExtensions error, got {:?}",
@@ -122,6 +133,8 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
     // Create capabilities that support the required extension
     let supporting_caps = Capabilities::builder()
         .extensions(vec![ExtensionType::Unknown(0xf001)])
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
         .build();
 
     // Generate pre-group states with supporting capabilities
@@ -164,7 +177,10 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
         .expect("Could not add member");
 
     // Create bad capabilities (without the required extension)
-    let bad_caps = Capabilities::builder().build(); // No extensions supported
+    let bad_caps = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .build(); // No extensions supported
     let bad_params = LeafNodeParameters::builder()
         .with_capabilities(bad_caps)
         .build();

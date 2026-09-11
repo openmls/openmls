@@ -101,7 +101,9 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
-            leaf_node::{Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs},
+            leaf_node::{
+                Capabilities, CapabilitiesPolicy, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs,
+            },
         },
         LeafNode,
     },
@@ -228,6 +230,10 @@ pub(crate) struct KeyPackageLeafNodeParams {
     pub(crate) lifetime: Lifetime,
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions<LeafNode>,
+    /// How `capabilities` is reconciled against the leaf's requirements. See
+    /// [`Capabilities::reconcile`]. A bare `KeyPackage` has no group context,
+    /// so there are no required capabilities to reconcile against.
+    pub(crate) capabilities_policy: CapabilitiesPolicy,
 }
 
 /// Helper struct containing the results of building a new [`KeyPackage`].
@@ -357,6 +363,7 @@ impl KeyPackage {
             lifetime,
             capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         } = leaf_node_params;
 
         let new_leaf_node_params = NewLeafNodeParams {
@@ -366,6 +373,10 @@ impl KeyPackage {
             capabilities,
             extensions: leaf_node_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            // A bare KeyPackage has no group context to source required
+            // capabilities from.
+            required_capabilities: None,
+            capabilities_policy,
         };
 
         let (leaf_node, encryption_key_pair) =
@@ -404,6 +415,7 @@ impl KeyPackage {
             lifetime,
             capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         } = leaf_node_params;
 
         let new_leaf_node_params = NewLeafNodeParams {
@@ -413,6 +425,10 @@ impl KeyPackage {
             capabilities,
             extensions: leaf_node_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            // A bare KeyPackage has no group context to source required
+            // capabilities from.
+            required_capabilities: None,
+            capabilities_policy,
         };
 
         let (leaf_node, encryption_key_pair) = LeafNode::new_with_encryption_key_pair(
@@ -513,6 +529,7 @@ pub struct KeyPackageBuilder {
     leaf_node_capabilities: Option<Capabilities>,
     leaf_node_extensions: Option<Extensions<LeafNode>>,
     last_resort: bool,
+    capabilities_policy: Option<CapabilitiesPolicy>,
 }
 
 impl KeyPackageBuilder {
@@ -524,6 +541,7 @@ impl KeyPackageBuilder {
             leaf_node_capabilities: None,
             leaf_node_extensions: None,
             last_resort: false,
+            capabilities_policy: None,
         }
     }
 
@@ -559,6 +577,14 @@ impl KeyPackageBuilder {
         self
     }
 
+    /// Set how the leaf node's capabilities are reconciled against the leaf
+    /// itself at construction time. Defaults to
+    /// [`CapabilitiesPolicy::Reject`] if never called.
+    pub fn capabilities_policy(mut self, policy: CapabilitiesPolicy) -> Self {
+        self.capabilities_policy = Some(policy);
+        self
+    }
+
     /// Ensure that a last-resort extension is present in the key package if the
     /// `last_resort` flag is set.
     fn ensure_last_resort(&mut self) {
@@ -590,6 +616,7 @@ impl KeyPackageBuilder {
             lifetime: self.key_package_lifetime.unwrap_or_default(),
             capabilities: self.leaf_node_capabilities.unwrap_or_default(),
             extensions: self.leaf_node_extensions.unwrap_or_default(),
+            capabilities_policy: self.capabilities_policy.unwrap_or_default(),
         };
         KeyPackage::create(
             ciphersuite,
@@ -615,6 +642,7 @@ impl KeyPackageBuilder {
             lifetime: self.key_package_lifetime.unwrap_or_default(),
             capabilities: self.leaf_node_capabilities.unwrap_or_default(),
             extensions: self.leaf_node_extensions.unwrap_or_default(),
+            capabilities_policy: self.capabilities_policy.unwrap_or_default(),
         };
         let KeyPackageCreationResult {
             key_package,
@@ -786,6 +814,12 @@ impl KeyPackageBundle {
         credential_with_key: CredentialWithKey,
     ) -> Self {
         KeyPackage::builder()
+            .leaf_node_capabilities(
+                Capabilities::builder()
+                    .ciphersuites(vec![ciphersuite])
+                    .credentials(vec![CredentialType::Basic])
+                    .build(),
+            )
             .build(ciphersuite, provider, signer, credential_with_key)
             .unwrap()
     }

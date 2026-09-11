@@ -96,7 +96,7 @@ fn setup_group_with_app_data_support<'a, Provider: OpenMlsProvider>(
     // and AppDataUpdate proposal support
     let capabilities = Capabilities::new(
         None, // protocol versions (default)
-        None, // ciphersuites (default)
+        Some(&[ciphersuite]),
         Some(&[ExtensionType::AppDataDictionary]),
         Some(&[ProposalType::AppDataUpdate]),
         None, // credentials (default)

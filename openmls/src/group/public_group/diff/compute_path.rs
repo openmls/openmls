@@ -56,6 +56,16 @@ impl PublicGroupDiff<'_> {
         own_update_override: Option<OwnUpdatePathOverride>,
     ) -> Result<PathComputationResult, CreateCommitError> {
         let ciphersuite = self.group_context().ciphersuite();
+        let capabilities_policy = leaf_node_params.capabilities_policy();
+        // A GroupContextExtensions proposal in this commit puts the group's
+        // *new* required capabilities in `gc_extensions`; the group context
+        // itself isn't updated until after the new leaf is built (see
+        // `self.update_group_context` below).
+        let required_capabilities = gc_extensions
+            .as_ref()
+            .unwrap_or_else(|| self.group_context().extensions())
+            .required_capabilities()
+            .cloned();
 
         let leaf_node_params = match commit_type {
             CommitType::External => {
@@ -82,6 +92,8 @@ impl PublicGroupDiff<'_> {
                     credential_with_key,
                     capabilities,
                     extensions,
+                    required_capabilities,
+                    capabilities_policy,
                 }
             }
             CommitType::Member => {
@@ -112,6 +124,8 @@ impl PublicGroupDiff<'_> {
                     credential_with_key,
                     capabilities,
                     extensions,
+                    required_capabilities,
+                    capabilities_policy,
                 }
             }
         };

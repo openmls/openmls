@@ -20,6 +20,7 @@
 //! - `test_secret_tree_store()`
 //! - `test_empty_secret_tree_store()`
 
+use crate::test_utils::minimal_capabilities_for;
 use openmls_traits::signatures::Signer;
 
 use crate::{
@@ -52,6 +53,7 @@ fn setup<Provider: OpenMlsProvider + Default>(
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .set_past_epoch_deletion_policy(policy)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 

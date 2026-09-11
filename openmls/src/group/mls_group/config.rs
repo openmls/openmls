@@ -37,7 +37,10 @@ use crate::{
     extensions::Extensions,
     key_packages::Lifetime,
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
+    treesync::{
+        errors::LeafNodeValidationError,
+        node::leaf_node::{Capabilities, CapabilitiesPolicy},
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -365,6 +368,10 @@ pub struct MlsGroupCreateConfig {
     pub(crate) group_context_extensions: Extensions<GroupContext>,
     /// List of initial leaf node extensions
     pub(crate) leaf_node_extensions: Extensions<LeafNode>,
+    /// How the creator's leaf node capabilities are reconciled against the
+    /// leaf itself and the group's requirements. See
+    /// [`Capabilities::reconcile`].
+    pub(crate) capabilities_policy: CapabilitiesPolicy,
     /// Flag marking the created group as an emulation group of a virtual
     /// client. Only consulted at group creation, the group keeps the flag
     /// itself afterwards.
@@ -381,6 +388,7 @@ impl Default for MlsGroupCreateConfig {
             join_config: MlsGroupJoinConfig::default(),
             group_context_extensions: Extensions::default(),
             leaf_node_extensions: Extensions::default(),
+            capabilities_policy: CapabilitiesPolicy::default(),
             #[cfg(feature = "virtual-clients-draft")]
             emulation_group: false,
         }
@@ -556,6 +564,7 @@ impl MlsGroupCreateConfig {
                 IncomingWireFormatPolicy::Mixed,
             ))
             .ciphersuite(ciphersuite)
+            .capabilities(crate::test_utils::minimal_capabilities_for(ciphersuite).build())
             .build()
     }
 
@@ -720,21 +729,27 @@ impl MlsGroupCreateConfigBuilder {
 
     /// Sets extensions of the group creator's [`LeafNode`].
     ///
-    /// Returns an error if the extension types are not valid in a leaf node.
+    /// This no longer checks the extensions against `capabilities` here —
+    /// that check was order-dependent (it read `self.config.capabilities`
+    /// at call time, so a later `.capabilities(..)` call silently
+    /// invalidated it) and is now redundant: leaf construction itself
+    /// reconciles capabilities against the leaf's actual extensions (see
+    /// `Capabilities::reconcile`), either rejecting or widening depending on
+    /// `capabilities_policy`.
     pub fn with_leaf_node_extensions(
         mut self,
         extensions: Extensions<LeafNode>,
     ) -> Result<Self, LeafNodeValidationError> {
-        // Make sure that the extension type is supported in this context.
-        // This means that the leaf node needs to have support listed in the
-        // the capabilities (https://validation.openmls.tech/#valn0107).
-        if !self.config.capabilities.contains_extensions(&extensions) {
-            return Err(LeafNodeValidationError::ExtensionsNotInCapabilities);
-        }
-
-        // Note that the extensions have already been checked to be allowed here.
         self.config.leaf_node_extensions = extensions;
         Ok(self)
+    }
+
+    /// Sets how the creator's leaf node capabilities are reconciled against
+    /// the leaf itself and the group's requirements at construction time.
+    /// Defaults to [`CapabilitiesPolicy::Reject`] if never called.
+    pub fn capabilities_policy(mut self, policy: CapabilitiesPolicy) -> Self {
+        self.config.capabilities_policy = policy;
+        self
     }
 
     /// Finalizes the builder and returns an [`MlsGroupCreateConfig`].

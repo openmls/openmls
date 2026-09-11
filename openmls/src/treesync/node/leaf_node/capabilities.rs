@@ -7,7 +7,6 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
-#[cfg(doc)]
 use super::LeafNode;
 use crate::{
     credentials::CredentialType,
@@ -18,6 +17,21 @@ use crate::{
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
+
+/// How a leaf's capabilities are reconciled against the leaf itself and the
+/// group's requirements at construction time. See
+/// [`Capabilities::reconcile`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CapabilitiesPolicy {
+    /// Reject construction if the given capabilities don't already cover
+    /// the leaf's own ciphersuite, credential type, and extension types, and
+    /// the group's required capabilities.
+    #[default]
+    Reject,
+    /// Widen the given capabilities to cover all of the above, adding
+    /// whatever's missing. Never removes anything the caller set.
+    Widen,
+}
 
 /// Capabilities of [`LeafNode`]s.
 ///
@@ -100,9 +114,19 @@ impl Capabilities {
         }
     }
 
-    /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`]
+    /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`].
+    ///
+    /// Starts from empty lists — except `versions`, which is seeded with
+    /// [`default_versions`] since the library only ever builds `Mls10`
+    /// leaves and there is no meaningful choice to make there (see
+    /// [`Capabilities::reconcile`]) — so a builder only ever ends up
+    /// containing what a caller actually asked for, not an unrelated
+    /// baseline.
     pub fn builder() -> CapabilitiesBuilder {
-        CapabilitiesBuilder(Self::default())
+        CapabilitiesBuilder(Self {
+            versions: default_versions(),
+            ..Self::empty()
+        })
     }
 
     /// Creates [`Capabilities`] advertising exactly the ciphersuites supported
@@ -252,6 +276,122 @@ impl Capabilities {
     /// Check if these [`Capabilities`] contain the ciphersuite.
     pub(crate) fn contains_ciphersuite(&self, ciphersuite: VerifiableCiphersuite) -> bool {
         self.ciphersuites().contains(&ciphersuite)
+    }
+
+    /// Reconciles `self` against the leaf being built and the group's
+    /// requirements, per `policy` (see [`CapabilitiesPolicy`]).
+    ///
+    /// Called from the two places a leaf's capabilities are finalized:
+    /// [`LeafNodeTbs::new`] (every freshly-built leaf) and
+    /// [`LeafNode::update`] (which mutates an existing signed leaf in place
+    /// and so bypasses `LeafNodeTbs::new`).
+    ///
+    /// Checks/widens, in order, exactly the dimensions
+    /// [`PublicGroup::validate_leaf_node_capabilities`] already checks
+    /// post-hoc: the leaf's own ciphersuite, its own credential type, its own
+    /// non-default (GREASE included) extension types, and — if
+    /// `required_capabilities` is given — every non-default extension and
+    /// proposal type and every credential type the group's
+    /// [`RequiredCapabilitiesExtension`] lists. `is_default()` types are
+    /// skipped when checking/widening extensions and proposals (they're
+    /// implicitly supported per RFC 9420 and never need to be listed),
+    /// mirroring [`Capabilities::supports_required_capabilities`]; GREASE
+    /// extension types are never default, so a GREASE extension actually
+    /// present on the leaf must be covered, or `contains_extensions` would
+    /// reject the leaf against itself.
+    ///
+    /// The protocol version is handled outside `policy`: it is
+    /// unconditionally ensured present (never rejected), because the
+    /// library only ever builds `Mls10` leaves today — there is no way for a
+    /// caller to produce, or legitimately want to reject, anything else, so
+    /// treating it as a strict dimension would be pure friction with no
+    /// payoff. Real per-version negotiation would need to revisit this.
+    ///
+    /// Under [`CapabilitiesPolicy::Widen`], never removes anything the
+    /// caller already set. Under [`CapabilitiesPolicy::Reject`], returns the
+    /// first unmet requirement found, in the order above.
+    ///
+    /// [`LeafNodeTbs::new`]: super::LeafNodeTbs::new
+    /// [`LeafNode::update`]: super::LeafNode::update
+    /// [`PublicGroup::validate_leaf_node_capabilities`]: crate::group::public_group::PublicGroup::validate_leaf_node_capabilities
+    pub(super) fn reconcile(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        credential_type: CredentialType,
+        version: ProtocolVersion,
+        leaf_extensions: &Extensions<LeafNode>,
+        required_capabilities: Option<&RequiredCapabilitiesExtension>,
+        policy: CapabilitiesPolicy,
+    ) -> Result<(), LeafNodeValidationError> {
+        // Never rejected: see the doc comment above.
+        if !self.contains_version(version) {
+            self.versions.push(version);
+        }
+
+        let verifiable_ciphersuite = VerifiableCiphersuite::from(ciphersuite);
+        if !self.contains_ciphersuite(verifiable_ciphersuite) {
+            match policy {
+                CapabilitiesPolicy::Widen => self.ciphersuites.push(verifiable_ciphersuite),
+                CapabilitiesPolicy::Reject => {
+                    return Err(LeafNodeValidationError::CiphersuiteNotInCapabilities)
+                }
+            }
+        }
+
+        if !self.contains_credential(credential_type) {
+            match policy {
+                CapabilitiesPolicy::Widen => self.credentials.push(credential_type),
+                CapabilitiesPolicy::Reject => {
+                    return Err(LeafNodeValidationError::CredentialNotInCapabilities)
+                }
+            }
+        }
+
+        for extension_type in leaf_extensions.iter().map(Extension::extension_type) {
+            if !extension_type.is_default() && !self.extensions.contains(&extension_type) {
+                match policy {
+                    CapabilitiesPolicy::Widen => self.extensions.push(extension_type),
+                    CapabilitiesPolicy::Reject => {
+                        return Err(LeafNodeValidationError::ExtensionsNotInCapabilities)
+                    }
+                }
+            }
+        }
+
+        if let Some(required) = required_capabilities {
+            for extension_type in required.extension_types() {
+                if !extension_type.is_default() && !self.extensions.contains(extension_type) {
+                    match policy {
+                        CapabilitiesPolicy::Widen => self.extensions.push(*extension_type),
+                        CapabilitiesPolicy::Reject => {
+                            return Err(LeafNodeValidationError::UnsupportedExtensions)
+                        }
+                    }
+                }
+            }
+            for proposal_type in required.proposal_types() {
+                if !proposal_type.is_default() && !self.proposals.contains(proposal_type) {
+                    match policy {
+                        CapabilitiesPolicy::Widen => self.proposals.push(*proposal_type),
+                        CapabilitiesPolicy::Reject => {
+                            return Err(LeafNodeValidationError::UnsupportedProposals)
+                        }
+                    }
+                }
+            }
+            for credential_type in required.credential_types() {
+                if !self.credentials.contains(credential_type) {
+                    match policy {
+                        CapabilitiesPolicy::Widen => self.credentials.push(*credential_type),
+                        CapabilitiesPolicy::Reject => {
+                            return Err(LeafNodeValidationError::UnsupportedCredentials)
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Add random GREASE values to the capabilities to ensure extensibility.
@@ -427,30 +567,11 @@ pub(super) fn default_versions() -> Vec<ProtocolVersion> {
 }
 
 pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
+    // Only a minimal set of ciphersuites that most providers will support.
     vec![
         Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519,
     ]
 }
 

@@ -1,5 +1,6 @@
 //! This module contains tests regarding the use of [`MessageSecretsStore`] in [`MlsGroup`]
 
+use crate::test_utils::minimal_capabilities_for;
 use crate::framing::SecretTreeError;
 use crate::group::tests_and_kats::utils::{generate_credential_with_key, generate_key_package};
 use crate::{
@@ -43,6 +44,7 @@ fn test_past_secrets_in_group<Provider: crate::storage::OpenMlsProvider>(
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .max_past_epochs(max_epochs / 2)
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build();
 

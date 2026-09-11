@@ -1,6 +1,7 @@
 //! This module tests the validation of commits as defined in
 //! https://book.openmls.tech/message_validation.html#commit-message-validation
 
+use crate::test_utils::minimal_capabilities_for;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use proposal_store::QueuedProposal;
 use tls_codec::{Deserialize, Serialize};
@@ -80,6 +81,7 @@ fn validation_test_setup(
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 

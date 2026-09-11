@@ -1,3 +1,4 @@
+use crate::test_utils::minimal_capabilities_for;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
@@ -295,12 +296,20 @@ fn required_extension_key_package_mismatch() {
     let required_capabilities =
         RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
+    let alice_capabilities = Capabilities::builder()
+        .extensions(vec![ExtensionType::Unknown(0xff00)])
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .build();
+
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(
             Extensions::single(Extension::RequiredCapabilities(required_capabilities))
                 .expect("failed to create single-element extensions list"),
         )
+        .with_capabilities(alice_capabilities)
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -341,6 +350,7 @@ fn group_context_extensions() {
         RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(
             Extensions::single(Extension::RequiredCapabilities(required_capabilities))
@@ -395,6 +405,7 @@ fn group_context_extension_proposal_fails() {
     let required_capabilities = RequiredCapabilitiesExtension::new(&[], proposals, credentials);
 
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(
             Extensions::single(Extension::RequiredCapabilities(required_capabilities))
@@ -546,6 +557,7 @@ fn self_remove_proposals() {
 
     // Alice creates a group
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         // support the non-default SelfRemove proposal type
         .with_capabilities(capabilities)
@@ -638,6 +650,7 @@ fn remove_and_update_processing() {
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
@@ -752,6 +765,7 @@ fn self_remove_proposals_always_public() {
 
     // Alice creates a group
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
         .build(alice_provider, &alice_signer, alice_credential.clone())

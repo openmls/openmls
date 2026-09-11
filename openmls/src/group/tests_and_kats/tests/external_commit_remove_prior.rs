@@ -6,6 +6,8 @@
 //! Remove: its tree must replace the prior leaf rather than grow, and its epoch
 //! authenticator must agree with the committer's.
 
+use crate::treesync::LeafNodeParameters;
+use crate::test_utils::minimal_capabilities_for;
 use openmls_test::openmls_test;
 
 use crate::{
@@ -60,6 +62,7 @@ fn run_case<Provider: crate::storage::OpenMlsProvider + Default>(
     // === Alice creates a group ===
     // Match the interop client's group configuration knobs.
     let mut alice_group = MlsGroup::builder()
+        .with_capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(policy)
         .max_past_epochs(32)
@@ -88,6 +91,11 @@ fn run_case<Provider: crate::storage::OpenMlsProvider + Default>(
         .with_config(join_group_config.clone())
         .build_group(bob_provider, vgi, bob_credential_with_key.clone())
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -126,6 +134,11 @@ fn run_case<Provider: crate::storage::OpenMlsProvider + Default>(
         .with_config(join_group_config.clone())
         .build_group(bob2_provider, vgi, bob_credential_with_key.clone())
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(bob2_provider.storage())
         .unwrap()
         .build(

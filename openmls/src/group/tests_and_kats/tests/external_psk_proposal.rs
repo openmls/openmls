@@ -14,7 +14,7 @@ use crate::{
     group::*,
     messages::external_proposals::*,
     messages::proposals::Proposal,
-    prelude::{Capabilities, KeyPackage},
+    prelude::KeyPackage,
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
 };
 
@@ -39,7 +39,7 @@ fn setup(
     let mls_group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
-        .capabilities(Capabilities::builder().build())
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .with_group_context_extensions(
             Extensions::single(Extension::ExternalSenders(external_senders))
                 .expect("failed to create single-element extensions list"),
@@ -62,6 +62,7 @@ fn setup(
     );
 
     let bob_key_package = KeyPackage::builder()
+        .leaf_node_capabilities(minimal_capabilities_for(ciphersuite).build())
         .build(
             ciphersuite,
             bob_provider,

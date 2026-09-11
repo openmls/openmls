@@ -1830,6 +1830,7 @@ impl IntoIterator for CommitMessageBundle {
 
 #[cfg(test)]
 mod branch_tests {
+    use crate::test_utils::minimal_capabilities_for;
     use crate::{
         group::{
             mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
@@ -1862,6 +1863,7 @@ mod branch_tests {
         let (parent_cwk, _parent_kpb, parent_signer, _parent_pk) =
             setup_client("Parent", ciphersuite, parent_provider);
         let parent_group = MlsGroup::builder()
+            .with_capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build(parent_provider, &parent_signer, parent_cwk)
             .unwrap();

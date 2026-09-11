@@ -1,6 +1,7 @@
 //! This module tests the validation of message framing as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-message-framing
 
+use crate::test_utils::minimal_capabilities_for;
 use openmls_traits::prelude::openmls_types::Ciphersuite;
 use tls_codec::{Deserialize, Serialize};
 
@@ -62,6 +63,7 @@ fn validation_test_setup(
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .build();
 

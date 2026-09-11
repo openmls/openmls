@@ -2,6 +2,8 @@
 //! commit messages as defined in
 //! https://github.com/openmls/openmls/wiki/Message-validation
 
+use crate::treesync::LeafNodeParameters;
+use crate::test_utils::minimal_capabilities_for;
 use tls_codec::{Deserialize, Serialize};
 
 use self::utils::*;
@@ -238,6 +240,11 @@ fn test_valsem242() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -696,6 +703,7 @@ fn test_external_commit_unsupported_group_context_extension() {
     // Alice creates a group with the custom group context extension
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .capabilities(minimal_capabilities_for(ciphersuite).build())
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(gc_extensions)
         .build();
@@ -728,6 +736,11 @@ fn test_external_commit_unsupported_group_context_extension() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -824,6 +837,11 @@ fn test_external_commit_duplicate_signature_key() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -848,6 +866,11 @@ fn test_external_commit_duplicate_signature_key() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -921,6 +944,9 @@ fn test_external_commit_duplicate_signature_key() {
 mod utils {
     use openmls_traits::types::Ciphersuite;
 
+    use crate::test_utils::minimal_capabilities_for;
+    use crate::treesync::LeafNodeParameters;
+
     use crate::{
         framing::{MlsMessageIn, PublicMessage, Sender, WireFormat},
         group::{
@@ -961,6 +987,7 @@ mod utils {
         // Define the MlsGroup configuration
         let mls_group_create_config = MlsGroupCreateConfig::builder()
             .wire_format_policy(wire_format_policy)
+            .capabilities(minimal_capabilities_for(ciphersuite).build())
             .ciphersuite(ciphersuite)
             .build();
 
@@ -992,6 +1019,11 @@ mod utils {
                 bob_credential.credential_with_key.clone(),
             )
             .unwrap()
+            .leaf_node_parameters(
+                LeafNodeParameters::builder()
+                    .with_capabilities(minimal_capabilities_for(ciphersuite).build())
+                    .build(),
+            )
             .load_psks(bob_provider.storage())
             .unwrap()
             .build(
