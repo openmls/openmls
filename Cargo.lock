@@ -1477,7 +1477,7 @@ source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d
 dependencies = [
  "hpke-rs-crypto",
  "libcrux-aead 0.0.9 (git+https://github.com/celabshq/libcrux)",
- "libcrux-ecdh",
+ "libcrux-ecdh 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "libcrux-hkdf 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "libcrux-kem",
  "libcrux-sha3 0.0.10 (git+https://github.com/celabshq/libcrux)",
@@ -2035,6 +2035,18 @@ dependencies = [
 [[package]]
 name = "libcrux-curve25519"
 version = "0.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4f3cfd5e31cb9745e290ee061222c380ec42884654b09fc7d12a5b0ed63e028"
+dependencies = [
+ "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "libcrux-curve25519"
+version = "0.0.8"
 source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
 dependencies = [
  "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux)",
@@ -2046,12 +2058,35 @@ dependencies = [
 [[package]]
 name = "libcrux-ecdh"
 version = "0.0.8"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a227590b89ff55ce7cd97b5a7468c82d231db8f3b890bb4d4fb6d271e7524d7"
 dependencies = [
- "libcrux-curve25519",
- "libcrux-p256",
+ "libcrux-curve25519 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-p256 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
  "tls_codec",
+]
+
+[[package]]
+name = "libcrux-ecdh"
+version = "0.0.8"
+source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+dependencies = [
+ "libcrux-curve25519 0.0.8 (git+https://github.com/celabshq/libcrux)",
+ "libcrux-p256 0.0.8 (git+https://github.com/celabshq/libcrux)",
+ "rand",
+ "tls_codec",
+]
+
+[[package]]
+name = "libcrux-ecdsa"
+version = "0.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "750ca5c2664abdf9d6b8135f2d700ae3d001457b82b2ccd291e5795cb94b1bab"
+dependencies = [
+ "libcrux-p256 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-sha2 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand",
 ]
 
 [[package]]
@@ -2161,10 +2196,10 @@ name = "libcrux-kem"
 version = "0.0.9"
 source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
 dependencies = [
- "libcrux-curve25519",
- "libcrux-ecdh",
+ "libcrux-curve25519 0.0.8 (git+https://github.com/celabshq/libcrux)",
+ "libcrux-ecdh 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "libcrux-ml-kem",
- "libcrux-p256",
+ "libcrux-p256 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "libcrux-sha3 0.0.10 (git+https://github.com/celabshq/libcrux)",
  "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "rand",
@@ -2218,6 +2253,19 @@ dependencies = [
  "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "rand",
  "tls_codec",
+]
+
+[[package]]
+name = "libcrux-p256"
+version = "0.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3400732702d578be622257b98cec85e9b0cd34a67f1f06d3ebe9ae34963cdf02"
+dependencies = [
+ "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-sha2 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2732,6 +2780,8 @@ dependencies = [
  "hpke-rs-crypto",
  "hpke-rs-libcrux",
  "libcrux-aead 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-ecdh 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-ecdsa",
  "libcrux-ed25519",
  "libcrux-hkdf 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "libcrux-hmac 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
