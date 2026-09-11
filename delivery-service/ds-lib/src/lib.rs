@@ -34,17 +34,20 @@ mod hashset_codec {
         io::{Read, Write},
     };
 
-    use crate::tls_codec::{self, Deserialize, Serialize};
+    use crate::tls_codec::{self, Deserialize, Serialize, Size};
 
     pub fn tls_serialized_len(hashset: &HashSet<Vec<u8>>) -> usize {
-        let hashset_len = hashset.len();
-        let length_encoding_bytes = match hashset_len {
+        let payload_len = hashset
+            .iter()
+            .map(|value| value.as_slice().tls_serialized_len())
+            .sum::<usize>();
+        let length_encoding_bytes = match payload_len {
             0..=0x3f => 1,
             0x40..=0x3fff => 2,
             0x4000..=0x3fff_ffff => 4,
             _ => 8,
         };
-        hashset_len + length_encoding_bytes
+        payload_len + length_encoding_bytes
     }
 
     pub fn tls_serialize<W>(
@@ -61,6 +64,24 @@ mod hashset_codec {
     pub fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<HashSet<Vec<u8>>, tls_codec::Error> {
         let vec = Vec::<Vec<u8>>::tls_deserialize(bytes)?;
         Ok(vec.into_iter().collect::<HashSet<_>>())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::hashset_codec;
+    use std::collections::HashSet;
+
+    #[test]
+    fn hashset_serialized_length_matches_encoding() {
+        let values = HashSet::from([vec![1, 2, 3], vec![4; 64]]);
+        let mut encoded = Vec::new();
+        hashset_codec::tls_serialize(&values, &mut encoded).unwrap();
+
+        assert_eq!(
+            hashset_codec::tls_serialized_len(&values),
+            encoded.len()
+        );
     }
 }
 
