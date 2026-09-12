@@ -588,7 +588,9 @@ impl KeyPackageBuilder {
         self.ensure_last_resort();
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: self.key_package_lifetime.unwrap_or_default(),
-            capabilities: self.leaf_node_capabilities.unwrap_or_default(),
+            capabilities: self
+                .leaf_node_capabilities
+                .unwrap_or_else(|| Capabilities::for_provider(provider.crypto())),
             extensions: self.leaf_node_extensions.unwrap_or_default(),
         };
         KeyPackage::create(
@@ -613,7 +615,9 @@ impl KeyPackageBuilder {
 
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: self.key_package_lifetime.unwrap_or_default(),
-            capabilities: self.leaf_node_capabilities.unwrap_or_default(),
+            capabilities: self
+                .leaf_node_capabilities
+                .unwrap_or_else(|| Capabilities::for_provider(provider.crypto())),
             extensions: self.leaf_node_extensions.unwrap_or_default(),
         };
         let KeyPackageCreationResult {

@@ -231,15 +231,15 @@ fn test_setup() {
     let provider = &Provider::default();
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
-        ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519],
+        ciphersuites: vec![ciphersuite],
     };
     let test_client_config_b = TestClientConfig {
         name: "TestClientConfigB",
-        ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519],
+        ciphersuites: vec![ciphersuite],
     };
     let use_ratchet_tree_extension = true;
     let test_group_config = TestGroupConfig {
-        ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        ciphersuite,
         use_ratchet_tree_extension,
         members: vec![test_client_config_a.clone(), test_client_config_b.clone()],
     };

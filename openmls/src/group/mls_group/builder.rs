@@ -1,6 +1,8 @@
 use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, types::Ciphersuite};
 use tls_codec::Serialize;
 
+use super::config::CapabilitiesSource;
+
 #[cfg(feature = "extensions-draft")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
@@ -126,8 +128,19 @@ impl MlsGroupBuilder {
         credential_with_key: CredentialWithKey,
         mls_group_create_config_option: Option<MlsGroupCreateConfig>,
     ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
-        let mls_group_create_config = mls_group_create_config_option
+        let mut mls_group_create_config = mls_group_create_config_option
             .unwrap_or_else(|| self.mls_group_create_config_builder.build());
+        if mls_group_create_config.capabilities_source == CapabilitiesSource::Inferred
+            && mls_group_create_config.capabilities == Capabilities::default()
+        {
+            // A hardcoded default can advertise algorithms the selected
+            // provider cannot execute, or omit a provider-specific suite used
+            // by this group. Derive the default at the provider boundary while
+            // preserving explicit builder settings. Legacy serialized configs
+            // cannot distinguish an explicit global default from an omitted
+            // list, so they retain the original equality-based inference.
+            mls_group_create_config.capabilities = Capabilities::for_provider(provider.crypto());
+        }
         let group_id = self
             .group_id
             .unwrap_or_else(|| GroupId::random(provider.rand()));

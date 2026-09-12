@@ -1,4 +1,6 @@
-use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto as _, signatures::Signer, types::Ciphersuite, OpenMlsProvider,
+};
 use tls_codec::Serialize as _;
 
 use crate::{
@@ -29,20 +31,40 @@ use crate::{
     schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
 };
 
-/// Emulation group suite. Its KDF hash (SHA-384) differs from the
-/// higher-level group's (SHA-256), so a derivation that skips the import into
-/// the target ciphersuite, or imports under the wrong one, silently produces
-/// different bytes rather than erroring out -- which is exactly what these
-/// tests detect.
-const EMULATION_CIPHERSUITE: Ciphersuite =
-    Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519;
-/// Higher-level group suite: the target ciphersuite of the derivations under
-/// test.
-const GROUP_CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+/// Select a source with a different KDF hash so a missing or wrongly bound
+/// import produces different bytes. Providers with only one hash cannot exercise
+/// this invariant; the sentinel below prevents provider lanes from silently
+/// skipping it.
+fn emulation_ciphersuite(
+    provider: &impl OpenMlsProvider,
+    group_ciphersuite: Ciphersuite,
+) -> Option<Ciphersuite> {
+    provider
+        .crypto()
+        .supported_ciphersuites()
+        .into_iter()
+        .find(|source| source.hash_algorithm() != group_ciphersuite.hash_algorithm())
+}
+
+#[test]
+fn virtual_client_derivation_tests_have_executable_provider_lanes() {
+    fn assert_sources(provider: &impl OpenMlsProvider) {
+        let suites = provider.crypto().supported_ciphersuites();
+        assert!(!suites.is_empty());
+        for target in suites {
+            let source = emulation_ciphersuite(provider, target)
+                .expect("every tested suite must have a supported cross-hash source");
+            assert!(provider.crypto().supports(source).is_ok());
+            assert_ne!(source.hash_algorithm(), target.hash_algorithm());
+        }
+    }
+    assert_sources(&openmls_rust_crypto::OpenMlsRustCrypto::default());
+}
 
 /// `Capabilities` declaring `AppDataDictionary` support.
-fn vc_capabilities() -> Capabilities {
+fn vc_capabilities(ciphersuite: Ciphersuite) -> Capabilities {
     Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
         .extensions(vec![ExtensionType::AppDataDictionary])
         .build()
 }
@@ -68,7 +90,7 @@ fn vc_config_builder(ciphersuite: Ciphersuite) -> MlsGroupCreateConfigBuilder {
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
 }
@@ -96,16 +118,16 @@ fn fresh_export_tree(ciphersuite: Ciphersuite, fill: u8) -> ApplicationExportTre
 /// Found a single-member emulation group on `provider`. Creating it registers
 /// the initial epoch as a derivation epoch. Returns the group alongside the
 /// [`EpochId`] the tests derive their reference values from.
-fn registered_derivation_epoch<P: OpenMlsProvider>(provider: &P) -> (MlsGroup, EpochId) {
-    let (credential, signer) = new_credential(
-        provider,
-        b"Emulator",
-        EMULATION_CIPHERSUITE.signature_algorithm(),
-    );
+fn registered_derivation_epoch<P: OpenMlsProvider>(
+    provider: &P,
+    ciphersuite: Ciphersuite,
+) -> (MlsGroup, EpochId) {
+    let (credential, signer) =
+        new_credential(provider, b"Emulator", ciphersuite.signature_algorithm());
     let emulator_group = MlsGroup::new(
         provider,
         &signer,
-        &emulation_group_config(EMULATION_CIPHERSUITE),
+        &emulation_group_config(ciphersuite),
         credential,
     )
     .expect("create emulation group");
@@ -124,33 +146,30 @@ fn registered_derivation_epoch<P: OpenMlsProvider>(provider: &P) -> (MlsGroup, E
 #[openmls_test::openmls_test]
 fn vc_commit_path_material_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
+    let Some(emulation_ciphersuite) = emulation_ciphersuite(provider, ciphersuite) else {
+        return;
+    };
     let bob_provider = &Provider::default();
 
-    let (emulator_group, epoch_id) = registered_derivation_epoch(provider);
+    let (emulator_group, epoch_id) = registered_derivation_epoch(provider, emulation_ciphersuite);
 
     // Higher-level group: the VC leaf plus one regular member, so the VC
     // commit's update path contains a parent node.
-    let (alice_credential, alice_signer) = new_credential(
-        provider,
-        b"Alice (VC)",
-        GROUP_CIPHERSUITE.signature_algorithm(),
-    );
+    let (alice_credential, alice_signer) =
+        new_credential(provider, b"Alice (VC)", ciphersuite.signature_algorithm());
     let mut main_group = MlsGroup::new(
         provider,
         &alice_signer,
-        &vc_group_config(GROUP_CIPHERSUITE),
+        &vc_group_config(ciphersuite),
         alice_credential,
     )
     .expect("create main group");
 
-    let (bob_credential, bob_signer) = new_credential(
-        bob_provider,
-        b"Bob",
-        GROUP_CIPHERSUITE.signature_algorithm(),
-    );
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
     let bob_key_package = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
-        .build(GROUP_CIPHERSUITE, bob_provider, &bob_signer, bob_credential)
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
         .expect("bob KP build")
         .key_package()
         .to_owned();
@@ -166,12 +185,12 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     // being persisted, so the commit below consumes the same generation.
     let (state, mut scratch_tree) =
         load_vc_epoch_state_and_tree(provider, &epoch_id).expect("load vc epoch state");
-    let (emulation_leaf_index, _epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
-    assert_eq!(emulation_ciphersuite, EMULATION_CIPHERSUITE);
+    let (emulation_leaf_index, _epoch_encryption_key, stored_ciphersuite) = state.into_parts();
+    assert_eq!(stored_ciphersuite, emulation_ciphersuite);
     let (generation, operation_secret) = scratch_tree
         .next_operation_secret(
             provider.crypto(),
-            EMULATION_CIPHERSUITE,
+            emulation_ciphersuite,
             &epoch_id,
             emulation_leaf_index,
             VirtualClientOperationType::LeafNode,
@@ -182,19 +201,19 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
     drop(scratch_tree);
 
     let target_operation_secret = operation_secret
-        .derive_target_operation_secret(provider.crypto(), GROUP_CIPHERSUITE, main_group.group_id())
+        .derive_target_operation_secret(provider.crypto(), ciphersuite, main_group.group_id())
         .expect("derive reference target operation secret");
     let expected_leaf_keypair = target_operation_secret
-        .derive_encryption_key_secret(provider.crypto(), GROUP_CIPHERSUITE)
+        .derive_encryption_key_secret(provider.crypto(), ciphersuite)
         .expect("derive reference encryption key secret")
-        .generate_encryption_key_pair(provider.crypto(), GROUP_CIPHERSUITE)
+        .generate_encryption_key_pair(provider.crypto(), ciphersuite)
         .expect("generate reference leaf keypair");
     let expected_parent_keypair = PathSecret::from(
         target_operation_secret
-            .derive_path_generation_secret(provider.crypto(), GROUP_CIPHERSUITE)
+            .derive_path_generation_secret(provider.crypto(), ciphersuite)
             .expect("derive reference path generation secret"),
     )
-    .derive_key_pair(provider.crypto(), GROUP_CIPHERSUITE)
+    .derive_key_pair(provider.crypto(), ciphersuite)
     .expect("derive reference parent keypair");
 
     // Actual: send the VC commit.
@@ -254,20 +273,23 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
 #[openmls_test::openmls_test]
 fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
     let provider = &Provider::default();
+    let Some(emulation_ciphersuite) = emulation_ciphersuite(provider, ciphersuite) else {
+        return;
+    };
 
-    let (emulator_group, epoch_id) = registered_derivation_epoch(provider);
+    let (emulator_group, epoch_id) = registered_derivation_epoch(provider, emulation_ciphersuite);
 
     // Reference derivation per spec, from a scratch copy of the operation
     // tree (dropped unpersisted, so the builder consumes the same
     // generation).
     let (state, mut scratch_tree) =
         load_vc_epoch_state_and_tree(provider, &epoch_id).expect("load vc epoch state");
-    let (emulation_leaf_index, _epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
-    assert_eq!(emulation_ciphersuite, EMULATION_CIPHERSUITE);
+    let (emulation_leaf_index, _epoch_encryption_key, stored_ciphersuite) = state.into_parts();
+    assert_eq!(stored_ciphersuite, emulation_ciphersuite);
     let (generation, operation_secret) = scratch_tree
         .next_operation_secret(
             provider.crypto(),
-            EMULATION_CIPHERSUITE,
+            emulation_ciphersuite,
             &epoch_id,
             emulation_leaf_index,
             VirtualClientOperationType::KeyPackage,
@@ -278,24 +300,21 @@ fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
     drop(scratch_tree);
 
     let expected_leaf_keypair = operation_secret
-        .derive_key_package_seed_secret(provider.crypto(), GROUP_CIPHERSUITE, 0)
+        .derive_key_package_seed_secret(provider.crypto(), ciphersuite, 0)
         .expect("derive reference key package seed")
-        .derive_encryption_key_secret(provider.crypto(), GROUP_CIPHERSUITE)
+        .derive_encryption_key_secret(provider.crypto(), ciphersuite)
         .expect("derive reference encryption key secret")
-        .generate_encryption_key_pair(provider.crypto(), GROUP_CIPHERSUITE)
+        .generate_encryption_key_pair(provider.crypto(), ciphersuite)
         .expect("generate reference leaf keypair");
 
     // Actual: create the higher-level group as the virtual client.
-    let (vc_credential, vc_signer) = new_credential(
-        provider,
-        b"Alice (VC)",
-        GROUP_CIPHERSUITE.signature_algorithm(),
-    );
+    let (vc_credential, vc_signer) =
+        new_credential(provider, b"Alice (VC)", ciphersuite.signature_algorithm());
     let main_group = MlsGroup::builder()
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .ciphersuite(GROUP_CIPHERSUITE)
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .with_capabilities(vc_capabilities())
+        .with_capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .vc_emulation(emulator_group.group_id())
@@ -338,12 +357,16 @@ fn safe_aad_group_context_extensions() -> Extensions<GroupContext> {
 fn safe_aad_group_pair<P: OpenMlsProvider>(
     alice_provider: &P,
     bob_provider: &P,
+    ciphersuite: Ciphersuite,
 ) -> (MlsGroup, MlsGroup, impl Signer) {
+    // Safe AAD does not require two different KDFs. Exercise the suite chosen
+    // by the provider test matrix, including suites absent from global defaults.
+    let capabilities = vc_capabilities(ciphersuite);
     let config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .ciphersuite(GROUP_CIPHERSUITE)
+        .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(capabilities.clone())
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .with_group_context_extensions(safe_aad_group_context_extensions())
@@ -352,19 +375,16 @@ fn safe_aad_group_pair<P: OpenMlsProvider>(
     let (alice_credential, alice_signer) = new_credential(
         alice_provider,
         b"Alice (VC)",
-        GROUP_CIPHERSUITE.signature_algorithm(),
+        ciphersuite.signature_algorithm(),
     );
     let mut alice_group = MlsGroup::new(alice_provider, &alice_signer, &config, alice_credential)
         .expect("create safe-aad group");
 
-    let (bob_credential, bob_signer) = new_credential(
-        bob_provider,
-        b"Bob",
-        GROUP_CIPHERSUITE.signature_algorithm(),
-    );
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
     let bob_key_package = KeyPackage::builder()
-        .leaf_node_capabilities(vc_capabilities())
-        .build(GROUP_CIPHERSUITE, bob_provider, &bob_signer, bob_credential)
+        .leaf_node_capabilities(capabilities)
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
         .expect("bob KP build");
     let (_commit, welcome, _group_info) = alice_group
         .add_members(
@@ -401,7 +421,7 @@ fn vc_commit_data_travels_in_commit_safe_aad() {
     let bob_provider = &Provider::default();
 
     let (mut alice_group, mut bob_group, alice_signer) =
-        safe_aad_group_pair(alice_provider, bob_provider);
+        safe_aad_group_pair(alice_provider, bob_provider, ciphersuite);
 
     let commit_data = VirtualClientCommitData::new(vec![VirtualClientAction::NewDerivationEpoch])
         .expect("one new_derivation_epoch action is valid");

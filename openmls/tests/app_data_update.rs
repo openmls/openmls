@@ -16,7 +16,7 @@ fn setup<'a, Provider: OpenMlsProvider>(
     // Required capabilities for leaf node
     let capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         Some(&[ExtensionType::AppDataDictionary]),
         Some(&[ProposalType::AppDataUpdate]),
         None,
@@ -211,7 +211,7 @@ fn test_app_data_update_with_welcome() {
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(Capabilities::new(
             None,
-            None,
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::AppDataDictionary]),
             Some(&[ProposalType::AppDataUpdate]),
             None,

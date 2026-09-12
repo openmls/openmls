@@ -70,7 +70,9 @@ impl PublicGroupDiff<'_> {
 
                 let capabilities = match leaf_node_params.capabilities() {
                     Some(c) => c.to_owned(),
-                    None => Capabilities::default(),
+                    // An external join creates a new leaf, so its defaults
+                    // must describe the joining provider's executable suites.
+                    None => Capabilities::for_provider(crypto),
                 };
 
                 let extensions = match leaf_node_params.extensions() {

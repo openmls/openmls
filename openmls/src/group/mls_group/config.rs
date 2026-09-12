@@ -355,6 +355,11 @@ impl MlsGroupJoinConfig {
 pub struct MlsGroupCreateConfig {
     /// Capabilities advertised in the creator's leaf node
     pub(crate) capabilities: Capabilities,
+    // The existing serialized format has no provenance field. Retain its
+    // default inference on decode, while tracking explicit builder settings
+    // in memory so an explicit list equal to the global default is preserved.
+    #[serde(skip)]
+    pub(super) capabilities_source: CapabilitiesSource,
     /// Lifetime of the own leaf node
     pub(crate) lifetime: Lifetime,
     /// Ciphersuite and protocol version
@@ -372,10 +377,18 @@ pub struct MlsGroupCreateConfig {
     pub(crate) emulation_group: bool,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum CapabilitiesSource {
+    #[default]
+    Inferred,
+    Explicit,
+}
+
 impl Default for MlsGroupCreateConfig {
     fn default() -> Self {
         Self {
             capabilities: Capabilities::default(),
+            capabilities_source: CapabilitiesSource::Inferred,
             lifetime: Lifetime::default(),
             ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             join_config: MlsGroupJoinConfig::default(),
@@ -655,6 +668,7 @@ impl MlsGroupCreateConfigBuilder {
     /// Sets the `capabilities` of the group creator's leaf node.
     pub fn capabilities(mut self, capabilities: Capabilities) -> Self {
         self.config.capabilities = capabilities;
+        self.config.capabilities_source = CapabilitiesSource::Explicit;
         self
     }
 
