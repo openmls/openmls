@@ -1453,6 +1453,7 @@ fn max_past_epochs_join_config() {
     let max_past_epochs = 10;
 
     let create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
         .max_past_epochs(max_past_epochs)
         .build();
 

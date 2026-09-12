@@ -22,8 +22,13 @@ fn app_ephemeral_proposals() {
     let bob_provider = &Provider::default();
 
     // Include the AppEphemeral proposal type in the LeafNode capabilities
-    let capabilities =
-        Capabilities::new(None, None, None, Some(&[ProposalType::AppEphemeral]), None);
+    let capabilities = Capabilities::new(
+        None,
+        Some(&[ciphersuite]),
+        None,
+        Some(&[ProposalType::AppEphemeral]),
+        None,
+    );
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()
@@ -163,8 +168,14 @@ fn app_ephemeral_proposals() {
 
 /// Capabilities declaring support for the AppEphemeral proposal type. Every
 /// member's leaf needs this before anyone may commit such a proposal.
-fn app_ephemeral_capabilities() -> Capabilities {
-    Capabilities::new(None, None, None, Some(&[ProposalType::AppEphemeral]), None)
+fn app_ephemeral_capabilities(ciphersuite: Ciphersuite) -> Capabilities {
+    Capabilities::new(
+        None,
+        Some(&[ciphersuite]),
+        None,
+        Some(&[ProposalType::AppEphemeral]),
+        None,
+    )
 }
 
 /// Set up a group of Alice and Bob where both leaves support the AppEphemeral
@@ -175,7 +186,7 @@ fn setup_group_for_external_commit<P: OpenMlsProvider>(
     alice_provider: &P,
     bob_provider: &P,
 ) -> (MlsGroup, SignatureKeyPair, MlsGroupJoinConfig) {
-    let capabilities = app_ephemeral_capabilities();
+    let capabilities = app_ephemeral_capabilities(ciphersuite);
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
@@ -270,7 +281,7 @@ fn app_ephemeral_proposal_in_external_commit() {
         .expect("error building group from group info")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(app_ephemeral_capabilities())
+                .with_capabilities(app_ephemeral_capabilities(ciphersuite))
                 .build(),
         )
         .add_proposal(Proposal::AppEphemeral(Box::new(AppEphemeralProposal::new(
@@ -363,7 +374,7 @@ fn forbidden_proposal_in_external_commit_is_rejected() {
     );
 
     let dave_key_package = KeyPackage::builder()
-        .leaf_node_capabilities(app_ephemeral_capabilities())
+        .leaf_node_capabilities(app_ephemeral_capabilities(ciphersuite))
         .build(ciphersuite, dave_provider, &dave_signer, dave_credential)
         .expect("error building Dave's key package");
 
@@ -376,7 +387,7 @@ fn forbidden_proposal_in_external_commit_is_rejected() {
         .expect("error building group from group info")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(app_ephemeral_capabilities())
+                .with_capabilities(app_ephemeral_capabilities(ciphersuite))
                 .build(),
         )
         .add_proposal(Proposal::Add(Box::new(AddProposal::from(

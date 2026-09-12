@@ -138,8 +138,13 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
         );
         let mut builder = KeyPackage::builder()
             .leaf_node_extensions(self.leaf_node_extensions.unwrap_or_default())
-            .key_package_extensions(self.key_package_extensions.unwrap_or_default())
-            .leaf_node_capabilities(self.leaf_node_capabilities.unwrap_or_default());
+            .key_package_extensions(self.key_package_extensions.unwrap_or_default());
+
+        // Leave omitted capabilities to the provider-aware production builder.
+        // Supplying a global default here would turn it into an explicit policy.
+        if let Some(capabilities) = self.leaf_node_capabilities {
+            builder = builder.leaf_node_capabilities(capabilities);
+        }
 
         if let Some(lifetime) = self.lifetime {
             builder = builder.key_package_lifetime(lifetime);

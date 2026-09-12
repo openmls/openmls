@@ -80,8 +80,8 @@ fn opaque_extension() {
         )
         // we need to specify the non-default extension in alices leaf node's capabilities.
         .capabilities(Capabilities::new(
-            None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
+            None,                 // Defaults to the group's protocol version
+            Some(&[ciphersuite]), // Ciphersuite used by this group
             Some(&[CUSTOM_EXTENSION_TYPE]),
             None, // Defaults to all basic extension types
             Some(&[CredentialType::Basic]),
@@ -239,6 +239,7 @@ fn generate_key_package(
     KeyPackage::builder()
         .leaf_node_capabilities(
             Capabilities::builder()
+                .ciphersuites(vec![ciphersuite])
                 .extensions(vec![CUSTOM_EXTENSION_TYPE])
                 .credentials(vec![CredentialType::Basic])
                 .build(),

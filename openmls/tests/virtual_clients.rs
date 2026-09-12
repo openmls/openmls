@@ -40,8 +40,9 @@ use tls_codec::Serialize as _;
 mod mls_group;
 
 /// `Capabilities` declaring `AppDataDictionary` support.
-fn vc_capabilities() -> Capabilities {
+fn vc_capabilities(ciphersuite: openmls_traits::types::Ciphersuite) -> Capabilities {
     Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
         .extensions(vec![ExtensionType::AppDataDictionary])
         .build()
 }
@@ -97,7 +98,7 @@ fn setup_alice_bob_group_with_policy<P: OpenMlsProvider>(
         .wire_format_policy(wire_format_policy)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions on alice config")
         .build();
@@ -112,7 +113,7 @@ fn setup_alice_bob_group_with_policy<P: OpenMlsProvider>(
 
     let bob_key_package = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
         .expect("bob KP build")
@@ -171,7 +172,7 @@ fn emulation_config_builder(
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions on emulator config")
         .emulation_group(emulation_group);
@@ -200,7 +201,7 @@ fn vc_key_package<P: OpenMlsProvider>(
     let (credential, signer) = new_credential(provider, label, ciphersuite.signature_algorithm());
     let key_package = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build(ciphersuite, provider, &signer, credential)
         .expect("build vc key package")
@@ -340,7 +341,7 @@ fn new_vc_main_group<P: OpenMlsProvider>(
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -361,7 +362,7 @@ fn new_vc_main_group_with_policy<P: OpenMlsProvider>(
         .wire_format_policy(wire_format_policy)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -449,7 +450,7 @@ fn join_sibling_emulator<P: OpenMlsProvider>(
         .expect("build_group")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(vc_capabilities())
+                .with_capabilities(vc_capabilities(alice_a_main.ciphersuite()))
                 .with_extensions(vc_leaf_extensions())
                 .build(),
         )
@@ -517,7 +518,7 @@ fn vc_operation_tree_persists_across_own_commits() {
     let group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -627,7 +628,7 @@ fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions on higher-level config")
         .build();
@@ -684,7 +685,7 @@ fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
         .expect("build_group")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(vc_capabilities())
+                .with_capabilities(vc_capabilities(ciphersuite))
                 .with_extensions(vc_leaf_extensions())
                 .build(),
         )
@@ -782,7 +783,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions on alice main group config")
         .build();
@@ -890,7 +891,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
         .expect("build_group")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(vc_capabilities())
+                .with_capabilities(vc_capabilities(ciphersuite))
                 .with_extensions(vc_leaf_extensions())
                 .build(),
         )
@@ -1158,7 +1159,7 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions on higher-level config")
         .build();
@@ -1230,7 +1231,7 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
         .expect("build_group")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(vc_capabilities())
+                .with_capabilities(vc_capabilities(ciphersuite))
                 .with_extensions(vc_leaf_extensions())
                 .build(),
         )
@@ -1543,7 +1544,7 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
         .expect("build_group charly_a")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(vc_capabilities())
+                .with_capabilities(vc_capabilities(ciphersuite))
                 .with_extensions(vc_leaf_extensions())
                 .build(),
         )
@@ -1663,8 +1664,9 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
 /// The VC capabilities, extended with support for the AppEphemeral proposal
 /// type. All leaves of a group need this before anyone may commit such a
 /// proposal.
-fn vc_app_ephemeral_capabilities() -> Capabilities {
+fn vc_app_ephemeral_capabilities(ciphersuite: openmls_traits::types::Ciphersuite) -> Capabilities {
     Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
         .extensions(vec![ExtensionType::AppDataDictionary])
         .proposals(vec![ProposalType::AppEphemeral])
         .build()
@@ -1702,7 +1704,7 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_app_ephemeral_capabilities())
+        .capabilities(vc_app_ephemeral_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -1718,7 +1720,7 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
         new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
     let bob_kp = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_app_ephemeral_capabilities())
+        .leaf_node_capabilities(vc_app_ephemeral_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
         .expect("bob KP build")
@@ -1791,7 +1793,7 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
         .expect("build_group charly_a")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(vc_app_ephemeral_capabilities())
+                .with_capabilities(vc_app_ephemeral_capabilities(ciphersuite))
                 .with_extensions(vc_leaf_extensions())
                 .build(),
         )
@@ -1894,8 +1896,11 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
 /// The VC capabilities, extended with support for the AppDataUpdate and
 /// AppEphemeral proposal types. All leaves of a group need this before
 /// anyone may commit such proposals.
-fn vc_app_data_update_capabilities() -> Capabilities {
+fn vc_app_data_update_capabilities(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+) -> Capabilities {
     Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
         .extensions(vec![ExtensionType::AppDataDictionary])
         .proposals(vec![
             ProposalType::AppDataUpdate,
@@ -1946,7 +1951,7 @@ fn vc_app_data_scenario<P: OpenMlsProvider + Default>(
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_app_data_update_capabilities())
+        .capabilities(vc_app_data_update_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -1962,7 +1967,7 @@ fn vc_app_data_scenario<P: OpenMlsProvider + Default>(
         new_credential(&bob_provider, b"Bob", ciphersuite.signature_algorithm());
     let bob_kp = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_app_data_update_capabilities())
+        .leaf_node_capabilities(vc_app_data_update_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build(ciphersuite, &bob_provider, &bob_signer, bob_credential)
         .expect("bob KP build")
@@ -2054,7 +2059,9 @@ fn charly_a_external_commit_with_app_data_update<P: OpenMlsProvider>(
         .expect("build_group charly_a")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(vc_app_data_update_capabilities())
+                .with_capabilities(vc_app_data_update_capabilities(
+                    scenario.alice_main.ciphersuite(),
+                ))
                 .with_extensions(vc_leaf_extensions())
                 .build(),
         )
@@ -2458,7 +2465,7 @@ fn vc_sibling_joins_higher_level_group_via_key_package_welcome() {
     // alice_b. alice_b only learns about the KeyPackage through the upload, it
     // never stores the bundle.
     let mut batch = KeyPackage::builder()
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build_vc_batch(
             ciphersuite,
@@ -2614,7 +2621,7 @@ fn retained_material_welcome<P: OpenMlsProvider>(
     let epoch_id = newest_epoch(&emulator_b, alice_b_provider);
 
     let mut batch = KeyPackage::builder()
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build_vc_batch(
             ciphersuite,
@@ -2870,7 +2877,7 @@ fn vc_batch_key_packages_join_in_any_order() {
     // One batch of 40 KeyPackages, larger than OUT_OF_ORDER_TOLERANCE (32).
     let count = 40;
     let batch = KeyPackage::builder()
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build_vc_batch(
             ciphersuite,
@@ -2990,7 +2997,7 @@ fn vc_siblings_joined_via_key_package_welcome_read_each_others_messages() {
     // alice_a publishes a virtual-client KeyPackage and hands the upload to
     // alice_b.
     let mut batch = KeyPackage::builder()
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build_vc_batch(
             ciphersuite,
@@ -3252,7 +3259,7 @@ fn confirm_targets_creation_epoch() {
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .max_past_epochs(1)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -3522,7 +3529,7 @@ fn confirm_handshake_message_deletes_retained_secret() {
         .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -3827,7 +3834,7 @@ fn bound_group_fails_closed_when_derivation_state_missing_on_send() {
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -4063,7 +4070,7 @@ fn vc_emulation_rejects_misconfigured_leaf_before_allocating() {
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .build();
     let mut alice_group = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
         .expect("create alice group");
@@ -4126,7 +4133,7 @@ fn vc_operations_reject_a_group_without_a_derivation_epoch() {
     let (vc_credential, vc_signer) =
         new_credential(&provider, b"Alice (VC)", ciphersuite.signature_algorithm());
     let err = KeyPackage::builder()
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build_vc_batch(
             ciphersuite,
@@ -4265,7 +4272,7 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .max_past_epochs(2)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -4930,7 +4937,7 @@ fn create_vc_group<P: OpenMlsProvider>(
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .with_capabilities(vc_capabilities())
+        .with_capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .vc_emulation(emulator_group.group_id())
@@ -5396,7 +5403,7 @@ fn propose_unconfirmed_confirm_flow() {
         .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .build();
@@ -6255,7 +6262,7 @@ fn external_commit_into_emulation_group_creates_vc_derivation_epoch() {
         .expect("build external commit group")
         .leaf_node_parameters(
             LeafNodeParameters::builder()
-                .with_capabilities(vc_capabilities())
+                .with_capabilities(vc_capabilities(ciphersuite))
                 .with_extensions(vc_leaf_extensions())
                 .build(),
         )
@@ -6586,7 +6593,7 @@ fn vc_past_epoch_read_survives_sibling_resync() {
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .set_past_epoch_deletion_policy(PastEpochDeletionPolicy::MaxEpochs(10))
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions on higher-level config")
         .build();
@@ -6599,7 +6606,7 @@ fn vc_past_epoch_read_survives_sibling_resync() {
     // Dave adds the virtual client (leaf 1) and Bob (leaf 2).
     let alice_vc_kp = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions())
         .build(
             ciphersuite,

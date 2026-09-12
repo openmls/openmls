@@ -138,8 +138,8 @@ fn book_operations() {
         .ciphersuite(ciphersuite)
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
-            None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
+            None,                 // Defaults to the group's protocol version
+            Some(&[ciphersuite]), // Ciphersuite used by this group
             Some(&[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
             Some(&[CredentialType::Basic]),
@@ -200,6 +200,7 @@ fn book_operations() {
                 2000, // maximum_forward_distance
             ))
             .with_group_context_extensions(extensions) // NB: the builder method returns a Result
+            .ciphersuite(ciphersuite)
             .use_ratchet_tree_extension(true)
             .build(
                 alice_provider,
@@ -1581,7 +1582,7 @@ fn custom_proposal_usage() {
     // Define capabilities supporting the custom proposal type
     let capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         None,
         Some(&[ProposalType::Custom(custom_proposal_type)]),
         None,
@@ -1736,8 +1737,8 @@ fn commit_builder() {
         .ciphersuite(ciphersuite)
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
-            None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
+            None,                 // Defaults to the group's protocol version
+            Some(&[ciphersuite]), // Ciphersuite used by this group
             Some(&[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
             Some(&[CredentialType::Basic]),
@@ -1860,6 +1861,7 @@ fn external_commit_builder() {
 
     // Make sure we support SelfRemoves
     let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
         .proposals(vec![ProposalType::SelfRemove])
         .build();
 
