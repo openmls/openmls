@@ -130,7 +130,9 @@ impl MlsGroup {
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
     {
         let leaf_node_parameters = LeafNodeParameters::builder()
-            .with_capabilities(capabilities.unwrap_or_default())
+            .with_capabilities(
+                capabilities.unwrap_or_else(|| Capabilities::for_provider(provider.crypto())),
+            )
             .with_extensions(extensions.unwrap_or_default())
             .build();
 
