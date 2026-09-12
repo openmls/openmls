@@ -1,4 +1,5 @@
 .vscode
+Cargo.lock
 target
 storage.db
 storage.db-shm
