@@ -38,6 +38,10 @@ fn test_valn1405_inline_tree_valid() {
 
     let welcome: FrankenWelcome = message_bundle.welcome().unwrap().clone().into();
 
+    let opened = welcome.open(bob_provider.crypto(), bob_provider.storage());
+
+    println!("Opened: #{:?}", opened);
+
     // validate Welcome message
     let staged_welcome = StagedWelcome::new_from_welcome(
         bob_provider,

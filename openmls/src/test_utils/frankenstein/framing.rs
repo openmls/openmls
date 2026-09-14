@@ -11,10 +11,10 @@ use crate::{
         PublicMessageIn, Sender, WireFormat,
     },
     group::GroupContext,
-    messages::{ConfirmationTag, Welcome},
+    messages::{ConfirmationTag, GroupSecrets, Welcome},
     prelude_test::signable::Signable,
-    schedule::{ConfirmationKey, MembershipKey},
-    test_utils::frankenstein::FrankenHpkeCiphertext,
+    schedule::{ConfirmationKey, JoinerSecret, MembershipKey},
+    test_utils::frankenstein::{FrankenHpkeCiphertext, FrankenPreSharedKeyId},
 };
 
 use super::{
@@ -409,6 +409,15 @@ pub enum FrankenContentType {
 #[derive(
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
+pub struct FrankenGroupSecrets {
+    pub joiner_secret: VLBytes,
+    pub path_secret: Option<VLBytes>,
+    pub psks: Vec<FrankenPreSharedKeyId>,
+}
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
+)]
 pub struct FrankenEncryptedGroupSecrets {
     pub new_member: VLBytes,
     pub encrypted_group_secrets: FrankenHpkeCiphertext,
@@ -475,6 +484,19 @@ impl From<Welcome> for FrankenWelcome {
 impl From<FrankenWelcome> for Welcome {
     fn from(fln: FrankenWelcome) -> Self {
         Welcome::tls_deserialize(&mut fln.tls_serialize_detached().unwrap().as_slice()).unwrap()
+    }
+}
+
+impl From<VLBytes> for JoinerSecret {
+    fn from(fln: VLBytes) -> Self {
+        JoinerSecret::tls_deserialize(&mut fln.tls_serialize_detached().unwrap().as_slice())
+            .unwrap()
+    }
+}
+
+impl From<FrankenGroupSecrets> for GroupSecrets {
+    fn from(ln: FrankenGroupSecrets) -> Self {
+        GroupSecrets::tls_deserialize(&mut ln.tls_serialize_detached().unwrap().as_slice()).unwrap()
     }
 }
 

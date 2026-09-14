@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
-use tls_codec::*;
+use tls_codec::{Deserialize as _, Serialize as _, *};
 
 #[cfg(feature = "extensions-draft")]
 use crate::component::ComponentId;
 #[cfg(feature = "extensions-draft")]
 use crate::messages::proposals::AppDataUpdateOperation;
+use crate::schedule::PreSharedKeyId;
 
 use super::{extensions::FrankenExtension, FrankenKeyPackage, FrankenLeafNode};
 
@@ -155,6 +156,27 @@ pub struct FrankenPreSharedKeyProposal {
 pub struct FrankenPreSharedKeyId {
     pub psk: FrankenPsk,
     pub psk_nonce: VLBytes,
+}
+
+impl From<PreSharedKeyId> for FrankenPreSharedKeyId {
+    fn from(ln: PreSharedKeyId) -> Self {
+        FrankenPreSharedKeyId::tls_deserialize(&mut ln.tls_serialize_detached().unwrap().as_slice())
+            .unwrap()
+    }
+}
+
+impl From<FrankenPreSharedKeyId> for PreSharedKeyId {
+    fn from(fln: FrankenPreSharedKeyId) -> Self {
+        PreSharedKeyId::tls_deserialize(&mut fln.tls_serialize_detached().unwrap().as_slice())
+            .unwrap()
+    }
+}
+
+impl From<&FrankenPreSharedKeyId> for PreSharedKeyId {
+    fn from(fln: &FrankenPreSharedKeyId) -> Self {
+        PreSharedKeyId::tls_deserialize(&mut fln.tls_serialize_detached().unwrap().as_slice())
+            .unwrap()
+    }
 }
 
 #[derive(
