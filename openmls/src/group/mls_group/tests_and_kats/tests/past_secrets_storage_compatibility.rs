@@ -59,16 +59,27 @@ fn test_storage_compatibility() {
         assert!(message_secrets_store
             .iter_past_epoch_trees()
             .all(|tree| tree.timestamp().is_none()));
+        assert_eq!(
+            message_secrets_store.past_epochs(),
+            (0..alice_group.epoch().as_u64()).collect::<Vec<_>>()
+        );
 
         // ensure that the store matches the result of serializing/deserializing it
         message_secrets_store.ensure_deserialization_matches();
 
-        // modify the loaded MessageSecretsStore, adding a new past epoch tree with a timestamp
+        // Modify the loaded MessageSecretsStore as a real epoch rollover would:
+        // add the just-finished current epoch after the existing past epochs.
+        // The fixture is already at capacity, so this also verifies that the
+        // oldest epoch is evicted while the store remains in canonical order.
         message_secrets_store.add_past_epoch_tree(
-            0,
+            alice_group.epoch(),
             MessageSecrets::random(ciphersuite, alice_provider.rand(), LeafNodeIndex::new(0))
                 .with_timestamp(std::time::SystemTime::now()),
             Vec::new(),
+        );
+        assert_eq!(
+            message_secrets_store.past_epochs(),
+            (1..=alice_group.epoch().as_u64()).collect::<Vec<_>>()
         );
 
         // ensure that the store matches the result of serializing/deserializing it

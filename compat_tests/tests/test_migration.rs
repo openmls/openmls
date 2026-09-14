@@ -63,10 +63,15 @@ use openmls_compat::prelude::{
     tls_codec::{Deserialize as _, Serialize as _},
     *,
 };
-use openmls_current::prelude::{
-    tls_codec::{Deserialize as _, Serialize as _},
-    OpenMlsProvider as _,
-};
+use openmls_current::prelude::tls_codec::{Deserialize as _, Serialize as _};
+// The feature-toggle migration test calls provider trait methods on a concrete
+// current-version provider. Keep the trait import scoped to that exact lane so
+// the other migration combinations remain warning-free under `-D warnings`.
+#[cfg(all(
+    feature = "extensions-draft-current",
+    not(feature = "extensions-draft-compat")
+))]
+use openmls_current::prelude::OpenMlsProvider as _;
 use openmls_traits_compat::signatures::Signer;
 
 use openmls as openmls_current;
@@ -649,7 +654,7 @@ fn test_migration_with_proposals_impl<T: StorageMigrationTarget>() {
     let target = T::provider(&target_state);
 
     // migrate the group; this also checks that the proposals in the store match
-    let migrated = migrate_and_check(&alice_state, &group_id, &target, T::NAME);
+    let _ = migrate_and_check(&alice_state, &group_id, &target, T::NAME);
 }
 
 /// Tests that a migration preserves a pending commit.
@@ -943,6 +948,7 @@ fn test_migration_then_operate() {
 
 /// The migration target need not be JSON. Here the current-version store is CBOR
 /// (via `ciborium`), a self-describing *binary* format
+#[test]
 fn test_migration_ciborium_target() {
     let ciphersuite = CIPHERSUITE;
     let group_id = TestGroupId::new(b"migration ciborium group");
