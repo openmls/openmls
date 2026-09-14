@@ -118,6 +118,12 @@ impl From<GroupContext> for FrankenGroupContext {
     }
 }
 
+impl From<FrankenGroupContext> for GroupContext {
+    fn from(value: FrankenGroupContext) -> Self {
+        Self::tls_deserialize(&mut value.tls_serialize_detached().unwrap().as_slice()).unwrap()
+    }
+}
+
 impl From<GroupInfo> for FrankenGroupInfo {
     fn from(ln: GroupInfo) -> Self {
         FrankenGroupInfo::tls_deserialize(&mut ln.tls_serialize_detached().unwrap().as_slice())

@@ -11,7 +11,7 @@ use crate::{
         PublicMessageIn, Sender, WireFormat,
     },
     group::GroupContext,
-    messages::{ConfirmationTag, GroupSecrets, Welcome},
+    messages::{ConfirmationTag, GroupSecrets, PathSecret, Welcome},
     prelude_test::signable::Signable,
     schedule::{ConfirmationKey, JoinerSecret, MembershipKey},
     test_utils::frankenstein::{FrankenHpkeCiphertext, FrankenPreSharedKeyId},
@@ -410,9 +410,18 @@ pub enum FrankenContentType {
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
 pub struct FrankenGroupSecrets {
-    pub joiner_secret: VLBytes,
-    pub path_secret: Option<VLBytes>,
+    pub joiner_secret: FrankenJoinerSecret,
+    pub path_secret: Option<FrankenPathSecret>,
     pub psks: Vec<FrankenPreSharedKeyId>,
+}
+
+pub type FrankenPathSecret = VLBytes;
+pub type FrankenJoinerSecret = VLBytes;
+
+impl From<FrankenPathSecret> for PathSecret {
+    fn from(value: VLBytes) -> Self {
+        Self::tls_deserialize(&mut value.tls_serialize_detached().unwrap().as_slice()).unwrap()
+    }
 }
 
 #[derive(

@@ -11,8 +11,7 @@ use crate::{
 /// The tree hash of the ratchet tree must match the tree_hash field in GroupInfo.
 #[openmls_test::openmls_test]
 fn test_valn1405_inline_tree_valid() {
-    // ceate Welcome message and GroupInfo
-
+    // create Welcome message and GroupInfo
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
@@ -36,17 +35,21 @@ fn test_valn1405_inline_tree_valid() {
         .stage_commit(alice_provider)
         .unwrap();
 
+    // No-op for consistency with other tests
     let welcome: FrankenWelcome = message_bundle.welcome().unwrap().clone().into();
-
-    let opened = welcome.open(bob_provider.crypto(), bob_provider.storage());
-
-    println!("Opened: #{:?}", opened);
+    let updated_welcome = welcome.with_sealed_update(
+        &alice_signer,
+        alice_provider,
+        &bob_kpb.key_package,
+        bob_provider,
+        |_ciphersuite, _group_secrets, _group_info| (),
+    );
 
     // validate Welcome message
     let staged_welcome = StagedWelcome::new_from_welcome(
         bob_provider,
         alice_group.configuration(),
-        welcome.into(),
+        updated_welcome.into(),
         None,
     )
     .expect("expected valid join from unmodified welcome");
