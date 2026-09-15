@@ -81,6 +81,8 @@ impl FrankenWelcome {
     /// Performs no semantic checks.
     ///
     /// This method is meant for tests that need to manipulate the encrypted contents.
+    ///
+    /// The implementation is roughly inspired by `mls_group::creation::decrypt_group_secrets`, without validity checks.
     pub fn open<Crypto, Storage>(
         &self,
         crypto: &Crypto,
@@ -90,7 +92,6 @@ impl FrankenWelcome {
         Crypto: OpenMlsCrypto,
         Storage: StorageProvider,
     {
-        // Implementation is roughly inspired by [`mls_group::creation::decrypt_group_secrets`], without validity checks.
         let ciphersuite = Ciphersuite::try_from(self.cipher_suite)
             .expect("cannot open welcome with invalid ciphersuite");
         crypto
@@ -357,6 +358,8 @@ mod tests {
         let opened = welcome.open(bob_provider.crypto(), bob_provider.storage());
         let (_ciphersuite, group_secrets, mut group_info) = opened.unwrap();
 
+        // Change the GroupInfo but keep it valid.
+        // Clients ignore unknown extensions (https://www.rfc-editor.org/rfc/rfc9420.html#section-13.4-5.3)
         group_info.extensions.push(FrankenExtension::Unknown(
             0xf000,
             b"Test extension modifying group_info".into(),
@@ -382,7 +385,7 @@ mod tests {
             resealed.unwrap().into(),
             None,
         )
-        .expect("expected valid join from unmodified welcome");
+        .expect("expected valid join from valid welcome");
 
         let _bob_group = staged_welcome
             .into_group(bob_provider)
@@ -422,6 +425,8 @@ mod tests {
             alice_provider,
             &bob_kpb.key_package,
             bob_provider,
+            // Change the GroupInfo but keep it valid.
+            // Clients ignore unknown extensions (https://www.rfc-editor.org/rfc/rfc9420.html#section-13.4-5.3)
             |_, _, group_info| {
                 group_info.extensions.push(FrankenExtension::Unknown(
                     0xf000,
@@ -437,7 +442,7 @@ mod tests {
             welcome.into(),
             None,
         )
-        .expect("expected valid join from unmodified welcome");
+        .expect("expected valid join from valid welcome");
 
         let _bob_group = staged_welcome
             .into_group(bob_provider)
