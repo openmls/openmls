@@ -392,7 +392,6 @@ mod tests {
     #[openmls_test::openmls_test]
     fn test_reseal_helper_franken_group_info() {
         // create Welcome message and GroupInfo
-
         let alice_provider = &Provider::default();
         let bob_provider = &Provider::default();
         let (mut alice_group, _alice_credential, alice_signer, _alice_pk) =
