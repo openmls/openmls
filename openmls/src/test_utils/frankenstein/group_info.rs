@@ -87,13 +87,13 @@ pub struct FrankenGroupInfoTbs {
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
 pub struct FrankenGroupContext {
-    protocol_version: u16,
-    ciphersuite: u16,
-    group_id: VLBytes,
-    epoch: u64,
-    tree_hash: VLBytes,
-    confirmed_transcript_hash: VLBytes,
-    extensions: Vec<FrankenExtension>,
+    pub protocol_version: u16,
+    pub ciphersuite: u16,
+    pub group_id: VLBytes,
+    pub epoch: u64,
+    pub tree_hash: VLBytes,
+    pub confirmed_transcript_hash: VLBytes,
+    pub extensions: Vec<FrankenExtension>,
 }
 
 impl From<GroupContext> for FrankenGroupContext {
