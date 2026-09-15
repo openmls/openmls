@@ -85,7 +85,6 @@ impl FrankenWelcome {
         &self,
         crypto: &Crypto,
         storage: &Storage,
-        // resumption_psk_store: Option<&ResumptionPskStore>,
     ) -> Result<(Ciphersuite, FrankenGroupSecrets, FrankenGroupInfo), WelcomeError<Storage::Error>>
     where
         Crypto: OpenMlsCrypto,
