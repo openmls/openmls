@@ -139,7 +139,7 @@ fn book_operations() {
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
             Some(&[CredentialType::Basic]),
@@ -321,6 +321,7 @@ fn book_operations() {
         .with_config(mls_group_config.clone())
         .build_group(dave_provider, verifiable_group_info, dave_credential)
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(dave_provider.storage())
         .unwrap()
         .build(
@@ -1578,14 +1579,14 @@ fn custom_proposal_usage() {
     // Define a custom proposal type
     let custom_proposal_type = 0xFFFF;
 
-    // Define capabilities supporting the custom proposal type
-    let capabilities = Capabilities::new(
-        None,
-        None,
-        None,
-        Some(&[ProposalType::Custom(custom_proposal_type)]),
-        None,
-    );
+    // Define capabilities supporting the custom proposal type.
+    // Note that setting capabilities explicitly means they must also cover what
+    // the leaf itself uses: its ciphersuite and its credential type.
+    let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .proposals(vec![ProposalType::Custom(custom_proposal_type)])
+        .build();
 
     // Generate KeyPackage that signals support for the custom proposal type
     let bob_key_package = KeyPackageBuilder::new()
@@ -1737,7 +1738,7 @@ fn commit_builder() {
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
             Some(&[CredentialType::Basic]),
@@ -1860,6 +1861,8 @@ fn external_commit_builder() {
 
     // Make sure we support SelfRemoves
     let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
         .proposals(vec![ProposalType::SelfRemove])
         .build();
 
@@ -1890,16 +1893,19 @@ fn external_commit_builder() {
 
     const AAD: &[u8] = b"some additional authenticated data";
 
-    let leaf_node_parameters = LeafNodeParameters::builder()
-        .with_capabilities(capabilities.clone())
-        .build();
-
     let join_group_config = MlsGroupJoinConfig::builder()
         .padding_size(PADDING_SIZE)
         .wire_format_policy(POLICY)
         .build();
 
     // ANCHOR: external_commit_builder
+    // The joining member's leaf node capabilities. These are optional: left
+    // unset, the leaf advertises the group's ciphersuite, the member's own
+    // credential type and its leaf extensions. Set them to advertise more.
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_capabilities(capabilities.clone())
+        .build();
+
     let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
         .with_ratchet_tree(tree_option.into())
         .with_config(join_group_config.clone())
@@ -1995,6 +2001,7 @@ fn external_commit_builder() {
         )
         .unwrap()
         .add_psk_proposal(PreSharedKeyProposal::new(psk))
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(charlie_provider.storage())
         .unwrap()
         .build(

@@ -24,9 +24,12 @@ use crate::{
     tree::sender_ratchet::SenderRatchetConfiguration,
     treesync::{
         errors::LeafNodeValidationError,
-        node::leaf_node::{Capabilities, LeafNode},
+        node::leaf_node::{Capabilities, CapabilitiesPolicy, LeafNode},
     },
 };
+
+#[cfg(feature = "virtual-clients-draft")]
+use crate::treesync::node::leaf_node::resolve_capabilities;
 
 /// Builder struct for an [`MlsGroup`].
 #[derive(Default, Debug)]
@@ -172,10 +175,12 @@ impl MlsGroupBuilder {
                 .with_leaf_node_extensions(mls_group_create_config.leaf_node_extensions.clone())
                 .with_lifetime(*mls_group_create_config.lifetime())
                 .with_capabilities(mls_group_create_config.capabilities.clone())
+                .with_capabilities_policy(mls_group_create_config.capabilities_policy)
                 .get_secrets(provider, signer)
                 .map_err(|e| match e {
                     PublicGroupBuildError::LibraryError(e) => NewGroupError::LibraryError(e),
                     PublicGroupBuildError::InvalidExtensions(e) => e.into(),
+                    PublicGroupBuildError::LeafNodeBuild(e) => e.into(),
                 })?;
 
         let serialized_group_context = public_group_builder
@@ -435,10 +440,24 @@ impl MlsGroupBuilder {
     }
 
     /// Sets the group creator's [`Capabilities`]
+    ///
+    /// See [`MlsGroupCreateConfigBuilder::capabilities`] for what setting them
+    /// explicitly implies.
     pub fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
         self.mls_group_create_config_builder = self
             .mls_group_create_config_builder
             .capabilities(capabilities);
+        self
+    }
+
+    /// Sets how the group creator's [`Capabilities`] are treated when they
+    /// don't cover what the leaf needs.
+    ///
+    /// See [`MlsGroupCreateConfigBuilder::capabilities_policy`].
+    pub fn with_capabilities_policy(mut self, policy: CapabilitiesPolicy) -> Self {
+        self.mls_group_create_config_builder = self
+            .mls_group_create_config_builder
+            .capabilities_policy(policy);
         self
     }
 }
@@ -579,7 +598,10 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     }
 
     let ciphersuite = mls_group_create_config.ciphersuite;
-    let capabilities = mls_group_create_config.capabilities.clone();
+    let (capabilities, capabilities_policy) = resolve_capabilities(
+        mls_group_create_config.capabilities.clone(),
+        mls_group_create_config.capabilities_policy,
+    );
 
     // Validate that the creator's leaf declares `AppDataDictionary` and lists
     // `VC_COMPONENT_ID` before allocating a generation, so a deterministic
@@ -665,6 +687,11 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         capabilities,
         leaf_extensions,
         leaf_encryption_keypair,
+        mls_group_create_config
+            .group_context_extensions
+            .required_capabilities()
+            .cloned(),
+        capabilities_policy,
     )?;
     let group_context = GroupContext::create_initial_group_context(
         ciphersuite,

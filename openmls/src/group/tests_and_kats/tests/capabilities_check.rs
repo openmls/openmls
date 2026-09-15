@@ -96,6 +96,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
 
         let new_capabilities = Capabilities::builder()
             .versions(capabilities.versions().to_vec())
+            .ciphersuites(vec![ciphersuite])
             .extensions(capabilities.extensions().to_vec())
             .proposals(capabilities.proposals().to_vec())
             .credentials(credential_types.clone())
@@ -153,17 +154,28 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
 
         // Update only the new credential
         self.credential_with_key.credential = new_credential.clone();
-        self.key_package_bundle = generate_key_package(
-            ciphersuite,
-            CredentialWithKey {
-                credential: new_credential,
-                signature_key: self.signer.to_public_vec().into(),
-            },
-            Extensions::default(),
-            &self.core_state.provider,
-            None,
-            &self.signer,
-        );
+        // `generate_key_package` leaves capabilities unset, so they'd be
+        // derived from the leaf. Here they have to be stated, because the
+        // point is to control exactly which credential types the leaf
+        // advertises.
+        self.key_package_bundle = KeyPackage::builder()
+            .key_package_extensions(Extensions::default())
+            .leaf_node_capabilities(
+                Capabilities::builder()
+                    .ciphersuites(vec![ciphersuite])
+                    .credentials(vec![credential_type])
+                    .build(),
+            )
+            .build(
+                ciphersuite,
+                &self.core_state.provider,
+                &self.signer,
+                CredentialWithKey {
+                    credential: new_credential,
+                    signature_key: self.signer.to_public_vec().into(),
+                },
+            )
+            .unwrap();
     }
 }
 
@@ -308,13 +320,18 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
         })
         .expect("Could not add member");
 
-    // Case with no credential capabilities; should fail
+    // Case with only Dave's own credential type (Basic) in his capabilities;
+    // should fail because he doesn't support Alice's Other(3) credential.
+    // (A leaf whose capabilities don't even cover its own credential type is
+    // now rejected at construction time, so this can no longer be exercised
+    // with a literally empty credential list — case with wrong-but-nonempty
+    // capabilities below covers the same "insufficient" scenario.)
     // Alice adds Dave
     expect_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
         &dave_party,
         "alice",
         ciphersuite,
-        Vec::new(),
+        vec![CredentialType::Basic],
     ));
 
     // Case with wrong capabilities; should fail
@@ -371,6 +388,7 @@ fn valn0311_removed_member_capabilities_skipped_in_check() {
     let capabilities = Capabilities::builder()
         .ciphersuites(vec![ciphersuite])
         .proposals(vec![non_default_proposal_type])
+        .credentials(vec![CredentialType::Basic])
         .build();
 
     // Alice and Bob support the non-default proposal type
@@ -385,6 +403,21 @@ fn valn0311_removed_member_capabilities_skipped_in_check() {
 
     // Charlie only supports the basic proposal types
     let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+
+    // Negative control: this test only means anything while Charlie does *not*
+    // advertise the proposal type. That holds because `minimal_capabilities_for`
+    // (the fallback behind `generate_pre_group`) is contractually limited to
+    // ciphersuite and credential, and must stay that way.
+    assert!(
+        !charlie_pre_group
+            .key_package_bundle
+            .key_package()
+            .leaf_node()
+            .capabilities()
+            .proposals()
+            .contains(&non_default_proposal_type),
+        "Charlie must not advertise the non-default proposal type"
+    );
 
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()

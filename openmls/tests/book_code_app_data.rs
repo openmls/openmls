@@ -93,14 +93,14 @@ fn setup_group_with_app_data_support<'a, Provider: OpenMlsProvider>(
     ciphersuite: Ciphersuite,
 ) -> GroupState<'a, Provider> {
     // Define capabilities that include AppDataDictionary extension
-    // and AppDataUpdate proposal support
-    let capabilities = Capabilities::new(
-        None, // protocol versions (default)
-        None, // ciphersuites (default)
-        Some(&[ExtensionType::AppDataDictionary]),
-        Some(&[ProposalType::AppDataUpdate]),
-        None, // credentials (default)
-    );
+    // and AppDataUpdate proposal support. Capabilities set explicitly must also
+    // cover what the leaf itself uses: its ciphersuite and credential type.
+    let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .extensions(vec![ExtensionType::AppDataDictionary])
+        .proposals(vec![ProposalType::AppDataUpdate])
+        .build();
 
     // The group context must require these capabilities so that
     // all members are guaranteed to support them

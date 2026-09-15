@@ -352,7 +352,7 @@ impl TreeSyncDiff<'_> {
         leaf_index: LeafNodeIndex,
         leaf_node_params: UpdateLeafNodeParams,
         vc_override: Option<OwnUpdatePathOverride>,
-    ) -> Result<UpdatePathResult, TreeSyncAddLeaf> {
+    ) -> Result<UpdatePathResult, ApplyOwnUpdatePathError> {
         // For External Commits, we temporarily add a placeholder leaf node to the tree, because it
         // might be required to make the tree grow to the right size. If we
         // don't do that, calculating the direct path might fail. It's important
@@ -380,8 +380,8 @@ impl TreeSyncDiff<'_> {
         let parent_hash = self
             .process_update_path(crypto, ciphersuite, leaf_index, path)
             .map_err(|e| match e {
-                ApplyUpdatePathError::LibraryError(e) => TreeSyncAddLeaf::LibraryError(e),
-                _ => TreeSyncAddLeaf::LibraryError(LibraryError::custom(
+                ApplyUpdatePathError::LibraryError(e) => ApplyOwnUpdatePathError::LibraryError(e),
+                _ => ApplyOwnUpdatePathError::LibraryError(LibraryError::custom(
                     "Unexpected error in process_update_path",
                 )),
             })?;

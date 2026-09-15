@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [#2202](https://github.com/openmls/openmls/pull/2202): The secret export functions on `MlsGroup`, `StagedCommit`, `StagedWelcome`, `ProcessedWelcome` and `ProcessedMessage` now return `ExportedSecret<T>` instead of `Vec<u8>`. The new type zeroizes the secret on drop and is parameterized with a marker struct recording which function produced the secret. Use `as_slice()` to access the secret bytes.
+- [#2205](https://github.com/openmls/openmls/pull/2205): `Capabilities` no longer carry hardcoded defaults (a fixed ciphersuite list, `CredentialType::Basic`); every list but `versions` is empty unless the caller sets it. Leaf construction now validates capabilities against the leaf's own ciphersuite, credential type and extensions, plus the group's `RequiredCapabilitiesExtension`, with a new `CapabilitiesPolicy` (`Reject`/`Widen`) controlling whether unset capabilities are rejected or auto-widened to match the leaf.
 
 ### Fixed
 

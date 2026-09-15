@@ -32,6 +32,20 @@ A few parameters need to be determined in order to generate a `KeyPackageBundle`
 
 The client must specify at least one ciphersuite per KeyPackage and it must not advertise ciphersuites it does not support.
 
+If no capabilities are set, OpenMLS derives them from the key package itself:
+the ciphersuite it is built with, its credential type, and the extension types
+present in its leaf node.
+That is the minimum a leaf node has to advertise.
+
+Setting capabilities explicitly, via `KeyPackage::builder().leaf_node_capabilities(..)`,
+is how a client advertises more than that.
+For example, other ciphersuites, extensions, proposal types and credential types
+it supports.
+If the list does not cover what the types the key package itself uses, building
+it fails rather than producing a key package other clients would reject.
+Pass `CapabilitiesPolicy::Widen` to `KeyPackage::builder().capabilities_policy(..)`
+to have the missing capabilities added instead.
+
 The client should advertise all extensions it supports. See the documentation of extensions for more details.
 
 A `KeyPackageBundle` can be generated through the `KeyPackage::builder()`:

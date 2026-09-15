@@ -6,6 +6,7 @@
 //! Remove: its tree must replace the prior leaf rather than grow, and its epoch
 //! authenticator must agree with the committer's.
 
+use crate::treesync::LeafNodeParameters;
 use openmls_test::openmls_test;
 
 use crate::{
@@ -88,6 +89,7 @@ fn run_case<Provider: crate::storage::OpenMlsProvider + Default>(
         .with_config(join_group_config.clone())
         .build_group(bob_provider, vgi, bob_credential_with_key.clone())
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -126,6 +128,7 @@ fn run_case<Provider: crate::storage::OpenMlsProvider + Default>(
         .with_config(join_group_config.clone())
         .build_group(bob2_provider, vgi, bob_credential_with_key.clone())
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob2_provider.storage())
         .unwrap()
         .build(

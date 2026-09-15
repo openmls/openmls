@@ -12,7 +12,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    credentials::{test_utils::new_credential, NewSignerBundle},
+    credentials::{test_utils::new_credential, CredentialType, NewSignerBundle},
     framing::*,
     group::{errors::*, *},
     key_packages::*,
@@ -1453,6 +1453,7 @@ fn max_past_epochs_join_config() {
     let max_past_epochs = 10;
 
     let create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
         .max_past_epochs(max_past_epochs)
         .build();
 
@@ -1505,10 +1506,10 @@ fn builder_pattern() {
     let test_number_of_resumption_psks = 5;
     let test_capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         Some(&[ExtensionType::Unknown(0xff00)]),
         None,
-        None,
+        Some(&[CredentialType::Basic]),
     );
     let test_leaf_extensions = Extensions::single(Extension::Unknown(
         0xff00,
@@ -1599,7 +1600,13 @@ fn builder_pattern() {
         .filter(|cred| !cred.is_grease())
         .copied()
         .collect();
-    assert_eq!(filtered_ciphersuites, test_capabilities.ciphersuites());
+    // The creator's own leaf node always advertises the group's ciphersuite,
+    // even if it wasn't included in the explicitly configured capabilities.
+    let mut expected_ciphersuites = test_capabilities.ciphersuites().to_vec();
+    if !expected_ciphersuites.contains(&test_ciphersuite.into()) {
+        expected_ciphersuites.push(test_ciphersuite.into());
+    }
+    assert_eq!(filtered_ciphersuites, expected_ciphersuites);
     assert_eq!(filtered_extensions, test_capabilities.extensions());
     assert_eq!(filtered_proposals, test_capabilities.proposals());
     assert_eq!(filtered_credentials, test_capabilities.credentials());
@@ -1640,7 +1647,13 @@ fn update_group_context_with_unknown_extension<Provider: OpenMlsProvider + Defau
     let required_capabilities = Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]),
     );
-    let capabilities = Capabilities::new(None, None, Some(required_extension_types), None, None);
+    let capabilities = Capabilities::new(
+        None,
+        Some(&[ciphersuite]),
+        Some(required_extension_types),
+        None,
+        Some(&[CredentialType::Basic]),
+    );
     let test_gc_extensions = Extensions::from_vec(vec![
         unknown_gc_extension.clone(),
         required_capabilities.clone(),
@@ -2066,7 +2079,13 @@ fn test_update_group_context_with_unknown_extension_using_update_function<
     let required_capabilities = Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(required_extension_types, &[], &[]),
     );
-    let capabilities = Capabilities::new(None, None, Some(required_extension_types), None, None);
+    let capabilities = Capabilities::new(
+        None,
+        Some(&[ciphersuite]),
+        Some(required_extension_types),
+        None,
+        Some(&[CredentialType::Basic]),
+    );
     let test_gc_extensions = Extensions::from_vec(vec![
         unknown_gc_extension.clone(),
         required_capabilities.clone(),
@@ -2199,7 +2218,13 @@ fn unknown_extensions() {
     ];
     let required_capabilities =
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(&[], &[], &[]));
-    let capabilities = Capabilities::new(None, None, Some(required_extensions), None, None);
+    let capabilities = Capabilities::new(
+        None,
+        Some(&[ciphersuite]),
+        Some(required_extensions),
+        None,
+        Some(&[CredentialType::Basic]),
+    );
     let test_gc_extensions = Extensions::from_vec(vec![
         unknown_gc_extension.clone(),
         required_capabilities.clone(),
@@ -2294,8 +2319,13 @@ fn join_multiple_groups_last_resort_extension() {
         setup_client("bob", ciphersuite, bob_provider);
     let (charlie_credential_with_key, _charlie_kpb, charlie_signer, _charlie_pk) =
         setup_client("charlie", ciphersuite, charlie_provider);
-    let leaf_capabilities =
-        Capabilities::new(None, None, Some(&[ExtensionType::LastResort]), None, None);
+    let leaf_capabilities = Capabilities::new(
+        None,
+        Some(&[ciphersuite]),
+        Some(&[ExtensionType::LastResort]),
+        None,
+        Some(&[CredentialType::Basic]),
+    );
     let keypkg_extensions = Extensions::single(Extension::LastResort(LastResortExtension::new()))
         .expect("failed to create single-element extensions list");
     // alice creates MlsGroup
@@ -2613,6 +2643,7 @@ fn update_path() {
             bob_group.group_id().clone(),
             bob_group.own_leaf_index(),
             LeafNodeParameters::default(),
+            None,
         )
         .unwrap();
 

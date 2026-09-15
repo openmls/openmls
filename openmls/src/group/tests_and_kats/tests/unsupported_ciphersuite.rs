@@ -12,7 +12,7 @@ use crate::{
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     prelude::KeyPackageBundle,
-    test_utils::restricted_provider::RestrictedProvider,
+    test_utils::{minimal_capabilities_for, restricted_provider::RestrictedProvider},
 };
 
 const GROUP_CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -33,6 +33,7 @@ fn group_create_rejects_unsupported_ciphersuite() {
 
     let err = MlsGroup::builder()
         .ciphersuite(GROUP_CIPHERSUITE)
+        .with_capabilities(minimal_capabilities_for(GROUP_CIPHERSUITE).build())
         .build(
             &provider,
             &credential.signer,
@@ -57,6 +58,7 @@ fn welcome_rejects_unsupported_ciphersuite() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(GROUP_CIPHERSUITE)
+        .with_capabilities(minimal_capabilities_for(GROUP_CIPHERSUITE).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -131,6 +133,7 @@ fn external_commit_rejects_unsupported_ciphersuite() {
 
     let alice_group = MlsGroup::builder()
         .ciphersuite(GROUP_CIPHERSUITE)
+        .with_capabilities(minimal_capabilities_for(GROUP_CIPHERSUITE).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,

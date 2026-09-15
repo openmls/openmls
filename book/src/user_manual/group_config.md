@@ -18,10 +18,24 @@ Two very similar structs can help configure groups upon their creation: `MlsGrou
 | Name                       | Type           | Explanation                                                            |
 | -------------------------- | -------------- | ---------------------------------------------------------------------- |
 | `group_context_extensions` | `Extensions`   | Optional group-level extensions, e.g. `RequiredCapabilitiesExtension`. |
-| `capabilities` .           | `Capabilities` | Lists the capabilities of the group's creator.                         |
+| `capabilities` .           | `Capabilities` | Lists the capabilities of the group's creator. Optional; see below.    |
 | `leaf_extensions` .        | `Extensions`   | Extensions to be included in the group creator's leaf                  |
 
 Both ways of group configurations can be specified by using the struct's builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.
+
+If `capabilities` is left unset, the creator's leaf node advertises what it
+actually uses: the group's ciphersuite, the creator's credential type, and the
+extension types in `leaf_extensions`.
+Set it to advertise more than that, for example further ciphersuites or the
+proposal types the client implements.
+Explicit capabilities are taken as provided, so group creation fails if they do
+not cover what the creator's own leaf uses, or what the group's
+`RequiredCapabilitiesExtension` demands.
+`MlsGroupCreateConfigBuilder::capabilities_policy` overrides this:
+`CapabilitiesPolicy::Widen` adds the capabilities the leaf itself needs instead
+of rejecting.
+Note that widening never claims support for the group's required extension,
+proposal or credential types.
 
 Example join configuration:
 

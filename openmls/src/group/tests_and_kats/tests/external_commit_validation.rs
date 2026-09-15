@@ -2,6 +2,7 @@
 //! commit messages as defined in
 //! https://github.com/openmls/openmls/wiki/Message-validation
 
+use crate::treesync::LeafNodeParameters;
 use tls_codec::{Deserialize, Serialize};
 
 use self::utils::*;
@@ -238,6 +239,7 @@ fn test_valsem242() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -728,6 +730,10 @@ fn test_external_commit_unsupported_group_context_extension() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -824,6 +830,7 @@ fn test_external_commit_duplicate_signature_key() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -848,6 +855,7 @@ fn test_external_commit_duplicate_signature_key() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -921,6 +929,8 @@ fn test_external_commit_duplicate_signature_key() {
 mod utils {
     use openmls_traits::types::Ciphersuite;
 
+    use crate::treesync::LeafNodeParameters;
+
     use crate::{
         framing::{MlsMessageIn, PublicMessage, Sender, WireFormat},
         group::{
@@ -992,6 +1002,7 @@ mod utils {
                 bob_credential.credential_with_key.clone(),
             )
             .unwrap()
+            .leaf_node_parameters(LeafNodeParameters::builder().build())
             .load_psks(bob_provider.storage())
             .unwrap()
             .build(
