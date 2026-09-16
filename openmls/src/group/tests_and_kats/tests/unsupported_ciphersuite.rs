@@ -11,7 +11,8 @@ use crate::{
         ExternalCommitBuilderError, MlsGroup, MlsGroupJoinConfig, NewGroupError, StagedWelcome,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
-    prelude::KeyPackageBundle,
+    key_packages::errors::KeyPackageVerifyError,
+    prelude::{Extensions, KeyPackageBundle, KeyPackageIn, ProtocolVersion},
     test_utils::restricted_provider::RestrictedProvider,
 };
 
@@ -166,4 +167,29 @@ fn external_commit_rejects_unsupported_ciphersuite() {
         err,
         ExternalCommitBuilderError::UnsupportedCiphersuite(cs) if cs == GROUP_CIPHERSUITE
     ));
+}
+
+#[test]
+fn key_package_validate_rejects_unsupported_ciphersuite() {
+    let provider = restricted_provider();
+    let credential = generate_credential_with_key(
+        "Bob".into(),
+        GROUP_CIPHERSUITE.signature_algorithm(),
+        provider.inner(),
+    );
+    let key_package = generate_key_package(
+        GROUP_CIPHERSUITE,
+        Extensions::empty(),
+        provider.inner(),
+        credential,
+    );
+
+    let err = KeyPackageIn::from(key_package)
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        KeyPackageVerifyError::UnsupportedCiphersuite(GROUP_CIPHERSUITE)
+    );
 }

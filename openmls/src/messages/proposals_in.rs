@@ -174,11 +174,10 @@ impl AddProposalIn {
         protocol_version: ProtocolVersion,
         ciphersuite: Ciphersuite,
     ) -> Result<AddProposal, ValidationError> {
-        let key_package = self.key_package.validate(crypto, protocol_version)?;
-        // Verify that the ciphersuite is valid
-        if key_package.ciphersuite() != ciphersuite {
+        if self.key_package.unverified_ciphersuite() != ciphersuite {
             return Err(ValidationError::InvalidAddProposalCiphersuite);
         }
+        let key_package = self.key_package.validate(crypto, protocol_version)?;
         Ok(AddProposal { key_package })
     }
 }
