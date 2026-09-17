@@ -60,6 +60,33 @@ impl CryptoProvider {
     }
 }
 
+/// A fallible rng over the provider's HMAC-DRBG, for libcrux APIs that take a
+/// [`rand::TryCryptoRng`]. Randomness failures surface as errors instead of
+/// panics.
+struct DrbgRng<'a>(&'a CryptoProvider);
+
+impl rand::TryRng for DrbgRng<'_> {
+    type Error = CryptoError;
+
+    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+        let mut buf = [0u8; 4];
+        self.try_fill_bytes(&mut buf)?;
+        Ok(u32::from_le_bytes(buf))
+    }
+
+    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+        let mut buf = [0u8; 8];
+        self.try_fill_bytes(&mut buf)?;
+        Ok(u64::from_le_bytes(buf))
+    }
+
+    fn try_fill_bytes(&mut self, dst: &mut [u8]) -> Result<(), Self::Error> {
+        self.0.fill_random(dst)
+    }
+}
+
+impl rand::TryCryptoRng for DrbgRng<'_> {}
+
 impl OpenMlsCrypto for CryptoProvider {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
         match ciphersuite.aead_algorithm() {
@@ -67,7 +94,7 @@ impl OpenMlsCrypto for CryptoProvider {
         }?;
 
         match ciphersuite.signature_algorithm() {
-            SignatureScheme::ED25519 => Ok(()),
+            SignatureScheme::ED25519 | SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(()),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
                 Ok(())
@@ -115,8 +142,7 @@ impl OpenMlsCrypto for CryptoProvider {
             Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
-            // TODO: enable
-            //Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         ]
     }
 
@@ -288,6 +314,27 @@ impl OpenMlsCrypto for CryptoProvider {
 
                 Ok((sk.to_vec(), pk.to_vec()))
             }
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                // Like the Ed25519 arm, sample through the DRBG so a reseed
+                // failure is propagated as an error. Rejection-sample until the
+                // scalar is a valid P-256 private key.
+                const LIMIT: usize = 100;
+                let mut candidate = [0u8; 32];
+                for _ in 0..LIMIT {
+                    self.fill_random(&mut candidate)?;
+                    if let Ok(sk) = libcrux_ecdsa::p256::PrivateKey::try_from(&candidate[..]) {
+                        // Same wire format as the RustCrypto provider: the
+                        // private key is the raw 32-byte scalar, the public key
+                        // the uncompressed SEC1 point.
+                        let pk = sk.public_key().map_err(|_| CryptoError::SigningError)?;
+                        let mut pk_sec1 = Vec::with_capacity(65);
+                        pk_sec1.push(0x04);
+                        pk_sec1.extend_from_slice(pk.as_ref());
+                        return Ok((candidate.to_vec(), pk_sec1));
+                    }
+                }
+                Err(CryptoError::SigningError)
+            }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
                 // Same wire format as the RustCrypto provider: the private key
@@ -320,6 +367,19 @@ impl OpenMlsCrypto for CryptoProvider {
                     _ => CryptoError::SigningError,
                 })
             }
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                let pk = libcrux_ecdsa::p256::uncompressed_to_coordinates(pk)
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                let signature = libcrux_ecdsa::p256::Signature::from_der(signature)
+                    .map_err(|_| CryptoError::InvalidSignature)?;
+                libcrux_ecdsa::p256::verify(
+                    libcrux_ecdsa::DigestAlgorithm::Sha256,
+                    data,
+                    &signature,
+                    &libcrux_ecdsa::p256::PublicKey(pk),
+                )
+                .map_err(|_| CryptoError::InvalidSignature)
+            }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
                 ml_dsa::verify(alg, pk, data, signature)
@@ -335,6 +395,20 @@ impl OpenMlsCrypto for CryptoProvider {
                 libcrux_ed25519::sign(data, key)
                     .map_err(|_| CryptoError::SigningError)
                     .map(|sig| sig.to_vec())
+            }
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                let sk = libcrux_ecdsa::p256::PrivateKey::try_from(key)
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                // The ECDSA nonce is rejection-sampled inside libcrux through
+                // the provider DRBG; a reseed failure surfaces as an error.
+                let signature = libcrux_ecdsa::p256::rand::sign(
+                    libcrux_ecdsa::DigestAlgorithm::Sha256,
+                    data,
+                    &sk,
+                    &mut DrbgRng(self),
+                )
+                .map_err(|_| CryptoError::SigningError)?;
+                Ok(signature.to_der().as_bytes().to_vec())
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
