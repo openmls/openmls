@@ -29,7 +29,7 @@ draft-ietf-mls-pq-ciphersuites = [
 all-ciphersuites = []
 
 [dependencies]
-syn = { version = "2.0", features = ["full", "visit"] }
+syn = { version = "3.0", features = ["full", "visit"] }
 quote = "1.0"
 openmls_rust_crypto = { workspace = true }
 openmls_libcrux_crypto = { workspace = true, optional = true }
