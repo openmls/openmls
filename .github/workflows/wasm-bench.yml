@@ -29,7 +29,7 @@ jobs:
       # Install the required target
       - uses: dtolnay/rust-toolchain@stable
         with:
-          target: ${{ matrix.arch }}
+          target: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - name: Build and measure size of wasm bindings
         run: |
