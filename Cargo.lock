@@ -622,7 +622,7 @@ dependencies = [
 [[package]]
 name = "core-models"
 version = "0.0.7"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "hax-lib",
  "pastey",
@@ -1448,7 +1448,7 @@ dependencies = [
 [[package]]
 name = "hpke-rs"
 version = "0.7.0"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "hpke-rs-crypto",
  "hpke-rs-libcrux",
@@ -1464,7 +1464,7 @@ dependencies = [
 [[package]]
 name = "hpke-rs-crypto"
 version = "0.7.0"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "rand",
  "zeroize",
@@ -1473,11 +1473,11 @@ dependencies = [
 [[package]]
 name = "hpke-rs-libcrux"
 version = "0.7.0"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "hpke-rs-crypto",
  "libcrux-aead 0.0.9 (git+https://github.com/celabshq/libcrux)",
- "libcrux-ecdh 0.0.8 (git+https://github.com/celabshq/libcrux)",
+ "libcrux-ecdh",
  "libcrux-hkdf 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "libcrux-kem",
  "libcrux-sha3 0.0.10 (git+https://github.com/celabshq/libcrux)",
@@ -1491,7 +1491,7 @@ dependencies = [
 [[package]]
 name = "hpke-rs-rust-crypto"
 version = "0.7.0"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "aes-gcm",
  "chacha20poly1305",
@@ -1976,7 +1976,7 @@ dependencies = [
 [[package]]
 name = "libcrux-aead"
 version = "0.0.9"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-aes 0.0.9 (git+https://github.com/celabshq/libcrux)",
  "libcrux-chacha20poly1305 0.0.9 (git+https://github.com/celabshq/libcrux)",
@@ -1999,7 +1999,7 @@ dependencies = [
 [[package]]
 name = "libcrux-aes"
 version = "0.0.9"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-intrinsics 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "libcrux-platform 0.0.3 (git+https://github.com/celabshq/libcrux)",
@@ -2023,7 +2023,7 @@ dependencies = [
 [[package]]
 name = "libcrux-chacha20poly1305"
 version = "0.0.9"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux)",
  "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux)",
@@ -2035,19 +2035,7 @@ dependencies = [
 [[package]]
 name = "libcrux-curve25519"
 version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4f3cfd5e31cb9745e290ee061222c380ec42884654b09fc7d12a5b0ed63e028"
-dependencies = [
- "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "libcrux-curve25519"
-version = "0.0.8"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux)",
  "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux)",
@@ -2058,22 +2046,10 @@ dependencies = [
 [[package]]
 name = "libcrux-ecdh"
 version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a227590b89ff55ce7cd97b5a7468c82d231db8f3b890bb4d4fb6d271e7524d7"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
- "libcrux-curve25519 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-p256 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand",
- "tls_codec",
-]
-
-[[package]]
-name = "libcrux-ecdh"
-version = "0.0.8"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
-dependencies = [
- "libcrux-curve25519 0.0.8 (git+https://github.com/celabshq/libcrux)",
- "libcrux-p256 0.0.8 (git+https://github.com/celabshq/libcrux)",
+ "libcrux-curve25519",
+ "libcrux-p256",
  "rand",
  "tls_codec",
 ]
@@ -2081,11 +2057,10 @@ dependencies = [
 [[package]]
 name = "libcrux-ecdsa"
 version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "750ca5c2664abdf9d6b8135f2d700ae3d001457b82b2ccd291e5795cb94b1bab"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
- "libcrux-p256 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-sha2 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libcrux-p256",
+ "libcrux-sha2 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "rand",
 ]
 
@@ -2113,7 +2088,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hacl-rs"
 version = "0.0.5"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux)",
 ]
@@ -2132,7 +2107,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hkdf"
 version = "0.0.8"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux)",
  "libcrux-hmac 0.0.8 (git+https://github.com/celabshq/libcrux)",
@@ -2154,7 +2129,7 @@ dependencies = [
 [[package]]
 name = "libcrux-hmac"
 version = "0.0.8"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux)",
  "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux)",
@@ -2185,7 +2160,7 @@ dependencies = [
 [[package]]
 name = "libcrux-intrinsics"
 version = "0.0.8"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "core-models 0.0.7 (git+https://github.com/celabshq/libcrux)",
  "hax-lib",
@@ -2194,12 +2169,12 @@ dependencies = [
 [[package]]
 name = "libcrux-kem"
 version = "0.0.9"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
- "libcrux-curve25519 0.0.8 (git+https://github.com/celabshq/libcrux)",
- "libcrux-ecdh 0.0.8 (git+https://github.com/celabshq/libcrux)",
+ "libcrux-curve25519",
+ "libcrux-ecdh",
  "libcrux-ml-kem",
- "libcrux-p256 0.0.8 (git+https://github.com/celabshq/libcrux)",
+ "libcrux-p256",
  "libcrux-sha3 0.0.10 (git+https://github.com/celabshq/libcrux)",
  "libcrux-traits 0.0.8 (git+https://github.com/celabshq/libcrux)",
  "rand",
@@ -2218,7 +2193,7 @@ dependencies = [
 [[package]]
 name = "libcrux-macros"
 version = "0.0.3"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "quote",
  "syn 3.0.3",
@@ -2243,7 +2218,7 @@ dependencies = [
 [[package]]
 name = "libcrux-ml-kem"
 version = "0.0.10"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "hax-lib",
  "libcrux-intrinsics 0.0.8 (git+https://github.com/celabshq/libcrux)",
@@ -2258,20 +2233,7 @@ dependencies = [
 [[package]]
 name = "libcrux-p256"
 version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3400732702d578be622257b98cec85e9b0cd34a67f1f06d3ebe9ae34963cdf02"
-dependencies = [
- "libcrux-hacl-rs 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-macros 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-secrets 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-sha2 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-traits 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "libcrux-p256"
-version = "0.0.8"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux)",
  "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux)",
@@ -2292,7 +2254,7 @@ dependencies = [
 [[package]]
 name = "libcrux-platform"
 version = "0.0.3"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libc",
 ]
@@ -2310,7 +2272,7 @@ dependencies = [
 [[package]]
 name = "libcrux-poly1305"
 version = "0.0.6"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux)",
  "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux)",
@@ -2329,7 +2291,7 @@ dependencies = [
 [[package]]
 name = "libcrux-secrets"
 version = "0.0.6"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "crabgrind 0.3.1",
  "hax-lib",
@@ -2349,7 +2311,7 @@ dependencies = [
 [[package]]
 name = "libcrux-sha2"
 version = "0.0.8"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-hacl-rs 0.0.5 (git+https://github.com/celabshq/libcrux)",
  "libcrux-macros 0.0.3 (git+https://github.com/celabshq/libcrux)",
@@ -2371,7 +2333,7 @@ dependencies = [
 [[package]]
 name = "libcrux-sha3"
 version = "0.0.10"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "hax-lib",
  "libcrux-intrinsics 0.0.8 (git+https://github.com/celabshq/libcrux)",
@@ -2392,7 +2354,7 @@ dependencies = [
 [[package]]
 name = "libcrux-traits"
 version = "0.0.8"
-source = "git+https://github.com/celabshq/libcrux#2b0b67c9cbf8220a96330d4eba5b3d3084f899a8"
+source = "git+https://github.com/celabshq/libcrux#39c4f2f267c718b88f746fae216511321bd24aac"
 dependencies = [
  "libcrux-secrets 0.0.6 (git+https://github.com/celabshq/libcrux)",
  "rand",
@@ -2780,7 +2742,6 @@ dependencies = [
  "hpke-rs-crypto",
  "hpke-rs-libcrux",
  "libcrux-aead 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "libcrux-ecdh 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "libcrux-ecdsa",
  "libcrux-ed25519",
  "libcrux-hkdf 0.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
