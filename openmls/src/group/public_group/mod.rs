@@ -301,11 +301,18 @@ impl PublicGroup {
 
         // Fully check that the leaf nodes in the ratchet tree are valid
         // https://validation.openmls.tech/#valn1407
+        // Computed ONCE for the whole tree rather than once per leaf:
+        // this loop is where the quadratic cost of joining came from.
+        let compatibility = public_group.credential_compatibility();
         public_group
             .treesync
             .full_leaves()
             .try_for_each(|(_, leaf_node)| {
-                public_group.validate_leaf_node_inner(leaf_node, validate_lifetimes)
+                public_group.validate_leaf_node_inner(
+                    leaf_node,
+                    validate_lifetimes,
+                    Some(&compatibility),
+                )
             })?;
 
         Ok((public_group, group_info))
