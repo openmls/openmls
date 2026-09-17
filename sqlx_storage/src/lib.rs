@@ -45,13 +45,14 @@ use serde::Serialize;
 use sqlx::SqliteConnection;
 
 pub use crate::codec::Codec;
-use crate::{migrator::MigratorWrapper, storage_provider::block_async_in_place};
+use crate::storage_provider::block_async_in_place;
 
 mod codec;
 mod group_data;
-mod migrator;
 mod storage_provider;
 mod wrappers;
+
+const MIGRATIONS_TABLE: &str = "_openmls_sqlx_migrations";
 
 /// [`SqliteStorageProvider`] implements the
 /// [`StorageProvider`](openmls_traits::storage::StorageProvider) trait and can
@@ -79,9 +80,13 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
     /// migration support.
     pub fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
         let mut conn = self.connection.borrow_mut();
-        block_async_in_place(
-            sqlx::migrate!("./migrations").run_direct(&mut MigratorWrapper(*conn)),
-        )?;
+        let mut migrator = sqlx::migrate!("./migrations");
+
+        // This is the table name used by every released version of this
+        // provider. Changing it would make SQLx lose the existing migration
+        // history and attempt to apply migrations a second time.
+        migrator.dangerous_set_table_name(MIGRATIONS_TABLE);
+        block_async_in_place(migrator.run(&mut **conn))?;
         Ok(())
     }
 

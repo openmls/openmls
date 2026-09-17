@@ -6,6 +6,39 @@ use openmls_traits::storage::StorageProvider;
 use sqlx::Connection as _;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn migrations_retain_the_provider_table_name() {
+    let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:")
+        .await
+        .unwrap();
+
+    {
+        let mut storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
+        storage.run_migrations().unwrap();
+        // Applying migrations again exercises SQLx's lookup of the existing
+        // provider-specific migration history.
+        storage.run_migrations().unwrap();
+    }
+
+    let provider_table_count = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM sqlite_master \
+         WHERE type = 'table' AND name = '_openmls_sqlx_migrations'",
+    )
+    .fetch_one(&mut connection)
+    .await
+    .unwrap();
+    let default_table_count = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM sqlite_master \
+         WHERE type = 'table' AND name = '_sqlx_migrations'",
+    )
+    .fetch_one(&mut connection)
+    .await
+    .unwrap();
+
+    assert_eq!(provider_table_count, 1);
+    assert_eq!(default_table_count, 0);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn proposals() {
     let group_id = TestGroupId(b"TestGroupId".to_vec());
     let proposals = (0..10)

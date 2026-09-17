@@ -791,7 +791,7 @@ impl<T: Key<CURRENT_VERSION>, C: Codec> Type<Sqlite> for KeyRefWrapper<'_, T, C>
 impl<'q, T: Key<CURRENT_VERSION>, C: Codec> Encode<'q, Sqlite> for KeyRefWrapper<'_, T, C> {
     fn encode_by_ref(
         &self,
-        buf: &mut <Sqlite as sqlx::Database>::ArgumentBuffer<'q>,
+        buf: &mut <Sqlite as sqlx::Database>::ArgumentBuffer,
     ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
         let key_bytes = C::to_vec(self.0)?;
         Encode::<Sqlite>::encode(key_bytes, buf)
@@ -807,7 +807,7 @@ impl<T: Entity<CURRENT_VERSION>, C: Codec> Type<Sqlite> for EntityRefWrapper<'_,
 impl<T: Entity<CURRENT_VERSION>, C: Codec> Encode<'_, Sqlite> for EntityRefWrapper<'_, T, C> {
     fn encode_by_ref(
         &self,
-        buf: &mut <Sqlite as Database>::ArgumentBuffer<'_>,
+        buf: &mut <Sqlite as Database>::ArgumentBuffer,
     ) -> Result<IsNull, BoxDynError> {
         let entity_bytes = C::to_vec(self.0)?;
         Encode::<Sqlite>::encode(entity_bytes, buf)
@@ -884,7 +884,7 @@ impl<T: Entity<CURRENT_VERSION>, C: Codec> Type<Sqlite> for EntitySliceWrapper<'
 impl<T: Entity<CURRENT_VERSION>, C: Codec> Encode<'_, Sqlite> for EntitySliceWrapper<'_, T, C> {
     fn encode_by_ref(
         &self,
-        buf: &mut <Sqlite as Database>::ArgumentBuffer<'_>,
+        buf: &mut <Sqlite as Database>::ArgumentBuffer,
     ) -> Result<IsNull, BoxDynError> {
         let entity_bytes = C::to_vec(self.0)?;
         Encode::<Sqlite>::encode(entity_bytes, buf)
