@@ -18,6 +18,8 @@ use crate::{
 
 use self::storage::OpenMlsProvider;
 
+pub(crate) mod storage_error;
+
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
 pub(crate) struct TestClientConfig {

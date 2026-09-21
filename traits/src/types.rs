@@ -206,8 +206,13 @@ pub enum HpkeKemType {
     MlKem1024 = 0x0042,
 
     /// XWing combiner for ML-KEM and X25519
+    ///
+    /// Code point from [draft-ietf-hpke-pq], which registers it as
+    /// `MLKEM768-X25519`.
+    ///
+    /// [draft-ietf-hpke-pq]: https://datatracker.ietf.org/doc/html/draft-ietf-hpke-pq
     #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-    XWingKemDraft6 = 0x004D,
+    XWingKemDraft6 = 0x647a,
 }
 
 /// KDF Types for HPKE

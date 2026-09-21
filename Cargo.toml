@@ -40,3 +40,11 @@ openmls_libcrux_crypto = { version = "0.4.0", path = "libcrux_crypto" }
 openmls_memory_storage = { version = "0.6.0", path = "memory_storage" }
 openmls_serialization_helpers = { version = "0.1.0", path = "serialization_helpers" }
 openmls_sqlite_storage = { version = "0.3.0", path = "sqlite_storage" }
+
+# The next hpke-rs release (with the draft-ietf-hpke-pq derivation) is not out
+# yet; use the git version until it is. See openmls/openmls#2170.
+[patch.crates-io]
+hpke-rs = { git = "https://github.com/celabshq/libcrux" }
+hpke-rs-crypto = { git = "https://github.com/celabshq/libcrux" }
+hpke-rs-libcrux = { git = "https://github.com/celabshq/libcrux" }
+hpke-rs-rust-crypto = { git = "https://github.com/celabshq/libcrux" }
