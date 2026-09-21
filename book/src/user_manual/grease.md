@@ -40,7 +40,7 @@ OpenMLS supports GREASE values for the following types:
 OpenMLS:
 
 1. **Recognizes GREASE values** during deserialization
-2. **Filters GREASE values** during validation to prevent false negatives (GREASE values are treated the same as unknown values)
+2. **Treats GREASE values like unknown values** during validation, rather than special-casing them
 3. **Preserves GREASE values** when present in capabilities
 4. **Provides convenience methods** to inject random GREASE values into capabilities
 
@@ -72,6 +72,36 @@ let capabilities = Capabilities::builder()
     ])
     .build();
 ```
+
+### As Extensions
+
+RFC 9420 Section 13.5 also lists `LeafNode.extensions`, `KeyPackage.extensions` and `GroupInfo.extensions` as fields that can carry GREASE values. `GroupContext.extensions` is not on that list, and GREASE values must not be sent there.
+
+GREASE has its own `ExtensionType::Grease` variant, but the `Extension` enum has no matching one, so a GREASE extension is carried as `Extension::Unknown`:
+
+```rust
+use openmls::prelude::*;
+
+let grease = Extensions::single(Extension::Unknown(
+    0x1A1A,
+    UnknownExtension(vec![0xde, 0xad]),
+))
+.unwrap();
+
+let key_package = KeyPackage::builder()
+    .leaf_node_capabilities(
+        Capabilities::builder()
+            .extensions(vec![ExtensionType::Grease(0x1A1A)])
+            .build(),
+    )
+    .leaf_node_extensions(grease)
+    .build(ciphersuite, &provider, &signer, credential_with_key)
+    .unwrap();
+```
+
+`Extension::extension_type()` reports such an extension as `ExtensionType::Grease`, so it compares equal to the matching capabilities entry.
+
+**Every GREASE value in `LeafNode.extensions` also has to be listed in `LeafNode.capabilities.extensions`**, as in the example above. This is the normal rule for non-default extension types. Neither the builder nor `KeyPackageIn::validate` catches a violation: it only surfaces as `LeafNodeValidationError::UnsupportedExtensions` when someone adds that member. The other direction is fine, so capabilities may list extensions the leaf node does not use.
 
 ### Injecting Random GREASE Values
 
@@ -159,13 +189,12 @@ The following 15 values are defined as GREASE values in RFC 9420:
 
 GREASE ciphersuites, in particular, cannot be used for actual cryptographic operations. They exist only to test capability negotiation and should never be selected as the active ciphersuite for a group.
 
-### Validation Automatically Filters GREASE
+### Validation Treats GREASE Like Unknown Values
 
-When OpenMLS validates capabilities, it automatically filters out GREASE values. This means:
+GREASE values are not special-cased during validation, so they follow the same rules as any other unknown value. This means:
 
 - Two members with different GREASE values in their capabilities can still interoperate
-- GREASE values don't affect capability intersection or matching
-- Required capabilities never include GREASE values
+- A GREASE value used as an extension still has to be declared in the leaf node's capabilities, like any other non-default extension type
 
 ### Interoperability Testing
 
