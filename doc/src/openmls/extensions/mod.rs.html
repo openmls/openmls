@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/extensions/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.100.0-nightly (215a8af4b 2026-09-15)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/extensions/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Extensions
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/extensions/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.100.0-nightly (bba531001 2026-09-20)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">openmls/extensions/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! # Extensions
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! In MLS, extensions appear in the following places:
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -729,333 +729,335 @@
 <a href=#729 id=729 data-nosnippet>729</a>        <span class="kw">let </span>extension_type: ExtensionType = extension_type_id.into();
 <a href=#730 id=730 data-nosnippet>730</a>
 <a href=#731 id=731 data-nosnippet>731</a>        <span class="kw">match </span>extension_type {
-<a href=#732 id=732 data-nosnippet>732</a>            ExtensionType::Unknown(<span class="kw">_</span>) =&gt; <span class="self">self</span>.find_by_type(extension_type).and_then(|e| <span class="kw">match </span>e {
-<a href=#733 id=733 data-nosnippet>733</a>                Extension::Unknown(<span class="kw">_</span>, e) =&gt; <span class="prelude-val">Some</span>(e),
-<a href=#734 id=734 data-nosnippet>734</a>                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-<a href=#735 id=735 data-nosnippet>735</a>            }),
-<a href=#736 id=736 data-nosnippet>736</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-<a href=#737 id=737 data-nosnippet>737</a>        }
-<a href=#738 id=738 data-nosnippet>738</a>    }
-<a href=#739 id=739 data-nosnippet>739</a>}
-<a href=#740 id=740 data-nosnippet>740</a>
-<a href=#741 id=741 data-nosnippet>741</a><span class="kw">impl </span>Extension {
-<a href=#742 id=742 data-nosnippet>742</a>    <span class="doccomment">/// Get a reference to this extension as [`ApplicationIdExtension`].
-<a href=#743 id=743 data-nosnippet>743</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
-<a href=#744 id=744 data-nosnippet>744</a>    /// [`Extension`] that's not an [`ApplicationIdExtension`].
-<a href=#745 id=745 data-nosnippet>745</a>    </span><span class="kw">pub fn </span>as_application_id_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ApplicationIdExtension, ExtensionError&gt; {
-<a href=#746 id=746 data-nosnippet>746</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#747 id=747 data-nosnippet>747</a>            <span class="self">Self</span>::ApplicationId(e) =&gt; <span class="prelude-val">Ok</span>(e),
-<a href=#748 id=748 data-nosnippet>748</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-<a href=#749 id=749 data-nosnippet>749</a>                <span class="string">"This is not an ApplicationIdExtension"</span>.into(),
-<a href=#750 id=750 data-nosnippet>750</a>            )),
-<a href=#751 id=751 data-nosnippet>751</a>        }
-<a href=#752 id=752 data-nosnippet>752</a>    }
-<a href=#753 id=753 data-nosnippet>753</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#754 id=754 data-nosnippet>754</a>    </span><span class="doccomment">/// Get a reference to this extension as [`AppDataDictionaryExtension`].
-<a href=#755 id=755 data-nosnippet>755</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
-<a href=#756 id=756 data-nosnippet>756</a>    /// [`Extension`] that's not an [`AppDataDictionaryExtension`].
-<a href=#757 id=757 data-nosnippet>757</a>    </span><span class="kw">pub fn </span>as_app_data_dictionary_extension(
-<a href=#758 id=758 data-nosnippet>758</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#759 id=759 data-nosnippet>759</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>AppDataDictionaryExtension, ExtensionError&gt; {
-<a href=#760 id=760 data-nosnippet>760</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#761 id=761 data-nosnippet>761</a>            <span class="self">Self</span>::AppDataDictionary(e) =&gt; <span class="prelude-val">Ok</span>(e),
-<a href=#762 id=762 data-nosnippet>762</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-<a href=#763 id=763 data-nosnippet>763</a>                <span class="string">"This is not an AppDataDictionaryExtension"</span>.into(),
-<a href=#764 id=764 data-nosnippet>764</a>            )),
-<a href=#765 id=765 data-nosnippet>765</a>        }
-<a href=#766 id=766 data-nosnippet>766</a>    }
-<a href=#767 id=767 data-nosnippet>767</a>
-<a href=#768 id=768 data-nosnippet>768</a>    <span class="doccomment">/// Get a reference to this extension as [`RatchetTreeExtension`].
-<a href=#769 id=769 data-nosnippet>769</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on
-<a href=#770 id=770 data-nosnippet>770</a>    /// an [`Extension`] that's not a [`RatchetTreeExtension`].
-<a href=#771 id=771 data-nosnippet>771</a>    </span><span class="kw">pub fn </span>as_ratchet_tree_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>RatchetTreeExtension, ExtensionError&gt; {
-<a href=#772 id=772 data-nosnippet>772</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#773 id=773 data-nosnippet>773</a>            <span class="self">Self</span>::RatchetTree(rte) =&gt; <span class="prelude-val">Ok</span>(rte),
-<a href=#774 id=774 data-nosnippet>774</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-<a href=#775 id=775 data-nosnippet>775</a>                <span class="string">"This is not a RatchetTreeExtension"</span>.into(),
-<a href=#776 id=776 data-nosnippet>776</a>            )),
-<a href=#777 id=777 data-nosnippet>777</a>        }
-<a href=#778 id=778 data-nosnippet>778</a>    }
-<a href=#779 id=779 data-nosnippet>779</a>
-<a href=#780 id=780 data-nosnippet>780</a>    <span class="doccomment">/// Get a reference to this extension as [`RequiredCapabilitiesExtension`].
-<a href=#781 id=781 data-nosnippet>781</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
-<a href=#782 id=782 data-nosnippet>782</a>    /// an [`Extension`] that's not a [`RequiredCapabilitiesExtension`].
-<a href=#783 id=783 data-nosnippet>783</a>    </span><span class="kw">pub fn </span>as_required_capabilities_extension(
-<a href=#784 id=784 data-nosnippet>784</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#785 id=785 data-nosnippet>785</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension, ExtensionError&gt; {
-<a href=#786 id=786 data-nosnippet>786</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#787 id=787 data-nosnippet>787</a>            <span class="self">Self</span>::RequiredCapabilities(e) =&gt; <span class="prelude-val">Ok</span>(e),
-<a href=#788 id=788 data-nosnippet>788</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-<a href=#789 id=789 data-nosnippet>789</a>                <span class="string">"This is not a RequiredCapabilitiesExtension"</span>.into(),
-<a href=#790 id=790 data-nosnippet>790</a>            )),
-<a href=#791 id=791 data-nosnippet>791</a>        }
-<a href=#792 id=792 data-nosnippet>792</a>    }
-<a href=#793 id=793 data-nosnippet>793</a>
-<a href=#794 id=794 data-nosnippet>794</a>    <span class="doccomment">/// Get a reference to this extension as [`ExternalPubExtension`].
-<a href=#795 id=795 data-nosnippet>795</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
-<a href=#796 id=796 data-nosnippet>796</a>    /// an [`Extension`] that's not a [`ExternalPubExtension`].
-<a href=#797 id=797 data-nosnippet>797</a>    </span><span class="kw">pub fn </span>as_external_pub_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ExternalPubExtension, ExtensionError&gt; {
-<a href=#798 id=798 data-nosnippet>798</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#799 id=799 data-nosnippet>799</a>            <span class="self">Self</span>::ExternalPub(e) =&gt; <span class="prelude-val">Ok</span>(e),
-<a href=#800 id=800 data-nosnippet>800</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-<a href=#801 id=801 data-nosnippet>801</a>                <span class="string">"This is not an ExternalPubExtension"</span>.into(),
-<a href=#802 id=802 data-nosnippet>802</a>            )),
-<a href=#803 id=803 data-nosnippet>803</a>        }
-<a href=#804 id=804 data-nosnippet>804</a>    }
-<a href=#805 id=805 data-nosnippet>805</a>
-<a href=#806 id=806 data-nosnippet>806</a>    <span class="doccomment">/// Get a reference to this extension as [`ExternalSendersExtension`].
-<a href=#807 id=807 data-nosnippet>807</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
-<a href=#808 id=808 data-nosnippet>808</a>    /// an [`Extension`] that's not a [`ExternalSendersExtension`].
-<a href=#809 id=809 data-nosnippet>809</a>    </span><span class="kw">pub fn </span>as_external_senders_extension(
-<a href=#810 id=810 data-nosnippet>810</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#811 id=811 data-nosnippet>811</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ExternalSendersExtension, ExtensionError&gt; {
-<a href=#812 id=812 data-nosnippet>812</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#813 id=813 data-nosnippet>813</a>            <span class="self">Self</span>::ExternalSenders(e) =&gt; <span class="prelude-val">Ok</span>(e),
-<a href=#814 id=814 data-nosnippet>814</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-<a href=#815 id=815 data-nosnippet>815</a>                <span class="string">"This is not an ExternalSendersExtension"</span>.into(),
-<a href=#816 id=816 data-nosnippet>816</a>            )),
-<a href=#817 id=817 data-nosnippet>817</a>        }
-<a href=#818 id=818 data-nosnippet>818</a>    }
-<a href=#819 id=819 data-nosnippet>819</a>
-<a href=#820 id=820 data-nosnippet>820</a>    <span class="doccomment">/// Returns the [`ExtensionType`]
-<a href=#821 id=821 data-nosnippet>821</a>    </span><span class="attr">#[inline]
-<a href=#822 id=822 data-nosnippet>822</a>    </span><span class="kw">pub const fn </span>extension_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExtensionType {
-<a href=#823 id=823 data-nosnippet>823</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#824 id=824 data-nosnippet>824</a>            Extension::ApplicationId(<span class="kw">_</span>) =&gt; ExtensionType::ApplicationId,
-<a href=#825 id=825 data-nosnippet>825</a>            Extension::RatchetTree(<span class="kw">_</span>) =&gt; ExtensionType::RatchetTree,
-<a href=#826 id=826 data-nosnippet>826</a>            Extension::RequiredCapabilities(<span class="kw">_</span>) =&gt; ExtensionType::RequiredCapabilities,
-<a href=#827 id=827 data-nosnippet>827</a>            Extension::ExternalPub(<span class="kw">_</span>) =&gt; ExtensionType::ExternalPub,
-<a href=#828 id=828 data-nosnippet>828</a>            Extension::ExternalSenders(<span class="kw">_</span>) =&gt; ExtensionType::ExternalSenders,
-<a href=#829 id=829 data-nosnippet>829</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#830 id=830 data-nosnippet>830</a>            </span>Extension::AppDataDictionary(<span class="kw">_</span>) =&gt; ExtensionType::AppDataDictionary,
-<a href=#831 id=831 data-nosnippet>831</a>            Extension::LastResort(<span class="kw">_</span>) =&gt; ExtensionType::LastResort,
-<a href=#832 id=832 data-nosnippet>832</a>            <span class="comment">// Map GREASE-valued extension types to `Grease`, consistent with
-<a href=#833 id=833 data-nosnippet>833</a>            // `ExtensionType::from(u16)`. Without this an extension carrying a
-<a href=#834 id=834 data-nosnippet>834</a>            // GREASE value would be reported as `Unknown`, so GREASE-aware
-<a href=#835 id=835 data-nosnippet>835</a>            // validation (which ignores `Grease(_)`) would not recognize it.
-<a href=#836 id=836 data-nosnippet>836</a>            </span>Extension::Unknown(kind, <span class="kw">_</span>) <span class="kw">if </span><span class="kw">crate</span>::grease::is_grease_value(<span class="kw-2">*</span>kind) =&gt; {
-<a href=#837 id=837 data-nosnippet>837</a>                ExtensionType::Grease(<span class="kw-2">*</span>kind)
-<a href=#838 id=838 data-nosnippet>838</a>            }
-<a href=#839 id=839 data-nosnippet>839</a>            Extension::Unknown(kind, <span class="kw">_</span>) =&gt; ExtensionType::Unknown(<span class="kw-2">*</span>kind),
-<a href=#840 id=840 data-nosnippet>840</a>        }
-<a href=#841 id=841 data-nosnippet>841</a>    }
-<a href=#842 id=842 data-nosnippet>842</a>}
-<a href=#843 id=843 data-nosnippet>843</a>
-<a href=#844 id=844 data-nosnippet>844</a><span class="macro">macro_rules!</span> impl_from_extensions_validator {
-<a href=#845 id=845 data-nosnippet>845</a>    (<span class="macro-nonterminal">$validator</span>:ty, <span class="macro-nonterminal">$error</span>:ty) =&gt; {
-<a href=#846 id=846 data-nosnippet>846</a>        <span class="kw">impl </span>From&lt;Extensions&lt;<span class="macro-nonterminal">$validator</span>&gt;&gt; <span class="kw">for </span>Extensions&lt;AnyObject&gt; {
-<a href=#847 id=847 data-nosnippet>847</a>            <span class="kw">fn </span>from(value: Extensions&lt;<span class="macro-nonterminal">$validator</span>&gt;) -&gt; <span class="self">Self </span>{
-<a href=#848 id=848 data-nosnippet>848</a>                Extensions {
-<a href=#849 id=849 data-nosnippet>849</a>                    unique: value.unique,
-<a href=#850 id=850 data-nosnippet>850</a>                    _object: PhantomData,
-<a href=#851 id=851 data-nosnippet>851</a>                }
-<a href=#852 id=852 data-nosnippet>852</a>            }
-<a href=#853 id=853 data-nosnippet>853</a>        }
-<a href=#854 id=854 data-nosnippet>854</a>
-<a href=#855 id=855 data-nosnippet>855</a>        <span class="kw">impl </span>TryFrom&lt;Extensions&lt;AnyObject&gt;&gt; <span class="kw">for </span>Extensions&lt;<span class="macro-nonterminal">$validator</span>&gt; {
-<a href=#856 id=856 data-nosnippet>856</a>            <span class="kw">type </span>Error = <span class="macro-nonterminal">$error</span>;
-<a href=#857 id=857 data-nosnippet>857</a>
-<a href=#858 id=858 data-nosnippet>858</a>            <span class="kw">fn </span>try_from(value: Extensions&lt;AnyObject&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="macro-nonterminal">$error</span>&gt; {
-<a href=#859 id=859 data-nosnippet>859</a>                value
-<a href=#860 id=860 data-nosnippet>860</a>                    .unique
-<a href=#861 id=861 data-nosnippet>861</a>                    .iter()
-<a href=#862 id=862 data-nosnippet>862</a>                    .try_for_each(&lt;<span class="macro-nonterminal">$validator </span><span class="kw">as </span>ExtensionValidator&gt;::validate_extension_type)<span class="question-mark">?</span>;
-<a href=#863 id=863 data-nosnippet>863</a>
-<a href=#864 id=864 data-nosnippet>864</a>                <span class="prelude-val">Ok</span>(Extensions {
-<a href=#865 id=865 data-nosnippet>865</a>                    unique: value.unique,
-<a href=#866 id=866 data-nosnippet>866</a>                    _object: PhantomData,
-<a href=#867 id=867 data-nosnippet>867</a>                })
-<a href=#868 id=868 data-nosnippet>868</a>            }
-<a href=#869 id=869 data-nosnippet>869</a>        }
-<a href=#870 id=870 data-nosnippet>870</a>    };
-<a href=#871 id=871 data-nosnippet>871</a>}
-<a href=#872 id=872 data-nosnippet>872</a>
-<a href=#873 id=873 data-nosnippet>873</a><span class="macro">impl_from_extensions_validator!</span>(GroupContext, ExtensionTypeNotValidInGroupContextError);
-<a href=#874 id=874 data-nosnippet>874</a><span class="macro">impl_from_extensions_validator!</span>(LeafNode, ExtensionTypeNotValidInLeafNodeError);
-<a href=#875 id=875 data-nosnippet>875</a><span class="macro">impl_from_extensions_validator!</span>(KeyPackage, ExtensionTypeNotValidInKeyPackageError);
-<a href=#876 id=876 data-nosnippet>876</a>
-<a href=#877 id=877 data-nosnippet>877</a><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
-<a href=#878 id=878 data-nosnippet>878</a></span><span class="kw">impl </span>Extensions&lt;AnyObject&gt; {
-<a href=#879 id=879 data-nosnippet>879</a>    <span class="doccomment">/// Coerces the extensions to an Extensions with the given validator. Unsafe.
-<a href=#880 id=880 data-nosnippet>880</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>coerce&lt;T: ExtensionValidator&gt;(<span class="self">self</span>) -&gt; Extensions&lt;T&gt; {
-<a href=#881 id=881 data-nosnippet>881</a>        Extensions {
-<a href=#882 id=882 data-nosnippet>882</a>            unique: <span class="self">self</span>.unique,
-<a href=#883 id=883 data-nosnippet>883</a>            _object: PhantomData,
-<a href=#884 id=884 data-nosnippet>884</a>        }
-<a href=#885 id=885 data-nosnippet>885</a>    }
-<a href=#886 id=886 data-nosnippet>886</a>}
-<a href=#887 id=887 data-nosnippet>887</a><span class="attr">#[cfg(test)]
-<a href=#888 id=888 data-nosnippet>888</a></span><span class="kw">mod </span>test {
-<a href=#889 id=889 data-nosnippet>889</a>    <span class="kw">use </span>itertools::Itertools;
-<a href=#890 id=890 data-nosnippet>890</a>    <span class="kw">use </span>tls_codec::{Deserialize, Serialize, VLBytes};
-<a href=#891 id=891 data-nosnippet>891</a>
-<a href=#892 id=892 data-nosnippet>892</a>    <span class="kw">use crate</span>::{ciphersuite::HpkePublicKey, extensions::<span class="kw-2">*</span>};
+<a href=#732 id=732 data-nosnippet>732</a>            ExtensionType::Grease(<span class="kw">_</span>) | ExtensionType::Unknown(<span class="kw">_</span>) =&gt; {
+<a href=#733 id=733 data-nosnippet>733</a>                <span class="self">self</span>.find_by_type(extension_type).and_then(|e| <span class="kw">match </span>e {
+<a href=#734 id=734 data-nosnippet>734</a>                    Extension::Unknown(<span class="kw">_</span>, e) =&gt; <span class="prelude-val">Some</span>(e),
+<a href=#735 id=735 data-nosnippet>735</a>                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+<a href=#736 id=736 data-nosnippet>736</a>                })
+<a href=#737 id=737 data-nosnippet>737</a>            }
+<a href=#738 id=738 data-nosnippet>738</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+<a href=#739 id=739 data-nosnippet>739</a>        }
+<a href=#740 id=740 data-nosnippet>740</a>    }
+<a href=#741 id=741 data-nosnippet>741</a>}
+<a href=#742 id=742 data-nosnippet>742</a>
+<a href=#743 id=743 data-nosnippet>743</a><span class="kw">impl </span>Extension {
+<a href=#744 id=744 data-nosnippet>744</a>    <span class="doccomment">/// Get a reference to this extension as [`ApplicationIdExtension`].
+<a href=#745 id=745 data-nosnippet>745</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
+<a href=#746 id=746 data-nosnippet>746</a>    /// [`Extension`] that's not an [`ApplicationIdExtension`].
+<a href=#747 id=747 data-nosnippet>747</a>    </span><span class="kw">pub fn </span>as_application_id_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ApplicationIdExtension, ExtensionError&gt; {
+<a href=#748 id=748 data-nosnippet>748</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#749 id=749 data-nosnippet>749</a>            <span class="self">Self</span>::ApplicationId(e) =&gt; <span class="prelude-val">Ok</span>(e),
+<a href=#750 id=750 data-nosnippet>750</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
+<a href=#751 id=751 data-nosnippet>751</a>                <span class="string">"This is not an ApplicationIdExtension"</span>.into(),
+<a href=#752 id=752 data-nosnippet>752</a>            )),
+<a href=#753 id=753 data-nosnippet>753</a>        }
+<a href=#754 id=754 data-nosnippet>754</a>    }
+<a href=#755 id=755 data-nosnippet>755</a>    <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#756 id=756 data-nosnippet>756</a>    </span><span class="doccomment">/// Get a reference to this extension as [`AppDataDictionaryExtension`].
+<a href=#757 id=757 data-nosnippet>757</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
+<a href=#758 id=758 data-nosnippet>758</a>    /// [`Extension`] that's not an [`AppDataDictionaryExtension`].
+<a href=#759 id=759 data-nosnippet>759</a>    </span><span class="kw">pub fn </span>as_app_data_dictionary_extension(
+<a href=#760 id=760 data-nosnippet>760</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#761 id=761 data-nosnippet>761</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>AppDataDictionaryExtension, ExtensionError&gt; {
+<a href=#762 id=762 data-nosnippet>762</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#763 id=763 data-nosnippet>763</a>            <span class="self">Self</span>::AppDataDictionary(e) =&gt; <span class="prelude-val">Ok</span>(e),
+<a href=#764 id=764 data-nosnippet>764</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
+<a href=#765 id=765 data-nosnippet>765</a>                <span class="string">"This is not an AppDataDictionaryExtension"</span>.into(),
+<a href=#766 id=766 data-nosnippet>766</a>            )),
+<a href=#767 id=767 data-nosnippet>767</a>        }
+<a href=#768 id=768 data-nosnippet>768</a>    }
+<a href=#769 id=769 data-nosnippet>769</a>
+<a href=#770 id=770 data-nosnippet>770</a>    <span class="doccomment">/// Get a reference to this extension as [`RatchetTreeExtension`].
+<a href=#771 id=771 data-nosnippet>771</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on
+<a href=#772 id=772 data-nosnippet>772</a>    /// an [`Extension`] that's not a [`RatchetTreeExtension`].
+<a href=#773 id=773 data-nosnippet>773</a>    </span><span class="kw">pub fn </span>as_ratchet_tree_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>RatchetTreeExtension, ExtensionError&gt; {
+<a href=#774 id=774 data-nosnippet>774</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#775 id=775 data-nosnippet>775</a>            <span class="self">Self</span>::RatchetTree(rte) =&gt; <span class="prelude-val">Ok</span>(rte),
+<a href=#776 id=776 data-nosnippet>776</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
+<a href=#777 id=777 data-nosnippet>777</a>                <span class="string">"This is not a RatchetTreeExtension"</span>.into(),
+<a href=#778 id=778 data-nosnippet>778</a>            )),
+<a href=#779 id=779 data-nosnippet>779</a>        }
+<a href=#780 id=780 data-nosnippet>780</a>    }
+<a href=#781 id=781 data-nosnippet>781</a>
+<a href=#782 id=782 data-nosnippet>782</a>    <span class="doccomment">/// Get a reference to this extension as [`RequiredCapabilitiesExtension`].
+<a href=#783 id=783 data-nosnippet>783</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+<a href=#784 id=784 data-nosnippet>784</a>    /// an [`Extension`] that's not a [`RequiredCapabilitiesExtension`].
+<a href=#785 id=785 data-nosnippet>785</a>    </span><span class="kw">pub fn </span>as_required_capabilities_extension(
+<a href=#786 id=786 data-nosnippet>786</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#787 id=787 data-nosnippet>787</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension, ExtensionError&gt; {
+<a href=#788 id=788 data-nosnippet>788</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#789 id=789 data-nosnippet>789</a>            <span class="self">Self</span>::RequiredCapabilities(e) =&gt; <span class="prelude-val">Ok</span>(e),
+<a href=#790 id=790 data-nosnippet>790</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
+<a href=#791 id=791 data-nosnippet>791</a>                <span class="string">"This is not a RequiredCapabilitiesExtension"</span>.into(),
+<a href=#792 id=792 data-nosnippet>792</a>            )),
+<a href=#793 id=793 data-nosnippet>793</a>        }
+<a href=#794 id=794 data-nosnippet>794</a>    }
+<a href=#795 id=795 data-nosnippet>795</a>
+<a href=#796 id=796 data-nosnippet>796</a>    <span class="doccomment">/// Get a reference to this extension as [`ExternalPubExtension`].
+<a href=#797 id=797 data-nosnippet>797</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+<a href=#798 id=798 data-nosnippet>798</a>    /// an [`Extension`] that's not a [`ExternalPubExtension`].
+<a href=#799 id=799 data-nosnippet>799</a>    </span><span class="kw">pub fn </span>as_external_pub_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ExternalPubExtension, ExtensionError&gt; {
+<a href=#800 id=800 data-nosnippet>800</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#801 id=801 data-nosnippet>801</a>            <span class="self">Self</span>::ExternalPub(e) =&gt; <span class="prelude-val">Ok</span>(e),
+<a href=#802 id=802 data-nosnippet>802</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
+<a href=#803 id=803 data-nosnippet>803</a>                <span class="string">"This is not an ExternalPubExtension"</span>.into(),
+<a href=#804 id=804 data-nosnippet>804</a>            )),
+<a href=#805 id=805 data-nosnippet>805</a>        }
+<a href=#806 id=806 data-nosnippet>806</a>    }
+<a href=#807 id=807 data-nosnippet>807</a>
+<a href=#808 id=808 data-nosnippet>808</a>    <span class="doccomment">/// Get a reference to this extension as [`ExternalSendersExtension`].
+<a href=#809 id=809 data-nosnippet>809</a>    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on
+<a href=#810 id=810 data-nosnippet>810</a>    /// an [`Extension`] that's not a [`ExternalSendersExtension`].
+<a href=#811 id=811 data-nosnippet>811</a>    </span><span class="kw">pub fn </span>as_external_senders_extension(
+<a href=#812 id=812 data-nosnippet>812</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#813 id=813 data-nosnippet>813</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ExternalSendersExtension, ExtensionError&gt; {
+<a href=#814 id=814 data-nosnippet>814</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#815 id=815 data-nosnippet>815</a>            <span class="self">Self</span>::ExternalSenders(e) =&gt; <span class="prelude-val">Ok</span>(e),
+<a href=#816 id=816 data-nosnippet>816</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
+<a href=#817 id=817 data-nosnippet>817</a>                <span class="string">"This is not an ExternalSendersExtension"</span>.into(),
+<a href=#818 id=818 data-nosnippet>818</a>            )),
+<a href=#819 id=819 data-nosnippet>819</a>        }
+<a href=#820 id=820 data-nosnippet>820</a>    }
+<a href=#821 id=821 data-nosnippet>821</a>
+<a href=#822 id=822 data-nosnippet>822</a>    <span class="doccomment">/// Returns the [`ExtensionType`]
+<a href=#823 id=823 data-nosnippet>823</a>    </span><span class="attr">#[inline]
+<a href=#824 id=824 data-nosnippet>824</a>    </span><span class="kw">pub const fn </span>extension_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExtensionType {
+<a href=#825 id=825 data-nosnippet>825</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#826 id=826 data-nosnippet>826</a>            Extension::ApplicationId(<span class="kw">_</span>) =&gt; ExtensionType::ApplicationId,
+<a href=#827 id=827 data-nosnippet>827</a>            Extension::RatchetTree(<span class="kw">_</span>) =&gt; ExtensionType::RatchetTree,
+<a href=#828 id=828 data-nosnippet>828</a>            Extension::RequiredCapabilities(<span class="kw">_</span>) =&gt; ExtensionType::RequiredCapabilities,
+<a href=#829 id=829 data-nosnippet>829</a>            Extension::ExternalPub(<span class="kw">_</span>) =&gt; ExtensionType::ExternalPub,
+<a href=#830 id=830 data-nosnippet>830</a>            Extension::ExternalSenders(<span class="kw">_</span>) =&gt; ExtensionType::ExternalSenders,
+<a href=#831 id=831 data-nosnippet>831</a>            <span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#832 id=832 data-nosnippet>832</a>            </span>Extension::AppDataDictionary(<span class="kw">_</span>) =&gt; ExtensionType::AppDataDictionary,
+<a href=#833 id=833 data-nosnippet>833</a>            Extension::LastResort(<span class="kw">_</span>) =&gt; ExtensionType::LastResort,
+<a href=#834 id=834 data-nosnippet>834</a>            <span class="comment">// Map GREASE-valued extension types to `Grease`, consistent with
+<a href=#835 id=835 data-nosnippet>835</a>            // `ExtensionType::from(u16)`. Without this an extension carrying a
+<a href=#836 id=836 data-nosnippet>836</a>            // GREASE value would be reported as `Unknown`, so GREASE-aware
+<a href=#837 id=837 data-nosnippet>837</a>            // validation (which ignores `Grease(_)`) would not recognize it.
+<a href=#838 id=838 data-nosnippet>838</a>            </span>Extension::Unknown(kind, <span class="kw">_</span>) <span class="kw">if </span><span class="kw">crate</span>::grease::is_grease_value(<span class="kw-2">*</span>kind) =&gt; {
+<a href=#839 id=839 data-nosnippet>839</a>                ExtensionType::Grease(<span class="kw-2">*</span>kind)
+<a href=#840 id=840 data-nosnippet>840</a>            }
+<a href=#841 id=841 data-nosnippet>841</a>            Extension::Unknown(kind, <span class="kw">_</span>) =&gt; ExtensionType::Unknown(<span class="kw-2">*</span>kind),
+<a href=#842 id=842 data-nosnippet>842</a>        }
+<a href=#843 id=843 data-nosnippet>843</a>    }
+<a href=#844 id=844 data-nosnippet>844</a>}
+<a href=#845 id=845 data-nosnippet>845</a>
+<a href=#846 id=846 data-nosnippet>846</a><span class="macro">macro_rules!</span> impl_from_extensions_validator {
+<a href=#847 id=847 data-nosnippet>847</a>    (<span class="macro-nonterminal">$validator</span>:ty, <span class="macro-nonterminal">$error</span>:ty) =&gt; {
+<a href=#848 id=848 data-nosnippet>848</a>        <span class="kw">impl </span>From&lt;Extensions&lt;<span class="macro-nonterminal">$validator</span>&gt;&gt; <span class="kw">for </span>Extensions&lt;AnyObject&gt; {
+<a href=#849 id=849 data-nosnippet>849</a>            <span class="kw">fn </span>from(value: Extensions&lt;<span class="macro-nonterminal">$validator</span>&gt;) -&gt; <span class="self">Self </span>{
+<a href=#850 id=850 data-nosnippet>850</a>                Extensions {
+<a href=#851 id=851 data-nosnippet>851</a>                    unique: value.unique,
+<a href=#852 id=852 data-nosnippet>852</a>                    _object: PhantomData,
+<a href=#853 id=853 data-nosnippet>853</a>                }
+<a href=#854 id=854 data-nosnippet>854</a>            }
+<a href=#855 id=855 data-nosnippet>855</a>        }
+<a href=#856 id=856 data-nosnippet>856</a>
+<a href=#857 id=857 data-nosnippet>857</a>        <span class="kw">impl </span>TryFrom&lt;Extensions&lt;AnyObject&gt;&gt; <span class="kw">for </span>Extensions&lt;<span class="macro-nonterminal">$validator</span>&gt; {
+<a href=#858 id=858 data-nosnippet>858</a>            <span class="kw">type </span>Error = <span class="macro-nonterminal">$error</span>;
+<a href=#859 id=859 data-nosnippet>859</a>
+<a href=#860 id=860 data-nosnippet>860</a>            <span class="kw">fn </span>try_from(value: Extensions&lt;AnyObject&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="macro-nonterminal">$error</span>&gt; {
+<a href=#861 id=861 data-nosnippet>861</a>                value
+<a href=#862 id=862 data-nosnippet>862</a>                    .unique
+<a href=#863 id=863 data-nosnippet>863</a>                    .iter()
+<a href=#864 id=864 data-nosnippet>864</a>                    .try_for_each(&lt;<span class="macro-nonterminal">$validator </span><span class="kw">as </span>ExtensionValidator&gt;::validate_extension_type)<span class="question-mark">?</span>;
+<a href=#865 id=865 data-nosnippet>865</a>
+<a href=#866 id=866 data-nosnippet>866</a>                <span class="prelude-val">Ok</span>(Extensions {
+<a href=#867 id=867 data-nosnippet>867</a>                    unique: value.unique,
+<a href=#868 id=868 data-nosnippet>868</a>                    _object: PhantomData,
+<a href=#869 id=869 data-nosnippet>869</a>                })
+<a href=#870 id=870 data-nosnippet>870</a>            }
+<a href=#871 id=871 data-nosnippet>871</a>        }
+<a href=#872 id=872 data-nosnippet>872</a>    };
+<a href=#873 id=873 data-nosnippet>873</a>}
+<a href=#874 id=874 data-nosnippet>874</a>
+<a href=#875 id=875 data-nosnippet>875</a><span class="macro">impl_from_extensions_validator!</span>(GroupContext, ExtensionTypeNotValidInGroupContextError);
+<a href=#876 id=876 data-nosnippet>876</a><span class="macro">impl_from_extensions_validator!</span>(LeafNode, ExtensionTypeNotValidInLeafNodeError);
+<a href=#877 id=877 data-nosnippet>877</a><span class="macro">impl_from_extensions_validator!</span>(KeyPackage, ExtensionTypeNotValidInKeyPackageError);
+<a href=#878 id=878 data-nosnippet>878</a>
+<a href=#879 id=879 data-nosnippet>879</a><span class="attr">#[cfg(any(feature = <span class="string">"test-utils"</span>, test))]
+<a href=#880 id=880 data-nosnippet>880</a></span><span class="kw">impl </span>Extensions&lt;AnyObject&gt; {
+<a href=#881 id=881 data-nosnippet>881</a>    <span class="doccomment">/// Coerces the extensions to an Extensions with the given validator. Unsafe.
+<a href=#882 id=882 data-nosnippet>882</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>coerce&lt;T: ExtensionValidator&gt;(<span class="self">self</span>) -&gt; Extensions&lt;T&gt; {
+<a href=#883 id=883 data-nosnippet>883</a>        Extensions {
+<a href=#884 id=884 data-nosnippet>884</a>            unique: <span class="self">self</span>.unique,
+<a href=#885 id=885 data-nosnippet>885</a>            _object: PhantomData,
+<a href=#886 id=886 data-nosnippet>886</a>        }
+<a href=#887 id=887 data-nosnippet>887</a>    }
+<a href=#888 id=888 data-nosnippet>888</a>}
+<a href=#889 id=889 data-nosnippet>889</a><span class="attr">#[cfg(test)]
+<a href=#890 id=890 data-nosnippet>890</a></span><span class="kw">mod </span>test {
+<a href=#891 id=891 data-nosnippet>891</a>    <span class="kw">use </span>itertools::Itertools;
+<a href=#892 id=892 data-nosnippet>892</a>    <span class="kw">use </span>tls_codec::{Deserialize, Serialize, VLBytes};
 <a href=#893 id=893 data-nosnippet>893</a>
-<a href=#894 id=894 data-nosnippet>894</a>    <span class="attr">#[test]
-<a href=#895 id=895 data-nosnippet>895</a>    </span><span class="kw">fn </span>add() {
-<a href=#896 id=896 data-nosnippet>896</a>        <span class="kw">let </span><span class="kw-2">mut </span>extensions: Extensions&lt;AnyObject&gt; = Extensions::default();
-<a href=#897 id=897 data-nosnippet>897</a>        extensions
-<a href=#898 id=898 data-nosnippet>898</a>            .add(Extension::RequiredCapabilities(
-<a href=#899 id=899 data-nosnippet>899</a>                RequiredCapabilitiesExtension::default(),
-<a href=#900 id=900 data-nosnippet>900</a>            ))
-<a href=#901 id=901 data-nosnippet>901</a>            .unwrap();
-<a href=#902 id=902 data-nosnippet>902</a>        <span class="macro">assert!</span>(extensions
-<a href=#903 id=903 data-nosnippet>903</a>            .add(Extension::RequiredCapabilities(
-<a href=#904 id=904 data-nosnippet>904</a>                RequiredCapabilitiesExtension::default()
-<a href=#905 id=905 data-nosnippet>905</a>            ))
-<a href=#906 id=906 data-nosnippet>906</a>            .is_err());
-<a href=#907 id=907 data-nosnippet>907</a>    }
-<a href=#908 id=908 data-nosnippet>908</a>
-<a href=#909 id=909 data-nosnippet>909</a>    <span class="attr">#[test]
-<a href=#910 id=910 data-nosnippet>910</a>    </span><span class="kw">fn </span>grease_extension_type_mapping() {
-<a href=#911 id=911 data-nosnippet>911</a>        <span class="comment">// A GREASE-valued extension must report a `Grease` extension type
-<a href=#912 id=912 data-nosnippet>912</a>        // (consistent with `ExtensionType::from(u16)`), not `Unknown`. Otherwise
-<a href=#913 id=913 data-nosnippet>913</a>        // GREASE-aware validation would fail to recognize it and reject peers
-<a href=#914 id=914 data-nosnippet>914</a>        // (e.g. MLS++) that decorate leaf/key-package extensions with GREASE.
-<a href=#915 id=915 data-nosnippet>915</a>        </span><span class="kw">let </span>grease = Extension::Unknown(<span class="number">0x5A5A</span>, UnknownExtension(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]));
-<a href=#916 id=916 data-nosnippet>916</a>        <span class="macro">assert_eq!</span>(grease.extension_type(), ExtensionType::Grease(<span class="number">0x5A5A</span>));
-<a href=#917 id=917 data-nosnippet>917</a>        <span class="macro">assert!</span>(grease.extension_type().is_grease());
-<a href=#918 id=918 data-nosnippet>918</a>
-<a href=#919 id=919 data-nosnippet>919</a>        <span class="comment">// A non-GREASE unknown value stays `Unknown`.
-<a href=#920 id=920 data-nosnippet>920</a>        </span><span class="kw">let </span>unknown = Extension::Unknown(<span class="number">0xABCD</span>, UnknownExtension(<span class="macro">vec!</span>[]));
-<a href=#921 id=921 data-nosnippet>921</a>        <span class="macro">assert_eq!</span>(unknown.extension_type(), ExtensionType::Unknown(<span class="number">0xABCD</span>));
-<a href=#922 id=922 data-nosnippet>922</a>    }
-<a href=#923 id=923 data-nosnippet>923</a>
-<a href=#924 id=924 data-nosnippet>924</a>    <span class="attr">#[test]
-<a href=#925 id=925 data-nosnippet>925</a>    </span><span class="kw">fn </span>grease_extension_must_be_declared_in_capabilities() {
-<a href=#926 id=926 data-nosnippet>926</a>        <span class="comment">// GREASE does NOT bypass the capability check: a GREASE extension type is
-<a href=#927 id=927 data-nosnippet>927</a>        // "contained" only if it is advertised in the capabilities (RFC 9420:
-<a href=#928 id=928 data-nosnippet>928</a>        // extensions in leaf_node.extensions/key_package.extensions MUST be in
-<a href=#929 id=929 data-nosnippet>929</a>        // capabilities). The fix that makes this work is that a GREASE-valued
-<a href=#930 id=930 data-nosnippet>930</a>        // extension now reports a `Grease(_)` type that matches the `Grease(_)`
-<a href=#931 id=931 data-nosnippet>931</a>        // parsed into the capabilities list.
-<a href=#932 id=932 data-nosnippet>932</a>        </span><span class="kw">let </span>advertised = <span class="kw">crate</span>::treesync::node::leaf_node::Capabilities::new(
-<a href=#933 id=933 data-nosnippet>933</a>            <span class="prelude-val">None</span>,
-<a href=#934 id=934 data-nosnippet>934</a>            <span class="prelude-val">None</span>,
-<a href=#935 id=935 data-nosnippet>935</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[ExtensionType::Grease(<span class="number">0x5A5A</span>)]),
+<a href=#894 id=894 data-nosnippet>894</a>    <span class="kw">use crate</span>::{ciphersuite::HpkePublicKey, extensions::<span class="kw-2">*</span>};
+<a href=#895 id=895 data-nosnippet>895</a>
+<a href=#896 id=896 data-nosnippet>896</a>    <span class="attr">#[test]
+<a href=#897 id=897 data-nosnippet>897</a>    </span><span class="kw">fn </span>add() {
+<a href=#898 id=898 data-nosnippet>898</a>        <span class="kw">let </span><span class="kw-2">mut </span>extensions: Extensions&lt;AnyObject&gt; = Extensions::default();
+<a href=#899 id=899 data-nosnippet>899</a>        extensions
+<a href=#900 id=900 data-nosnippet>900</a>            .add(Extension::RequiredCapabilities(
+<a href=#901 id=901 data-nosnippet>901</a>                RequiredCapabilitiesExtension::default(),
+<a href=#902 id=902 data-nosnippet>902</a>            ))
+<a href=#903 id=903 data-nosnippet>903</a>            .unwrap();
+<a href=#904 id=904 data-nosnippet>904</a>        <span class="macro">assert!</span>(extensions
+<a href=#905 id=905 data-nosnippet>905</a>            .add(Extension::RequiredCapabilities(
+<a href=#906 id=906 data-nosnippet>906</a>                RequiredCapabilitiesExtension::default()
+<a href=#907 id=907 data-nosnippet>907</a>            ))
+<a href=#908 id=908 data-nosnippet>908</a>            .is_err());
+<a href=#909 id=909 data-nosnippet>909</a>    }
+<a href=#910 id=910 data-nosnippet>910</a>
+<a href=#911 id=911 data-nosnippet>911</a>    <span class="attr">#[test]
+<a href=#912 id=912 data-nosnippet>912</a>    </span><span class="kw">fn </span>grease_extension_type_mapping() {
+<a href=#913 id=913 data-nosnippet>913</a>        <span class="comment">// A GREASE-valued extension must report a `Grease` extension type
+<a href=#914 id=914 data-nosnippet>914</a>        // (consistent with `ExtensionType::from(u16)`), not `Unknown`. Otherwise
+<a href=#915 id=915 data-nosnippet>915</a>        // GREASE-aware validation would fail to recognize it and reject peers
+<a href=#916 id=916 data-nosnippet>916</a>        // (e.g. MLS++) that decorate leaf/key-package extensions with GREASE.
+<a href=#917 id=917 data-nosnippet>917</a>        </span><span class="kw">let </span>grease = Extension::Unknown(<span class="number">0x5A5A</span>, UnknownExtension(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]));
+<a href=#918 id=918 data-nosnippet>918</a>        <span class="macro">assert_eq!</span>(grease.extension_type(), ExtensionType::Grease(<span class="number">0x5A5A</span>));
+<a href=#919 id=919 data-nosnippet>919</a>        <span class="macro">assert!</span>(grease.extension_type().is_grease());
+<a href=#920 id=920 data-nosnippet>920</a>
+<a href=#921 id=921 data-nosnippet>921</a>        <span class="comment">// A non-GREASE unknown value stays `Unknown`.
+<a href=#922 id=922 data-nosnippet>922</a>        </span><span class="kw">let </span>unknown = Extension::Unknown(<span class="number">0xABCD</span>, UnknownExtension(<span class="macro">vec!</span>[]));
+<a href=#923 id=923 data-nosnippet>923</a>        <span class="macro">assert_eq!</span>(unknown.extension_type(), ExtensionType::Unknown(<span class="number">0xABCD</span>));
+<a href=#924 id=924 data-nosnippet>924</a>    }
+<a href=#925 id=925 data-nosnippet>925</a>
+<a href=#926 id=926 data-nosnippet>926</a>    <span class="attr">#[test]
+<a href=#927 id=927 data-nosnippet>927</a>    </span><span class="kw">fn </span>grease_extension_must_be_declared_in_capabilities() {
+<a href=#928 id=928 data-nosnippet>928</a>        <span class="comment">// GREASE does NOT bypass the capability check: a GREASE extension type is
+<a href=#929 id=929 data-nosnippet>929</a>        // "contained" only if it is advertised in the capabilities (RFC 9420:
+<a href=#930 id=930 data-nosnippet>930</a>        // extensions in leaf_node.extensions/key_package.extensions MUST be in
+<a href=#931 id=931 data-nosnippet>931</a>        // capabilities). The fix that makes this work is that a GREASE-valued
+<a href=#932 id=932 data-nosnippet>932</a>        // extension now reports a `Grease(_)` type that matches the `Grease(_)`
+<a href=#933 id=933 data-nosnippet>933</a>        // parsed into the capabilities list.
+<a href=#934 id=934 data-nosnippet>934</a>        </span><span class="kw">let </span>advertised = <span class="kw">crate</span>::treesync::node::leaf_node::Capabilities::new(
+<a href=#935 id=935 data-nosnippet>935</a>            <span class="prelude-val">None</span>,
 <a href=#936 id=936 data-nosnippet>936</a>            <span class="prelude-val">None</span>,
-<a href=#937 id=937 data-nosnippet>937</a>            <span class="prelude-val">None</span>,
-<a href=#938 id=938 data-nosnippet>938</a>        );
-<a href=#939 id=939 data-nosnippet>939</a>        <span class="macro">assert!</span>(advertised.contains_extension_type(<span class="kw-2">&amp;</span>ExtensionType::Grease(<span class="number">0x5A5A</span>)));
-<a href=#940 id=940 data-nosnippet>940</a>        <span class="comment">// A GREASE value that is not advertised is not contained.
-<a href=#941 id=941 data-nosnippet>941</a>        </span><span class="macro">assert!</span>(!advertised.contains_extension_type(<span class="kw-2">&amp;</span>ExtensionType::Grease(<span class="number">0xAAAA</span>)));
-<a href=#942 id=942 data-nosnippet>942</a>
-<a href=#943 id=943 data-nosnippet>943</a>        <span class="comment">// Empty capabilities contain no (non-default) extension, GREASE included.
-<a href=#944 id=944 data-nosnippet>944</a>        </span><span class="kw">let </span>empty =
-<a href=#945 id=945 data-nosnippet>945</a>            <span class="kw">crate</span>::treesync::node::leaf_node::Capabilities::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-<a href=#946 id=946 data-nosnippet>946</a>        <span class="macro">assert!</span>(!empty.contains_extension_type(<span class="kw-2">&amp;</span>ExtensionType::Grease(<span class="number">0x5A5A</span>)));
-<a href=#947 id=947 data-nosnippet>947</a>        <span class="macro">assert!</span>(!empty.contains_extension_type(<span class="kw-2">&amp;</span>ExtensionType::Unknown(<span class="number">0xABCD</span>)));
-<a href=#948 id=948 data-nosnippet>948</a>    }
-<a href=#949 id=949 data-nosnippet>949</a>
-<a href=#950 id=950 data-nosnippet>950</a>    <span class="attr">#[test]
-<a href=#951 id=951 data-nosnippet>951</a>    </span><span class="kw">fn </span>add_try_from() {
-<a href=#952 id=952 data-nosnippet>952</a>        <span class="comment">// Create some extensions with different extension types and test that
-<a href=#953 id=953 data-nosnippet>953</a>        // duplicates are rejected. The extension content does not matter in this test.
-<a href=#954 id=954 data-nosnippet>954</a>        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b"Test"</span>));
-<a href=#955 id=955 data-nosnippet>955</a>        <span class="kw">let </span>ext_y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
-<a href=#956 id=956 data-nosnippet>956</a>
-<a href=#957 id=957 data-nosnippet>957</a>        <span class="kw">let </span>tests = [
-<a href=#958 id=958 data-nosnippet>958</a>            (<span class="macro">vec!</span>[], <span class="bool-val">true</span>),
-<a href=#959 id=959 data-nosnippet>959</a>            (<span class="macro">vec!</span>[ext_x.clone()], <span class="bool-val">true</span>),
-<a href=#960 id=960 data-nosnippet>960</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_x.clone()], <span class="bool-val">false</span>),
-<a href=#961 id=961 data-nosnippet>961</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_x.clone(), ext_x.clone()], <span class="bool-val">false</span>),
-<a href=#962 id=962 data-nosnippet>962</a>            (<span class="macro">vec!</span>[ext_y.clone()], <span class="bool-val">true</span>),
-<a href=#963 id=963 data-nosnippet>963</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_y.clone()], <span class="bool-val">false</span>),
-<a href=#964 id=964 data-nosnippet>964</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_y.clone(), ext_y.clone()], <span class="bool-val">false</span>),
-<a href=#965 id=965 data-nosnippet>965</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_y.clone()], <span class="bool-val">true</span>),
-<a href=#966 id=966 data-nosnippet>966</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_x.clone()], <span class="bool-val">true</span>),
-<a href=#967 id=967 data-nosnippet>967</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_x.clone(), ext_y.clone()], <span class="bool-val">false</span>),
-<a href=#968 id=968 data-nosnippet>968</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_y.clone(), ext_x.clone()], <span class="bool-val">false</span>),
-<a href=#969 id=969 data-nosnippet>969</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_y.clone(), ext_y.clone()], <span class="bool-val">false</span>),
-<a href=#970 id=970 data-nosnippet>970</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_x.clone(), ext_x.clone()], <span class="bool-val">false</span>),
-<a href=#971 id=971 data-nosnippet>971</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_y.clone(), ext_x.clone()], <span class="bool-val">false</span>),
-<a href=#972 id=972 data-nosnippet>972</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_x, ext_y], <span class="bool-val">false</span>),
-<a href=#973 id=973 data-nosnippet>973</a>        ];
-<a href=#974 id=974 data-nosnippet>974</a>
-<a href=#975 id=975 data-nosnippet>975</a>        <span class="kw">for </span>(test, should_work) <span class="kw">in </span>tests.into_iter() {
-<a href=#976 id=976 data-nosnippet>976</a>            <span class="comment">// Test `add`.
-<a href=#977 id=977 data-nosnippet>977</a>            </span>{
-<a href=#978 id=978 data-nosnippet>978</a>                <span class="kw">let </span><span class="kw-2">mut </span>extensions: Extensions&lt;AnyObject&gt; = Extensions::default();
-<a href=#979 id=979 data-nosnippet>979</a>
-<a href=#980 id=980 data-nosnippet>980</a>                <span class="kw">let </span><span class="kw-2">mut </span>works = <span class="bool-val">true</span>;
-<a href=#981 id=981 data-nosnippet>981</a>                <span class="kw">for </span>ext <span class="kw">in </span>test.iter() {
-<a href=#982 id=982 data-nosnippet>982</a>                    <span class="kw">match </span>extensions.add(ext.clone()) {
-<a href=#983 id=983 data-nosnippet>983</a>                        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
-<a href=#984 id=984 data-nosnippet>984</a>                        <span class="prelude-val">Err</span>(InvalidExtensionError::Duplicate) =&gt; {
-<a href=#985 id=985 data-nosnippet>985</a>                            works = <span class="bool-val">false</span>;
-<a href=#986 id=986 data-nosnippet>986</a>                        }
-<a href=#987 id=987 data-nosnippet>987</a>                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"This should have never happened."</span>),
-<a href=#988 id=988 data-nosnippet>988</a>                    }
-<a href=#989 id=989 data-nosnippet>989</a>                }
-<a href=#990 id=990 data-nosnippet>990</a>
-<a href=#991 id=991 data-nosnippet>991</a>                <span class="macro">println!</span>(<span class="string">"{:?}, {:?}"</span>, test.clone(), should_work);
-<a href=#992 id=992 data-nosnippet>992</a>                <span class="macro">assert_eq!</span>(works, should_work);
-<a href=#993 id=993 data-nosnippet>993</a>            }
-<a href=#994 id=994 data-nosnippet>994</a>
-<a href=#995 id=995 data-nosnippet>995</a>            <span class="comment">// Test `try_from`.
-<a href=#996 id=996 data-nosnippet>996</a>            </span><span class="kw">if </span>should_work {
-<a href=#997 id=997 data-nosnippet>997</a>                <span class="macro">assert!</span>(Extensions::&lt;AnyObject&gt;::try_from(test).is_ok());
-<a href=#998 id=998 data-nosnippet>998</a>            } <span class="kw">else </span>{
-<a href=#999 id=999 data-nosnippet>999</a>                <span class="macro">assert!</span>(Extensions::&lt;AnyObject&gt;::try_from(test).is_err());
-<a href=#1000 id=1000 data-nosnippet>1000</a>            }
-<a href=#1001 id=1001 data-nosnippet>1001</a>        }
-<a href=#1002 id=1002 data-nosnippet>1002</a>    }
-<a href=#1003 id=1003 data-nosnippet>1003</a>
-<a href=#1004 id=1004 data-nosnippet>1004</a>    <span class="attr">#[test]
-<a href=#1005 id=1005 data-nosnippet>1005</a>    </span><span class="kw">fn </span>ensure_ordering() {
-<a href=#1006 id=1006 data-nosnippet>1006</a>        <span class="comment">// Create some extensions with different extension types and test
-<a href=#1007 id=1007 data-nosnippet>1007</a>        // that all permutations keep their order after being (de)serialized.
-<a href=#1008 id=1008 data-nosnippet>1008</a>        // The extension content does not matter in this test.
-<a href=#1009 id=1009 data-nosnippet>1009</a>        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b"Test"</span>));
-<a href=#1010 id=1010 data-nosnippet>1010</a>        <span class="kw">let </span>ext_y = Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(<span class="macro">vec!</span>[])));
-<a href=#1011 id=1011 data-nosnippet>1011</a>        <span class="kw">let </span>ext_z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
-<a href=#1012 id=1012 data-nosnippet>1012</a>
-<a href=#1013 id=1013 data-nosnippet>1013</a>        <span class="kw">for </span>candidate <span class="kw">in </span>[ext_x, ext_y, ext_z]
-<a href=#1014 id=1014 data-nosnippet>1014</a>            .into_iter()
-<a href=#1015 id=1015 data-nosnippet>1015</a>            .permutations(<span class="number">3</span>)
-<a href=#1016 id=1016 data-nosnippet>1016</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-<a href=#1017 id=1017 data-nosnippet>1017</a>        {
-<a href=#1018 id=1018 data-nosnippet>1018</a>            <span class="kw">let </span>candidate: Extensions&lt;AnyObject&gt; = Extensions::try_from(candidate).unwrap();
-<a href=#1019 id=1019 data-nosnippet>1019</a>            <span class="kw">let </span>bytes = candidate.tls_serialize_detached().unwrap();
-<a href=#1020 id=1020 data-nosnippet>1020</a>            <span class="kw">let </span>got = Extensions::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes.as_slice()).unwrap();
-<a href=#1021 id=1021 data-nosnippet>1021</a>            <span class="macro">assert_eq!</span>(candidate, got);
-<a href=#1022 id=1022 data-nosnippet>1022</a>        }
-<a href=#1023 id=1023 data-nosnippet>1023</a>    }
-<a href=#1024 id=1024 data-nosnippet>1024</a>
-<a href=#1025 id=1025 data-nosnippet>1025</a>    <span class="attr">#[test]
-<a href=#1026 id=1026 data-nosnippet>1026</a>    </span><span class="kw">fn </span>that_unknown_extensions_are_de_serialized_correctly() {
-<a href=#1027 id=1027 data-nosnippet>1027</a>        <span class="kw">let </span>extension_types = [<span class="number">0x0000u16</span>, <span class="number">0x0A0A</span>, <span class="number">0x7A7A</span>, <span class="number">0xF100</span>, <span class="number">0xFFFF</span>];
-<a href=#1028 id=1028 data-nosnippet>1028</a>        <span class="kw">let </span>extension_datas = [<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]];
-<a href=#1029 id=1029 data-nosnippet>1029</a>
-<a href=#1030 id=1030 data-nosnippet>1030</a>        <span class="kw">for </span>extension_type <span class="kw">in </span>extension_types.into_iter() {
-<a href=#1031 id=1031 data-nosnippet>1031</a>            <span class="kw">for </span>extension_data <span class="kw">in </span>extension_datas.iter() {
-<a href=#1032 id=1032 data-nosnippet>1032</a>                <span class="comment">// Construct an unknown extension manually.
-<a href=#1033 id=1033 data-nosnippet>1033</a>                </span><span class="kw">let </span>test = {
-<a href=#1034 id=1034 data-nosnippet>1034</a>                    <span class="kw">let </span><span class="kw-2">mut </span>buf = extension_type.to_be_bytes().to_vec();
-<a href=#1035 id=1035 data-nosnippet>1035</a>                    buf.append(
-<a href=#1036 id=1036 data-nosnippet>1036</a>                        <span class="kw-2">&amp;mut </span>VLBytes::new(extension_data.clone())
-<a href=#1037 id=1037 data-nosnippet>1037</a>                            .tls_serialize_detached()
-<a href=#1038 id=1038 data-nosnippet>1038</a>                            .unwrap(),
-<a href=#1039 id=1039 data-nosnippet>1039</a>                    );
-<a href=#1040 id=1040 data-nosnippet>1040</a>                    buf
-<a href=#1041 id=1041 data-nosnippet>1041</a>                };
-<a href=#1042 id=1042 data-nosnippet>1042</a>
-<a href=#1043 id=1043 data-nosnippet>1043</a>                <span class="comment">// Test deserialization.
-<a href=#1044 id=1044 data-nosnippet>1044</a>                </span><span class="kw">let </span>got = Extension::tls_deserialize_exact(<span class="kw-2">&amp;</span>test).unwrap();
-<a href=#1045 id=1045 data-nosnippet>1045</a>
-<a href=#1046 id=1046 data-nosnippet>1046</a>                <span class="kw">match </span>got {
-<a href=#1047 id=1047 data-nosnippet>1047</a>                    Extension::Unknown(got_extension_type, <span class="kw-2">ref </span>got_extension_data) =&gt; {
-<a href=#1048 id=1048 data-nosnippet>1048</a>                        <span class="macro">assert_eq!</span>(extension_type, got_extension_type);
-<a href=#1049 id=1049 data-nosnippet>1049</a>                        <span class="macro">assert_eq!</span>(extension_data, <span class="kw-2">&amp;</span>got_extension_data.<span class="number">0</span>);
-<a href=#1050 id=1050 data-nosnippet>1050</a>                    }
-<a href=#1051 id=1051 data-nosnippet>1051</a>                    other =&gt; <span class="macro">panic!</span>(<span class="string">"Expected `Extension::Unknown`, got {other:?}"</span>),
-<a href=#1052 id=1052 data-nosnippet>1052</a>                }
-<a href=#1053 id=1053 data-nosnippet>1053</a>
-<a href=#1054 id=1054 data-nosnippet>1054</a>                <span class="comment">// Test serialization.
-<a href=#1055 id=1055 data-nosnippet>1055</a>                </span><span class="kw">let </span>got_serialized = got.tls_serialize_detached().unwrap();
-<a href=#1056 id=1056 data-nosnippet>1056</a>                <span class="macro">assert_eq!</span>(test, got_serialized);
-<a href=#1057 id=1057 data-nosnippet>1057</a>            }
-<a href=#1058 id=1058 data-nosnippet>1058</a>        }
-<a href=#1059 id=1059 data-nosnippet>1059</a>    }
-<a href=#1060 id=1060 data-nosnippet>1060</a>}
+<a href=#937 id=937 data-nosnippet>937</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[ExtensionType::Grease(<span class="number">0x5A5A</span>)]),
+<a href=#938 id=938 data-nosnippet>938</a>            <span class="prelude-val">None</span>,
+<a href=#939 id=939 data-nosnippet>939</a>            <span class="prelude-val">None</span>,
+<a href=#940 id=940 data-nosnippet>940</a>        );
+<a href=#941 id=941 data-nosnippet>941</a>        <span class="macro">assert!</span>(advertised.contains_extension_type(<span class="kw-2">&amp;</span>ExtensionType::Grease(<span class="number">0x5A5A</span>)));
+<a href=#942 id=942 data-nosnippet>942</a>        <span class="comment">// A GREASE value that is not advertised is not contained.
+<a href=#943 id=943 data-nosnippet>943</a>        </span><span class="macro">assert!</span>(!advertised.contains_extension_type(<span class="kw-2">&amp;</span>ExtensionType::Grease(<span class="number">0xAAAA</span>)));
+<a href=#944 id=944 data-nosnippet>944</a>
+<a href=#945 id=945 data-nosnippet>945</a>        <span class="comment">// Empty capabilities contain no (non-default) extension, GREASE included.
+<a href=#946 id=946 data-nosnippet>946</a>        </span><span class="kw">let </span>empty =
+<a href=#947 id=947 data-nosnippet>947</a>            <span class="kw">crate</span>::treesync::node::leaf_node::Capabilities::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+<a href=#948 id=948 data-nosnippet>948</a>        <span class="macro">assert!</span>(!empty.contains_extension_type(<span class="kw-2">&amp;</span>ExtensionType::Grease(<span class="number">0x5A5A</span>)));
+<a href=#949 id=949 data-nosnippet>949</a>        <span class="macro">assert!</span>(!empty.contains_extension_type(<span class="kw-2">&amp;</span>ExtensionType::Unknown(<span class="number">0xABCD</span>)));
+<a href=#950 id=950 data-nosnippet>950</a>    }
+<a href=#951 id=951 data-nosnippet>951</a>
+<a href=#952 id=952 data-nosnippet>952</a>    <span class="attr">#[test]
+<a href=#953 id=953 data-nosnippet>953</a>    </span><span class="kw">fn </span>add_try_from() {
+<a href=#954 id=954 data-nosnippet>954</a>        <span class="comment">// Create some extensions with different extension types and test that
+<a href=#955 id=955 data-nosnippet>955</a>        // duplicates are rejected. The extension content does not matter in this test.
+<a href=#956 id=956 data-nosnippet>956</a>        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b"Test"</span>));
+<a href=#957 id=957 data-nosnippet>957</a>        <span class="kw">let </span>ext_y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+<a href=#958 id=958 data-nosnippet>958</a>
+<a href=#959 id=959 data-nosnippet>959</a>        <span class="kw">let </span>tests = [
+<a href=#960 id=960 data-nosnippet>960</a>            (<span class="macro">vec!</span>[], <span class="bool-val">true</span>),
+<a href=#961 id=961 data-nosnippet>961</a>            (<span class="macro">vec!</span>[ext_x.clone()], <span class="bool-val">true</span>),
+<a href=#962 id=962 data-nosnippet>962</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+<a href=#963 id=963 data-nosnippet>963</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_x.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+<a href=#964 id=964 data-nosnippet>964</a>            (<span class="macro">vec!</span>[ext_y.clone()], <span class="bool-val">true</span>),
+<a href=#965 id=965 data-nosnippet>965</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_y.clone()], <span class="bool-val">false</span>),
+<a href=#966 id=966 data-nosnippet>966</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_y.clone(), ext_y.clone()], <span class="bool-val">false</span>),
+<a href=#967 id=967 data-nosnippet>967</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_y.clone()], <span class="bool-val">true</span>),
+<a href=#968 id=968 data-nosnippet>968</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_x.clone()], <span class="bool-val">true</span>),
+<a href=#969 id=969 data-nosnippet>969</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_x.clone(), ext_y.clone()], <span class="bool-val">false</span>),
+<a href=#970 id=970 data-nosnippet>970</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_y.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+<a href=#971 id=971 data-nosnippet>971</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_y.clone(), ext_y.clone()], <span class="bool-val">false</span>),
+<a href=#972 id=972 data-nosnippet>972</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_x.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+<a href=#973 id=973 data-nosnippet>973</a>            (<span class="macro">vec!</span>[ext_x.clone(), ext_y.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+<a href=#974 id=974 data-nosnippet>974</a>            (<span class="macro">vec!</span>[ext_y.clone(), ext_x, ext_y], <span class="bool-val">false</span>),
+<a href=#975 id=975 data-nosnippet>975</a>        ];
+<a href=#976 id=976 data-nosnippet>976</a>
+<a href=#977 id=977 data-nosnippet>977</a>        <span class="kw">for </span>(test, should_work) <span class="kw">in </span>tests.into_iter() {
+<a href=#978 id=978 data-nosnippet>978</a>            <span class="comment">// Test `add`.
+<a href=#979 id=979 data-nosnippet>979</a>            </span>{
+<a href=#980 id=980 data-nosnippet>980</a>                <span class="kw">let </span><span class="kw-2">mut </span>extensions: Extensions&lt;AnyObject&gt; = Extensions::default();
+<a href=#981 id=981 data-nosnippet>981</a>
+<a href=#982 id=982 data-nosnippet>982</a>                <span class="kw">let </span><span class="kw-2">mut </span>works = <span class="bool-val">true</span>;
+<a href=#983 id=983 data-nosnippet>983</a>                <span class="kw">for </span>ext <span class="kw">in </span>test.iter() {
+<a href=#984 id=984 data-nosnippet>984</a>                    <span class="kw">match </span>extensions.add(ext.clone()) {
+<a href=#985 id=985 data-nosnippet>985</a>                        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
+<a href=#986 id=986 data-nosnippet>986</a>                        <span class="prelude-val">Err</span>(InvalidExtensionError::Duplicate) =&gt; {
+<a href=#987 id=987 data-nosnippet>987</a>                            works = <span class="bool-val">false</span>;
+<a href=#988 id=988 data-nosnippet>988</a>                        }
+<a href=#989 id=989 data-nosnippet>989</a>                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"This should have never happened."</span>),
+<a href=#990 id=990 data-nosnippet>990</a>                    }
+<a href=#991 id=991 data-nosnippet>991</a>                }
+<a href=#992 id=992 data-nosnippet>992</a>
+<a href=#993 id=993 data-nosnippet>993</a>                <span class="macro">println!</span>(<span class="string">"{:?}, {:?}"</span>, test.clone(), should_work);
+<a href=#994 id=994 data-nosnippet>994</a>                <span class="macro">assert_eq!</span>(works, should_work);
+<a href=#995 id=995 data-nosnippet>995</a>            }
+<a href=#996 id=996 data-nosnippet>996</a>
+<a href=#997 id=997 data-nosnippet>997</a>            <span class="comment">// Test `try_from`.
+<a href=#998 id=998 data-nosnippet>998</a>            </span><span class="kw">if </span>should_work {
+<a href=#999 id=999 data-nosnippet>999</a>                <span class="macro">assert!</span>(Extensions::&lt;AnyObject&gt;::try_from(test).is_ok());
+<a href=#1000 id=1000 data-nosnippet>1000</a>            } <span class="kw">else </span>{
+<a href=#1001 id=1001 data-nosnippet>1001</a>                <span class="macro">assert!</span>(Extensions::&lt;AnyObject&gt;::try_from(test).is_err());
+<a href=#1002 id=1002 data-nosnippet>1002</a>            }
+<a href=#1003 id=1003 data-nosnippet>1003</a>        }
+<a href=#1004 id=1004 data-nosnippet>1004</a>    }
+<a href=#1005 id=1005 data-nosnippet>1005</a>
+<a href=#1006 id=1006 data-nosnippet>1006</a>    <span class="attr">#[test]
+<a href=#1007 id=1007 data-nosnippet>1007</a>    </span><span class="kw">fn </span>ensure_ordering() {
+<a href=#1008 id=1008 data-nosnippet>1008</a>        <span class="comment">// Create some extensions with different extension types and test
+<a href=#1009 id=1009 data-nosnippet>1009</a>        // that all permutations keep their order after being (de)serialized.
+<a href=#1010 id=1010 data-nosnippet>1010</a>        // The extension content does not matter in this test.
+<a href=#1011 id=1011 data-nosnippet>1011</a>        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b"Test"</span>));
+<a href=#1012 id=1012 data-nosnippet>1012</a>        <span class="kw">let </span>ext_y = Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(<span class="macro">vec!</span>[])));
+<a href=#1013 id=1013 data-nosnippet>1013</a>        <span class="kw">let </span>ext_z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+<a href=#1014 id=1014 data-nosnippet>1014</a>
+<a href=#1015 id=1015 data-nosnippet>1015</a>        <span class="kw">for </span>candidate <span class="kw">in </span>[ext_x, ext_y, ext_z]
+<a href=#1016 id=1016 data-nosnippet>1016</a>            .into_iter()
+<a href=#1017 id=1017 data-nosnippet>1017</a>            .permutations(<span class="number">3</span>)
+<a href=#1018 id=1018 data-nosnippet>1018</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+<a href=#1019 id=1019 data-nosnippet>1019</a>        {
+<a href=#1020 id=1020 data-nosnippet>1020</a>            <span class="kw">let </span>candidate: Extensions&lt;AnyObject&gt; = Extensions::try_from(candidate).unwrap();
+<a href=#1021 id=1021 data-nosnippet>1021</a>            <span class="kw">let </span>bytes = candidate.tls_serialize_detached().unwrap();
+<a href=#1022 id=1022 data-nosnippet>1022</a>            <span class="kw">let </span>got = Extensions::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes.as_slice()).unwrap();
+<a href=#1023 id=1023 data-nosnippet>1023</a>            <span class="macro">assert_eq!</span>(candidate, got);
+<a href=#1024 id=1024 data-nosnippet>1024</a>        }
+<a href=#1025 id=1025 data-nosnippet>1025</a>    }
+<a href=#1026 id=1026 data-nosnippet>1026</a>
+<a href=#1027 id=1027 data-nosnippet>1027</a>    <span class="attr">#[test]
+<a href=#1028 id=1028 data-nosnippet>1028</a>    </span><span class="kw">fn </span>that_unknown_extensions_are_de_serialized_correctly() {
+<a href=#1029 id=1029 data-nosnippet>1029</a>        <span class="kw">let </span>extension_types = [<span class="number">0x0000u16</span>, <span class="number">0x0A0A</span>, <span class="number">0x7A7A</span>, <span class="number">0xF100</span>, <span class="number">0xFFFF</span>];
+<a href=#1030 id=1030 data-nosnippet>1030</a>        <span class="kw">let </span>extension_datas = [<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]];
+<a href=#1031 id=1031 data-nosnippet>1031</a>
+<a href=#1032 id=1032 data-nosnippet>1032</a>        <span class="kw">for </span>extension_type <span class="kw">in </span>extension_types.into_iter() {
+<a href=#1033 id=1033 data-nosnippet>1033</a>            <span class="kw">for </span>extension_data <span class="kw">in </span>extension_datas.iter() {
+<a href=#1034 id=1034 data-nosnippet>1034</a>                <span class="comment">// Construct an unknown extension manually.
+<a href=#1035 id=1035 data-nosnippet>1035</a>                </span><span class="kw">let </span>test = {
+<a href=#1036 id=1036 data-nosnippet>1036</a>                    <span class="kw">let </span><span class="kw-2">mut </span>buf = extension_type.to_be_bytes().to_vec();
+<a href=#1037 id=1037 data-nosnippet>1037</a>                    buf.append(
+<a href=#1038 id=1038 data-nosnippet>1038</a>                        <span class="kw-2">&amp;mut </span>VLBytes::new(extension_data.clone())
+<a href=#1039 id=1039 data-nosnippet>1039</a>                            .tls_serialize_detached()
+<a href=#1040 id=1040 data-nosnippet>1040</a>                            .unwrap(),
+<a href=#1041 id=1041 data-nosnippet>1041</a>                    );
+<a href=#1042 id=1042 data-nosnippet>1042</a>                    buf
+<a href=#1043 id=1043 data-nosnippet>1043</a>                };
+<a href=#1044 id=1044 data-nosnippet>1044</a>
+<a href=#1045 id=1045 data-nosnippet>1045</a>                <span class="comment">// Test deserialization.
+<a href=#1046 id=1046 data-nosnippet>1046</a>                </span><span class="kw">let </span>got = Extension::tls_deserialize_exact(<span class="kw-2">&amp;</span>test).unwrap();
+<a href=#1047 id=1047 data-nosnippet>1047</a>
+<a href=#1048 id=1048 data-nosnippet>1048</a>                <span class="kw">match </span>got {
+<a href=#1049 id=1049 data-nosnippet>1049</a>                    Extension::Unknown(got_extension_type, <span class="kw-2">ref </span>got_extension_data) =&gt; {
+<a href=#1050 id=1050 data-nosnippet>1050</a>                        <span class="macro">assert_eq!</span>(extension_type, got_extension_type);
+<a href=#1051 id=1051 data-nosnippet>1051</a>                        <span class="macro">assert_eq!</span>(extension_data, <span class="kw-2">&amp;</span>got_extension_data.<span class="number">0</span>);
+<a href=#1052 id=1052 data-nosnippet>1052</a>                    }
+<a href=#1053 id=1053 data-nosnippet>1053</a>                    other =&gt; <span class="macro">panic!</span>(<span class="string">"Expected `Extension::Unknown`, got {other:?}"</span>),
+<a href=#1054 id=1054 data-nosnippet>1054</a>                }
+<a href=#1055 id=1055 data-nosnippet>1055</a>
+<a href=#1056 id=1056 data-nosnippet>1056</a>                <span class="comment">// Test serialization.
+<a href=#1057 id=1057 data-nosnippet>1057</a>                </span><span class="kw">let </span>got_serialized = got.tls_serialize_detached().unwrap();
+<a href=#1058 id=1058 data-nosnippet>1058</a>                <span class="macro">assert_eq!</span>(test, got_serialized);
+<a href=#1059 id=1059 data-nosnippet>1059</a>            }
+<a href=#1060 id=1060 data-nosnippet>1060</a>        }
+<a href=#1061 id=1061 data-nosnippet>1061</a>    }
+<a href=#1062 id=1062 data-nosnippet>1062</a>}
 </code></pre></div></section></main></body></html>

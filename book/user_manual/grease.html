@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-3511d293.js";
+            window.path_to_searchindex_js = "../searchindex-a7e9edab.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-81492934.js"></script>
@@ -206,7 +206,7 @@
 <p>OpenMLS:</p>
 <ol>
 <li><strong>Recognizes GREASE values</strong> during deserialization</li>
-<li><strong>Filters GREASE values</strong> during validation to prevent false negatives (GREASE values are treated the same as unknown values)</li>
+<li><strong>Treats GREASE values like unknown values</strong> during validation, rather than special-casing them</li>
 <li><strong>Preserves GREASE values</strong> when present in capabilities</li>
 <li><strong>Provides convenience methods</strong> to inject random GREASE values into capabilities</li>
 </ol>
@@ -235,6 +235,31 @@ let capabilities = Capabilities::builder()
     ])
     .build();
 <span class="boring">}</span></code></pre>
+<h3 id="as-extensions"><a class="header" href="#as-extensions">As Extensions</a></h3>
+<p>RFC 9420 Section 13.5 also lists <code>LeafNode.extensions</code>, <code>KeyPackage.extensions</code> and <code>GroupInfo.extensions</code> as fields that can carry GREASE values. <code>GroupContext.extensions</code> is not on that list, and GREASE values must not be sent there.</p>
+<p>GREASE has its own <code>ExtensionType::Grease</code> variant, but the <code>Extension</code> enum has no matching one, so a GREASE extension is carried as <code>Extension::Unknown</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use openmls::prelude::*;
+
+let grease = Extensions::single(Extension::Unknown(
+    0x1A1A,
+    UnknownExtension(vec![0xde, 0xad]),
+))
+.unwrap();
+
+let key_package = KeyPackage::builder()
+    .leaf_node_capabilities(
+        Capabilities::builder()
+            .extensions(vec![ExtensionType::Grease(0x1A1A)])
+            .build(),
+    )
+    .leaf_node_extensions(grease)
+    .build(ciphersuite, &amp;provider, &amp;signer, credential_with_key)
+    .unwrap();
+<span class="boring">}</span></code></pre>
+<p><code>Extension::extension_type()</code> reports such an extension as <code>ExtensionType::Grease</code>, so it compares equal to the matching capabilities entry.</p>
+<p><strong>Every GREASE value in <code>LeafNode.extensions</code> also has to be listed in <code>LeafNode.capabilities.extensions</code></strong>, as in the example above. This is the normal rule for non-default extension types. Neither the builder nor <code>KeyPackageIn::validate</code> catches a violation: it only surfaces as <code>LeafNodeValidationError::UnsupportedExtensions</code> when someone adds that member. The other direction is fine, so capabilities may list extensions the leaf node does not use.</p>
 <h3 id="injecting-random-grease-values"><a class="header" href="#injecting-random-grease-values">Injecting Random GREASE Values</a></h3>
 <p>The easiest way to add GREASE values is using the <code>with_grease()</code> method on <code>Capabilities</code> or <code>CapabilitiesBuilder</code>:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -309,12 +334,11 @@ assert!(ciphersuite.is_grease());
 <h2 id="important-notes"><a class="header" href="#important-notes">Important Notes</a></h2>
 <h3 id="grease-values-cannot-be-used-for-operations"><a class="header" href="#grease-values-cannot-be-used-for-operations">GREASE Values Cannot Be Used for Operations</a></h3>
 <p>GREASE ciphersuites, in particular, cannot be used for actual cryptographic operations. They exist only to test capability negotiation and should never be selected as the active ciphersuite for a group.</p>
-<h3 id="validation-automatically-filters-grease"><a class="header" href="#validation-automatically-filters-grease">Validation Automatically Filters GREASE</a></h3>
-<p>When OpenMLS validates capabilities, it automatically filters out GREASE values. This means:</p>
+<h3 id="validation-treats-grease-like-unknown-values"><a class="header" href="#validation-treats-grease-like-unknown-values">Validation Treats GREASE Like Unknown Values</a></h3>
+<p>GREASE values are not special-cased during validation, so they follow the same rules as any other unknown value. This means:</p>
 <ul>
 <li>Two members with different GREASE values in their capabilities can still interoperate</li>
-<li>GREASE values don’t affect capability intersection or matching</li>
-<li>Required capabilities never include GREASE values</li>
+<li>A GREASE value used as an extension still has to be declared in the leaf node’s capabilities, like any other non-default extension type</li>
 </ul>
 <h3 id="interoperability-testing"><a class="header" href="#interoperability-testing">Interoperability Testing</a></h3>
 <p>Including GREASE values in your capabilities is recommended for testing interoperability with other MLS implementations. It helps ensure that:</p>
