@@ -1,11 +1,7 @@
 //! External Proposals
 //!
-//! Contains the types and methods to build external proposal to add/remove a client from a MLS group
-//!
-//! External `ReInit` proposals are supported via
-//! [`ExternalProposal::new_reinit`]. See
-//! [`MlsGroup::propose_reinit`](crate::group::MlsGroup::propose_reinit) for
-//! member-initiated ReInit proposals.
+//! Contains the types and methods to build external proposals of types
+//! `add``, `remove`, `psk``, `reinit``, and `group_context_extensions`.
 
 use crate::{
     binary_tree::LeafNodeIndex,

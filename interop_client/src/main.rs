@@ -74,7 +74,7 @@ type ExternalSignerState = (SignatureKeyPair, Credential);
 /// everything needed to later create (`re_init_welcome`) or join
 /// (`handle_re_init_welcome`) the successor group:
 /// * the index of the suspended old group in `groups` (used to seed the
-///   successor via [`CommitBuilder::reinit`] / [`StagedWelcome::build_from_reinit`]),
+///   successor via [`CommitBuilder::reinit`](openmls::group::CommitBuilder::reinit) / [`StagedWelcome::build_from_reinit`]),
 /// * a fresh provider holding this member's freshly minted successor key package
 ///   and signer (the successor ciphersuite may use a different signature scheme),
 /// * that key package bundle, signer and credential (same identity as before).
@@ -325,7 +325,7 @@ fn default_join_config(wire_format_policy: WireFormatPolicy) -> MlsGroupJoinConf
 
 /// Rebuild `Extensions<GroupContext>` from the test-runner's proto extensions.
 /// The runner splits each extension into its type and its raw data; we
-/// re-serialize the TLS wire form (ExtensionType u16 || opaque<V> data) and let
+/// re-serialize the TLS wire form `(ExtensionType u16 || opaque<V> data)` and let
 /// OpenMLS parse it back. Known types get their structured variant; unknown
 /// types become `Extension::Unknown`.
 fn group_context_extensions_from_proto(
