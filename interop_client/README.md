@@ -30,7 +30,7 @@ possible but **not well tested** -- see [Running natively](#running-natively-not
 
 ### Docker compose
 
-Simply navigate to the `./docker` folder and run `docker compose up`. This will build the images, start the services, and run the test.
+Simply navigate to the `./docker` folder and run `docker compose up --build`. This will build the images, start the services, and run the test.
 
 This will run the `welcome_join.json` config file in the test-runner. To choose a different one, set the environment variable `CONFIG_RUN` prior to starting the services to the desired file name. The variable is set during container creation, so in order to change, it needs to be recreated.
 
@@ -108,8 +108,7 @@ server; they are removed automatically after each run and on Ctrl-C (pass `--no-
 
 Requires `docker`, `docker compose`, and Python 3.8+ (no external `nc`/`timeout` binaries -- readiness uses sockets and
 the per-run timeout is native). It exits non-zero only when there are *genuine* interop failures (🚫 / 🔶 / not-completed
-gaps are ignored), so it can gate CI; pass `--exit-zero` to always return 0. See
-[Client capabilities and known gaps](#client-capabilities-and-known-gaps) for what the excused gaps mean.
+gaps are ignored), so it can gate CI; pass `--exit-zero` to always return 0.
 
 ### Notes on interop testing
 
@@ -139,9 +138,9 @@ list every genuine bug up front under **Genuine interop failures** (with a real 
 |---|:---:|:---:|:---:|
 | application | ✅ 18/18 | ✅ 36/36 | ✅ 36/36 |
 | branch | ✅ 24/24 | 🔶 630/720 | ✅ 720/720 |
-| commit | ✅ 54/54 | ✅ 2508/2508 | 🔶 744/2508 |
+| commit | ✅ 54/54 | ✅ 2508/2508 | 🔶 736/2508 |
 | external_join | ✅ 30/30 | ✅ 228/228 | ✅ 228/228 |
-| external_proposals | ✅ 48/48 | ✅ 696/696 | 🔶 658/696 |
+| external_proposals | ✅ 48/48 | ✅ 696/696 | 🔶 660/696 |
 | reinit | ✅ 36/36 | ✅ 1080/1080 | ✅ 1080/1080 |
 | welcome_join | ✅ 24/24 | ✅ 48/48 | ✅ 48/48 |
 <!-- INTEROP-TABLE:END -->
@@ -163,54 +162,38 @@ _No genuine interop failures._
 
 **OpenMLS ↔ MLS++ — peer-side limitation (not counted)**
 
-- `commit / add` — 1309/1524 affected — step 6 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
-- `commit / all_together_alice_proposes` — 169/372 affected — step 15 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
+- `commit / add` — 1308/1524 affected — step 12 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
+- `commit / all_together_alice_proposes` — 178/372 affected — step 5 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
 - `commit / all_together_bob_proposes` — 206/372 affected — step 16 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
-- `commit / remove` — 78/180 affected — step 7 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
-- `external_proposals / external_add` — 33/84 affected — step 5 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
+- `commit / remove` — 80/180 affected — step 7 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
+- `external_proposals / external_add` — 31/84 affected — step 5 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
 - `external_proposals / joiner_signed_add` — 5/12 affected — step 2 `fullCommit`: rpc error: code = Aborted desc = mls group error A key package extension is not supported in the leaf's capabilities.
 <!-- INTEROP-FAILURES:END -->
 
 ## Client capabilities and known gaps
 
-The interop client implements the full `MlsClient` surface exercised by the configs above, including
-external commits, external self-Add (`new_member_add_proposal`), external signers
-(`create_external_signer` / `add_external_signer`), and external-sender proposals for Add / Remove /
-GroupContextExtensions / PreSharedKey (external and resumption) / ReInit (see `ExternalProposal` in
-`openmls/src/messages/external_proposals.rs`).
-
-`external_proposals` has no genuine OpenMLS failures: every sub-script passes on our side, including
-`external_reinit` — external-sender ReInit proposals are now supported (`ExternalProposal::new_reinit`,
-accepted on the receiving side and committed into the existing suspend/successor flow). The
-`external_add` / `joiner_signed_add` sub-scripts fail 🔶 **only** against MLS++, from its GREASE
-non-conformance (see below); they pass against mls-rs and OpenMLS-self.
+The interop client implements the full `MlsClient` surface exercised by the configs above.
 
 ### Unimplemented (🚫, reported as gRPC `Unimplemented`, never counted as a failure)
 
-_None across the configs exercised above._ Both member-initiated and external-sender **ReInit** are now
-implemented (`re_init_proposal`, `re_init_commit`, `handle_*_re_init_*`, `re_init_welcome`, and the
-`external_signer_proposal` `reinit` sub-type).
+_None across the configs exercised above._
 
 ### Peer-side limitations (🔶, not counted)
 
-Two flavours, both classified 🔶 and excluded from the failure count by `run-interop.py` (`is_peer_nonconformance`
+Two problems, both classified 🔶 and excluded from the failure count by `run-interop.py` (`is_peer_nonconformance`
 and `is_peer_limitation`):
 
-**MLS++ GREASE non-conformance.** MLS++ stamps random GREASE values into `key_package.extensions` without also
-listing them in that leaf's `capabilities`. RFC 9420 §7.2 requires every non-default extension in a leaf's
-`extensions` to appear in its `capabilities` (no GREASE exemption); OpenMLS (`KeyPackageIn::validate`) and mls-rs
-both enforce this, so MLS++ is the outlier. The interop client cannot fix a peer-minted key package, so this error
-(`A key package extension is not supported in the leaf's capabilities`) is excluded. Worth filing upstream with
-cisco/mlspp.
+**MLS++ GREASE non-conformance**: [MLS++ issue](https://github.com/cisco/mlspp/issues/470)
+MLS++ stamps random GREASE values into `key_package.extensions` without also
+listing them in that leaf's `capabilities`. RFC 9420 §10 requires every non-default extension in a KeyPakage's
+`extensions` to appear in `leaf_node.capabilities` (no GREASE exemption).
+The interop client cannot fix a peer-minted key package, so this error
+(`A key package extension is not supported in the leaf's capabilities`) is excluded.
 
-**mls-rs branch extension strictness.** On `branch / with_extensions`, mls-rs rejects with `ReInitExtensionsMismatch`
-when OpenMLS creates the subgroup and mls-rs joins it. mls-rs implements branch by reusing its ReInit join path
-(`mls-rs/src/group/resumption.rs`, `join()`), which asserts the subgroup's group-context extensions equal the
-**parent's**; its `branch()` ignores any requested new extensions. RFC 9420 §11.3 does not require the subgroup's
-extensions to match the parent's — OpenMLS and MLS++ both accept a branch that adds extensions (OpenMLS ↔ MLS++
-passes this scenario), and OpenMLS's `StagedWelcome::new_from_branch` deliberately performs no extension-equality
-check. This is an mls-rs limitation, not an OpenMLS bug; scoped to the `branch` config so a genuine ReInit mismatch
-is never masked. Worth filing upstream with awslabs/mls-rs.
+**mls-rs supports no extension change on branch**: [mls-rs issue](https://github.com/awslabs/mls-rs/issues/386)
+On `branch / with_extensions`, mls-rs rejects with `ReInitExtensionsMismatch`
+when OpenMLS creates the subgroup and mls-rs joins it.
+In the same issue, mls-rs also ignores the `extensions` field of `branch` actions.
 
 ### External-join remove-prior is an application responsibility
 

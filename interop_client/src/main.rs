@@ -1764,20 +1764,6 @@ impl MlsClient for MlsClientImpl {
         Ok(Response::new(response))
     }
 
-    // ReInit is not implemented in OpenMLS. Return a clean `Unimplemented` status
-    // (rather than `todo!()`, which panics the handler and tears down the stream
-    // as an ambiguous RST_STREAM CANCEL) so the interop runner reports these as
-    // unsupported rather than as crashes.
-    // Reinitialization (RFC 9420 §11.2). The old group is committed with a
-    // single ReInit proposal (`re_init_commit`), which suspends it once merged
-    // (`handle_pending_re_init_commit` for the committer,
-    // `handle_re_init_commit` for the others). Each member then mints a fresh
-    // key package for the successor group and gets a `reinit_id` handle. The
-    // welcomer creates the successor group (`re_init_welcome`, mirroring
-    // `create_branch` but with `CommitBuilder::reinit`); everyone else joins it
-    // (`handle_re_init_welcome`, mirroring `handle_branch` with
-    // `StagedWelcome::build_from_reinit`).
-
     #[instrument(skip_all)]
     async fn re_init_commit(
         &self,
