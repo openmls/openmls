@@ -2157,6 +2157,7 @@ fn reinit_group() {
             commit_message.into_protocol_message().unwrap(),
         )
         .unwrap();
+
     let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
         panic!("expected a staged commit message")
     };
@@ -2214,15 +2215,18 @@ fn reinit_group() {
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
         .build();
-    let bob_successor = StagedWelcome::new_from_reinit(
+    let reinit_info = bob_group
+        .reinit_info(&reinit_proposal)
+        .expect("expected bob_group to be inactive by reinitialization");
+    let bob_successor = StagedWelcome::build_from_reinit(
         bob_provider,
         &join_config,
         successor_welcome,
-        Some(alice_successor.export_ratchet_tree().into()),
-        &bob_group,
-        &reinit_proposal,
-        true,
+        reinit_info,
     )
+    .unwrap()
+    .with_ratchet_tree(alice_successor.export_ratchet_tree().into())
+    .build()
     .unwrap()
     .into_group(bob_provider)
     .unwrap();

@@ -272,15 +272,18 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
         .unwrap();
 
     // === Bob joins the successor group from the reinit welcome ===
-    let bob_successor = StagedWelcome::new_from_reinit(
+    let reinit_info = bob_group
+        .reinit_info(&reinit_proposal)
+        .expect("Bob's old group must be suspended");
+    let bob_successor = StagedWelcome::build_from_reinit(
         bob_provider,
         &successor_join_config,
         successor_welcome,
-        Some(alice_successor.export_ratchet_tree().into()),
-        &bob_group,
-        &reinit_proposal,
-        true,
+        reinit_info,
     )
+    .expect("Bob could not process the successor welcome")
+    .with_ratchet_tree(alice_successor.export_ratchet_tree().into())
+    .build()
     .expect("Bob could not join the successor group")
     .into_group(bob_provider)
     .expect("Error creating successor group from StagedWelcome");
