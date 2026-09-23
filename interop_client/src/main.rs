@@ -74,7 +74,7 @@ type ExternalSignerState = (SignatureKeyPair, Credential);
 /// everything needed to later create (`re_init_welcome`) or join
 /// (`handle_re_init_welcome`) the successor group:
 /// * the index of the suspended old group in `groups` (used to seed the
-///   successor via [`CommitBuilder::reinit`] / [`StagedWelcome::new_from_reinit`]),
+///   successor via [`CommitBuilder::reinit`] / [`StagedWelcome::build_from_reinit`]),
 /// * a fresh provider holding this member's freshly minted successor key package
 ///   and signer (the successor ciphersuite may use a different signature scheme),
 /// * that key package bundle, signer and credential (same identity as before).
@@ -1776,7 +1776,7 @@ impl MlsClient for MlsClientImpl {
     // welcomer creates the successor group (`re_init_welcome`, mirroring
     // `create_branch` but with `CommitBuilder::reinit`); everyone else joins it
     // (`handle_re_init_welcome`, mirroring `handle_branch` with
-    // `StagedWelcome::new_from_reinit`).
+    // `StagedWelcome::build_from_reinit`).
 
     #[instrument(skip_all)]
     async fn re_init_commit(

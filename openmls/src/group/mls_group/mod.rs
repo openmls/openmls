@@ -79,6 +79,7 @@ pub use exporting::{
 #[cfg(feature = "extensions-draft")]
 pub use exporting::{GroupSafeExport, PendingSafeExport, StagedCommitSafeExport};
 pub use proposal::Propose;
+pub use reinit::ReInitInfo;
 
 use config::*;
 
