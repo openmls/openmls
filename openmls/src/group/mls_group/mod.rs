@@ -94,6 +94,7 @@ pub(crate) mod past_secrets;
 pub(crate) mod processing;
 pub(crate) mod proposal;
 pub(crate) mod proposal_store;
+pub(crate) mod reinit;
 pub(crate) mod staged_commit;
 
 #[cfg(feature = "extensions-draft")]

@@ -444,17 +444,15 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         .map_err(LibraryError::unexpected_crypto_error)?;
         self = self.propose_psks([psk_id]);
 
-        // The reinit PSK secret comes from the old group. Reinit PSKs are looked
-        // up by their own epoch (the old group's final, reinit epoch), so we
-        // clear this group's resumption PSK store and inject the secret at that
-        // epoch (see `load_psks`).
+        // The reinit PSK secret comes from a different group, so we clear this
+        // group's resumption PSK store and inject it at the sentinel epoch 0,
+        // where `load_psks` looks it up for reinit usage.
         let secret = old_group.resumption_psk_secret().clone();
-        let reinit_epoch = old_group.epoch();
         self.group.borrow_mut().resumption_psk_store.clear();
         self.group
             .borrow_mut()
             .resumption_psk_store
-            .add(reinit_epoch, secret);
+            .add(0.into(), secret);
         Ok(self)
     }
 

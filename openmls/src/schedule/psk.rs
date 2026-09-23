@@ -606,15 +606,13 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
                 let psk_epoch = match resumption.usage() {
-                    // Application and Reinit PSKs are looked up by their own epoch.
-                    ResumptionPskUsage::Application | ResumptionPskUsage::Reinit => {
-                        resumption.psk_epoch()
-                    }
-                    // The branch PSK is not in this group's resumption store: it
-                    // comes from the parent group and is injected at the sentinel
+                    // Application PSKs are looked up by their own epoch.
+                    ResumptionPskUsage::Application => resumption.psk_epoch(),
+                    // The branch and reinit PSK is not in this group's resumption store: it
+                    // comes from the parent or predecessor group and is injected at the sentinel
                     // epoch 0 (see `CommitBuilder::branch` and
                     // `ProcessedWelcome::new_from_welcome_inner`).
-                    ResumptionPskUsage::Branch => 0.into(),
+                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit => 0.into(),
                 };
                 if let Some(psk_bundle) = resumption_psk_store.get(psk_epoch) {
                     psk_bundles.push((psk_id, psk_bundle.secret.clone()));
