@@ -4,9 +4,9 @@
 //! from the old group's final epoch after committing the ReInit proposal.
 //! The old group exports these values into a [`ReInitInfo`] via
 //! [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info), and hands the
-//! owned struct to the sender ([`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit))
-//! and receiver ([`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit)).
-// TODO: Check doc comment. We do this so the old group is no longer required.
+//! owned struct to the receiver
+//! ([`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit)),
+//! so the old group is no longer required to join the new group.
 
 use crate::{
     credentials::Credential,
@@ -16,22 +16,20 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-// TODO: implement referenced functions, update comment
 /// The information a reinit needs from its old group.
 ///
 /// Export this from the inactive old group with
-/// [`MlsGroup::branch_info`](crate::group::MlsGroup::reinit_info) and pass it to
-/// the branch APIs: the sender uses
-/// [`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit) and the
-/// receiver uses
-/// [`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit).
+/// [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info) and pass it to
+/// the receiver API
+/// [`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit)
+/// (or [`PendingPskWelcome::build_from_reinit`](crate::group::PendingPskWelcome::build_from_reinit)).
 ///
 /// This is an owned snapshot, so it does not borrow the old group and can
 /// outlive it.
 ///
 /// This carries the resumption PSK secret, which is sensitive key
 /// material and must be handled accordingly.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReInitInfo {
     pub(crate) proposal: ReInitProposal,
     pub(crate) old_group_id: GroupId,
@@ -56,7 +54,7 @@ impl ReInitInfo {
         self.old_group_epoch
     }
 
-    /// The old group's resumption PSK secret for [`Self::epoch`].
+    /// The old group's resumption PSK secret for [`Self::old_group_epoch`].
     ///
     /// This is sensitive key material.
     pub(crate) fn resumption_psk_secret(&self) -> &ResumptionPskSecret {

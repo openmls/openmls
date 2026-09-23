@@ -560,7 +560,7 @@ impl MlsGroup {
         // is merged: the group becomes inactive (like eviction) so it can no
         // longer be used for regular operations. Its resumption PSK for this
         // (final) epoch was stored above and is what the successor group mixes
-        // in via [`CommitBuilder::reinit`] / [`StagedWelcome::new_from_reinit`].
+        // in via [`CommitBuilder::reinit`] / [`StagedWelcome::build_from_reinit`].
         if is_reinit {
             self.group_state = MlsGroupState::Inactive;
             provider

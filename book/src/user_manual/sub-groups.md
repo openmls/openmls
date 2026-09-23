@@ -63,10 +63,13 @@ was taken and when its `Welcome` arrives, so the receiver first needs to find ou
 the `Welcome`'s encrypted `GroupSecrets`, so reading it requires decrypting the
 `Welcome`.
 
-`StagedWelcome::process_branch_welcome` does exactly one decryption and returns a
-`PendingBranchWelcome`. Call `parent()` on it to read the parent `(group_id,
-epoch)` the branch was taken from (see [RFC 9420 §8.4]), select the `BranchInfo` for
-that parent epoch (e.g. from the sliding window above), then finish the join with
+`StagedWelcome::process_psk_welcome` does exactly one decryption and returns a
+`PendingPskWelcome`. Call `required_resumption_secret()` on it to get the branch
+resumption PSK, which holds the parent `(group_id, epoch)` the branch was taken
+from (see [RFC 9420 §8.4]). Its `usage()` is `ResumptionPskUsage::Branch` for a
+branch welcome (a reinit welcome returns `ResumptionPskUsage::Reinit`, and a
+regular welcome returns `None`). Select the `BranchInfo` for that parent epoch
+(e.g. from the sliding window above), then finish the join with
 `build_from_branch`, which reuses the already-decrypted state.
 
 In addition to the regular join processing, this injects the parent's resumption

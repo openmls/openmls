@@ -53,8 +53,8 @@ proposing it separately first.
 
 The committer (or any member) creates a fresh group with the ReInit parameters
 and uses [`CommitBuilder::reinit`](https://docs.rs/openmls/latest/openmls/group/struct.CommitBuilder.html)
-to seed it from the suspended old group. This consumes the old group's pending
-ReInit, so a suspended group can seed only a single successor:
+to seed it from the suspended old group. The application is responsible for
+seeding only a single successor from a suspended group:
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:reinit_successor}}
@@ -62,11 +62,29 @@ ReInit, so a suspended group can seed only a single successor:
 
 ## Joining the successor group
 
-The other members join the successor group from the Welcome with
-[`StagedWelcome::new_from_reinit`](https://docs.rs/openmls/latest/openmls/group/struct.StagedWelcome.html),
-passing their suspended old group so the library can inject the resumption PSK
-and check that the successor's parameters and membership match the ReInit:
+The other members first export a `ReInitInfo` from their suspended old group
+with [`MlsGroup::reinit_info`](https://docs.rs/openmls/latest/openmls/group/struct.MlsGroup.html),
+passing the ReInit proposal the suspending commit covered. `reinit_info` returns
+`None` if the group is still active. The `ReInitInfo` is an owned snapshot, so the
+old group is not needed to complete the join. It carries the old group's
+resumption PSK secret and must be handled as sensitive key material.
+
+They then join the successor group from the Welcome with
+[`StagedWelcome::build_from_reinit`](https://docs.rs/openmls/latest/openmls/group/struct.StagedWelcome.html).
+This injects the old group's resumption PSK and verifies that the reinit PSK in
+the Welcome references the old group and its final epoch; otherwise it fails with
+`WelcomeError::ReInitPredecessorMismatch`. The remaining checks run when `build`
+is called on the returned `JoinBuilder`: the successor's protocol version,
+ciphersuite, group id and extensions must match the ReInit proposal, the
+successor must be at epoch 1, and its members' credentials must be identical to
+the old group's. The membership check is on by default and can be disabled with
+`.check_members(false)`.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:reinit_join}}
 ```
+
+If the receiver does not yet know which old group the Welcome belongs to, it can
+decrypt the Welcome once with `StagedWelcome::process_psk_welcome`, read the reinit
+PSK's old group id and epoch with `required_resumption_secret()`, select the
+matching `ReInitInfo`, and finish with `PendingPskWelcome::build_from_reinit`.

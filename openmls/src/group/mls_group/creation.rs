@@ -180,11 +180,10 @@ impl ProcessedWelcome {
     ///
     /// This is used for subgroup branching (RFC 9420 §11.3) and
     /// reinitialization (RFC 9420 §11.2): the branch resp. reinit PSK secret
-    /// comes from another group and is injected at the epoch where
-    /// [`load_psks`](crate::schedule::psk::load_psks) looks it up — the sentinel
-    /// epoch 0 for branch usage, and the old group's (reinit) epoch for reinit
-    /// usage. See [`StagedWelcome::new_from_branch`] and
-    /// [`StagedWelcome::new_from_reinit`].
+    /// comes from another group and is injected at the sentinel epoch 0, where
+    /// [`load_psks`] looks it up for both usages. See
+    /// [`StagedWelcome::build_from_branch`] and
+    /// [`StagedWelcome::build_from_reinit`].
     pub(crate) fn new_from_welcome_inner<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
@@ -537,7 +536,7 @@ impl StagedWelcome {
     ///
     /// If the receiver does not yet know which parent epoch the branch was taken
     /// from (its own view of the parent group may have advanced), use
-    /// [`StagedWelcome::process_branch_welcome`] to read the parent reference
+    /// [`StagedWelcome::process_psk_welcome`] to read the parent reference
     /// from the `Welcome` first and then pick the matching `branch_info`. That
     /// path decrypts the `Welcome` only once. This one-shot method is a
     /// convenience for callers that already know the parent epoch; it also
@@ -564,8 +563,8 @@ impl StagedWelcome {
     /// In addition to the regular [`StagedWelcome::build_from_welcome`]
     /// processing, this injects the predecessor's resumption PSK secret (which is
     /// required to derive the new key schedule from the reinit PSK) and
-    /// enforces the receiver-side checks the RFC mandates when joining a reinit
-    /// subgroup.
+    /// enforces the receiver-side checks the RFC mandates when joining a
+    /// reinitialized group.
     ///
     /// The reinit PSK carried in the `Welcome` must reference the same predecessor
     /// group and epoch as the supplied `reinit_info`; otherwise the injected
@@ -574,7 +573,7 @@ impl StagedWelcome {
     /// The remaining checks run when [`JoinBuilder::build`] is called:
     ///
     /// * the protocol version, ciphersuite, group_id, and extensions match the
-    /// reinit proposal in the predecessor,
+    ///   reinit proposal in the predecessor,
     /// * the welcome is at epoch 1, and
     /// * the set of member credentials is identical to the predecessor
     ///   (unless disabled via [`JoinBuilder::check_members`]).
@@ -603,7 +602,7 @@ impl StagedWelcome {
     /// inspected before selecting the matching [`BranchInfo`] or [`ReInitInfo`].
     ///
     /// Call [`PendingPskWelcome::required_resumption_secret`] to read the parent
-    /// or predecessor`(group_id, epoch)` the group derives from (RFC 9420 §8.4),
+    /// or predecessor `(group_id, epoch)` the group derives from (RFC 9420 §8.4),
     /// select the [`BranchInfo`] or [`ReInitInfo`] for that source, then finish
     /// with [`PendingPskWelcome::build_from_branch`] or [`PendingPskWelcome::build_from_reinit`].
     ///
@@ -844,13 +843,15 @@ impl StagedWelcome {
     }
 }
 
-/// A `Welcome` whose [`GroupSecrets`] have been decrypted whose [`GroupInfo`] not yet.
+/// A `Welcome` whose group secrets have been decrypted, but whose [`GroupInfo`]
+/// has not.
 ///
 /// This lets a receiver read which parent group and epoch the group branches from before
 /// committing to a [`BranchInfo`], or which old group's resumption psk to inject for reinit.
 /// The decrypted state is carried here and reused when finishing the join.
-/// Create it with [`StagedWelcome::process_branch_welcome`], read the parent
-/// reference with [`Self::parent`], then finish with [`Self::build_from_branch`].
+/// Create it with [`StagedWelcome::process_psk_welcome`], read the PSK
+/// reference with [`Self::required_resumption_secret`], then finish with
+/// [`Self::build_from_branch`], [`Self::build_from_reinit`], or [`Self::build`].
 pub struct PendingPskWelcome {
     mls_group_config: MlsGroupJoinConfig,
     ciphersuite: Ciphersuite,
@@ -864,21 +865,18 @@ impl PendingPskWelcome {
     /// The PSK pointing to the parent group and epoch for branch or old group and final epoch for reinit, if any.
     ///
     /// The returned [`ResumptionPsk`] has a `usage` of either [`Reinit`](ResumptionPskUsage::Reinit) or [`Branch`](ResumptionPskUsage::Branch)
-    ///
-    /// Note: Unverified
     pub fn required_resumption_secret(&self) -> Option<&ResumptionPsk> {
         for psk_id in &self.group_secrets.psks {
-            match &psk_id.psk {
-                Psk::Resumption(resumption_psk) => match resumption_psk.usage {
+            if let Psk::Resumption(resumption_psk) = &psk_id.psk {
+                match resumption_psk.usage {
                     ResumptionPskUsage::Reinit | ResumptionPskUsage::Branch => {
                         return Some(resumption_psk)
                     }
                     _ => {}
-                },
-                _ => {}
+                }
             }
         }
-        return None;
+        None
     }
 
     /// Finish processing without injecting a PSK.
@@ -886,9 +884,9 @@ impl PendingPskWelcome {
     /// Use this method if the welcome does not need a PSK, indicated by [`Self::required_resumption_secret`] returning [`None`].
     ///
     /// This has the same effect as [`ProcessedWelcome::new_from_welcome`]
-    pub fn build<'a, Provider: OpenMlsProvider>(
+    pub fn build<Provider: OpenMlsProvider>(
         self,
-        provider: &'a Provider,
+        provider: &Provider,
     ) -> Result<ProcessedWelcome, WelcomeError<Provider::StorageError>> {
         let processed_welcome: ProcessedWelcome = finish_processed_welcome(
             provider,
@@ -908,7 +906,7 @@ impl PendingPskWelcome {
     ///
     /// The reinit PSK's reference is checked against `reinit_info` (see
     /// [`StagedWelcome::build_from_reinit`]); a `reinit_info` from the wrong
-    /// group or epoch fails with [`WelcomeError::TODO`]. The
+    /// group or epoch fails with [`WelcomeError::ReInitPredecessorMismatch`]. The
     /// remaining receiver checks run when [`JoinBuilder::build`] is called.
     pub fn build_from_reinit<'a, Provider: OpenMlsProvider>(
         self,
@@ -1964,10 +1962,12 @@ pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
     /// Set when joining a subgroup branch (see [`StagedWelcome::build_from_branch`]).
     /// Triggers the receiver checks in [`Self::build`].
     branch: Option<BranchInfo>,
+    /// Set when joining a reinitialized group (see [`StagedWelcome::build_from_reinit`]).
     /// Triggers the receiver checks in [`Self::build`].
     reinit: Option<ReInitInfo>,
-    /// Whether to check that every subgroup member is also a parent-group
-    /// member. Only relevant when [`Self::branch`] is set. Defaults to `true`.
+    /// Whether to check the new group's members against the parent or old
+    /// group. Only relevant when [`Self::branch`] or [`Self::reinit`] is set.
+    /// Defaults to `true`.
     check_members: bool,
 }
 
@@ -2000,11 +2000,15 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
         self
     }
 
-    /// When joining a subgroup branch, controls whether [`Self::build`] checks
-    /// that every subgroup member is also a member of the parent group receiver
-    /// check (c)). Defaults to `true`.
+    /// When joining a subgroup branch or a reinitialized group, controls
+    /// whether [`Self::build`] checks the new group's members. Defaults to
+    /// `true`.
     ///
-    /// This has no effect on a regular (non-branch) join.
+    /// For a subgroup branch, every subgroup member must also be a member of
+    /// the parent group (receiver check (c)). For a reinit, the new group's
+    /// member credentials must be identical to the old group's.
+    ///
+    /// This has no effect on a regular (non-branch, non-reinit) join.
     pub fn check_members(mut self, check_members: bool) -> Self {
         self.check_members = check_members;
         self
@@ -2083,7 +2087,8 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
         )?;
 
         // Receiver check (c): every LeafNode in the subgroup must
-        // match a LeafNode in the parent group.
+        // match a LeafNode in the parent group. For a reinit, the members
+        // must be identical to the old group's.
         if self.check_members {
             if let Some(branch_info) = &self.branch {
                 for member in staged_welcome.members() {

@@ -229,10 +229,13 @@ impl MlsGroup {
     ///
     /// Returns [`None`] if the group is active and thus cannot have processed a reinit proposal.
     ///
-    /// Hand the resulting [`ReInitInfo`] to the sender
-    /// ([`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit)) and to
-    /// the receiver
+    /// `proposal` must be the ReInit proposal covered by the commit that
+    /// suspended this group.
+    ///
+    /// Hand the resulting [`ReInitInfo`] to the receiver
     /// ([`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit)).
+    /// The sender still seeds the new group from this group directly via
+    /// [`CommitBuilder::reinit`](crate::group::CommitBuilder::reinit).
     ///
     /// The returned [`ReInitInfo`] carries this group's resumption PSK secret,
     /// which is sensitive key material.
@@ -243,7 +246,7 @@ impl MlsGroup {
         // If that also includes the ReInit proposal, we can query the [`ReInitInfo`] directly from the old group
         // without inspecting incoming commits.
 
-        if self.group_state != MlsGroupState::Inactive {
+        if !matches!(self.group_state, MlsGroupState::Inactive) {
             return None;
         }
 

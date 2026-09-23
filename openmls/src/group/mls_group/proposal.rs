@@ -639,13 +639,13 @@ impl MlsGroup {
     /// Committing to a ReInit proposal suspends the group: once the commit is
     /// merged, the group becomes inoperable and can only be used to seed the
     /// successor group (see [`CommitBuilder::reinit`] and
-    /// [`StagedWelcome::new_from_reinit`]).
+    /// [`StagedWelcome::build_from_reinit`]).
     ///
     /// Returns an error if the group is not operational (e.g. there is a pending
     /// commit).
     ///
     /// [`CommitBuilder::reinit`]: crate::group::CommitBuilder::reinit
-    /// [`StagedWelcome::new_from_reinit`]: crate::group::StagedWelcome::new_from_reinit
+    /// [`StagedWelcome::build_from_reinit`]: crate::group::StagedWelcome::build_from_reinit
     pub fn propose_reinit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
