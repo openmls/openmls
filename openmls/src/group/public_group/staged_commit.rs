@@ -271,6 +271,7 @@ impl PublicGroup {
     ///   ([valn0309](https://validation.openmls.tech/#valn0309)), and
     /// * the ReInit's protocol version must not be lower than the current
     ///   group's ([valn0901](https://validation.openmls.tech/#valn0901)).
+    /// * RFC §11.2: The group_id of the proposal must match the current group.
     fn validate_reinit_proposals(
         &self,
         proposal_queue: &ProposalQueue,

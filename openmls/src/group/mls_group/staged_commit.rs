@@ -17,7 +17,7 @@ use super::{
     super::errors::*, load_psks, Credential, ExportedSecret, Extension, GroupContext,
     GroupEpochSecrets, GroupId, JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets,
     MlsGroup, MlsGroupState, OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue,
-    PskSecret, QueuedProposal, StagedCommitExport, ReInitProposal,
+    PskSecret, QueuedProposal, ReInitProposal, StagedCommitExport,
 };
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;

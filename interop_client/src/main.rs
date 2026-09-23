@@ -25,11 +25,11 @@ use openmls::{
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::{KeyPackage, KeyPackageBundle},
-    prelude::{Capabilities, ProposalOrRefType, Propose, SenderRatchetConfiguration},
     messages::{
-        proposals::ReInitProposal,
         external_proposals::{ExternalProposal, JoinProposal},
+        proposals::ReInitProposal,
     },
+    prelude::{Capabilities, ProposalOrRefType, Propose, SenderRatchetConfiguration},
     schedule::{psk::ResumptionPskUsage, ExternalPsk, PreSharedKeyId, Psk},
     treesync::{LeafNodeParameters, RatchetTreeIn},
     versions::ProtocolVersion,
@@ -2127,18 +2127,24 @@ impl MlsClient for MlsClientImpl {
             .wire_format_policy(wire_format_policy)
             .build();
 
-        let group = StagedWelcome::new_from_reinit(
+        let mut builder = StagedWelcome::build_from_reinit(
             &crypto_provider,
             &join_config,
             welcome,
-            ratchet_tree,
-            old_group,
-            &reinit_proposal,
-            true,
+            old_group.reinit_info(&reinit_proposal).ok_or_else(|| {
+                Status::new(Code::InvalidArgument, "group did not apply reinit proposal")
+            })?,
         )
         .map_err(into_status)?
-        .into_group(&crypto_provider)
-        .map_err(into_status)?;
+        .check_members(true);
+        if let Some(ratchet_tree) = ratchet_tree {
+            builder = builder.with_ratchet_tree(ratchet_tree);
+        }
+        let group = builder
+            .build()
+            .map_err(into_status)?
+            .into_group(&crypto_provider)
+            .map_err(into_status)?;
 
         let epoch_authenticator = group.epoch_authenticator().as_slice().to_vec();
 
@@ -2341,11 +2347,16 @@ impl MlsClient for MlsClientImpl {
         // once to read that reference, then look up the cached `BranchInfo` for it
         // (populated by `create_branch`) instead of using `parent.group.branch_info()`.
         let pending_branch_welcome =
-            StagedWelcome::process_branch_welcome(&crypto_provider, &mls_group_config, welcome)
+            StagedWelcome::process_psk_welcome(&crypto_provider, &mls_group_config, welcome)
                 .map_err(into_status)?;
-        let (parent_group_id, parent_epoch) = pending_branch_welcome
-            .parent()
-            .ok_or_else(|| Status::aborted("welcome is not a subgroup-branch welcome"))?;
+        let resumption_psk = pending_branch_welcome
+            .required_resumption_secret()
+            .ok_or_else(|| Status::aborted("welcome contains no branch psk"))?;
+        if resumption_psk.usage() != ResumptionPskUsage::Branch {
+            Err(Status::aborted("welcome is not a subgroup-branch welcome"))?;
+        }
+        let parent_group_id = resumption_psk.psk_group_id().clone();
+        let parent_epoch = resumption_psk.psk_epoch();
         let branch_info = self
             .branch_infos()
             .get(&(parent_group_id, parent_epoch))
