@@ -369,27 +369,6 @@ impl PreSharedKeyId {
     // ----- Validation ----------------------------------------------------------------------------
 
     pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<Self, PskError> {
-        // ValSem402
-        match self.psk() {
-            Psk::Resumption(resumption_psk) => {
-                // https://validation.openmls.tech/#valn0801
-                // https://validation.openmls.tech/#valn0802
-                match resumption_psk.usage {
-                    ResumptionPskUsage::Application => {}
-                    ResumptionPskUsage::Reinit | ResumptionPskUsage::Branch => {
-                        // We can't check anything in here since we need more
-                        // information about the commit. Reinit and Branch PSKs
-                        // are only valid in the initial commit of the successor
-                        // resp. sub-group (epoch 0); this is checked on the
-                        // outside in `validate_pre_shared_key_proposals`.
-                    }
-                }
-            }
-            Psk::External(_) => {}
-            #[cfg(feature = "extensions-draft")]
-            Psk::Application(_) => {}
-        };
-
         // ValSem401
         // https://validation.openmls.tech/#valn0803
         {

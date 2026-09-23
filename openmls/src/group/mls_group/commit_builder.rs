@@ -29,6 +29,7 @@ use crate::{
         NewSignerBundle, PreSharedKeyProposal,
     },
     schedule::{
+        errors::PskError,
         psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
         EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
     },
@@ -347,9 +348,10 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// Adds a PreSharedKey proposal for the provided [`PreSharedKeyId`]s to the
     /// list of proposals to be committed.
     ///
-    /// Note that this should not be used for sub-group branching, as those PSKs
-    /// are not allowed in regular proposals. Please use
-    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) instead.
+    /// Note that this should not be used for sub-group branching or reinit, as
+    /// those PSKs are not allowed in regular proposals. Please use
+    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) or
+    /// [`Self::reinit`] instead.
     pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
         self.stage.own_proposals.extend(
             psk_ids
@@ -428,6 +430,10 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         rand: &impl OpenMlsRand,
         old_group: &MlsGroup,
     ) -> Result<Self, CreateCommitError> {
+        if self.group.epoch() != 0.into() {
+            // A reinit psk proposal is only allowed in a fresh group
+            return Err(PskError::NotAllowed.into());
+        }
         // Sample a fresh random nonce of length KDF.Nh. Unlike branching, the
         // successor group may use a different ciphersuite than the old group, so
         // the nonce length is that of the successor group's ciphersuite.
@@ -787,6 +793,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
+    ///
+    /// **Note**: ReInit proposals MUST be the only proposal in the list, others SHOULD be
+    /// preferred. It is the application's responsibility to filter out either all reinit
+    /// or all non-reinit proposals when building a commit.
     pub fn build<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
@@ -797,7 +807,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         self.build_internal(rand, crypto, signer, None::<NewSignerBundle<'_, S>>, f)
     }
 
-    /// Just like `build`, this function validates the inputs and builds the
+    /// Just like [`Self::build`], this function validates the inputs and builds the
     /// commit. The last argument `f` is a function that lets the caller filter
     /// the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
@@ -990,6 +1000,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         group
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
+        // #valn0309
+        // #valn0901
+        group
+            .public_group
+            .validate_reinit_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
         // ValSem110
         // ValSem111

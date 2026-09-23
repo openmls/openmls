@@ -271,8 +271,7 @@ impl PublicGroup {
     ///   ([valn0309](https://validation.openmls.tech/#valn0309)), and
     /// * the ReInit's protocol version must not be lower than the current
     ///   group's ([valn0901](https://validation.openmls.tech/#valn0901)).
-    /// * RFC §11.2: The group_id of the proposal must match the current group.
-    fn validate_reinit_proposals(
+    pub(crate) fn validate_reinit_proposals(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
@@ -286,12 +285,7 @@ impl PublicGroup {
         }
 
         // https://validation.openmls.tech/#valn0901
-        let version_number = |v: ProtocolVersion| match v {
-            ProtocolVersion::Mls10 => 1u16,
-            ProtocolVersion::Other(v) => v,
-        };
-        if version_number(reinit.version()) < version_number(self.group_context.protocol_version())
-        {
+        if reinit.version() < self.group_context.protocol_version() {
             return Err(ProposalValidationError::ReInitDowngrade);
         }
 

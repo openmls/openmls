@@ -531,23 +531,12 @@ impl ProposalQueue {
 
     /// Filters received proposals
     ///
-    /// 11.2 Commit
-    /// If there are multiple proposals that apply to the same leaf,
-    /// the committer chooses one and includes only that one in the Commit,
-    /// considering the rest invalid. The committer MUST prefer any Remove
-    /// received, or the most recent Update for the leaf if there are no
-    /// Removes. If there are multiple Add proposals for the same client,
-    /// the committer again chooses one to include and considers the rest
-    /// invalid.
+    /// 12.2 Proposal List Validation
+    /// https://www.rfc-editor.org/rfc/rfc9420.html#name-proposal-list-validation
     ///
-    /// The function performs the following steps:
-    ///
-    /// - Extract Adds and filter for duplicates
-    /// - Build member list with chains: Updates, Removes & SelfRemoves
-    /// - Check for invalid indexes and drop proposal
-    /// - Check for presence of SelfRemoves and delete Removes and Updates
-    /// - Check for presence of Removes and delete Updates
-    /// - Only keep the last Update
+    /// Note: ReInit proposals MUST be the only proposal in the list, others SHOULD be
+    /// preferred. It is the application's responsibility to filter out either all reinit
+    /// or all non-reinit proposals when building a commit.
     ///
     /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for
     /// the own node were included
@@ -624,6 +613,13 @@ impl ProposalQueue {
                     // containing a ReInit must not contain any other proposals
                     // (enforced during commit validation), so keeping one is
                     // sufficient here.
+                    //
+                    // TODO: (unimplemented SHOULD, allow application to set strategy):
+                    // > If the committer has received other proposals during the epoch,
+                    // > they SHOULD prefer them over the ReInit proposal, allowing the
+                    // > ReInit to be resent and applied in a subsequent epoch.
+                    //
+                    //
                     // TODO: like the other arms here, this silently drops
                     // additional (here: duplicate ReInit) proposals rather than
                     // surfacing an error. Silently dropping proposals hides
