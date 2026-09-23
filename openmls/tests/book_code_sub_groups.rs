@@ -129,12 +129,12 @@ fn book_example_sub_group_branching() {
     let bob_branch_window = [(bob_branch_info.epoch(), bob_branch_info)];
 
     // ANCHOR: receiver_peek_branch
-    // Bob decrypts the branch welcome once with `process_branch_welcome`, then
+    // Bob decrypts the branch welcome once with `process_psk_welcome`, then
     // reads which parent group and epoch it derives from. This lets him pick the
     // matching `BranchInfo` from his window even if his view of the parent group
     // has advanced (see the sliding-window note above), without decrypting the
     // welcome twice.
-    let pending = StagedWelcome::process_branch_welcome(
+    let pending = StagedWelcome::process_psk_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome,
@@ -142,9 +142,11 @@ fn book_example_sub_group_branching() {
     .expect("Error processing the branch welcome.");
 
     // The parent group and epoch the branch was taken from.
-    let (_parent_group_id, parent_epoch) = pending
-        .parent()
+    let required_secret = pending
+        .required_resumption_secret()
         .expect("This is a sub-group branch welcome.");
+    assert_eq!(required_secret.usage(), ResumptionPskUsage::Branch);
+    let parent_epoch = required_secret.psk_epoch();
 
     // Select the `BranchInfo` exported from that parent epoch.
     let bob_branch_info = bob_branch_window
