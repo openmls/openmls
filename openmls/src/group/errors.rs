@@ -711,6 +711,9 @@ pub enum ProposalValidationError {
     /// (RFC 9420 §12.1.5).
     #[error("ReInit proposal downgrades the protocol version")]
     ReInitDowngrade,
+    /// A ReInit proposal contains an unsupported protocol version.
+    #[error("ReInit proposal contains an unsupported protocol version")]
+    ReInitUnsupportedVersion,
 }
 
 /// External Commit validaton error
