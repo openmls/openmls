@@ -1,5 +1,7 @@
+use tls_codec::{Deserialize as _, Serialize as _};
+
 use crate::prelude::*;
-use crate::test_utils::single_group_test_framework::*;
+use crate::test_utils::{frankenstein, single_group_test_framework::*};
 use crate::treesync::{
     errors::{ApplyOwnUpdatePathError, LeafNodeValidationError},
     node::leaf_node::LeafNodeBuildError,
@@ -325,10 +327,8 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
 
     // Case with only Dave's own credential type (Basic) in his capabilities;
     // should fail because he doesn't support Alice's Other(3) credential.
-    // (A leaf whose capabilities don't even cover its own credential type is
-    // now rejected at construction time, so this can no longer be exercised
-    // with a literally empty credential list — case with wrong-but-nonempty
-    // capabilities below covers the same "insufficient" scenario.)
+    // A leaf must list its own credential type, so an empty list can't be
+    // tested here; the next case covers insufficient capabilities.
     // Alice adds Dave
     expect_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
         &dave_party,
@@ -558,6 +558,179 @@ fn test_valn0104_own_update_drops_member_credential() {
                 ApplyOwnUpdatePathError::LeafNodeBuild(LeafNodeBuildError::Validation(
                     LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode
                 ))
+            ))
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+// The receiving side of valn0104 for an Update proposal. An honest client
+// can't build such a leaf (see the tests above), so the proposal is tampered
+// with, and the commit covering it is crafted too, since an honest committer
+// would refuse to include it.
+#[openmls_test::openmls_test]
+fn test_valn0104_incoming_update_credential_not_supported_by_member() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+
+    // Only Bob supports Other(3); everyone uses Basic.
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let mut bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    bob_pre_group.update_credential_capabilities(
+        vec![CredentialType::Basic, CredentialType::Other(3)],
+        ciphersuite,
+    );
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group, charlie_pre_group],
+            join_config: mls_group_join_config,
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [alice, bob, charlie] = group_state.members_mut(&["alice", "bob", "charlie"]);
+
+    let to_protocol_message = |message: frankenstein::FrankenMlsMessage| {
+        MlsMessageIn::tls_deserialize(&mut message.tls_serialize_detached().unwrap().as_slice())
+            .unwrap()
+            .into_protocol_message()
+            .unwrap()
+    };
+
+    let (update, _) = bob
+        .group
+        .propose_self_update(
+            &bob.party.core_state.provider,
+            &bob.party.signer,
+            LeafNodeParameters::default(),
+        )
+        .unwrap();
+
+    let frankenstein::FrankenMlsMessage {
+        version,
+        body:
+            frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
+                content: mut proposal_content,
+                ..
+            }),
+    } = frankenstein::FrankenMlsMessage::from(update)
+    else {
+        unreachable!("the group uses plaintext handshake messages")
+    };
+    let frankenstein::FrankenFramedContent {
+        body:
+            frankenstein::FrankenFramedContentBody::Proposal(frankenstein::FrankenProposal::Update(
+                frankenstein::FrankenUpdateProposal { leaf_node },
+            )),
+        ..
+    } = &mut proposal_content
+    else {
+        unreachable!("this is an update proposal")
+    };
+
+    // Switch Bob's leaf to Other(3). His own capabilities cover it, so the
+    // leaf stays self-consistent, but Alice and Charlie don't support it.
+    leaf_node.payload.credential = Credential::new(
+        CredentialType::Other(3),
+        bob.party
+            .credential_with_key
+            .credential
+            .serialized_content()
+            .to_vec(),
+    )
+    .into();
+    leaf_node.resign(
+        Some(frankenstein::FrankenTreePosition {
+            group_id: bob.group.group_id().as_slice().to_vec().into(),
+            leaf_index: bob.group.own_leaf_index().u32(),
+        }),
+        &bob.party.signer,
+    );
+
+    let tampered_update = frankenstein::FrankenMlsMessage {
+        version,
+        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+            frankenstein::FrankenPublicMessage::auth(
+                &bob.party.core_state.provider,
+                ciphersuite,
+                &bob.party.signer,
+                proposal_content.clone(),
+                Some(&bob.group.export_group_context().clone().into()),
+                Some(bob.group.message_secrets().membership_key().as_slice()),
+                None,
+            ),
+        ),
+    };
+
+    // The leaf is only checked against the group once a commit covers the
+    // proposal, so Charlie accepts the proposal itself.
+    let processed = charlie
+        .group
+        .process_message(
+            &charlie.party.core_state.provider,
+            to_protocol_message(tampered_update),
+        )
+        .expect("proposals aren't checked against the group on receipt");
+    let ProcessedMessageContent::ProposalMessage(proposal) = processed.into_content() else {
+        panic!("expected a proposal");
+    };
+    let proposal_ref = proposal.proposal_reference();
+    charlie
+        .group
+        .store_pending_proposal(charlie.party.core_state.provider.storage(), *proposal)
+        .unwrap();
+
+    let commit_content = frankenstein::FrankenFramedContent {
+        sender: frankenstein::FrankenSender::Member(alice.group.own_leaf_index().u32()),
+        body: frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
+            proposals: vec![frankenstein::FrankenProposalOrRef::Reference(
+                proposal_ref.as_slice().to_vec().into(),
+            )],
+            path: None,
+        }),
+        ..proposal_content
+    };
+    let commit = frankenstein::FrankenMlsMessage {
+        version,
+        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+            frankenstein::FrankenPublicMessage::auth(
+                &alice.party.core_state.provider,
+                ciphersuite,
+                &alice.party.signer,
+                commit_content,
+                Some(&alice.group.export_group_context().clone().into()),
+                Some(alice.group.message_secrets().membership_key().as_slice()),
+                // Proposal validation fails before the tag is checked.
+                Some(vec![0; 32].into()),
+            ),
+        ),
+    };
+
+    let err = charlie
+        .group
+        .process_message(&charlie.party.core_state.provider, to_protocol_message(commit))
+        .expect_err("Charlie doesn't support Other(3)");
+    // Caught by the ValSem109 capabilities check, which reports any
+    // capability mismatch of an Update leaf this way.
+    assert!(
+        matches!(
+            err,
+            ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                ProposalValidationError::InsufficientCapabilities
             ))
         ),
         "unexpected error: {err:?}"

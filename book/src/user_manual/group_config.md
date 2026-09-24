@@ -29,8 +29,11 @@ extension types in `leaf_extensions`.
 Set it to advertise more than that, for example further ciphersuites or the
 proposal types the client implements.
 Explicit capabilities are taken as provided, so group creation fails if they do
-not cover what the creator's own leaf uses, or what the group's
-`RequiredCapabilitiesExtension` demands.
+not cover what the creator's own leaf uses, what the group's
+`RequiredCapabilitiesExtension` demands, or the group's non-default
+`group_context_extensions`.
+The latter two apply even if `capabilities` is left unset: the creator is a
+member of the group and must support them.
 `MlsGroupCreateConfigBuilder::capabilities_policy` overrides this:
 `CapabilitiesPolicy::Widen` adds the capabilities the leaf itself needs instead
 of rejecting.
