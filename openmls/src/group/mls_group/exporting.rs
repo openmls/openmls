@@ -235,7 +235,7 @@ impl MlsGroup {
     /// Hand the resulting [`ReInitInfo`] to the receiver
     /// ([`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit)).
     /// The sender still seeds the new group from this group directly via
-    /// [`CommitBuilder::reinit`](crate::group::CommitBuilder::reinit).
+    /// [`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit).
     ///
     /// The returned [`ReInitInfo`] carries this group's resumption PSK secret,
     /// which is sensitive key material.
