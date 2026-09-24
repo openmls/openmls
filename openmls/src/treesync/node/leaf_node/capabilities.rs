@@ -171,11 +171,8 @@ impl Capabilities {
 
     /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`].
     ///
-    /// Starts from empty lists — except `versions`, which is seeded with
-    /// `default_versions` since the library only ever builds `Mls10` leaves
-    /// and there is no meaningful choice to make there. So a builder only ever
-    /// ends up containing what the caller actually asked for, not an unrelated
-    /// baseline.
+    /// Starts from empty lists, except `versions`, which is seeded with
+    /// `default_versions` since the library currently only supports `Mls10`.
     pub fn builder() -> CapabilitiesBuilder {
         CapabilitiesBuilder(Self::default())
     }
