@@ -48,7 +48,8 @@ pub enum CapabilitiesPolicy {
 /// Capabilities the caller never set are widened from the leaf itself: there is
 /// exactly one sensible answer for what an unconfigured leaf should advertise,
 /// and it is derivable. Capabilities the caller set explicitly are held to
-/// exactly what they listed.
+/// exactly what they listed, because a list that doesn't cover the leaf is a
+/// mistake worth reporting rather than papering over.
 ///
 /// An explicit policy always wins over both defaults.
 pub(crate) fn resolve_capabilities(
