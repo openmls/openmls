@@ -114,6 +114,13 @@ impl MlsGroup {
     ) -> Result<AuthenticatedContent, ProposeSelfUpdateError<Provider::StorageError>> {
         self.is_operational()?;
 
+        // The signer signs the proposal's framed content (and, without a new
+        // signer, the rekeyed leaf), so its scheme must match the group's
+        // ciphersuite.
+        if self.ciphersuite().signature_algorithm() != old_signer.signature_scheme() {
+            return Err(ProposeSelfUpdateError::InvalidSignerCiphersuite);
+        }
+
         // Here we clone our own leaf to rekey it such that we don't change the
         // tree.
         // The new leaf node will be applied later when the proposal is

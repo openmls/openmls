@@ -400,9 +400,8 @@ pub enum ProposeSelfUpdateError<StorageError> {
     /// `new_signer.credential_with_key` (rotation paths only).
     #[error("Mismatched credential_with_key between leaf_node_parameters and new_signer")]
     InvalidLeafNodeParameters,
-    /// The `leaf_node_parameters.credential_with_key` does not match
-    /// `new_signer.credential_with_key` (rotation paths only).
-    #[error("Mismatched ciphersuite between new_signer and the group")]
+    /// The signer's signature scheme does not match the group's ciphersuite.
+    #[error("The signer's signature scheme does not match the group's ciphersuite.")]
     InvalidSignerCiphersuite,
 }
 
