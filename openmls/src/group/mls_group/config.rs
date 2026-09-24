@@ -748,13 +748,10 @@ impl MlsGroupCreateConfigBuilder {
         Ok(self)
     }
 
-    /// Sets how the creator's leaf node capabilities are treated when they
-    /// don't cover what the leaf needs.
+    /// Sets the [`CapabilitiesPolicy`] applied to the creator's leaf node capabilities.
     ///
-    /// If never called, capabilities set via
-    /// [`MlsGroupCreateConfigBuilder::capabilities`] are held to exactly what
-    /// was listed ([`CapabilitiesPolicy::Reject`]), and unset capabilities are
-    /// derived from the leaf ([`CapabilitiesPolicy::Widen`]).
+    /// If left unset, uses [`CapabilitiesPolicy::Reject`] if capabilities are
+    /// manually set via [`Self::capabilities`], and [`CapabilitiesPolicy::Widen`] if they aren't.
     pub fn capabilities_policy(mut self, policy: CapabilitiesPolicy) -> Self {
         self.config.capabilities_policy = Some(policy);
         self
