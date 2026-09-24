@@ -52,15 +52,14 @@ pub(crate) mod checks {
         mod lock {
             use super::FLAG;
             use crate::skip_validation::SkipValidationHandle;
-            use once_cell::sync::Lazy;
             use std::sync::{Mutex, MutexGuard};
 
             /// The name of the check that can be skipped here
             const NAME: &str = "confirmation_tag";
 
             /// A mutex needed to run tests that use this flag sequentially
-            static MUTEX: Lazy<Mutex<SkipValidationHandle>> =
-                Lazy::new(|| Mutex::new(SkipValidationHandle::new_confirmation_tag_handle()));
+            static MUTEX: Mutex<SkipValidationHandle> =
+                Mutex::new(SkipValidationHandle::new_confirmation_tag_handle());
 
             /// Takes the mutex and returns the control handle to the validation skipper
             pub(crate) fn handle() -> MutexGuard<'static, SkipValidationHandle> {
@@ -70,7 +69,7 @@ pub(crate) mod checks {
             }
 
             impl SkipValidationHandle {
-                pub fn new_confirmation_tag_handle() -> Self {
+                pub const fn new_confirmation_tag_handle() -> Self {
                     Self {
                         name: NAME,
                         flag: &FLAG,
@@ -94,15 +93,14 @@ pub(crate) mod checks {
         mod lock {
             use super::FLAG;
             use crate::skip_validation::SkipValidationHandle;
-            use once_cell::sync::Lazy;
             use std::sync::{Mutex, MutexGuard};
 
             /// The name of the check that can be skipped here
             const NAME: &str = "leaf_node_lifetime";
 
             /// A mutex needed to run tests that use this flag sequentially
-            static MUTEX: Lazy<Mutex<SkipValidationHandle>> =
-                Lazy::new(|| Mutex::new(SkipValidationHandle::new_leaf_node_lifetime_handle()));
+            static MUTEX: Mutex<SkipValidationHandle> =
+                Mutex::new(SkipValidationHandle::new_leaf_node_lifetime_handle());
 
             /// Takes the mutex and returns the control handle to the validation skipper
             pub(crate) fn handle() -> MutexGuard<'static, SkipValidationHandle> {
@@ -112,7 +110,7 @@ pub(crate) mod checks {
             }
 
             impl SkipValidationHandle {
-                pub fn new_leaf_node_lifetime_handle() -> Self {
+                pub const fn new_leaf_node_lifetime_handle() -> Self {
                     Self {
                         name: NAME,
                         flag: &FLAG,

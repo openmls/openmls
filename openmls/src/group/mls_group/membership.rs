@@ -2,21 +2,22 @@
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
 use errors::EmptyInputError;
-use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
+use openmls_traits::signatures::Signer;
 use proposal_store::QueuedRemoveProposal;
 
-use super::{
-    errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
-    *,
-};
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use super::errors::{AddMembersError, RemoveMembersError};
+use super::{errors::LeaveGroupError, *};
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex, storage::OpenMlsProvider, treesync::LeafNode,
+};
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use crate::{
     group::{SwapMembersError, WelcomeCommitMessages},
     key_packages::KeyPackage,
     messages::group_info::GroupInfo,
-    storage::OpenMlsProvider,
-    treesync::LeafNode,
 };
 
 impl MlsGroup {
@@ -35,8 +36,15 @@ impl MlsGroup {
     ///
     /// Returns an error if there is a pending commit.
     ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`MlsGroup::commit_builder`], whose
+    /// [`CommitMessageBundle::confirmation`] surfaces the handshake confirmation
+    /// data.
+    ///
     /// [`Welcome`]: crate::messages::Welcome
+    /// [`CommitMessageBundle::confirmation`]: crate::group::CommitMessageBundle::confirmation
     // FIXME: #1217
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
     #[maybe_async::maybe_async]
     pub async fn add_members<Provider: OpenMlsProvider>(
@@ -62,6 +70,12 @@ impl MlsGroup {
     /// longer in sync with the rest of the group and need to be re-added.
     /// Note however that this function _does not_ enforce that the
     /// removed `members` and new members in the `key_packages` correspond.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`MlsGroup::commit_builder`], whose
+    /// [`CommitMessageBundle::confirmation`](crate::group::CommitMessageBundle::confirmation)
+    /// surfaces the handshake confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[maybe_async::maybe_async]
     pub async fn swap_members<Provider: OpenMlsProvider>(
         &mut self,
@@ -117,8 +131,15 @@ impl MlsGroup {
     ///
     /// Returns an error if there is a pending commit.
     ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`MlsGroup::commit_builder`], whose
+    /// [`CommitMessageBundle::confirmation`] surfaces the handshake confirmation
+    /// data.
+    ///
     /// [`Welcome`]: crate::messages::Welcome
+    /// [`CommitMessageBundle::confirmation`]: crate::group::CommitMessageBundle::confirmation
     // FIXME: #1217
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
     #[maybe_async::maybe_async]
     pub async fn add_members_without_update<Provider: OpenMlsProvider>(
@@ -134,6 +155,7 @@ impl MlsGroup {
             .await
     }
 
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
     #[maybe_async::maybe_async]
     async fn add_members_internal<Provider: OpenMlsProvider>(
@@ -162,9 +184,9 @@ impl MlsGroup {
             .stage_commit(provider)
             .await?;
 
-        let welcome: MlsMessageOut = bundle.to_welcome_msg().ok_or(LibraryError::custom(
-            "No secrets to generate commit message.",
-        ))?;
+        let welcome: MlsMessageOut = bundle
+            .to_welcome_msg()
+            .ok_or_else(|| LibraryError::custom("No secrets to generate commit message."))?;
         let (commit, _, group_info) = bundle.into_contents();
 
         self.reset_aad();
@@ -190,8 +212,15 @@ impl MlsGroup {
     ///
     /// Returns an error if there is a pending commit.
     ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`MlsGroup::commit_builder`], whose
+    /// [`CommitMessageBundle::confirmation`] surfaces the handshake confirmation
+    /// data.
+    ///
     /// [`Welcome`]: crate::messages::Welcome
+    /// [`CommitMessageBundle::confirmation`]: crate::group::CommitMessageBundle::confirmation
     // FIXME: #1217
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
     #[maybe_async::maybe_async]
     pub async fn remove_members<Provider: OpenMlsProvider>(
@@ -239,6 +268,12 @@ impl MlsGroup {
     /// The Remove Proposal is returned as a [`MlsMessageOut`].
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`] with
+    /// [`Propose::Remove`](crate::group::Propose::Remove) of the own leaf index,
+    /// which retains the handshake secret and returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[maybe_async::maybe_async]
     pub async fn leave_group<Provider: OpenMlsProvider>(
         &mut self,
@@ -248,8 +283,10 @@ impl MlsGroup {
         self.is_operational()?;
 
         let removed = self.own_leaf_index();
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let remove_proposal = self
-            .create_remove_proposal(self.framing_parameters(), removed, signer)
+            .create_remove_proposal(framing_parameters, removed, signer)
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
         let ciphersuite = self.ciphersuite();
@@ -271,10 +308,12 @@ impl MlsGroup {
 
         self.proposal_store_mut().add(queued_remove_proposal);
 
-        self.reset_aad();
-        Ok(self
+        let framing = self
             .content_to_mls_message(remove_proposal, provider)
-            .await?)
+            .await?;
+
+        self.reset_aad();
+        Ok(framing.message)
     }
 
     /// Leave the group via a SelfRemove proposal.
@@ -302,8 +341,8 @@ impl MlsGroup {
         ) {
             return Err(LeaveGroupError::CannotSelfRemoveWithPureCiphertext);
         }
-        let self_remove_proposal =
-            self.create_self_remove_proposal(self.framing_parameters().aad(), signer)?;
+        let aad = self.outgoing_authenticated_data()?;
+        let self_remove_proposal = self.create_self_remove_proposal(&aad, signer)?;
 
         let ciphersuite = self.ciphersuite();
         let queued_self_remove_proposal = QueuedProposal::from_authenticated_content_by_ref(
@@ -327,7 +366,8 @@ impl MlsGroup {
         self.reset_aad();
         Ok(self
             .content_to_mls_message(self_remove_proposal, provider)
-            .await?)
+            .await?
+            .message)
     }
 
     /// Returns a list of [`Member`]s in the group.

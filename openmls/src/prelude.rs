@@ -60,6 +60,14 @@ pub use crate::treesync::{
 //    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,
 // };
 
+// Targeted messages
+#[cfg(feature = "targeted-messages-draft")]
+#[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
+pub use crate::targeted_messages::{
+    CreateTargetedMessageError, ProcessTargetedMessageError, ProcessedTargetedMessage,
+    TargetedMessage, TargetedMessageIn,
+};
+
 // TLS codec traits
 pub use tls_codec::{self, *};
 

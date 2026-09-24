@@ -34,8 +34,7 @@ use crate::{
 ///
 /// The `-In` suffix of this struct is to separate it from the [`MlsMessageOut`]
 /// which is commonly returned by functions of the [`MlsGroup`] API.
-#[derive(PartialEq, Debug, Clone, TlsSize)]
-#[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
+#[derive(PartialEq, Debug, Clone, TlsSize, TlsSerialize)]
 pub struct MlsMessageIn {
     pub(crate) version: ProtocolVersion,
     pub(crate) body: MlsMessageBodyIn,
@@ -47,29 +46,7 @@ pub struct MlsMessageIn {
 /// `public_message`, `private_message`, etc., we don't use the `wire_format`
 /// field. This prevents inconsistent assignments where `wire_format`
 /// contradicts the variant given in `body`.
-///
-/// ```c
-/// // draft-ietf-mls-protocol-17
-/// struct {
-///     // ... continued from [MlsMessage] ...
-///
-///     WireFormat wire_format;
-///     select (MLSMessage.wire_format) {
-///         case mls_plaintext:
-///             PublicMessage plaintext;
-///         case mls_ciphertext:
-///             PrivateMessage ciphertext;
-///         case mls_welcome:
-///             Welcome welcome;
-///         case mls_group_info:
-///             GroupInfo group_info;
-///         case mls_key_package:
-///             KeyPackage key_package;
-///     }
-/// } MLSMessage;
-/// ```
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSize)]
-#[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize)]
 #[repr(u16)]
 pub enum MlsMessageBodyIn {
     /// Plaintext message
@@ -91,6 +68,12 @@ pub enum MlsMessageBodyIn {
     /// KeyPackage
     #[tls_codec(discriminant = 5)]
     KeyPackage(KeyPackageIn),
+
+    /// Targeted message (draft-ietf-mls-targeted-messages)
+    #[cfg(feature = "targeted-messages-draft")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
+    #[tls_codec(discriminant = 6)]
+    TargetedMessage(crate::targeted_messages::TargetedMessageIn),
 }
 
 impl MlsMessageIn {
@@ -102,6 +85,8 @@ impl MlsMessageIn {
             MlsMessageBodyIn::Welcome(_) => WireFormat::Welcome,
             MlsMessageBodyIn::GroupInfo(_) => WireFormat::GroupInfo,
             MlsMessageBodyIn::KeyPackage(_) => WireFormat::KeyPackage,
+            #[cfg(feature = "targeted-messages-draft")]
+            MlsMessageBodyIn::TargetedMessage(_) => WireFormat::TargetedMessage,
         }
     }
 
@@ -114,6 +99,17 @@ impl MlsMessageIn {
     /// Try to convert the message into a [`ProtocolMessage`].
     pub fn try_into_protocol_message(self) -> Result<ProtocolMessage, ProtocolMessageError> {
         self.try_into()
+    }
+
+    /// Extract a [`TargetedMessageIn`](crate::targeted_messages::TargetedMessageIn)
+    /// from this message, if it contains one.
+    #[cfg(all(feature = "targeted-messages-draft", any(feature = "test-utils", test)))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
+    pub fn into_targeted_message(self) -> Option<crate::targeted_messages::TargetedMessageIn> {
+        match self.body {
+            MlsMessageBodyIn::TargetedMessage(tm) => Some(tm),
+            _ => None,
+        }
     }
 
     #[cfg(any(test, feature = "test-utils"))]

@@ -1,8 +1,9 @@
 [package]
 name = "openmls_traits"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["OpenMLS Authors"]
 edition = "2021"
+rust-version.workspace = true
 description = "Traits used by OpenMLS"
 license = "MIT"
 documentation = "https://docs.rs/openmls_traits"
@@ -17,9 +18,13 @@ default = []
 sync = ["maybe-async/is_sync"]
 async = []
 test-utils = []
-extensions-draft-08 = []
+crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
+extensions-draft = []
+draft-ietf-mls-pq-ciphersuites = []
+virtual-clients-draft = ["extensions-draft"]
+targeted-messages-draft = []
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 tls_codec = { workspace = true }
 maybe-async = { workspace = true }

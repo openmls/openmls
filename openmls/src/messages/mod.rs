@@ -6,21 +6,23 @@
 use hash_ref::HashReference;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
+    storage::StorageProvider,
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, *};
 
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 use crate::schedule::psk::{ExternalPsk, Psk};
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::CredentialWithKey,
     error::LibraryError,
     framing::SenderContext,
-    group::errors::ValidationError,
+    group::{errors::ValidationError, WelcomeError, WelcomeKeyMaterial},
     schedule::{psk::PreSharedKeyId, JoinerSecret},
+    storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
@@ -30,7 +32,7 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 use openmls_traits::random::OpenMlsRand;
 
 pub(crate) mod codec;
@@ -101,7 +103,7 @@ impl Welcome {
     }
 
     /// Returns a reference to the ciphersuite in this Welcome message.
-    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
+    pub fn ciphersuite(&self) -> Ciphersuite {
         self.cipher_suite
     }
 
@@ -119,6 +121,40 @@ impl Welcome {
     #[cfg(test)]
     pub fn set_encrypted_group_info(&mut self, encrypted_group_info: Vec<u8>) {
         self.encrypted_group_info = encrypted_group_info.into();
+    }
+
+    /// Resolve the own key material from the welcome's encrypted group secrets.
+    ///
+    /// Read-only: nothing is deleted or consumed, in contrast to
+    /// [`crate::group::ProcessedWelcome::new_from_welcome`]. Returns `None` if no secret addresses
+    /// this client (not found in the provider's storage).
+    #[maybe_async::maybe_async]
+    pub async fn resolve_own_key_material<Provider: OpenMlsProvider>(
+        &self,
+        provider: &Provider,
+    ) -> Result<Option<WelcomeKeyMaterial>, WelcomeError<Provider::StorageError>> {
+        for egs in &self.secrets {
+            let hash_ref = egs.new_member();
+
+            if let Some(bundle) = provider
+                .storage()
+                .key_package(&hash_ref)
+                .await
+                .map_err(WelcomeError::StorageError)?
+            {
+                return Ok(Some(WelcomeKeyMaterial::with_key_package_bundle(bundle)));
+            }
+
+            #[cfg(feature = "virtual-clients-draft")]
+            if let Some(material) =
+                crate::group::resolve_vc_welcome_material(provider, self.ciphersuite(), &hash_ref)
+                    .await?
+            {
+                return Ok(Some(WelcomeKeyMaterial::with_vc_welcome_material(material)));
+            }
+        }
+
+        Ok(None)
     }
 }
 
@@ -219,6 +255,13 @@ pub(crate) struct CommitIn {
 }
 
 impl CommitIn {
+    /// Returns the proposals covered by this commit. The commit has not been
+    /// validated at this point.
+    #[cfg(feature = "extensions-draft")]
+    pub(crate) fn unverified_proposals(&self) -> &[ProposalOrRefIn] {
+        &self.proposals
+    }
+
     pub(crate) fn unverified_credential(&self) -> Option<CredentialWithKey> {
         self.path.as_ref().map(|p| {
             let credential = p.leaf_node().credential().clone();
@@ -279,9 +322,11 @@ impl CommitIn {
                         .chain(former_sender_index)
                         .chain(self_removed_indices)
                         .min()
-                        .ok_or(ValidationError::LibraryError(LibraryError::custom(
-                            "The iterator should have at least one element.",
-                        )))?;
+                        .ok_or_else(|| {
+                            ValidationError::LibraryError(LibraryError::custom(
+                                "The iterator should have at least one element.",
+                            ))
+                        })?;
 
                     TreePosition::new(group_id, new_leaf_index)
                 }
@@ -291,11 +336,6 @@ impl CommitIn {
             None
         };
         Ok(Commit { proposals, path })
-    }
-
-    #[cfg(feature = "extensions-draft-08")]
-    pub(crate) fn proposals(&self) -> &[ProposalOrRefIn] {
-        &self.proposals
     }
 }
 
@@ -510,7 +550,7 @@ impl GroupSecrets {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 impl GroupSecrets {
     pub fn random_encoded(
         ciphersuite: Ciphersuite,

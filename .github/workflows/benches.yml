@@ -8,7 +8,17 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**/*.md'
+      - 'book/**'
+      - 'LICENSE*'
+      - '.gitignore'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'book/**'
+      - 'LICENSE*'
+      - '.gitignore'
   workflow_dispatch:
 
 env:
@@ -16,22 +26,15 @@ env:
 
 jobs:
   benchmarks:
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Benchmarks
-        run: cargo bench -p openmls --verbose
+        run: cargo bench -p openmls --verbose --features=libcrux-provider
 
       - name: Large groups
         run: |

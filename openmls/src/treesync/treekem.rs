@@ -155,6 +155,40 @@ impl TreeSyncDiff<'_> {
         Ok((keypairs, commit_secret))
     }
 
+    /// Create the update path of an incoming commit by deriving the path
+    /// secrets from the given `path_secret`.
+    ///
+    /// Returns a vector containing the derived [`ParentNode`] instances, as
+    /// well as the [`CommitSecret`] resulting from their derivation. Returns an
+    /// error if the derived path does not match the given `update_path`.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn recreate_path_from_path_secret(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        path_secret: PathSecret,
+        own_leaf_index: LeafNodeIndex,
+        update_path: &[UpdatePathNode],
+    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
+        let filtered_direct_path = self.filtered_direct_path(own_leaf_index);
+        let (derived_path, _plain_update_path, keypairs, commit_secret) =
+            ParentNode::derive_path(crypto, ciphersuite, path_secret, filtered_direct_path)?;
+
+        // Make sure the derived path and the given path match up.
+        if derived_path.len() != update_path.len() {
+            return Err(ApplyUpdatePathError::PathLengthMismatch);
+        }
+        for ((_index, derived_parent_node), update_path_node) in
+            derived_path.iter().zip(update_path.iter())
+        {
+            if derived_parent_node.public_key() != update_path_node.public_key() {
+                return Err(ApplyUpdatePathError::PathMismatch);
+            }
+        }
+
+        Ok((keypairs, commit_secret))
+    }
+
     /// Prepare the [`EncryptedGroupSecrets`] for a number of `invited_members`
     /// based on a [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is
     /// given, they are included in the [`GroupSecrets`] of the path.

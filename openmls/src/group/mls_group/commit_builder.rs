@@ -25,22 +25,59 @@ use crate::{
         Commit, Welcome,
     },
     prelude::{
-        CredentialWithKey, InvalidExtensionError, LeafNodeParameters, LibraryError, NewSignerBundle,
+        CredentialWithKey, InvalidExtensionError, LeafNodeParameters, LibraryError,
+        NewSignerBundle, PreSharedKeyProposal,
     },
     schedule::{
-        psk::{load_psks, PskSecret},
-        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId,
+        psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
+        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
     },
     storage::{OpenMlsProvider, StorageProvider},
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "virtual-clients-draft")]
+use crate::{
+    components::vc_commit_data::VirtualClientCommitData,
+    components::vc_derivation_info::{
+        require_newest_vc_derivation_epoch, DerivationInfo, DerivationInfoTbe, EpochEncryptionKey,
+        EpochId, ExternalInitSecret, OperationSecret, VcDerivationEpochState,
+        VirtualClientOperationType, VirtualClientsError,
+    },
+    components::vc_operation_tree::OperationSecretTree,
+    extensions::AppDataDictionary,
+    group::GroupId,
+};
+#[cfg(feature = "extensions-draft")]
 use crate::{
     messages::proposals::AppDataUpdateProposal,
     prelude::processing::{AppDataDictionaryUpdater, AppDataUpdates},
     schedule::application_export_tree::ApplicationExportTree,
 };
+
+/// Per-commit virtual-clients state allocated by
+/// [`CommitBuilder::vc_emulation`] and consumed by `build`.
+///
+/// `vc_emulation` advances the own `LeafNode` operation ratchet by one
+/// generation and immediately persists the advanced tree, before the commit
+/// message exists. A builder that is discarded after the setter therefore
+/// burns a generation, as does a commit the DS rejects. That is harmless:
+/// sibling ratchets skip over a burned generation, retaining the skipped
+/// generation secrets inside their copy of the operation secret tree.
+#[cfg(feature = "virtual-clients-draft")]
+#[derive(Debug)]
+struct VcLoaded {
+    epoch_id: EpochId,
+    emulation_leaf_index: LeafNodeIndex,
+    epoch_encryption_key: EpochEncryptionKey,
+    emulation_ciphersuite: openmls_traits::types::Ciphersuite,
+    generation: u32,
+    operation_secret: OperationSecret,
+    /// The resolved `AppDataDictionary` produced by the leaf-configuration
+    /// pre-check in `vc_emulation`, carried to `build` so the VC
+    /// derivation-info injection preserves every other entry.
+    resolved_dictionary: AppDataDictionary,
+}
 
 pub(crate) mod external_commits;
 
@@ -50,15 +87,22 @@ pub use external_commits::{ExternalCommitBuilder, ExternalCommitBuilderError};
 use super::MlsGroupJoinConfig;
 
 use super::{
+    branch::BranchInfo,
     mls_auth_content::AuthenticatedContent,
     staged_commit::{MemberStagedCommitState, StagedCommitState},
     AddProposal, CreateCommitResult, GroupContextExtensionProposal, MlsGroup, MlsGroupState,
     MlsMessageOut, PendingCommitState, Proposal, RemoveProposal, Sender,
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use super::HandshakeConfirmationData;
+
 #[derive(Debug)]
 struct ExternalCommitInfo {
     aad: Vec<u8>,
+    /// The authoritative credential and signature key for the external
+    /// committer's leaf. `build_internal` folds it into the leaf node
+    /// parameters and rejects parameters that pin a different credential.
     credential: CredentialWithKey,
     wire_format_policy: WireFormatPolicy,
 }
@@ -110,7 +154,7 @@ pub struct LoadedPsks {
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     app_data_dictionary_updates: Option<AppDataUpdates>,
 }
 
@@ -168,6 +212,17 @@ pub struct CommitBuilder<'a, T, G: BorrowMut<MlsGroup> = &'a mut MlsGroup> {
     /// The current stage
     stage: T,
 
+    /// Virtual-clients material allocated by [`Self::vc_emulation`] and
+    /// consumed by `build`. Lives on the builder rather than on a stage
+    /// struct so the stage transitions can carry it through unchanged.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_loaded: Option<VcLoaded>,
+
+    /// Set by [`Self::derivation_epoch`]. `build` stages the marker action
+    /// in the group's Safe AAD before it assembles the commit.
+    #[cfg(feature = "virtual-clients-draft")]
+    vc_new_derivation_epoch: bool,
+
     pd: PhantomData<&'a ()>,
 }
 
@@ -197,6 +252,10 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
         let Self {
             group,
             stage,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_loaded,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_new_derivation_epoch,
             pd: PhantomData,
         } = self;
 
@@ -207,6 +266,10 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
             CommitBuilder {
                 group,
                 stage,
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_loaded,
+                #[cfg(feature = "virtual-clients-draft")]
+                vc_new_derivation_epoch,
                 pd: PhantomData,
             },
         )
@@ -215,6 +278,13 @@ impl<'a, T, G: BorrowMut<MlsGroup>> CommitBuilder<'a, T, G> {
     #[cfg(feature = "fork-resolution")]
     pub(crate) fn stage(&self) -> &T {
         &self.stage
+    }
+
+    /// Returns the [`EpochId`] of the derivation epoch this commit acts from,
+    /// or `None` if no virtual-clients material was loaded.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn vc_epoch_id(&self) -> Option<&EpochId> {
+        self.vc_loaded.as_ref().map(|loaded| &loaded.epoch_id)
     }
 }
 
@@ -274,6 +344,68 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             .push(Proposal::group_context_extensions(proposal));
         Ok(self)
     }
+    /// Adds a PreSharedKey proposal for the provided [`PreSharedKeyId`]s to the
+    /// list of proposals to be committed.
+    ///
+    /// Note that this should not be used for sub-group branching, as those PSKs
+    /// are not allowed in regular proposals. Please use
+    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) instead.
+    pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
+        self.stage.own_proposals.extend(
+            psk_ids
+                .into_iter()
+                .map(|psk_id| Proposal::psk(PreSharedKeyProposal::new(psk_id))),
+        );
+        self
+    }
+
+    /// Branches from a parent group into this (freshly created) group to form a
+    /// subgroup, as described in [RFC 9420 §11.3].
+    ///
+    /// This is the internal engine driven by
+    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch), which
+    /// is the public entry point for sub-group branching and guarantees this is
+    /// called on a fresh (epoch-0) group with the parent's parameters.
+    ///
+    /// The parent group's parameters are provided via `branch_info`, which the
+    /// parent exports with
+    /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info).
+    ///
+    /// This adds a resumption [`PreSharedKeyId`] of usage `Branch` to the initial
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
+    /// the parent group's resumption PSK secret so it is mixed into this
+    /// subgroup's key schedule.
+    ///
+    /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
+    pub(crate) fn branch(
+        mut self,
+        rand: &impl OpenMlsRand,
+        branch_info: &BranchInfo,
+    ) -> Result<Self, CreateCommitError> {
+        // Sample a fresh random nonce of length KDF.Nh, as required by the RFC.
+        let psk_id = PreSharedKeyId::new(
+            branch_info.ciphersuite(),
+            rand,
+            Psk::Resumption(ResumptionPsk::new(
+                ResumptionPskUsage::Branch,
+                branch_info.group_id().clone(),
+                branch_info.epoch(),
+            )),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+        self = self.propose_psks([psk_id]);
+
+        // The branch PSK secret comes from a different group, so we clear this
+        // group's resumption PSK store and inject it at the sentinel epoch 0,
+        // where `load_psks` looks it up for branch usage.
+        let secret = branch_info.resumption_psk_secret().clone();
+        self.group.borrow_mut().resumption_psk_store.clear();
+        self.group
+            .borrow_mut()
+            .resumption_psk_store
+            .add(0.into(), secret);
+        Ok(self)
+    }
 
     /// Adds a proposal to the proposals to be committed. To add multiple
     /// proposals, use [`Self::add_proposals`].
@@ -299,6 +431,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         CommitBuilder {
             group,
             stage,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_loaded: None,
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_new_derivation_epoch: false,
             pd: PhantomData,
         }
     }
@@ -307,6 +443,195 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// self-update takes place.
     pub fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
         self.stage.leaf_node_parameters = leaf_node_parameters;
+        self
+    }
+
+    /// Opt this commit into the virtual-clients-draft sender flow.
+    ///
+    /// The commit uses the newest derivation epoch of the emulation group named
+    /// by `emulation_group_id`, which is what the draft requires of every new
+    /// virtual-client operation. The epoch is resolved from the emulation
+    /// group's current state, so a commit that itself asks for a new derivation
+    /// epoch (see [`Self::derivation_epoch`]) still uses the epoch of its
+    /// input state: the requested one only exists once that commit is merged.
+    ///
+    /// This method loads the per-epoch operation secret tree and AEAD key from
+    /// the storage provider, validates the leaf configuration (see the
+    /// preconditions below), then advances the own `LeafNode` operation ratchet
+    /// by one generation and immediately persists the advanced tree. `build`
+    /// then:
+    ///
+    /// - derives the path secret and the new leaf's encryption keypair
+    ///   from the allocated `OperationSecret`, so a sibling virtual
+    ///   client can rederive them on the receiver side, and
+    /// - embeds an encrypted `DerivationInfo` blob under
+    ///   [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID)
+    ///   in the new leaf's `app_data_dictionary` extension.
+    ///
+    /// Because the ratchet advance is persisted here, a builder that is
+    /// discarded after this call burns a generation. The same happens when
+    /// the DS rejects the commit. That is harmless because sibling ratchets
+    /// skip over a burned generation, retaining the skipped generation
+    /// secrets inside their copy of the operation secret tree.
+    ///
+    /// The leaf configuration is validated against the
+    /// `leaf_node_parameters` set on the builder so far, so call this after
+    /// configuring the self-update leaf. The application must ensure the new
+    /// leaf:
+    ///
+    /// - lists [`ExtensionType::AppDataDictionary`](crate::extensions::ExtensionType::AppDataDictionary)
+    ///   in its `Capabilities.extensions`, and
+    /// - signals support for
+    ///   [`VC_COMPONENT_ID`](crate::components::vc_derivation_info::VC_COMPONENT_ID).
+    ///
+    /// If those preconditions are not met this method fails with
+    /// `VirtualClientsError::AppDataDictionaryNotSupported` or
+    /// `VirtualClientsError::VcComponentNotListed` (wrapped in
+    /// [`CreateCommitError::VirtualClientsError`]) before allocating a
+    /// generation, so no operation secret is burned in that case.
+    ///
+    /// Fails with `VirtualClientsError::NoDerivationEpoch` if the emulation
+    /// group has no registered derivation epoch, and with
+    /// `VirtualClientsError::MissingDerivationEpochState` or
+    /// `VirtualClientsError::MissingOperationTree` if the resolved epoch's state
+    /// is gone. Neither the state nor the tree is instantiated on the fly, since
+    /// that could diverge from a sibling virtual client's already-advanced
+    /// ratchets.
+    ///
+    /// Implies that a self-update takes place: the commit will always have
+    /// a path even if no other proposals are queued.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[maybe_async::maybe_async]
+    pub async fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        self,
+        crypto: &Crypto,
+        storage: &Storage,
+        emulation_group_id: &GroupId,
+    ) -> Result<Self, CreateCommitError> {
+        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group_id).await?;
+        self.vc_emulation_internal(crypto, storage, epoch_id).await
+    }
+
+    /// Test-only variant of [`Self::vc_emulation`] that commits from the named
+    /// derivation epoch instead of the emulation group's newest one.
+    ///
+    /// Using an epoch other than the newest one violates the draft, which
+    /// requires every new virtual-client operation to use the newest derivation
+    /// epoch of the acting client's current emulation-group state. It exists to
+    /// construct scenarios that an application must not produce, such as a
+    /// sibling that acts on a stale emulation-group state.
+    #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
+    pub fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        self,
+        crypto: &Crypto,
+        storage: &Storage,
+        epoch_id: EpochId,
+    ) -> Result<Self, CreateCommitError> {
+        self.vc_emulation_internal(crypto, storage, epoch_id)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    #[maybe_async::maybe_async]
+    async fn vc_emulation_internal<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+        mut self,
+        crypto: &Crypto,
+        storage: &Storage,
+        epoch_id: EpochId,
+    ) -> Result<Self, CreateCommitError> {
+        let state: VcDerivationEpochState = storage
+            .vc_derivation_epoch_state(&epoch_id)
+            .await
+            .map_err(|e| {
+                log::error!("vc: load derivation epoch state in vc_emulation failed: {e:?}");
+                CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
+            })?
+            .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
+        let mut operation_tree: OperationSecretTree = storage
+            .vc_operation_tree(&epoch_id)
+            .await
+            .map_err(|e| {
+                log::error!("vc: load operation tree in vc_emulation failed: {e:?}");
+                CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
+            })?
+            .ok_or(VirtualClientsError::MissingOperationTree)?;
+        let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
+            state.into_parts();
+
+        // Validate the leaf configuration before allocating a generation, so
+        // a deterministic precondition failure (the new leaf not declaring
+        // `AppDataDictionary` or not listing `VC_COMPONENT_ID`) does not burn
+        // an operation secret. Returns the resolved `AppDataDictionary`, which
+        // `build` reuses so the injection preserves the AppComponents entry
+        // across commits.
+        let own_leaf_index = self.group.borrow().own_leaf_index();
+        let is_external_commit = self.stage.external_commit_info.is_some();
+        let resolved_dictionary = check_vc_leaf_configuration(
+            &self.stage.leaf_node_parameters,
+            self.group.borrow(),
+            own_leaf_index,
+            is_external_commit,
+        )?;
+
+        // Update-path leaf-node derivations are the only operation type
+        // wired up so far. KeyPackage / Application will get their own
+        // allocation entry points when emitted. The operation context for
+        // LeafNode operations is the higher-level group's id.
+        let (generation, operation_secret) = operation_tree.next_operation_secret(
+            crypto,
+            emulation_ciphersuite,
+            &epoch_id,
+            emulation_leaf_index,
+            VirtualClientOperationType::LeafNode,
+            self.group.borrow().group_id().as_slice(),
+        )?;
+        // Persist the advanced tree right away, so the allocation can never
+        // be observed on the wire before it is persisted.
+        storage
+            .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .await
+            .map_err(|e| {
+                log::error!("vc: persist advanced operation tree failed: {e:?}");
+                CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
+            })?;
+
+        self.vc_loaded = Some(VcLoaded {
+            epoch_id,
+            emulation_leaf_index,
+            epoch_encryption_key,
+            emulation_ciphersuite,
+            generation,
+            operation_secret,
+            resolved_dictionary,
+        });
+        Ok(self)
+    }
+
+    /// Ask the emulation group to start a new derivation epoch with this
+    /// commit.
+    ///
+    /// When set, `build` makes sure the commit's virtual-clients Safe AAD item
+    /// carries a `new_derivation_epoch` action, creating the item if the
+    /// application staged none. Every member of the emulation group then
+    /// registers the epoch this commit moves the group into as a derivation
+    /// epoch when the commit is merged, and subsequent virtual-client
+    /// operations resolve to it.
+    ///
+    /// This is the application's cadence knob for post-compromise security of
+    /// the virtual client's secrets. Commits that change membership create a
+    /// derivation epoch on their own, so they do not need this.
+    ///
+    /// Like all actions, the marker applies relative to the commit's input
+    /// state. Operations that reference a derivation epoch keep using the
+    /// newest derivation epoch of that input state, including operations
+    /// carried by this very commit.
+    ///
+    /// The group has to be configured as an emulation group and its
+    /// GroupContext has to require Safe AAD framing. Otherwise `build` fails
+    /// with [`CreateCommitError::NewDerivationEpochOutsideEmulationGroup`] or
+    /// [`CreateCommitError::NewDerivationEpochWithoutSafeAad`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn derivation_epoch(mut self, derivation_epoch: bool) -> Self {
+        self.vc_new_derivation_epoch = derivation_epoch;
         self
     }
 
@@ -365,7 +690,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         consume_proposal_store: stage.consume_proposal_store,
                         group_info_config,
                         external_commit_info: stage.external_commit_info,
-                        #[cfg(feature = "extensions-draft-08")]
+                        #[cfg(feature = "extensions-draft")]
                         app_data_dictionary_updates: None,
                     },
                 )
@@ -416,6 +741,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
 
         Ok(self)
     }
+
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
@@ -435,7 +761,19 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// the application to enforce custom policies in the creation of commits.
     ///
     /// In contrast to `build`, this function can be used to create commits that
-    /// rotate the own leaf node's signature key.
+    /// rotate the own leaf node's signature key. Supplying a new signer implies
+    /// a self-update: the commit always contains an UpdatePath that installs
+    /// the new signature key in the committer's leaf, even if no proposal
+    /// requires a path.
+    ///
+    /// The Commit message itself is signed with `old_signer`, because
+    /// receivers verify it against the committer's pre-commit leaf. GroupInfo
+    /// objects created for this commit are signed with the new signer,
+    /// matching the post-commit leaf.
+    ///
+    /// Returns an error if the new signer's signature scheme does not match the
+    /// group's ciphersuite, or when used on an external commit. External commits
+    /// take their credential and signer from the external commit builder.
     pub fn build_with_new_signer<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
@@ -444,6 +782,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         new_signer: NewSignerBundle<'_, S>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
+        // On an external commit, the signer passed to the external commit
+        // builder signs the Commit, the UpdatePath leaf and the GroupInfo, so
+        // a new signer cannot be used.
+        if self.stage.external_commit_info.is_some() {
+            return Err(CreateCommitError::ExternalCommitWithNewSigner);
+        }
         self.build_internal(rand, crypto, old_signer, Some(new_signer), f)
     }
 
@@ -455,7 +799,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         new_signer: Option<NewSignerBundle<'_, S>>,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
-        let (mut cur_stage, builder) = self.take_stage();
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let (mut cur_stage, mut builder) = self.take_stage();
 
         // retrieve the config
         let GroupInfoConfig {
@@ -464,7 +809,23 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             other_extensions,
         } = cur_stage.group_info_config;
 
+        // Stage the marker before any proposal validation or path computation,
+        // so a misconfigured group is rejected before an operation generation is
+        // burned. The staged Safe AAD is what gets serialized into the commit's
+        // `authenticated_data` further down.
+        #[cfg(feature = "virtual-clients-draft")]
+        if builder.vc_new_derivation_epoch {
+            stage_vc_new_derivation_epoch(builder.group.borrow_mut())?;
+        }
+
         let group = builder.group.borrow();
+
+        // The staged Safe AAD is authoritative for whether this commit creates a
+        // derivation epoch, so an application that staged the marker itself gets
+        // the same result as one that called `derivation_epoch`.
+        #[cfg(feature = "virtual-clients-draft")]
+        let marks_new_vc_derivation_epoch = staged_vc_commit_data(group)?
+            .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
         let ciphersuite = group.ciphersuite();
         let own_leaf_index = group.own_leaf_index();
         let (sender, is_external_commit) = match cur_stage.external_commit_info {
@@ -472,6 +833,49 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             Some(_) => (Sender::NewMemberCommit, true),
         };
         let psks = cur_stage.psks;
+
+        // An external commit has exactly one authoritative credential and
+        // signature key: the ones passed to the external commit builder. Leaf
+        // node parameters that pin a different credential are rejected, and
+        // the authoritative credential is folded into the parameters here so
+        // the rest of the commit flow only sees a single value.
+        if let Some(ExternalCommitInfo { credential, .. }) = &cur_stage.external_commit_info {
+            if let Some(params_credential) = cur_stage.leaf_node_parameters.credential_with_key() {
+                if params_credential != credential {
+                    return Err(CreateCommitError::ExternalCommitCredentialMismatch);
+                }
+            }
+            cur_stage
+                .leaf_node_parameters
+                .set_credential_with_key(credential.clone());
+        }
+
+        // Fold the new signer's credential into the leaf node parameters. The
+        // new signature key is installed in the committer's leaf through the
+        // UpdatePath, so parameters that pin a different credential are
+        // rejected.
+        let new_signer = match new_signer {
+            Some(NewSignerBundle {
+                signer,
+                credential_with_key,
+            }) => {
+                if ciphersuite.signature_algorithm() != signer.signature_scheme() {
+                    return Err(CreateCommitError::InvalidSignerCiphersuite);
+                }
+                if let Some(params_credential) =
+                    cur_stage.leaf_node_parameters.credential_with_key()
+                {
+                    if params_credential != &credential_with_key {
+                        return Err(CreateCommitError::InvalidLeafNodeParameters);
+                    }
+                }
+                cur_stage
+                    .leaf_node_parameters
+                    .set_credential_with_key(credential_with_key);
+                Some(signer)
+            }
+            None => None,
+        };
 
         // put the pending and uniform proposals into a uniform shape,
         // i.e. produce queued proposals from the own proposals
@@ -490,7 +894,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .filter(|_| cur_stage.consume_proposal_store)
             .cloned();
 
-        // prepare the iterator for the proposal validation and seletion function. That function
+        // prepare the iterator for the proposal validation and selection function. That function
         // assumes that "earlier in the list" means "older", so since our own proposals are
         // newest, we have to put them last.
         let proposal_queue = group_proposal_store_queue.chain(own_proposals).filter(f);
@@ -518,9 +922,16 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         // ValSem102
         // ValSem103
         // ValSem104
-        group
-            .public_group
-            .validate_key_uniqueness(&proposal_queue, None)?;
+        let path_leaf_signature_key = cur_stage
+            .leaf_node_parameters
+            .credential_with_key()
+            .map(|credential_with_key| &credential_with_key.signature_key);
+        group.public_group.validate_key_uniqueness(
+            &proposal_queue,
+            None,
+            &sender,
+            path_leaf_signature_key,
+        )?;
         // ValSem105
         group.public_group.validate_add_proposals(&proposal_queue)?;
         // ValSem106
@@ -531,6 +942,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         group
             .public_group
             .validate_remove_proposals(&proposal_queue)?;
+        // Also validates branch PSK proposals: a resumption PSK of usage `Branch`
+        // is only accepted at epoch 0 (i.e. in the initial commit of a subgroup),
+        // see `validate_pre_shared_key_proposals`.
         group
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
@@ -548,7 +962,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .public_group
             .validate_group_context_extensions_proposal(&proposal_queue)?;
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         group
             .public_group
             .validate_app_data_update_proposals_and_group_context(&proposal_queue)?;
@@ -565,58 +979,86 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let mut diff = group.public_group.empty_diff();
 
         // Apply proposals to tree
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let apply_proposals_values = diff.apply_proposals_with_app_data_updates(
             &proposal_queue,
             own_leaf_index,
             cur_stage.app_data_dictionary_updates,
         )?;
-        #[cfg(not(feature = "extensions-draft-08"))]
+        #[cfg(not(feature = "extensions-draft"))]
         let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index)?;
         if apply_proposals_values.self_removed && !is_external_commit {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
+        // Virtual-clients sender hook: when the caller opted into VC for
+        // this commit, validate that the effective leaf is configured to
+        // accept the derivation-info entry (capabilities + AppComponents),
+        // then derive the path-secret + leaf-keypair override from the
+        // operation secret allocated in `vc_emulation` and embed the
+        // `DerivationInfo` blob in the leaf's `app_data_dictionary`
+        // extension.
+        #[cfg(feature = "virtual-clients-draft")]
+        let vc_loaded = builder.vc_loaded.take();
+        #[cfg(feature = "virtual-clients-draft")]
+        let own_update_override = if let Some(loaded) = vc_loaded.as_ref() {
+            // The leaf-configuration pre-check already ran in `vc_emulation`,
+            // before the generation was allocated. Reuse the resolved
+            // `AppDataDictionary` it produced so the inject step preserves
+            // every other entry, including the AppComponents entry that
+            // survives across multiple VC commits.
+            // For an external commit, carry the external init secret in the
+            // derivation info so a sibling emulator client can process the
+            // commit without holding the previous epoch's `external_secret`.
+            // Regular commits carry no external init secret.
+            let external_init_secret =
+                is_external_commit.then(|| group.group_epoch_secrets().init_secret());
+            Some(apply_vc_emulation(
+                loaded,
+                &mut cur_stage.leaf_node_parameters,
+                loaded.resolved_dictionary.clone(),
+                crypto,
+                ciphersuite,
+                group.group_id(),
+                external_init_secret,
+            )?)
+        } else {
+            None
+        };
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        let own_update_override: Option<crate::treesync::diff::OwnUpdatePathOverride> = None;
+
+        // A new signer always requires a path: the new signature key only
+        // becomes part of the group state through the UpdatePath leaf.
         let path_computation_result =
             // If path is needed, compute path values
             if apply_proposals_values.path_required
                 || contains_own_updates
                 || cur_stage.force_self_update
                 || !cur_stage.leaf_node_parameters.is_empty()
+                || new_signer.is_some()
             {
-                let commit_type = match &cur_stage.external_commit_info {
-                    Some(ExternalCommitInfo { credential , ..}) => {
-                        CommitType::External(credential.clone())
-                    }
-                    None => CommitType::Member,
+                let commit_type = if is_external_commit {
+                    CommitType::External
+                } else {
+                    CommitType::Member
                 };
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
                 // tree hash.
-                if let Some(new_signer) = new_signer {
-                    if let Some(credential_with_key) =
-                        cur_stage.leaf_node_parameters.credential_with_key()
-                    {
-                        if credential_with_key != &new_signer.credential_with_key {
-                            return Err(CreateCommitError::InvalidLeafNodeParameters);
-                        }
-                    }
-                    cur_stage.leaf_node_parameters.set_credential_with_key(
-                        new_signer.credential_with_key,
-                    );
-
-                    diff.compute_path(
+                match new_signer {
+                    Some(new_signer) => diff.compute_path(
                         rand,
                         crypto,
                         own_leaf_index,
                         apply_proposals_values.exclusion_list(),
                         &commit_type,
                         &cur_stage.leaf_node_parameters,
-                        new_signer.signer,
-                        apply_proposals_values.extensions.clone()
-                    )?
-                } else {
-                    diff.compute_path(
+                        new_signer,
+                        apply_proposals_values.extensions.clone(),
+                        own_update_override,
+                    )?,
+                    None => diff.compute_path(
                         rand,
                         crypto,
                         own_leaf_index,
@@ -624,8 +1066,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         &commit_type,
                         &cur_stage.leaf_node_parameters,
                         old_signer,
-                        apply_proposals_values.extensions.clone()
-                    )?
+                        apply_proposals_values.extensions.clone(),
+                        own_update_override,
+                    )?,
                 }
             } else {
                 // If path is not needed, update the group context and return
@@ -675,12 +1118,33 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             path: path_computation_result.encrypted_path,
         };
 
-        let framing_parameters =
-            if let Some(ExternalCommitInfo { aad, .. }) = &cur_stage.external_commit_info {
-                FramingParameters::new(aad, WireFormat::PublicMessage)
-            } else {
-                group.framing_parameters()
+        let (outgoing_aad, wire_format): (Vec<u8>, WireFormat) =
+            match &cur_stage.external_commit_info {
+                None => (
+                    group.outgoing_authenticated_data()?,
+                    group.outgoing_wire_format(),
+                ),
+                Some(ExternalCommitInfo { aad, .. }) => {
+                    // The spec requires the SafeAAD prefix even with zero items
+                    // when the target GroupContext has `safe_aad` present, so a
+                    // bare `aad` would be rejected by SafeAAD-aware receivers.
+                    // The joining group carries no application-staged items, so
+                    // the prefix is empty unless the builder staged the
+                    // virtual-clients marker.
+                    #[cfg(feature = "extensions-draft")]
+                    let aad_bytes = if group.context().safe_aad_required() {
+                        crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, aad)
+                            .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
+                    } else {
+                        aad.clone()
+                    };
+                    #[cfg(not(feature = "extensions-draft"))]
+                    let aad_bytes = aad.clone();
+                    (aad_bytes, WireFormat::PublicMessage)
+                }
             };
+
+        let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
         // Build AuthenticatedContent
         let mut authenticated_content = AuthenticatedContent::commit(
@@ -709,7 +1173,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Prepare the PskSecret
-        let psk_secret = { PskSecret::new(crypto, ciphersuite, psks)? };
+        let psk_secret = PskSecret::new(crypto, ciphersuite, psks)?;
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, crypto, &joiner_secret, psk_secret)?;
@@ -727,7 +1191,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
         let EpochSecretsResult {
             epoch_secrets: provisional_epoch_secrets,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_exporter,
         } = key_schedule
             .epoch_secrets(crypto, ciphersuite)
@@ -781,8 +1245,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                             own_leaf_index,
                         )?
                     };
-                    // Sign to-be-signed group info.
-                    let group_info = group_info_tbs.sign(old_signer)?;
+                    // Sign to-be-signed group info. Joiners verify this against
+                    // the own leaf node in the post-commit ratchet tree, so a
+                    // rotated signature key has to be used here as well.
+                    let group_info = match new_signer {
+                        Some(new_signer) => group_info_tbs.sign(new_signer)?,
+                        None => group_info_tbs.sign(old_signer)?,
+                    };
 
                     // Encrypt GroupInfo object
                     let (welcome_key, welcome_nonce) = welcome_secret
@@ -840,8 +1309,14 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                             own_leaf_index,
                         )?
                     };
-                    // Sign to-be-signed group info.
-                    Ok(group_info_tbs.sign(old_signer)?)
+                    // Sign to-be-signed group info. Like the Welcome's
+                    // GroupInfo, this is verified against the post-commit
+                    // ratchet tree, so a rotated signature key has to be used
+                    // here as well.
+                    match new_signer {
+                        Some(new_signer) => Ok(group_info_tbs.sign(new_signer)?),
+                        None => Ok(group_info_tbs.sign(old_signer)?),
+                    }
                 })
                 .transpose()?;
 
@@ -855,7 +1330,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 own_leaf_index,
             );
 
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let application_export_tree = ApplicationExportTree::new(application_exporter);
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_epoch_secrets,
@@ -866,13 +1341,25 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             // proposal, so there is no extra keypair to store here.
             None,
             update_path_leaf_node,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             application_export_tree,
+            // The committer's `own_leaf_index` is already set to the new
+            // leaf (in `build_group` for external commits, or unchanged for
+            // regular commits), so `merge_commit` has nothing to overwrite.
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         );
-        let staged_commit = StagedCommit::new(
+        #[cfg_attr(not(feature = "virtual-clients-draft"), allow(unused_mut))]
+        let mut staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
+            #[cfg(feature = "virtual-clients-draft")]
+            vc_loaded.as_ref().map(|loaded| loaded.epoch_id.clone()),
         );
+        #[cfg(feature = "virtual-clients-draft")]
+        {
+            staged_commit.marks_new_vc_derivation_epoch = marks_new_vc_derivation_epoch;
+        }
 
         Ok(builder.into_stage(Complete {
             result: CreateCommitResult {
@@ -892,13 +1379,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// [`AppDataDictionary`] of the group.
     ///
     /// [`AppDataDictionary`]: crate::extensions::AppDataDictionary
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
         AppDataDictionaryUpdater::new(self.group.borrow().context().app_data_dict())
     }
 
     /// Sets the [`AppDataUpdates`] that contain the changes made by the AppDataUpdate proposals
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn with_app_data_dictionary_updates(
         &mut self,
         app_data_dictionary_updates: Option<AppDataUpdates>,
@@ -907,7 +1394,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     }
 
     /// Returns an iterator over all AppDataUpdate proposals in the proposal store of the group
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub fn app_data_update_proposals(&self) -> impl Iterator<Item = &AppDataUpdateProposal> {
         let proposal_store_proposals = self
             .group
@@ -974,17 +1461,182 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
         //
         // Note that this performs writes to the storage, so we should do that here, rather than
         // when working with the result.
-        let mls_message = group
+        let framing = group
             .content_to_mls_message(create_commit_result.commit, provider)
             .await?;
 
         Ok(CommitMessageBundle {
             version: group.version(),
-            commit: mls_message,
+            commit: framing.message,
             welcome: create_commit_result.welcome_option,
             group_info: create_commit_result.group_info,
+            #[cfg(feature = "virtual-clients-draft")]
+            confirmation: framing.confirmation,
         })
     }
+}
+
+/// The virtual-clients commit data staged for `group`'s next outgoing message.
+///
+/// `Ok(None)` when the group does not act on the item at all, that is when it is
+/// not an emulation group or its GroupContext does not require Safe AAD framing,
+/// and when no item is staged.
+#[cfg(feature = "virtual-clients-draft")]
+fn staged_vc_commit_data(
+    group: &MlsGroup,
+) -> Result<Option<VirtualClientCommitData>, CreateCommitError> {
+    if !group.is_emulation_group() || !group.context().safe_aad_required() {
+        return Ok(None);
+    }
+    Ok(VirtualClientCommitData::from_safe_aad(&group.safe_aad)?)
+}
+
+/// Add a `new_derivation_epoch` action to the virtual-clients Safe AAD item
+/// staged on `group`, creating the item if the application staged none.
+///
+/// Every other entry of an application-staged item is preserved. Fails if the
+/// group cannot carry the marker, either because it is not an emulation group or
+/// because its GroupContext does not require Safe AAD framing.
+#[cfg(feature = "virtual-clients-draft")]
+fn stage_vc_new_derivation_epoch(group: &mut MlsGroup) -> Result<(), CreateCommitError> {
+    if !group.is_emulation_group() {
+        return Err(CreateCommitError::NewDerivationEpochOutsideEmulationGroup);
+    }
+    if !group.context().safe_aad_required() {
+        return Err(CreateCommitError::NewDerivationEpochWithoutSafeAad);
+    }
+
+    let mut commit_data = staged_vc_commit_data(group)?
+        .map_or_else(|| VirtualClientCommitData::new(Vec::new()), Ok)?;
+    commit_data.require_new_derivation_epoch();
+    group.safe_aad.upsert(commit_data.to_safe_aad_item()?);
+    Ok(())
+}
+
+/// Build the path-secret + leaf-keypair override from the
+/// [`OperationSecret`] allocated in [`CommitBuilder::vc_emulation`] and
+/// inject the corresponding `DerivationInfo` blob into
+/// `leaf_node_parameters`'s `app_data_dictionary` extension.
+///
+/// The `DerivationInfoTbe` wrapping stays in the derivation epoch's
+/// ciphersuite, while the operation secret is imported into the
+/// higher-level group ciphersuite to produce MLS path material for this
+/// group. The generation was consumed and the advanced tree persisted when
+/// `vc_emulation` was called, so this helper neither allocates nor
+/// persists anything.
+#[cfg(feature = "virtual-clients-draft")]
+fn apply_vc_emulation(
+    loaded: &VcLoaded,
+    leaf_node_parameters: &mut LeafNodeParameters,
+    resolved_dictionary: AppDataDictionary,
+    crypto: &impl OpenMlsCrypto,
+    group_ciphersuite: openmls_traits::types::Ciphersuite,
+    group_id: &crate::prelude::GroupId,
+    external_init_secret: Option<&crate::schedule::InitSecret>,
+) -> Result<crate::treesync::diff::OwnUpdatePathOverride, CreateCommitError> {
+    let target_operation_secret = loaded.operation_secret.derive_target_operation_secret(
+        crypto,
+        group_ciphersuite,
+        group_id,
+    )?;
+    let path_secret = target_operation_secret
+        .derive_path_generation_secret(crypto, group_ciphersuite)?
+        .into();
+    let leaf_encryption_keypair = target_operation_secret
+        .derive_encryption_key_secret(crypto, group_ciphersuite)?
+        .generate_encryption_key_pair(crypto, group_ciphersuite)?;
+    drop(target_operation_secret);
+
+    // Wrap the TBE under the per-epoch AEAD key, bound to the new leaf via
+    // its serialized encryption key as derivation context.
+    let leaf_encryption_key = leaf_encryption_keypair
+        .public_key()
+        .tls_serialize_detached()
+        .map_err(VirtualClientsError::from)?;
+    // leaf_node operations are not batched, so the TBE carries no
+    // key_package_index. For an external commit the commit-case
+    // `external_init_secret` is present; for a regular commit it is absent.
+    let tbe = DerivationInfoTbe::LeafNode {
+        leaf_index: loaded.emulation_leaf_index,
+        generation: loaded.generation,
+        external_init_secret: external_init_secret
+            .map(|init_secret| ExternalInitSecret::from_slice(init_secret.as_slice())),
+    };
+    let derivation_info = DerivationInfo::encrypt(
+        crypto,
+        loaded.emulation_ciphersuite,
+        &loaded.epoch_encryption_key,
+        loaded.epoch_id.clone(),
+        &leaf_encryption_key,
+        &tbe,
+    )?;
+    let derivation_info_bytes = derivation_info
+        .tls_serialize_detached()
+        .map_err(VirtualClientsError::from)?;
+
+    inject_vc_derivation_info(
+        leaf_node_parameters,
+        resolved_dictionary,
+        derivation_info_bytes,
+    )?;
+
+    Ok(crate::treesync::diff::OwnUpdatePathOverride {
+        path_secret,
+        leaf_encryption_keypair,
+    })
+}
+
+/// Verify that the effective leaf for this commit (= the merged view of
+/// `leaf_node_parameters` over the existing leaf, or `leaf_node_parameters`
+/// alone for external commits) declares `AppDataDictionary` and lists
+/// [`VC_COMPONENT_ID`] in its `AppComponents` entry. Without both, the
+/// receiver cannot reliably surface the derivation-info entry to the
+/// virtual-clients consumer, so we reject the commit at build time.
+///
+/// Returns the resolved `AppDataDictionary` (caller's override merged
+/// over the existing leaf's, with the caller winning on duplicate keys)
+/// so subsequent injection of the VC derivation-info preserves the
+/// AppComponents entry across commits.
+#[cfg(feature = "virtual-clients-draft")]
+fn check_vc_leaf_configuration(
+    leaf_node_parameters: &LeafNodeParameters,
+    group: &MlsGroup,
+    own_leaf_index: LeafNodeIndex,
+    is_external_commit: bool,
+) -> Result<AppDataDictionary, CreateCommitError> {
+    let current_leaf = if is_external_commit {
+        None
+    } else {
+        Some(group.public_group().leaf(own_leaf_index).ok_or_else(|| {
+            LibraryError::custom("Couldn't find own leaf for VC capability check")
+        })?)
+    };
+
+    crate::components::vc_derivation_info::resolve_vc_leaf_dictionary(
+        leaf_node_parameters.capabilities(),
+        leaf_node_parameters.extensions(),
+        current_leaf,
+    )
+    .map_err(CreateCommitError::VirtualClientsError)
+}
+
+/// Merge a virtual-clients derivation info blob into
+/// `leaf_node_parameters.app_data_dictionary[VC_COMPONENT_ID]`,
+/// preserving every other component id from `resolved_dictionary` and
+/// every non-`AppDataDictionary` leaf-node extension the caller put in.
+#[cfg(feature = "virtual-clients-draft")]
+fn inject_vc_derivation_info(
+    leaf_node_parameters: &mut LeafNodeParameters,
+    resolved_dictionary: AppDataDictionary,
+    derivation_info_bytes: Vec<u8>,
+) -> Result<(), CreateCommitError> {
+    let extensions = crate::components::vc_derivation_info::merge_vc_derivation_info(
+        leaf_node_parameters.extensions(),
+        resolved_dictionary,
+        derivation_info_bytes,
+    )?;
+    leaf_node_parameters.set_extensions(extensions);
+    Ok(())
 }
 
 /// Contains the messages that are produced by committing. The messages can be accessed individually
@@ -995,6 +1647,10 @@ pub struct CommitMessageBundle {
     commit: MlsMessageOut,
     welcome: Option<Welcome>,
     group_info: Option<GroupInfo>,
+    /// Confirmation data for a commit framed as a PrivateMessage, `None` for a
+    /// plaintext-framed commit.
+    #[cfg(feature = "virtual-clients-draft")]
+    confirmation: Option<HandshakeConfirmationData>,
 }
 
 /// The result of a commit with an add proposal. This includes
@@ -1019,9 +1675,11 @@ impl TryFrom<CommitMessageBundle> for WelcomeCommitMessages {
         let (commit, welcome_opt, group_info) = value.into_messages();
         Ok(Self {
             commit,
-            welcome: welcome_opt.ok_or(LibraryError::custom(
-                "WelcomeCommitMessages must only be used with commits that produce a welcome.",
-            ))?,
+            welcome: welcome_opt.ok_or_else(|| {
+                LibraryError::custom(
+                    "WelcomeCommitMessages must only be used with commits that produce a welcome.",
+                )
+            })?,
             group_info,
         })
     }
@@ -1040,6 +1698,8 @@ impl CommitMessageBundle {
             commit,
             welcome,
             group_info,
+            #[cfg(feature = "virtual-clients-draft")]
+            confirmation: None,
         }
     }
 }
@@ -1071,6 +1731,28 @@ impl CommitMessageBundle {
     /// For owned version, see [`Self::into_group_info`].
     pub fn group_info(&self) -> Option<&GroupInfo> {
         self.group_info.as_ref()
+    }
+
+    /// Gets the confirmation data for this commit. Present when the commit was
+    /// framed as a PrivateMessage, `None` when it was framed as a plaintext
+    /// PublicMessage. Pass its `epoch` and `generation` to
+    /// [`MlsGroup::confirm_handshake_message`] once the DS has accepted the
+    /// commit. For an owning version, see [`Self::take_confirmation`].
+    ///
+    /// [`MlsGroup::confirm_handshake_message`]: crate::group::MlsGroup::confirm_handshake_message
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn confirmation(&self) -> Option<&HandshakeConfirmationData> {
+        self.confirmation.as_ref()
+    }
+
+    /// Takes the confirmation data out of the bundle, leaving `None` in its
+    /// place. Call this before handing the bundle to a consuming accessor such
+    /// as [`Self::into_commit`], [`Self::into_contents`], or
+    /// [`Self::into_messages`], which drop the confirmation data. For a
+    /// borrowed version, see [`Self::confirmation`].
+    #[cfg(feature = "virtual-clients-draft")]
+    pub fn take_confirmation(&mut self) -> Option<HandshakeConfirmationData> {
+        self.confirmation.take()
     }
 
     /// Gets all three messages, some of which optional. For owned version, see
@@ -1154,5 +1836,68 @@ impl IntoIterator for CommitMessageBundle {
             .into_iter()
             .chain(welcome)
             .chain(group_info)
+    }
+}
+
+#[cfg(test)]
+mod branch_tests {
+    use crate::{
+        group::{
+            mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
+            CreateCommitError, MlsGroup, ProposalValidationError,
+        },
+        schedule::errors::PskError,
+    };
+
+    /// A resumption PSK of usage `Branch` must only appear in the initial commit
+    /// of a subgroup (i.e. at epoch 0). Using it in any later commit must be
+    /// rejected.
+    ///
+    /// This exercises the internal [`CommitBuilder::branch`] engine directly, on
+    /// an already-established group, which the public `MlsGroupBuilder::branch`
+    /// entry point does not allow.
+    #[openmls_test::openmls_test]
+    fn subgroup_branch_psk_rejected_outside_initial_commit() {
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+        let parent_provider = &Provider::default();
+
+        // `alice_group` is at epoch 1 after adding Bob, so a branch PSK in a
+        // commit on it must be rejected.
+        let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
+            setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+        // Use a separate group as the (arbitrary) source of the branch PSK
+        // secret, so that `load_psks` succeeds and we actually reach the
+        // proposal validation.
+        let (parent_cwk, _parent_kpb, parent_signer, _parent_pk) =
+            setup_client("Parent", ciphersuite, parent_provider);
+        let parent_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .build(parent_provider, &parent_signer, parent_cwk)
+            .unwrap();
+
+        let result = alice_group
+            .commit_builder()
+            .branch(alice_provider.rand(), &parent_group.branch_info())
+            .unwrap()
+            .load_psks(alice_provider.storage())
+            .unwrap()
+            .build(
+                alice_provider.rand(),
+                alice_provider.crypto(),
+                &alice_signer,
+                |_| true,
+            );
+
+        assert!(
+            matches!(
+                result,
+                Err(CreateCommitError::ProposalValidationError(
+                    ProposalValidationError::Psk(PskError::NotAllowed)
+                ))
+            ),
+            "expected a branch PSK outside the initial commit to be rejected, got {result:?}"
+        );
     }
 }

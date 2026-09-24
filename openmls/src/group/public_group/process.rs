@@ -20,8 +20,14 @@ use crate::{
     messages::proposals::Proposal,
 };
 
-#[cfg(feature = "extensions-draft-08")]
-use crate::prelude::processing::AppDataUpdates;
+#[cfg(feature = "extensions-draft")]
+use crate::{
+    group::{
+        mls_group::processing::{committed_app_data_update_proposals, UnresolvedAppDataCommit},
+        ResolveAppDataCommitError, StageCommitError, StagedCommit,
+    },
+    prelude::processing::{AppDataDictionaryUpdater, AppDataUpdates},
+};
 
 use super::PublicGroup;
 
@@ -153,6 +159,14 @@ impl PublicGroup {
     ///  - ValSem244
     ///  - ValSem245
     ///  - ValSem246 (as part of ValSem010)
+    ///
+    #[cfg_attr(
+        feature = "extensions-draft",
+        doc = "A commit covering AppDataUpdate proposals is returned as\n\
+        [`ProcessedMessageContent::UnresolvedAppDataCommit`], since the\n\
+        application has to interpret the proposals before the commit can be\n\
+        staged via [`PublicGroup::stage_app_data_commit()`]."
+    )]
     pub fn process_message(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -185,6 +199,58 @@ impl PublicGroup {
             .parse_message(decrypted_message, None)
             .map_err(PublicProcessMessageError::from)?;
         self.process_unverified_message(crypto, unverified_message)
+    }
+
+    #[cfg(feature = "extensions-draft")]
+    /// Returns a new helper struct for updating the app data
+    pub fn app_data_dictionary_updater(&self) -> AppDataDictionaryUpdater<'_> {
+        AppDataDictionaryUpdater::new(self.group_context().app_data_dict())
+    }
+
+    /// Stages a Commit covering AppDataUpdate proposals, after the application
+    /// has interpreted the proposals and computed the resulting
+    /// [`AppDataUpdates`].
+    ///
+    /// The returned [`StagedCommit`] can be inspected and merged into the
+    /// group's state using [`PublicGroup::merge_commit()`].
+    #[cfg(feature = "extensions-draft")]
+    pub fn stage_app_data_commit(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        unresolved_commit: UnresolvedAppDataCommit,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<StagedCommit, StageCommitError> {
+        self.stage_commit_with_app_data_updates(
+            &unresolved_commit.into_content(),
+            crypto,
+            app_data_dict_updates,
+        )
+    }
+
+    /// Resolves a [`ProcessedMessage`] carrying an
+    /// [`ProcessedMessageContent::UnresolvedAppDataCommit`]: stages the commit
+    /// with the application-computed [`AppDataUpdates`] and returns the same
+    /// message with the resulting [`StagedCommit`] as regular
+    /// [`ProcessedMessageContent::StagedCommitMessage`] content. All other
+    /// message fields (sender, credential, authenticated data) are preserved.
+    ///
+    /// Use this instead of [`PublicGroup::stage_app_data_commit()`] when the
+    /// caller needs the resolved commit in [`ProcessedMessage`] form, e.g. to
+    /// keep a single code path for commits with and without AppDataUpdate
+    /// proposals.
+    ///
+    /// Returns an error if the message content is not an unresolved app data
+    /// commit; the message is consumed either way.
+    #[cfg(feature = "extensions-draft")]
+    pub fn resolve_app_data_commit(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        processed_message: ProcessedMessage,
+        app_data_dict_updates: Option<AppDataUpdates>,
+    ) -> Result<ProcessedMessage, ResolveAppDataCommitError> {
+        processed_message.resolve_app_data_commit(|unresolved_commit| {
+            self.stage_app_data_commit(crypto, unresolved_commit, app_data_dict_updates)
+        })
     }
 }
 
@@ -224,71 +290,26 @@ impl PublicGroup {
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         //  - https://validation.openmls.tech/#valn1203
-        let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+        let verified = unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+        let content = verified.content;
+        let credential = verified.credential;
 
-        match content.sender() {
+        #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
+        let mut processed = match content.sender() {
             Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
-                self.process_internal_authenticated_content(crypto, content, credential)
+                self.process_internal_authenticated_content(crypto, content, credential)?
             }
             Sender::External(_) => {
-                self.process_external_authenticated_content(crypto, content, credential)
+                self.process_external_authenticated_content(crypto, content, credential)?
             }
+        };
+        #[cfg(feature = "extensions-draft")]
+        if self.group_context().safe_aad_required() {
+            processed
+                .try_attach_safe_aad()
+                .map_err(|_| PublicProcessMessageError::MalformedSafeAad)?;
         }
-    }
-
-    /// This processing function does most of the semantic verifications.
-    /// It returns a [ProcessedMessage] enum.
-    /// Checks the following semantic validation:
-    ///  - ValSem008
-    ///  - ValSem010
-    ///  - ValSem101
-    ///  - ValSem102
-    ///  - ValSem104
-    ///  - ValSem106
-    ///  - ValSem107
-    ///  - ValSem108
-    ///  - ValSem110
-    ///  - ValSem111
-    ///  - ValSem112
-    ///  - ValSem200
-    ///  - ValSem201
-    ///  - ValSem202: Path must be the right length
-    ///  - ValSem203: Path secrets must decrypt correctly
-    ///  - ValSem204: Public keys from Path must be verified and match the
-    ///    private keys from the direct path
-    ///  - ValSem205
-    ///  - ValSem240
-    ///  - ValSem241
-    ///  - ValSem242
-    ///  - ValSem244
-    ///  - ValSem246 (as part of ValSem010)
-    #[cfg(feature = "extensions-draft-08")]
-    pub fn process_unverified_message_with_app_data_updates(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        unverified_message: UnverifiedMessage,
-        app_data_dict_updates: Option<AppDataUpdates>,
-    ) -> Result<ProcessedMessage, PublicProcessMessageError> {
-        // Checks the following semantic validation:
-        //  - ValSem010
-        //  - ValSem246 (as part of ValSem010)
-        //  - https://validation.openmls.tech/#valn1203
-        let (content, credential) =
-            unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
-
-        match content.sender() {
-            Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => self
-                .process_internal_authenticated_content_with_app_data_updates(
-                    crypto,
-                    content,
-                    credential,
-                    app_data_dict_updates,
-                ),
-            Sender::External(_) => {
-                self.process_external_authenticated_content(crypto, content, credential)
-            }
-        }
+        Ok(processed)
     }
 
     fn process_internal_authenticated_content(
@@ -318,7 +339,37 @@ impl PublicGroup {
                     ProcessedMessageContent::ProposalMessage(proposal)
                 }
             }
-            FramedContentBody::Commit(_) => {
+            FramedContentBody::Commit(commit) => {
+                // A commit covering AppDataUpdate proposals cannot be staged
+                // immediately: the proposals contain diffs in an
+                // application-defined format, so the application has to
+                // interpret them and supply the resulting dictionary entries
+                // first. The verified content is handed back to the caller,
+                // who resumes staging via `PublicGroup::stage_app_data_commit`.
+                #[cfg(feature = "extensions-draft")]
+                {
+                    let app_data_update_proposals =
+                        committed_app_data_update_proposals(commit, &self.proposal_store);
+                    if !app_data_update_proposals.is_empty() {
+                        let unresolved_commit =
+                            UnresolvedAppDataCommit::new(content, app_data_update_proposals);
+                        return Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.group_context().epoch(),
+                            sender,
+                            authenticated_data,
+                            ProcessedMessageContent::UnresolvedAppDataCommit(Box::new(
+                                unresolved_commit,
+                            )),
+                            credential,
+                            #[cfg(feature = "virtual-clients-draft")]
+                            None,
+                        ));
+                    }
+                }
+                #[cfg(not(feature = "extensions-draft"))]
+                let _ = commit;
+
                 let staged_commit = self.stage_commit(&content, crypto)?;
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
             }
@@ -331,61 +382,8 @@ impl PublicGroup {
             authenticated_data,
             content,
             credential,
-        ))
-    }
-
-    #[cfg(feature = "extensions-draft-08")]
-    fn process_internal_authenticated_content_with_app_data_updates(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-        content: AuthenticatedContent,
-        credential: Credential,
-        app_data_dict_updates: Option<AppDataUpdates>,
-    ) -> Result<ProcessedMessage, PublicProcessMessageError> {
-        let sender = content.sender().clone();
-        let authenticated_data = content.authenticated_data().to_owned();
-
-        debug_assert!(matches!(
-            sender,
-            Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal
-        ));
-
-        let content = match content.content() {
-            FramedContentBody::Application(application_message) => {
-                ProcessedMessageContent::ApplicationMessage(ApplicationMessage::new(
-                    application_message.as_slice().to_owned(),
-                ))
-            }
-            FramedContentBody::Proposal(_) => {
-                let proposal = Box::new(QueuedProposal::from_authenticated_content_by_ref(
-                    self.ciphersuite(),
-                    crypto,
-                    content,
-                )?);
-                if matches!(sender, Sender::NewMemberProposal) {
-                    ProcessedMessageContent::ExternalJoinProposalMessage(proposal)
-                } else {
-                    ProcessedMessageContent::ProposalMessage(proposal)
-                }
-            }
-            FramedContentBody::Commit(_) => {
-                let staged_commit = self.stage_commit_with_app_data_updates(
-                    &content,
-                    crypto,
-                    app_data_dict_updates,
-                )?;
-
-                ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
-            }
-        };
-
-        Ok(ProcessedMessage::new(
-            self.group_id().clone(),
-            self.group_context().epoch(),
-            sender,
-            authenticated_data,
-            content,
-            credential,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         ))
     }
 
@@ -421,6 +419,8 @@ impl PublicGroup {
                     data,
                     content,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 ))
             }
 
@@ -439,6 +439,8 @@ impl PublicGroup {
                     data,
                     content,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 ))
             }
             FramedContentBody::Proposal(Proposal::Add(_)) => {
@@ -456,6 +458,29 @@ impl PublicGroup {
                     data,
                     content,
                     credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
+                ))
+            }
+            // RFC 9420 §12.1.8 permits external senders to send PreSharedKey
+            // proposals.
+            FramedContentBody::Proposal(Proposal::PreSharedKey(_)) => {
+                let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                    QueuedProposal::from_authenticated_content_by_ref(
+                        self.ciphersuite(),
+                        crypto,
+                        content,
+                    )?,
+                ));
+                Ok(ProcessedMessage::new(
+                    self.group_id().clone(),
+                    self.group_context().epoch(),
+                    sender,
+                    data,
+                    content,
+                    credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
                 ))
             }
             // TODO #151/#106

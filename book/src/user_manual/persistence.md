@@ -9,3 +9,14 @@ must have been written to the provider previously.
 ## Forward-Secrecy Considerations
 
 OpenMLS uses the `StorageProvider` to store sensitive key material. To achieve forward-secrecy (i.e. to prevent an adversary from decrypting messages sent in the past if a client is compromised), OpenMLS frequently deletes previously used key material through calls to the `StorageProvider`. `StorageProvider` implementations must thus take care to ensure that values deleted through any of the `delete_` functions of the trait are irrevocably deleted and that no copies are kept.
+
+## Integrity Considerations
+
+OpenMLS treats the `StorageProvider` as trusted. Persisted group state
+carries invariants that OpenMLS does not check again when it reads that state
+back.
+
+An adversary that can modify stored group state is therefore outside of
+OpenMLS's threat model Applications that need to cover this case should protect
+the storage backend itself, for example with authenticated encryption or a
+platform keystore.

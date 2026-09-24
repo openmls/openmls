@@ -80,7 +80,7 @@ fn test_hpke_seal_open() {
 }
 
 // Spot test for safe hpke seal/open.
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[openmls_test::openmls_test]
 fn test_safe_hpke_seal_open() {
     use crate::component::ComponentId;

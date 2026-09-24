@@ -1,7 +1,5 @@
 use openmls_traits::random::OpenMlsRand;
 
-use rand::TryRngCore;
-
 use crate::CryptoProvider;
 
 /// An error occurred when trying to generate a random value
@@ -30,24 +28,16 @@ impl OpenMlsRand for CryptoProvider {
     type Error = RandError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
-        let mut rng = self.rng.lock().map_err(|_| RandError::UnableToGenerate)?;
-
         let mut output = [0u8; N];
-
-        rng.try_fill_bytes(&mut output)
+        self.fill_random(&mut output)
             .map_err(|_| RandError::UnableToGenerate)?;
-
         Ok(output)
     }
 
     fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
-        let mut rng = self.rng.lock().map_err(|_| RandError::UnableToGenerate)?;
-
         let mut output = vec![0u8; len];
-
-        rng.try_fill_bytes(&mut output)
+        self.fill_random(&mut output)
             .map_err(|_| RandError::UnableToGenerate)?;
-
         Ok(output)
     }
 }

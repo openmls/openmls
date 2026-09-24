@@ -5,6 +5,7 @@
 
 // These errors are exposed through `crate::group::errors`.
 
+use openmls_traits::types::Ciphersuite;
 use thiserror::Error;
 
 use crate::{
@@ -24,7 +25,7 @@ use crate::{
     },
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub use crate::schedule::application_export_tree::ApplicationExportTreeError;
 
 #[cfg(doc)]
@@ -54,6 +55,18 @@ pub enum NewGroupError<StorageError> {
     /// A group with the given [`GroupId`] already exists.
     #[error("A group with the given GroupId already exists.")]
     GroupAlreadyExists,
+    /// The ciphersuite is not supported by the crypto provider.
+    #[error("Ciphersuite {0:?} is not supported by the crypto provider.")]
+    UnsupportedCiphersuite(Ciphersuite),
+    /// A virtual-clients processing error occurred.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// The group is an emulation group, and registering the derivation epoch of
+    /// its initial epoch failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    RegisterVcDerivationEpoch(#[from] RegisterVcDerivationEpochError<StorageError>),
 }
 
 /// An error when deleting past epoch secrets.
@@ -141,6 +154,12 @@ pub enum PublicProcessMessageError {
     /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
     #[error("The proposal is invalid for the Sender of type External")]
     UnsupportedProposalType,
+
+    /// The group's GroupContext requires Safe AAD framing, but the message's
+    /// `authenticated_data` did not start with a well-formed `SafeAad`.
+    #[cfg(feature = "extensions-draft")]
+    #[error("malformed SafeAAD prefix in authenticated_data")]
+    MalformedSafeAad,
 }
 
 /// Process message error
@@ -173,14 +192,15 @@ pub enum ProcessMessageError<StorageError> {
     /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
     #[error("The proposal is invalid for the Sender of type External")]
     UnsupportedProposalType,
-
-    /// Use `_with_app_data_update` functions for handling AppDataUpdate proposals
-    #[cfg(feature = "extensions-draft-08")]
-    #[error("Use `_with_app_data_update` functions for handling AppDataUpdate proposals")]
-    FoundAppDataUpdateProposal,
+    /// The group's GroupContext requires Safe AAD framing, but the message's
+    /// `authenticated_data` did not start with a well-formed `SafeAad`.
+    #[cfg(feature = "extensions-draft")]
+    #[error("malformed SafeAAD prefix in authenticated_data")]
+    MalformedSafeAad,
 }
 
 /// Create message error
+#[cfg(not(feature = "virtual-clients-draft"))]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum CreateMessageError {
     /// See [`LibraryError`] for more details.
@@ -348,6 +368,10 @@ pub enum SelfUpdateError<StorageError> {
     /// Error accessing the storage.
     #[error("Error accessing the storage.")]
     StorageError(StorageError),
+    /// Virtual-clients error.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
 }
 
 /// Propose self update error
@@ -417,7 +441,7 @@ pub enum ExportGroupInfoError {
 }
 
 /// Export secret error
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum SafeExportSecretError<StorageError> {
     /// See [`MlsGroupStateError`] for more details.
@@ -434,8 +458,20 @@ pub enum SafeExportSecretError<StorageError> {
     Storage(StorageError),
 }
 
+/// Error resolving a processed message carrying an unresolved app data commit.
+#[cfg(feature = "extensions-draft")]
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ResolveAppDataCommitError {
+    /// The processed message does not carry an unresolved app data commit.
+    #[error("The processed message does not carry an unresolved app data commit.")]
+    NotAnUnresolvedAppDataCommit,
+    /// See [`StageCommitError`] for more details.
+    #[error(transparent)]
+    StageCommit(#[from] StageCommitError),
+}
+
 /// Export secret error
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ProcessedMessageSafeExportSecretError {
     /// See [`StagedSafeExportSecretError`] for more details.
@@ -447,7 +483,7 @@ pub enum ProcessedMessageSafeExportSecretError {
 }
 
 /// Export secret error
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum PendingSafeExportSecretError<StorageError> {
     /// See [`StagedSafeExportSecretError`] for more details.
@@ -465,7 +501,7 @@ pub enum PendingSafeExportSecretError<StorageError> {
 }
 
 /// Export secret from a pending commit
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum StagedSafeExportSecretError {
     /// Only group members can export secrets.
@@ -551,4 +587,98 @@ pub enum RemoveProposalError<StorageError> {
     /// Error erasing proposal from storage.
     #[error("error writing proposal to storage")]
     Storage(StorageError),
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+pub use virtual_clients_draft::*;
+
+#[cfg(feature = "virtual-clients-draft")]
+mod virtual_clients_draft {
+    use thiserror::Error;
+
+    use super::MlsGroupStateError;
+    use crate::error::LibraryError;
+    use crate::framing::MessageEncryptionError;
+    use crate::tree::secret_tree::SecretTreeError;
+
+    /// Create message error
+    #[derive(Error, Debug, PartialEq, Clone)]
+    pub enum CreateMessageError<StorageError> {
+        /// See [`LibraryError`] for more details.
+        #[error(transparent)]
+        LibraryError(#[from] LibraryError),
+        /// See [`MlsGroupStateError`] for more details.
+        #[error(transparent)]
+        GroupStateError(#[from] MlsGroupStateError),
+        /// See [`MessageEncryptionError`] for more details.
+        #[error(transparent)]
+        MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
+        /// Error writing to storage.
+        #[error("Error writing to storage: {0}")]
+        StorageError(StorageError),
+    }
+
+    /// Confirm message error
+    #[derive(Error, Debug, PartialEq, Clone)]
+    pub enum ConfirmMessageError<StorageError> {
+        /// See [`SecretTreeError`] for more details.
+        #[error(transparent)]
+        SecretTreeError(#[from] SecretTreeError),
+        /// The requested epoch is newer than the group's current epoch.
+        #[error("The requested epoch is newer than the group's current epoch.")]
+        FutureEpoch,
+        /// Error writing to storage.
+        #[error("Error writing to storage: {0}")]
+        StorageError(StorageError),
+    }
+
+    impl<StorageError> From<ConfirmMessageError<StorageError>> for CreateMessageError<StorageError> {
+        fn from(err: ConfirmMessageError<StorageError>) -> Self {
+            match err {
+                ConfirmMessageError::SecretTreeError(e) => {
+                    CreateMessageError::MessageEncryptionError(
+                        MessageEncryptionError::SecretTreeError(e),
+                    )
+                }
+                // Unreachable: `create_message` confirms at the current epoch,
+                // which never triggers the future-epoch guard.
+                ConfirmMessageError::FutureEpoch => CreateMessageError::LibraryError(
+                    LibraryError::custom("confirm_application_message reported a future epoch"),
+                ),
+                ConfirmMessageError::StorageError(e) => CreateMessageError::StorageError(e),
+            }
+        }
+    }
+
+    /// Errors returned when deriving and persisting the state of a
+    /// virtual-clients derivation epoch. OpenMLS does this implicitly for
+    /// emulation groups, so this error is always wrapped in the error of the
+    /// operation that triggered the registration.
+    ///
+    /// See [`MlsGroupCreateConfigBuilder::emulation_group`](crate::group::MlsGroupCreateConfigBuilder::emulation_group).
+    #[derive(Error, Debug, PartialEq, Clone)]
+    pub enum RegisterVcDerivationEpochError<StorageError> {
+        /// Puncturing the application exporter for the virtual-clients
+        /// component failed. See
+        /// [`ApplicationExportTreeError`](super::ApplicationExportTreeError) for
+        /// more details.
+        #[error(transparent)]
+        ApplicationExportTree(#[from] super::ApplicationExportTreeError),
+        /// The emulation group has no application export tree to source the
+        /// derivation epoch from. This happens when a group stored by an
+        /// OpenMLS version without application-exporter support is marked as
+        /// an emulation group.
+        #[error(
+            "The emulation group has no application export tree to source the derivation epoch \
+             from."
+        )]
+        MissingApplicationExportTree,
+        /// See [`VirtualClientsError`](crate::components::vc_derivation_info::VirtualClientsError)
+        /// for more details.
+        #[error(transparent)]
+        VirtualClients(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+        /// Persisting the derived virtual-clients state to storage failed.
+        #[error("Error writing virtual-clients state to storage")]
+        Storage(StorageError),
+    }
 }

@@ -8,22 +8,22 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-rt = "2.0"
-actix-web = "4"
-futures-core = "0.3"
-futures-util = "0.3"
-serde_json = "1.0"
+axum = "0.8"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
 log = "0.4"
 pretty_env_logger = "0.5"
-serde = { version = "1.0", features = ["derive"] }
-uuid = { version = "1", features = ["serde", "v4"] }
 clap = "4"
 base64 = "0.22"
-time = ">=0.3.36"
+parking_lot = "0.12"
 
 openmls = { path = "../../openmls", features = ["test-utils"] }
 
 ds-lib = { path = "../ds-lib/" }
+
+[dev-dependencies]
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }
+
 openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
 openmls_traits = { path = "../../traits" }
 openmls_basic_credential = { path = "../../basic_credential" }

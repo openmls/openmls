@@ -1,0 +1,565 @@
+{
+  "credential_type": [
+    {
+      "input": "Basic",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "X509",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Grease": 0
+      },
+      "supported": [
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Other": 20
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    }
+  ],
+  "extension_type": [
+    {
+      "input": "ApplicationId",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "RatchetTree",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "RequiredCapabilities",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "ExternalPub",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "ExternalSenders",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "LastResort",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "AppDataDictionary",
+      "supported": [
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Grease": 0
+      },
+      "supported": [
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Unknown": 20
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    }
+  ],
+  "extension": [
+    {
+      "input": {
+        "ApplicationId": {
+          "key_id": {
+            "vec": []
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "RatchetTree": {
+          "ratchet_tree": []
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "RequiredCapabilities": {
+          "credential_types": [],
+          "extension_types": [],
+          "proposal_types": []
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "ExternalPub": {
+          "external_pub": {
+            "vec": []
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "ExternalSenders": []
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "AppDataDictionary": {
+          "dictionary": {
+            "component_data": {}
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "LastResort": {}
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Unknown": [
+          7,
+          []
+        ]
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    }
+  ],
+  "proposal_type": [
+    {
+      "input": "Add",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "Update",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "Remove",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "PreSharedKey",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "Reinit",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "ExternalInit",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "GroupContextExtensions",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "SelfRemove",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "AppEphemeral",
+      "supported": [
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "AppDataUpdate",
+      "supported": [
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Grease": 0
+      },
+      "supported": [
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Custom": 20
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    }
+  ],
+  "proposal": [
+    {
+      "input": {
+        "Add": {
+          "key_package": {
+            "payload": {
+              "ciphersuite": "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519",
+              "extensions": {
+                "unique": []
+              },
+              "init_key": {
+                "key": {
+                  "vec": []
+                }
+              },
+              "leaf_node": {
+                "payload": {
+                  "capabilities": {
+                    "ciphersuites": [],
+                    "credentials": [],
+                    "extensions": [],
+                    "proposals": [],
+                    "versions": []
+                  },
+                  "credential": {
+                    "credential_type": "Basic",
+                    "serialized_credential_content": {
+                      "vec": []
+                    }
+                  },
+                  "encryption_key": {
+                    "key": {
+                      "vec": []
+                    }
+                  },
+                  "extensions": {
+                    "unique": []
+                  },
+                  "leaf_node_source": "Update",
+                  "signature_key": {
+                    "value": {
+                      "vec": []
+                    }
+                  }
+                },
+                "signature": {
+                  "value": {
+                    "vec": []
+                  }
+                }
+              },
+              "protocol_version": "Mls10",
+              "signature": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "signature": {
+              "value": {
+                "vec": []
+              }
+            }
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Update": {
+          "leaf_node": {
+            "payload": {
+              "capabilities": {
+                "ciphersuites": [],
+                "credentials": [],
+                "extensions": [],
+                "proposals": [],
+                "versions": []
+              },
+              "credential": {
+                "credential_type": "Basic",
+                "serialized_credential_content": {
+                  "vec": []
+                }
+              },
+              "encryption_key": {
+                "key": {
+                  "vec": []
+                }
+              },
+              "extensions": {
+                "unique": []
+              },
+              "leaf_node_source": "Update",
+              "signature_key": {
+                "value": {
+                  "vec": []
+                }
+              }
+            },
+            "signature": {
+              "value": {
+                "vec": []
+              }
+            }
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Remove": {
+          "removed": 0
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "PreSharedKey": {
+          "psk": {
+            "psk": {
+              "External": {
+                "psk_id": {
+                  "vec": []
+                }
+              }
+            },
+            "psk_nonce": {
+              "vec": []
+            }
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "ReInit": {
+          "ciphersuite": "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519",
+          "extensions": {
+            "unique": []
+          },
+          "group_id": {
+            "value": {
+              "vec": []
+            }
+          },
+          "version": "Mls10"
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "ExternalInit": {
+          "kem_output": {
+            "vec": []
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "GroupContextExtensions": {
+          "extensions": {
+            "unique": []
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "AppDataUpdate": {
+          "component_id": 0,
+          "operation": {
+            "Update": {
+              "vec": []
+            }
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": "SelfRemove",
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "AppEphemeral": {
+          "component_id": 0,
+          "data": {
+            "vec": []
+          }
+        }
+      },
+      "supported": [
+        "OpenMls_0_8_1_Extensions"
+      ]
+    },
+    {
+      "input": {
+        "Custom": {
+          "payload": [],
+          "proposal_type": 0
+        }
+      },
+      "supported": [
+        "OpenMls_0_7_1",
+        "OpenMls_0_8_1",
+        "OpenMls_0_8_1_Extensions"
+      ]
+    }
+  ]
+}

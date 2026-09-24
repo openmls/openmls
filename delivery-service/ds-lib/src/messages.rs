@@ -1,5 +1,5 @@
 use crate::tls_codec::{self, TlsDeserialize, TlsSerialize, TlsSize};
-use rand::{rng, Rng};
+use rand::{rng, RngExt};
 use serde::{Deserialize, Serialize};
 
 use crate::ClientKeyPackages;

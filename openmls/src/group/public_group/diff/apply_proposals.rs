@@ -12,7 +12,7 @@ use crate::{
 
 use super::*;
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     extensions::{AppDataDictionaryExtension, Extension},
     prelude::processing::AppDataUpdates,
@@ -199,7 +199,7 @@ impl PublicGroupDiff<'_> {
         })
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn apply_proposals_with_app_data_updates(
         &mut self,
         proposal_queue: &ProposalQueue,
@@ -217,9 +217,9 @@ impl PublicGroupDiff<'_> {
 
         // apply AppDataUpdate proposals to the already-updated GroupContext extensions,
         // if available, or return the new GroupContext extensions if modified.
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         let mut extensions = extensions;
-        #[cfg(feature = "extensions-draft-08")]
+        #[cfg(feature = "extensions-draft")]
         self.apply_app_data_update_proposals(
             &mut extensions,
             proposal_queue,
@@ -237,7 +237,7 @@ impl PublicGroupDiff<'_> {
     }
 
     /// Return the updated GroupContext extensions after applying AppDataUpdates.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn apply_app_data_update_proposals(
         &self,
         // group_context_extensions if updated by a GroupContextExtensions proposal

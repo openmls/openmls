@@ -2,6 +2,7 @@
 //!
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
 
+use openmls_traits::types::Ciphersuite;
 use thiserror::Error;
 
 use crate::{
@@ -61,10 +62,21 @@ pub enum KeyPackageNewError {
     /// The ciphersuite does not match the signature scheme.
     #[error("The ciphersuite does not match the signature scheme.")]
     CiphersuiteSignatureSchemeMismatch,
+    /// The ciphersuite is not supported by the crypto provider.
+    #[error("Ciphersuite {0:?} is not supported by the crypto provider.")]
+    UnsupportedCiphersuite(Ciphersuite),
     /// Accessing storage failed.
     #[error("Accessing storage failed.")]
     StorageError,
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
+    /// A virtual-clients operation failed while building the key package.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// A virtual-clients KeyPackage batch was requested with a count of 0.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("A virtual-clients KeyPackage batch must request at least one KeyPackage.")]
+    EmptyBatch,
 }

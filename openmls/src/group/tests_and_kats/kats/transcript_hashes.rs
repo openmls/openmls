@@ -3,6 +3,12 @@
 //! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 
+// Several imports below are used only by `generate_test_vector`, which is
+// gated behind the `generate-kats` feature. Keep the imports unconditional
+// so the writer keeps working, and silence the resulting warnings when the
+// feature is off.
+#![cfg_attr(not(feature = "generate-kats"), allow(unused_imports))]
+
 use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
@@ -22,7 +28,9 @@ use crate::{
 };
 
 const TEST_VECTOR_PATH_READ: &str = "test_vectors/transcript-hashes.json";
+#[cfg(feature = "generate-kats")]
 const TEST_VECTOR_PATH_WRITE: &str = "test_vectors/transcript-hashes-new.json";
+#[cfg(feature = "generate-kats")]
 const NUM_TESTS: usize = 100;
 
 /// ```json
@@ -139,6 +147,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
 
 // -------------------------------------------------------------------------------------------------
 
+#[cfg(feature = "generate-kats")]
 #[test]
 fn write_test_vectors() {
     let mut tests = Vec::new();
@@ -157,6 +166,7 @@ fn write_test_vectors() {
     write(TEST_VECTOR_PATH_WRITE, &tests);
 }
 
+#[cfg(feature = "generate-kats")]
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     let provider = OpenMlsRustCrypto::default();
 

@@ -1,5 +1,5 @@
 use std::io::Read;
-use tls_codec::{Deserialize, Size};
+use tls_codec::Deserialize;
 
 use crate::versions::ProtocolVersion;
 
@@ -65,7 +65,11 @@ impl DeserializeBytes for MlsMessageIn {
     {
         let mut bytes_ref = bytes;
         let message = MlsMessageIn::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[message.tls_serialized_len()..];
-        Ok((message, remainder))
+        // `Read for &[u8]` has advanced `bytes_ref` to exactly the unconsumed
+        // tail, so it is the authoritative remainder. Recomputing it as
+        // `&bytes[message.tls_serialized_len()..]` panics on crafted input
+        // whose re-serialized length exceeds the bytes actually consumed
+        // (e.g. `tls_serialized_len() == 260` for a 259-byte input).
+        Ok((message, bytes_ref))
     }
 }

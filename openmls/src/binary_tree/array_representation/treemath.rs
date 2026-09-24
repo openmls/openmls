@@ -3,8 +3,19 @@ use std::cmp::Ordering;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
-pub(crate) const MAX_TREE_SIZE: u32 = 1 << 30;
+pub(crate) const MAX_TREE_SIZE: u32 = (1 << 30) - 1;
 pub(crate) const MIN_TREE_SIZE: u32 = 1;
+
+/// Largest tree (node) index of any valid tree: node indices range over
+/// `0..=MAX_TREE_INDEX`. It is the last leaf of the maximal tree (even).
+const MAX_TREE_INDEX: u32 = MAX_TREE_SIZE - 1;
+
+/// Largest leaf payload: leaf `l` sits at tree index `2*l <= MAX_TREE_INDEX`.
+const MAX_LEAF: u32 = MAX_TREE_INDEX / 2;
+
+/// Largest parent payload: parent `p` sits at tree index `2*p + 1 < MAX_TREE_INDEX`
+/// (odd indices stop one short of the even maximum).
+const MAX_PARENT: u32 = MAX_LEAF - 1;
 
 /// LeafNodeIndex references a leaf node in a tree.
 #[derive(
@@ -37,6 +48,10 @@ impl LeafNodeIndex {
         LeafNodeIndex(index)
     }
 
+    /// Checks that the wrapped index is valid.
+    fn valid(&self) -> bool {
+        self.0 <= MAX_LEAF
+    }
     /// Return the inner value as `u32`.
     pub fn u32(&self) -> u32 {
         self.0
@@ -67,6 +82,11 @@ impl ParentNodeIndex {
     /// Create a new `ParentNodeIndex` from a `u32`.
     pub(crate) fn new(index: u32) -> Self {
         ParentNodeIndex(index)
+    }
+
+    /// Checks that the wrapped index is valid.
+    fn valid(&self) -> bool {
+        self.0 <= MAX_PARENT
     }
 
     /// Return the inner value as `u32`.
@@ -136,6 +156,14 @@ impl TreeNodeIndex {
         }
     }
 
+    /// Checks that the wrapped index is valid.
+    fn valid(&self) -> bool {
+        match self {
+            TreeNodeIndex::Leaf(leaf_node_index) => leaf_node_index.valid(),
+            TreeNodeIndex::Parent(parent_node_index) => parent_node_index.valid(),
+        }
+    }
+
     /// Re-exported for testing.
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn test_new(index: u32) -> Self {
@@ -194,7 +222,7 @@ impl TreeSize {
     }
 
     /// Creates a new `TreeSize` from a specific leaf count
-    #[cfg(any(feature = "test-utils", feature = "extensions-draft-08", test))]
+    #[cfg(any(feature = "test-utils", feature = "extensions-draft", test))]
     pub(crate) fn from_leaf_count(leaf_count: u32) -> Self {
         TreeSize::new(leaf_count * 2)
     }
@@ -280,15 +308,8 @@ fn log2(x: u32) -> usize {
 }
 
 pub fn level(index: u32) -> usize {
-    let x = index;
-    if (x & 0x01) == 0 {
-        return 0;
-    }
-    let mut k = 0;
-    while ((x >> k) & 0x01) == 1 {
-        k += 1;
-    }
-    k
+    // The cast is always valid, as there is at most 32 trailing ones
+    index.trailing_ones() as usize
 }
 
 pub(crate) fn root(size: TreeSize) -> TreeNodeIndex {
@@ -436,7 +457,7 @@ pub(crate) fn node_width(n: usize) -> usize {
 }
 
 pub(crate) fn is_node_in_tree(node_index: TreeNodeIndex, size: TreeSize) -> bool {
-    node_index.u32() < size.u32()
+    node_index.valid() && node_index.u32() < size.u32()
 }
 
 #[test]
@@ -457,6 +478,17 @@ fn test_node_not_in_tree() {
         assert!(!is_node_in_tree(
             TreeNodeIndex::new(test.0),
             TreeSize::new(test.1)
+        ));
+    }
+}
+
+#[test]
+fn test_node_not_in_tree_wrapping() {
+    let tests = [1u32 << 31, u32::MAX];
+    for leaf in tests.iter() {
+        assert!(!is_node_in_tree(
+            TreeNodeIndex::Leaf(LeafNodeIndex::new(*leaf)),
+            TreeSize::new(3)
         ));
     }
 }

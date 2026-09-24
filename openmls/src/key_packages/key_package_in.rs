@@ -182,14 +182,13 @@ impl KeyPackageIn {
 
         // Extension included in the extensions or leaf_node.extensions fields
         // MUST be included in the leaf_node.capabilities field.
-        for extension in key_package.payload.extensions.iter() {
-            if !key_package
-                .payload
-                .leaf_node
-                .supports_extension(&extension.extension_type())
-            {
-                return Err(KeyPackageVerifyError::UnsupportedExtension);
-            }
+        if !key_package
+            .payload
+            .leaf_node
+            .capabilities()
+            .contains_extensions(&key_package.payload.extensions)
+        {
+            return Err(KeyPackageVerifyError::UnsupportedExtension);
         }
 
         // Ensure validity of the life time extension in the leaf node.
@@ -208,6 +207,27 @@ impl KeyPackageIn {
     /// false otherwise.
     pub(crate) fn version_is_supported(&self, protocol_version: ProtocolVersion) -> bool {
         self.payload.protocol_version == protocol_version
+    }
+
+    /// Assume that the signature is valid and return the [`KeyPackage`].
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that the key package is verified.
+    #[cfg(feature = "unchecked-conversions")]
+    pub fn into_unchecked(self) -> KeyPackage {
+        let payload = KeyPackageTbs {
+            protocol_version: self.payload.protocol_version,
+            ciphersuite: self.payload.ciphersuite,
+            init_key: self.payload.init_key,
+            leaf_node: self.payload.leaf_node.into_unchecked(),
+            extensions: self.payload.extensions.into_unchecked(),
+        };
+        KeyPackage {
+            payload,
+            signature: self.signature,
+            serialized_payload: None,
+        }
     }
 }
 

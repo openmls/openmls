@@ -18,7 +18,7 @@ use crate::{
     utils::vector_converter,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal};
 
 #[derive(Debug, Clone)]
@@ -461,7 +461,7 @@ impl ProposalQueue {
         })
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Returns an iterator over all AppEphemeral proposals in the queue
     /// in the order of the Commit message
     pub(crate) fn app_ephemeral_proposals(
@@ -479,7 +479,7 @@ impl ProposalQueue {
             }
         })
     }
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Returns an iterator over all AppDataUpdate proposals in the queue, sorted by Component ID
     pub(crate) fn app_data_update_proposals(
         &self,
@@ -618,7 +618,7 @@ impl ProposalQueue {
                 Proposal::GroupContextExtensions(_) => {
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 Proposal::AppDataUpdate(_) => {
                     valid_proposals.add(queued_proposal.proposal_reference())
                 }
@@ -628,7 +628,7 @@ impl ProposalQueue {
                     };
                     register_member_specific_proposal(*removed, queued_proposal);
                 }
-                #[cfg(feature = "extensions-draft-08")]
+                #[cfg(feature = "extensions-draft")]
                 Proposal::AppEphemeral(_) => {
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
@@ -802,14 +802,14 @@ impl QueuedPskProposal<'_> {
     }
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 /// A queued Add proposal
 #[derive(PartialEq, Debug)]
 pub struct QueuedAppEphemeralProposal<'a> {
     app_ephemeral_proposal: &'a AppEphemeralProposal,
     sender: &'a Sender,
 }
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 /// A queued AppDataUpdate proposal
 #[derive(PartialEq, Debug)]
 pub struct QueuedAppDataUpdateProposal<'a> {
@@ -817,7 +817,7 @@ pub struct QueuedAppDataUpdateProposal<'a> {
     sender: &'a Sender,
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl QueuedAppEphemeralProposal<'_> {
     /// Returns a reference to the proposal
     pub fn app_ephemeral_proposal(&self) -> &AppEphemeralProposal {
@@ -829,7 +829,7 @@ impl QueuedAppEphemeralProposal<'_> {
         self.sender
     }
 }
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl QueuedAppDataUpdateProposal<'_> {
     /// Returns a reference to the proposal
     pub fn app_data_update_proposal(&self) -> &AppDataUpdateProposal {

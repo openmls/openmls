@@ -10,9 +10,6 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
-use crate::messages::proposals_in::ProposalOrRefIn;
-
 use std::io::{Read, Write};
 
 use super::{
@@ -76,14 +73,6 @@ impl FramedContentIn {
                 .body
                 .validate(ciphersuite, crypto, sender_context, protocol_version)?,
         })
-    }
-
-    #[cfg(feature = "extensions-draft-08")]
-    pub(crate) fn proposals(&self) -> Option<&[ProposalOrRefIn]> {
-        match &self.body {
-            FramedContentBodyIn::Commit(commit_in) => Some(commit_in.proposals()),
-            _ => None,
-        }
     }
 }
 
@@ -171,7 +160,7 @@ impl FramedContentBodyIn {
             ),
             FramedContentBodyIn::Commit(commit_in) => {
                 let sender_context = sender_context
-                    .ok_or(LibraryError::custom("Forgot the commit sender context"))?;
+                    .ok_or_else(|| LibraryError::custom("Forgot the commit sender context"))?;
                 FramedContentBody::Commit(Box::new(commit_in.validate(
                     ciphersuite,
                     crypto,

@@ -484,7 +484,7 @@ mod util {
     ) {
         let mut members = vec![];
 
-        let group_sizes = group_sizes.unwrap_or(generate::GROUP_SIZES.to_vec());
+        let group_sizes = group_sizes.unwrap_or_else(|| generate::GROUP_SIZES.to_vec());
         println!("Generating groups for benchmarks {group_sizes:?}...");
         let mut smaller_groups = None;
         for num in group_sizes.into_iter().sorted() {

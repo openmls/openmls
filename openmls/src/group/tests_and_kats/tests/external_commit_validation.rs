@@ -14,7 +14,8 @@ use crate::{
     },
     group::{
         errors::{
-            ExternalCommitValidationError, ProcessMessageError, StageCommitError, ValidationError,
+            ExternalCommitValidationError, ProcessMessageError, ProposalValidationError,
+            StageCommitError, ValidationError,
         },
         tests_and_kats::utils::{
             generate_credential_with_key, generate_key_package, resign_external_commit,
@@ -742,6 +743,179 @@ fn test_external_commit_unsupported_group_context_extension() {
         err,
         CreateCommitError::LeafNodeValidation(LeafNodeValidationError::UnsupportedExtensions)
     ));
+}
+
+#[openmls_test::openmls_test]
+fn test_external_commit_duplicate_signature_key() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let ECValidationTestSetup {
+        mut alice_group,
+        alice_credential,
+        bob_credential,
+        ..
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
+
+    // Alice adds Charlie and Bob, so that Bob's signature key is in the tree
+    // when Bob resyncs through an external commit. Charlie is removed again to
+    // leave a blank leaf to the left of Bob. That way the leftmost free leaf,
+    // which Bob's new leaf node is signed for, is the same whether or not the
+    // commit removes Bob's old leaf.
+    let charlie_provider = &Provider::default();
+    let charlie_credential = generate_credential_with_key(
+        "Charlie".into(),
+        ciphersuite.signature_algorithm(),
+        charlie_provider,
+    );
+    let charlie_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        charlie_provider,
+        charlie_credential,
+    );
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        alice_provider,
+        bob_credential.clone(),
+    );
+
+    alice_group
+        .add_members(
+            alice_provider,
+            &alice_credential.signer,
+            &[
+                charlie_key_package.key_package().clone(),
+                bob_key_package.key_package().clone(),
+            ],
+        )
+        .unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    let charlie_index = alice_group
+        .members()
+        .find(|member| member.index != alice_group.own_leaf_index())
+        .unwrap()
+        .index;
+    alice_group
+        .remove_members(alice_provider, &alice_credential.signer, &[charlie_index])
+        .unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_credential.signer, true)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    // Negative case on the sending side: Bob drops the Remove proposal for his
+    // old leaf, so his new leaf would duplicate his old leaf's signature key.
+    let err = MlsGroup::external_commit_builder()
+        .with_config(alice_group.configuration().clone())
+        .build_group(
+            bob_provider,
+            verifiable_group_info.clone(),
+            bob_credential.credential_with_key.clone(),
+        )
+        .unwrap()
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_credential.signer,
+            |proposal| !proposal.proposal().is_remove(),
+        )
+        .unwrap_err();
+
+    assert!(matches!(
+        err,
+        CreateCommitError::ProposalValidationError(ProposalValidationError::DuplicateSignatureKey)
+    ));
+
+    // Bob builds a valid resync commit that removes his old leaf.
+    let (_, public_message_commit) = MlsGroup::external_commit_builder()
+        .with_config(alice_group.configuration().clone())
+        .build_group(
+            bob_provider,
+            verifiable_group_info,
+            bob_credential.credential_with_key.clone(),
+        )
+        .unwrap()
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_credential.signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(bob_provider)
+        .unwrap();
+
+    let public_message_commit = {
+        let serialized = public_message_commit
+            .into_commit()
+            .tls_serialize_detached()
+            .unwrap();
+        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .unwrap()
+            .into_plaintext()
+            .unwrap()
+    };
+
+    // Negative case on the receiving side: strip the Remove proposal from the
+    // commit, so that Bob's old leaf stays in the tree next to his new one.
+    let public_message_commit_bad = {
+        let mut commit = if let FramedContentBody::Commit(commit) = public_message_commit.content()
+        {
+            commit.clone()
+        } else {
+            panic!("Unexpected content type.");
+        };
+        let proposal_count = commit.proposals.len();
+        commit
+            .proposals
+            .retain(|proposal| !proposal.as_proposal().is_some_and(Proposal::is_remove));
+        assert_eq!(commit.proposals.len(), proposal_count - 1);
+
+        let mut public_message_commit_bad = public_message_commit.clone();
+        public_message_commit_bad.set_content(FramedContentBody::Commit(commit));
+
+        // We have to re-sign, since we changed the content.
+        resign_external_commit(
+            &bob_credential.signer,
+            public_message_commit_bad,
+            public_message_commit.confirmation_tag().unwrap().clone(),
+            alice_group
+                .export_group_context()
+                .tls_serialize_detached()
+                .unwrap(),
+        )
+    };
+
+    let err = alice_group
+        .process_message(alice_provider, public_message_commit_bad)
+        .unwrap_err();
+
+    assert!(matches!(
+        err,
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+            ProposalValidationError::DuplicateSignatureKey
+        ))
+    ));
+
+    // Positive case
+    alice_group
+        .process_message(alice_provider, public_message_commit)
+        .unwrap();
 }
 
 mod utils {

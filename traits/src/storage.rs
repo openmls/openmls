@@ -164,7 +164,7 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Write the ApplicationExportTree for the group with the given id.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     async fn write_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
@@ -172,6 +172,101 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         application_export_tree: &ApplicationExportTree,
+    ) -> Result<(), Self::Error>;
+
+    /// Write the virtual clients per-derivation-epoch state (the AEAD key
+    /// plus the registering client's emulation-group leaf index) for the
+    /// given epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn write_vc_derivation_epoch_state<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_derivation_epoch_state: &VcDerivationEpochState,
+    ) -> Result<(), Self::Error>;
+
+    /// Store the binding of one epoch of a higher-level group to the
+    /// derivation epoch whose virtual-client LeafNode was active at that
+    /// epoch, keyed by `(group_id, group_epoch)`.
+    ///
+    /// `epoch_id` duplicates the derivation epoch named inside the opaque
+    /// `binding` so that an implementation, which cannot look into the blob,
+    /// can answer whether any binding row still names a given epoch (see
+    /// [`Self::delete_unreferenced_vc_derivation_epoch_states`]).
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn write_vc_emulation_binding<
+        GroupId: traits::GroupId<VERSION>,
+        EpochKey: traits::EpochKey<VERSION>,
+        EpochId: traits::VcEpochId<VERSION>,
+        VcEmulationBinding: traits::VcEmulationBinding<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_epoch: &EpochKey,
+        epoch_id: &EpochId,
+        binding: &VcEmulationBinding,
+    ) -> Result<(), Self::Error>;
+
+    /// Store one entry of the log of derivation epochs an emulation group
+    /// registered, keyed by `(group_id, epoch_id)`.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn write_vc_derivation_epoch_log_entry<
+        GroupId: traits::GroupId<VERSION>,
+        EpochId: traits::VcEpochId<VERSION>,
+        VcDerivationEpochLogEntry: traits::VcDerivationEpochLogEntry<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        epoch_id: &EpochId,
+        entry: &VcDerivationEpochLogEntry,
+    ) -> Result<(), Self::Error>;
+
+    /// Write the per-derivation-epoch Virtual Client Operation Secret Tree
+    /// (the lazily derived node secrets plus the per-leaf operation
+    /// ratchets) for the given epoch. The tree is written back after every
+    /// ratchet advance. It is stored separately from the static
+    /// `VcDerivationEpochState` so that per-operation writes do not rewrite
+    /// the static fields.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn write_vc_operation_tree<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcOperationTree: traits::VcOperationTree<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        vc_operation_tree: &VcOperationTree,
+    ) -> Result<(), Self::Error>;
+
+    /// Store the advanced operation secret tree for `epoch_id` together with
+    /// the retained virtual clients KeyPackage material for every reference in
+    /// `materials`.
+    ///
+    /// A sibling calls this once when it processes a `KeyPackageUpload`: the
+    /// upload consumes one operation generation in the tree and produces one
+    /// [`RetainedKeyPackageMaterial`](traits::RetainedKeyPackageMaterial) per
+    /// KeyPackage. These writes belong together: the tree must never be
+    /// persisted as advanced without the materials it produced. Providers do
+    /// not open their own transaction, so an application using a transactional
+    /// provider (such as SQLite) should call this within a transaction to get
+    /// atomicity and rollback on error. The in-memory provider applies the
+    /// writes while holding its write lock. Each material is keyed by its
+    /// [`HashReference`](traits::HashReference)
+    /// and tagged with `epoch_id` so the sweep
+    /// ([`Self::delete_unreferenced_vc_derivation_epoch_states`]) can find it.
+    /// A subsequent write for the same reference replaces the stored material.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn write_retained_key_package_material_batch<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcOperationTree: traits::VcOperationTree<VERSION>,
+        KeyPackageRef: traits::HashReference<VERSION>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+        operation_tree: &VcOperationTree,
+        materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
     ) -> Result<(), Self::Error>;
 
     //
@@ -432,7 +527,7 @@ pub trait StorageProvider<const VERSION: u16> {
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error>;
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Get the application export tree for the group with the given id.
     async fn application_export_tree<
         GroupId: traits::GroupId<VERSION>,
@@ -441,6 +536,82 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error>;
+
+    #[cfg(feature = "virtual-clients-draft")]
+    /// Get the virtual clients per-derivation-epoch state for the given
+    /// epoch (the AEAD key plus the registering client's
+    /// emulation-group leaf index).
+    async fn vc_derivation_epoch_state<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcDerivationEpochState>, Self::Error>;
+
+    /// Load the emulation binding stored for `(group_id, group_epoch)`, if
+    /// any (see [`Self::write_vc_emulation_binding`]). This is the hot lookup
+    /// of the message protection paths, so implementations should serve it as
+    /// a point read.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn vc_emulation_binding<
+        GroupId: traits::GroupId<VERSION>,
+        EpochKey: traits::EpochKey<VERSION>,
+        VcEmulationBinding: traits::VcEmulationBinding<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_epoch: &EpochKey,
+    ) -> Result<Option<VcEmulationBinding>, Self::Error>;
+
+    /// Load all emulation bindings of a higher-level group, in unspecified
+    /// order (see [`Self::write_vc_emulation_binding`]). Returns an empty
+    /// vector if no VC commit has been merged on this group.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn vc_emulation_bindings<
+        GroupId: traits::GroupId<VERSION>,
+        VcEmulationBinding: traits::VcEmulationBinding<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<VcEmulationBinding>, Self::Error>;
+
+    /// Load all derivation-epoch log entries of the given emulation group, in
+    /// unspecified order (see [`Self::write_vc_derivation_epoch_log_entry`]).
+    /// Returns an empty vector if the group never registered a derivation
+    /// epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn vc_derivation_epoch_log_entries<
+        GroupId: traits::GroupId<VERSION>,
+        VcDerivationEpochLogEntry: traits::VcDerivationEpochLogEntry<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<VcDerivationEpochLogEntry>, Self::Error>;
+
+    /// Get the per-derivation-epoch Virtual Client Operation Secret Tree for
+    /// the given epoch (the lazily derived node secrets plus the per-leaf
+    /// operation ratchets).
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn vc_operation_tree<
+        EpochId: traits::VcEpochId<VERSION>,
+        VcOperationTree: traits::VcOperationTree<VERSION>,
+    >(
+        &self,
+        epoch_id: &EpochId,
+    ) -> Result<Option<VcOperationTree>, Self::Error>;
+
+    /// Get the retained virtual clients KeyPackage material for the given
+    /// KeyPackage reference. Returns `None` if no material was stored for that
+    /// reference.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn retained_key_package_material<
+        KeyPackageRef: traits::HashReference<VERSION>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<VERSION>,
+    >(
+        &self,
+        hash_ref: &KeyPackageRef,
+    ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error>;
 
     //
     //     ---    deleters for group state    ---
@@ -568,8 +739,12 @@ pub trait StorageProvider<const VERSION: u16> {
 
     /// Delete a key package based on the hash reference.
     ///
-    /// This function only deletes the key package.
-    /// The corresponding encryption keys must be deleted separately.
+    /// Under the `virtual-clients-draft` feature, an implementation must also
+    /// delete the retained virtual clients KeyPackage material stored for the
+    /// same reference (see `delete_retained_key_package_material`, which only
+    /// exists under that feature).
+    /// Deleting non-existent material is a no-op, so this is safe for
+    /// KeyPackages that were never uploaded by a virtual client.
     async fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
@@ -582,13 +757,84 @@ pub trait StorageProvider<const VERSION: u16> {
     ) -> Result<(), Self::Error>;
 
     /// Delete the application export tree for the group with the given id.
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     async fn delete_application_export_tree<
         GroupId: traits::GroupId<VERSION>,
         ApplicationExportTree: traits::ApplicationExportTree<VERSION>,
     >(
         &self,
         group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete the per-epoch state and operation tree of every derivation
+    /// epoch that nothing references anymore, and return the ids of the
+    /// deleted epochs.
+    ///
+    /// Every epoch with a stored state
+    /// ([`Self::write_vc_derivation_epoch_state`]) or operation tree
+    /// ([`Self::write_vc_operation_tree`]) is a candidate. A candidate is
+    /// referenced, and must be kept, if any of three sources names its
+    /// `epoch_id`: a derivation-epoch log entry
+    /// ([`Self::write_vc_derivation_epoch_log_entry`]), an emulation binding
+    /// ([`Self::write_vc_emulation_binding`]), or retained KeyPackage material
+    /// ([`Self::write_retained_key_package_material_batch`]).
+    ///
+    /// The reference checks and the deletions must apply atomically, or a
+    /// reference stored concurrently can be orphaned. Providers do not open
+    /// their own transaction, so an application using a transactional
+    /// provider should call this within one.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn delete_unreferenced_vc_derivation_epoch_states<EpochId: traits::VcEpochId<VERSION>>(
+        &self,
+    ) -> Result<Vec<EpochId>, Self::Error>;
+
+    /// Remove the emulation bindings the given group stored under the given
+    /// group epochs. Missing rows are skipped.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn delete_vc_emulation_bindings<
+        GroupId: traits::GroupId<VERSION>,
+        EpochKey: traits::EpochKey<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        group_epochs: &[EpochKey],
+    ) -> Result<(), Self::Error>;
+
+    /// Remove all emulation bindings of the given group.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn delete_all_vc_emulation_bindings<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Remove the derivation-epoch log entries the given group stored for the
+    /// given derivation epochs. Missing rows are skipped.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn delete_vc_derivation_epoch_log_entries<
+        GroupId: traits::GroupId<VERSION>,
+        EpochId: traits::VcEpochId<VERSION>,
+    >(
+        &self,
+        group_id: &GroupId,
+        epoch_ids: &[EpochId],
+    ) -> Result<(), Self::Error>;
+
+    /// Remove all derivation-epoch log entries of the given group.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn delete_vc_derivation_epoch_log<GroupId: traits::GroupId<VERSION>>(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<(), Self::Error>;
+
+    /// Delete the retained virtual clients KeyPackage material stored for the
+    /// given KeyPackage reference. Called from [`Self::delete_key_package`] so
+    /// the material is removed together with the KeyPackage it describes, and
+    /// by the library once a Welcome join has bound the joined group to the
+    /// material's derivation epoch.
+    #[cfg(feature = "virtual-clients-draft")]
+    async fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<VERSION>>(
+        &self,
+        hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error>;
 }
 
@@ -645,6 +891,18 @@ pub mod traits {
     pub trait MlsGroupJoinConfig<const VERSION: u16>: Entity<VERSION> {}
     pub trait LeafNode<const VERSION: u16>: Entity<VERSION> {}
     pub trait ApplicationExportTree<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEpochId<const VERSION: u16>: Key<VERSION> + Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcDerivationEpochState<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcEmulationBinding<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcDerivationEpochLogEntry<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait VcOperationTree<const VERSION: u16>: Entity<VERSION> {}
+    #[cfg(feature = "virtual-clients-draft")]
+    pub trait RetainedKeyPackageMaterial<const VERSION: u16>: Entity<VERSION> {}
 
     // traits for types that implement both
     pub trait ProposalRef<const VERSION: u16>: Entity<VERSION> + Key<VERSION> {}

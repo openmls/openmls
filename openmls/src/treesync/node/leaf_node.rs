@@ -1,4 +1,6 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
+use std::collections::HashSet;
+
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, types::Ciphersuite,
 };
@@ -101,6 +103,11 @@ impl LeafNodeParameters {
 
     pub(crate) fn set_credential_with_key(&mut self, credential_with_key: CredentialWithKey) {
         self.credential_with_key = Some(credential_with_key);
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn set_extensions(&mut self, extensions: Extensions<LeafNode>) {
+        self.extensions = Some(extensions);
     }
 }
 
@@ -215,6 +222,40 @@ impl LeafNode {
         Ok((leaf_node, encryption_key_pair))
     }
 
+    /// Create a new [`LeafNode`] from a caller-provided encryption key pair.
+    ///
+    /// Mirrors [`LeafNode::new`] but uses `encryption_key_pair` instead of
+    /// generating a fresh one. This is the virtual-clients KeyPackage build
+    /// hook: the encryption key is derived from the per-operation secret so a
+    /// sibling can reproduce it.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn new_with_encryption_key_pair(
+        signer: &impl Signer,
+        new_leaf_node_params: NewLeafNodeParams,
+        encryption_key_pair: EncryptionKeyPair,
+    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        let NewLeafNodeParams {
+            ciphersuite: _,
+            credential_with_key,
+            leaf_node_source,
+            capabilities,
+            extensions,
+            tree_info_tbs,
+        } = new_leaf_node_params;
+
+        let leaf_node = Self::new_with_key(
+            encryption_key_pair.public_key().clone(),
+            credential_with_key,
+            leaf_node_source,
+            capabilities,
+            extensions,
+            tree_info_tbs,
+            signer,
+        )?;
+
+        Ok((leaf_node, encryption_key_pair))
+    }
+
     /// Creates a new placeholder [`LeafNode`] that is used to build external
     /// commits.
     ///
@@ -262,6 +303,11 @@ impl LeafNode {
     }
 
     /// New [`LeafNode`] with a parent hash.
+    ///
+    /// With the `virtual-clients-draft` feature, an
+    /// `encryption_key_pair_override` may be supplied. If `Some`, it is used
+    /// as the leaf's encryption keypair instead of generating a fresh one.
+    /// This is the hook for the virtual-clients-draft sender.
     #[allow(clippy::too_many_arguments)]
     pub(in crate::treesync) fn new_with_parent_hash(
         rand: &impl OpenMlsRand,
@@ -272,7 +318,16 @@ impl LeafNode {
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
         signer: &impl Signer,
+        #[cfg(feature = "virtual-clients-draft")] encryption_key_pair_override: Option<
+            EncryptionKeyPair,
+        >,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        #[cfg(feature = "virtual-clients-draft")]
+        let encryption_key_pair = match encryption_key_pair_override {
+            Some(kp) => kp,
+            None => EncryptionKeyPair::random(rand, crypto, ciphersuite)?,
+        };
+        #[cfg(not(feature = "virtual-clients-draft"))]
         let encryption_key_pair = EncryptionKeyPair::random(rand, crypto, ciphersuite)?;
 
         let leaf_node_tbs = LeafNodeTbs::new(
@@ -302,7 +357,7 @@ impl LeafNode {
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
-    #[cfg(test)]
+    #[cfg(all(test, feature = "generate-kats"))]
     #[maybe_async::maybe_async]
     pub(crate) async fn generate_update<Provider: OpenMlsProvider>(
         ciphersuite: Ciphersuite,
@@ -447,6 +502,35 @@ impl LeafNode {
         &self.payload.extensions
     }
 
+    /// The virtual-client derivation info this leaf might contain.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn vc_derivation_info(
+        &self,
+    ) -> Result<
+        Option<crate::components::vc_derivation_info::DerivationInfo>,
+        crate::components::vc_derivation_info::VirtualClientsError,
+    > {
+        use tls_codec::DeserializeBytes as _;
+
+        use crate::components::vc_derivation_info::{
+            DerivationInfo, VirtualClientsError, VC_COMPONENT_ID,
+        };
+
+        let Some(bytes) = self
+            .extensions()
+            .app_data_dictionary()
+            .and_then(|dict| dict.dictionary().get(&VC_COMPONENT_ID))
+        else {
+            return Ok(None);
+        };
+        DerivationInfo::tls_deserialize_exact_bytes(bytes)
+            .map(Some)
+            .map_err(|e| {
+                log::error!("vc: leaf derivation info deserialize failed: {e:?}");
+                VirtualClientsError::DerivationInfoMalformed
+            })
+    }
+
     /// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
     pub(crate) fn supports_extension(&self, extension_type: &ExtensionType) -> bool {
         extension_type.is_default()
@@ -463,17 +547,31 @@ impl LeafNode {
         &self,
         extensions: &[ExtensionType],
     ) -> Result<(), LeafNodeValidationError> {
-        for required in extensions.iter() {
-            if !self.supports_extension(required) {
-                log::error!(
-                    "Leaf node does not support required extension {:?}\n
-                    Supported extensions: {:?}",
-                    required,
-                    self.payload.capabilities.extensions
-                );
-                return Err(LeafNodeValidationError::UnsupportedExtensions);
-            }
+        let mut required = extensions.iter().filter(|e| !e.is_default()).peekable();
+
+        // Skip building the lookup if there are no non-default extensions.
+        if required.peek().is_none() {
+            return Ok(());
         }
+
+        let supported: HashSet<ExtensionType> = self
+            .payload
+            .capabilities
+            .extensions
+            .iter()
+            .copied()
+            .collect();
+
+        if let Some(unsupported) = required.find(|e| !supported.contains(e)) {
+            log::error!(
+                "Leaf node does not support required extension {:?}\n
+                    Supported extensions: {:?}",
+                unsupported,
+                self.payload.capabilities.extensions
+            );
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        }
+
         Ok(())
     }
 
@@ -776,6 +874,19 @@ impl LeafNodeIn {
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
     }
+
+    /// Assume that signature is valid and return the corresponding [`LeafNode`].
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that the leaf node is verified.
+    #[cfg(feature = "unchecked-conversions")]
+    pub fn into_unchecked(self) -> LeafNode {
+        LeafNode {
+            payload: self.payload,
+            signature: self.signature,
+        }
+    }
 }
 
 impl From<LeafNode> for LeafNodeIn {
@@ -997,7 +1108,7 @@ impl SignedStruct<LeafNodeTbs> for LeafNode {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum LeafNodeGenerationError<StorageError> {
     /// See [`LibraryError`] for more details.

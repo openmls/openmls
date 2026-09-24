@@ -14,10 +14,12 @@ RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 RUN git clone https://github.com/mlswg/mls-implementations.git
 WORKDIR mls-implementations
-RUN git checkout f07090a844ebece12c064ce94ab853fd477db12f
+RUN git checkout cfd450286d1bfd9cd2519b95c80f9771f94a5b1a
 
 WORKDIR interop
+RUN go mod edit -go=1.26
 RUN go mod tidy -e
+RUN go get google.golang.org/grpc@latest
 RUN make run-go || echo "Build despite errors."
 WORKDIR test-runner
 COPY main.go.patch .

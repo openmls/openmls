@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     error::LibraryError,
-    schedule::psk::{PskType, ResumptionPskUsage},
+    schedule::psk::{PreSharedKeyId, PskType, ResumptionPskUsage},
 };
 
 /// PSK secret error
@@ -61,13 +61,22 @@ pub enum PskError {
         /// Got nonce length.
         got: usize,
     },
+    /// Duplicate PSK ID.
+    #[error("Duplicate PSK ID. First detected duplicate is `{first:?}`.")]
+    Duplicate {
+        /// First detected duplicate.
+        first: PreSharedKeyId,
+    },
+    /// PSK not allowed in this place.
+    #[error("PSK not allowed in this place.")]
+    NotAllowed,
 }
 
 // === Crate ===
 
 /// Key schedule state error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum ErrorState {
+pub enum ErrorState {
     /// Expected to be in initial state.
     #[error("Expected to be in initial state.")]
     Init,
@@ -78,7 +87,7 @@ pub(crate) enum ErrorState {
 
 /// Key schedule error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum KeyScheduleError {
+pub enum KeyScheduleError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

@@ -10,7 +10,7 @@ use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 use crate::test_utils::write;
 use crate::{
     ciphersuite::*,
@@ -233,7 +233,7 @@ pub fn generate_test_vector(
                 label: exporter_label.into(),
                 context: bytes_to_hex(exporter_context),
                 length: exporter_length,
-                secret: bytes_to_hex(&exported),
+                secret: bytes_to_hex(exported.as_slice()),
             },
         };
         epochs.push(epoch_info);
@@ -248,6 +248,7 @@ pub fn generate_test_vector(
     }
 }
 
+#[cfg(feature = "generate-kats")]
 #[test]
 fn write_test_vectors() {
     const NUM_EPOCHS: u64 = 2;
@@ -468,7 +469,7 @@ pub fn run_test_vector(
                 epoch.exporter.length as usize,
             )
             .unwrap();
-        if hex_to_bytes(&epoch.exporter.secret) != exported {
+        if hex_to_bytes(&epoch.exporter.secret) != exported.as_slice() {
             if cfg!(test) {
                 panic!("Exporter mismatch");
             }

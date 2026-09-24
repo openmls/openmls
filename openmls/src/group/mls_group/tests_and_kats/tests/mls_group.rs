@@ -356,7 +356,7 @@ fn export_secret() {
     )
 }
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 #[openmls_test]
 fn safe_export_secret() {
     use crate::schedule::application_export_tree::ApplicationExportTreeError;
@@ -534,6 +534,14 @@ fn staged_join() {
         welcome_sender.credential(),
         alice_kpb.key_package().leaf_node().credential()
     );
+
+    // retrieve the own leaf from the staged group for Bob
+    let own_leaf = staged_bob_group
+        .own_leaf_node()
+        .expect("no own leaf index was found");
+
+    // check that the own leaf node matches the leaf node in Bob's key package
+    assert_eq!(own_leaf, bob_kpb.key_package.leaf_node());
 
     let bob_group = staged_bob_group
         .into_group(bob_provider)
@@ -2712,7 +2720,7 @@ fn psks() {
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");
     let (_psk_proposal, _proposal_ref) = alice_group
-        .propose_external_psk(alice_provider, &alice_signature_keys, preshared_key_id)
+        .propose_pre_shared_key(alice_provider, &alice_signature_keys, preshared_key_id)
         .expect("Could not create PSK proposal");
 
     // === Alice adds Bob (and commits to PSK proposal) ===
@@ -2751,6 +2759,146 @@ fn psks() {
         )
         .expect("An unexpected error occurred.")
         .into_contents();
+}
+
+// Test that application PSKs can be proposed (by reference and by value) and committed in a group
+#[cfg(feature = "extensions-draft")]
+#[openmls_test::openmls_test]
+fn application_psks() {
+    use crate::{group::mls_group::proposal::Propose, schedule::psk::ApplicationPsk};
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    // Basic group setup.
+    let (
+        alice_credential_with_key,
+        alice_signature_keys,
+        bob_key_package_bundle,
+        _bob_signature_keys,
+    ) = setup_alice_bob(ciphersuite, alice_provider, bob_provider);
+
+    let component_id = 0x8000;
+
+    // === Alice creates a group with an application PSK ===
+    let secret =
+        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
+    let application_psk = ApplicationPsk::new(component_id, vec![1, 2, 3].into());
+    let preshared_key_id = PreSharedKeyId::new(
+        ciphersuite,
+        alice_provider.rand(),
+        Psk::Application(application_psk),
+    )
+    .expect("An unexpected error occured.");
+    preshared_key_id
+        .store(alice_provider, secret.as_slice())
+        .unwrap();
+    preshared_key_id
+        .store(bob_provider, secret.as_slice())
+        .unwrap();
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
+        .expect("Error creating group.");
+
+    // === Alice proposes the application PSK by reference ===
+    let (_psk_proposal, _proposal_ref) = alice_group
+        .propose(
+            alice_provider,
+            &alice_signature_keys,
+            Propose::PreSharedKey(preshared_key_id),
+            ProposalOrRefType::Reference,
+        )
+        .expect("Could not create PSK proposal");
+
+    // === Alice adds Bob (and commits to the PSK proposal) ===
+    let (_commit, welcome, _group_info_option) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signature_keys,
+            from_ref(bob_key_package_bundle.key_package()),
+        )
+        .expect("Could not create commit");
+
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("Could not merge commit");
+
+    let ratchet_tree = alice_group.export_ratchet_tree();
+
+    let mut bob_group = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .build(),
+        welcome.into_welcome().unwrap(),
+        Some(ratchet_tree.into()),
+    )
+    .expect("Could not stage welcome")
+    .into_group(bob_provider)
+    .expect("Could not create group from welcome");
+
+    assert_eq!(
+        alice_group.epoch_authenticator().as_slice(),
+        bob_group.epoch_authenticator().as_slice()
+    );
+
+    // === Alice proposes a second application PSK by value and commits ===
+    let second_secret =
+        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
+    let second_psk_id = PreSharedKeyId::new(
+        ciphersuite,
+        alice_provider.rand(),
+        Psk::Application(ApplicationPsk::new(component_id, vec![4, 5, 6].into())),
+    )
+    .expect("An unexpected error occured.");
+    second_psk_id
+        .store(alice_provider, second_secret.as_slice())
+        .unwrap();
+    second_psk_id
+        .store(bob_provider, second_secret.as_slice())
+        .unwrap();
+
+    let (_psk_proposal, _proposal_ref) = alice_group
+        .propose(
+            alice_provider,
+            &alice_signature_keys,
+            Propose::PreSharedKey(second_psk_id),
+            ProposalOrRefType::Proposal,
+        )
+        .expect("Could not create PSK proposal");
+
+    let (commit, _welcome_option, _group_info_option) = alice_group
+        .commit_to_pending_proposals(alice_provider, &alice_signature_keys)
+        .expect("Could not create commit");
+
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("Could not merge commit");
+
+    // === Bob processes the commit ===
+    let processed_message = bob_group
+        .process_message(bob_provider, commit.into_protocol_message().unwrap())
+        .expect("Could not process commit");
+
+    match processed_message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
+            bob_group
+                .merge_staged_commit(bob_provider, *staged_commit)
+                .expect("Could not merge staged commit");
+        }
+        _ => unreachable!(),
+    }
+
+    assert_eq!(
+        alice_group.epoch_authenticator().as_slice(),
+        bob_group.epoch_authenticator().as_slice()
+    );
 }
 
 // Test several scenarios when PSKs are used in a group
@@ -2840,14 +2988,182 @@ fn own_commit_processing() {
 
     let commit_in = MlsMessageIn::from(commit_out);
 
-    // Alice attempts to process her own commit
-    let error = alice_group
+    // Alice processes her own commit: it matches the pending commit, so it is
+    // surfaced as `OwnPendingCommit` rather than staged.
+    let processed = alice_group
         .process_message(alice_provider, commit_in.into_protocol_message().unwrap())
-        .expect_err("no error while processing own commit");
+        .expect("error while processing own commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+
+    // The pending commit is untouched and can still be merged.
+    assert!(alice_group.pending_commit().is_some());
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("error merging pending commit after processing own commit");
+}
+
+// Test that an own commit which no longer matches a pending commit is rejected.
+#[openmls_test::openmls_test]
+fn own_commit_mismatch() {
+    // Basic group setup.
+    let alice_provider = &Provider::default();
+    let (alice_credential_with_key, alice_signature_keys) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+
+    // === Alice creates a group ===
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
+        .expect("Error creating group.");
+
+    // Alice creates a commit
+    let (commit_out, _welcome_option, _group_info_option) = alice_group
+        .self_update(
+            alice_provider,
+            &alice_signature_keys,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not create commit")
+        .into_contents();
+
+    let first_commit = MlsMessageIn::from(commit_out)
+        .into_protocol_message()
+        .unwrap();
+
+    // Happy path: the echoed commit matches the pending commit, so it is
+    // surfaced as `OwnPendingCommit`.
+    let processed = alice_group
+        .process_message(alice_provider, first_commit.clone())
+        .expect("error while processing own commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+
+    // Alice discards the pending commit without advancing the epoch. The
+    // echoed commit is still validly signed by her own leaf at the current
+    // epoch, so it reaches the own-commit check, but there is no pending
+    // commit to match against.
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .expect("error clearing pending commit");
+    assert!(alice_group.pending_commit().is_none());
+
+    let error = alice_group
+        .process_message(alice_provider, first_commit.clone())
+        .expect_err("no error while processing own commit without pending commit");
     assert_eq!(
         error,
-        ProcessMessageError::InvalidCommit(StageCommitError::OwnCommit)
+        ProcessMessageError::InvalidCommit(StageCommitError::OwnCommitMismatch)
     );
+
+    // Alice creates a second commit at the same epoch. The first commit is now
+    // stale: it is still validly signed by her own leaf, but its confirmation
+    // tag no longer matches the new pending commit.
+    let _ = alice_group
+        .self_update(
+            alice_provider,
+            &alice_signature_keys,
+            LeafNodeParameters::default(),
+        )
+        .expect("Could not create second commit");
+    assert!(alice_group.pending_commit().is_some());
+
+    let error = alice_group
+        .process_message(alice_provider, first_commit)
+        .expect_err("no error while processing stale own commit");
+    assert_eq!(
+        error,
+        ProcessMessageError::InvalidCommit(StageCommitError::OwnCommitMismatch)
+    );
+}
+
+// A Commit without an UpdatePath from our own leaf that no longer matches a
+// pending commit is staged as a regular commit rather than rejected. Unlike a
+// Commit with an UpdatePath, a Commit without an UpdatePath holds no
+// author-private material, so it applies from the prior epoch and the public
+// proposals alone.
+#[openmls_test::openmls_test]
+fn own_commit_without_update_path_without_pending_is_staged() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let (alice_credential_with_key, alice_signature_keys) =
+        new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("Bob", ciphersuite, bob_provider);
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(
+            alice_provider,
+            &alice_signature_keys,
+            alice_credential_with_key,
+        )
+        .expect("Error creating group.");
+
+    // Alice creates an add-only commit, which carries no path.
+    let (commit_out, _welcome, _group_info) = alice_group
+        .add_members_without_update(
+            alice_provider,
+            &alice_signature_keys,
+            &[bob_kpb.key_package().clone()],
+        )
+        .expect("Could not create add-only commit");
+    assert!(
+        alice_group
+            .pending_commit()
+            .expect("pending commit")
+            .update_path_leaf_node()
+            .is_none(),
+        "an add-only commit must not carry a path"
+    );
+
+    let commit = MlsMessageIn::from(commit_out)
+        .into_protocol_message()
+        .unwrap();
+
+    // While the pending commit is held, the echo matches it and surfaces as
+    // `OwnPendingCommit`.
+    let processed = alice_group
+        .process_message(alice_provider, commit.clone())
+        .expect("error while processing own pending add-only commit");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPendingCommit
+    ));
+
+    // Alice discards the pending commit without advancing the epoch. The echo
+    // no longer matches a pending commit, but a Commit without an UpdatePath
+    // can be staged from public information, so it is applied rather than
+    // rejected.
+    alice_group
+        .clear_pending_commit(alice_provider.storage())
+        .expect("error clearing pending commit");
+    assert!(alice_group.pending_commit().is_none());
+
+    let processed = alice_group
+        .process_message(alice_provider, commit)
+        .expect("own commit without an UpdatePath without pending must be staged");
+    let staged = match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged) => *staged,
+        other => panic!("expected staged commit, got {other:?}"),
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, staged)
+        .expect("error merging staged commit without an UpdatePath");
+
+    // The commit applied: Bob is now a member.
+    assert_eq!(alice_group.members().count(), 2);
 }
 
 #[openmls_test::openmls_test]
@@ -3612,6 +3928,131 @@ fn propose_self_update_with_new_signer_mismatched_ciphersuite() {
     assert_eq!(err, ProposeSelfUpdateError::InvalidSignerCiphersuite);
 }
 
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_mismatched_ciphersuite() {
+    use crate::credentials::{BasicCredential, CredentialWithKey};
+    use openmls_traits::types::SignatureScheme;
+
+    let provider = &Provider::default();
+    let (credential_with_key, _key_package, signer, _signature_key) =
+        setup_client("Alice", ciphersuite, provider);
+    let mut group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(provider, &signer, credential_with_key)
+        .unwrap();
+
+    let group_scheme = ciphersuite.signature_algorithm();
+    let mismatched_scheme = if group_scheme == SignatureScheme::ED25519 {
+        SignatureScheme::ECDSA_SECP256R1_SHA256
+    } else {
+        SignatureScheme::ED25519
+    };
+    let mismatched_signer = SignatureKeyPair::new(mismatched_scheme).unwrap();
+    let mismatched_credential_with_key = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice".to_vec()).into(),
+        signature_key: mismatched_signer.to_public_vec().into(),
+    };
+    let new_signer = NewSignerBundle {
+        signer: &mismatched_signer,
+        credential_with_key: mismatched_credential_with_key,
+    };
+
+    let err = group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build_with_new_signer(
+            provider.rand(),
+            provider.crypto(),
+            &signer,
+            new_signer,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(err, CreateCommitError::InvalidSignerCiphersuite);
+}
+
+// A member commit whose `leaf_node_parameters` pin a credential that differs
+// from the new signer's credential is rejected with
+// `InvalidLeafNodeParameters`.
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_mismatched_credential() {
+    use crate::credentials::{BasicCredential, CredentialWithKey};
+
+    let provider = &Provider::default();
+    let (credential_with_key, _key_package, signer, _signature_key) =
+        setup_client("Alice", ciphersuite, provider);
+    let mut group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(provider, &signer, credential_with_key.clone())
+        .unwrap();
+
+    let new_signer_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let new_credential_with_key = CredentialWithKey {
+        credential: BasicCredential::new(b"Alice".to_vec()).into(),
+        signature_key: new_signer_keys.to_public_vec().into(),
+    };
+    let new_signer = NewSignerBundle {
+        signer: &new_signer_keys,
+        credential_with_key: new_credential_with_key,
+    };
+
+    // Disagreeing credentials: leaf_node_parameters pins the OLD credential
+    // while new_signer carries the NEW credential.
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_credential_with_key(credential_with_key)
+        .build();
+
+    let err = group
+        .commit_builder()
+        .leaf_node_parameters(leaf_node_parameters)
+        .load_psks(provider.storage())
+        .unwrap()
+        .build_with_new_signer(
+            provider.rand(),
+            provider.crypto(),
+            &signer,
+            new_signer,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(err, CreateCommitError::InvalidLeafNodeParameters);
+}
+
+// https://validation.openmls.tech/#valn0111
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_duplicate_signature_key() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (mut alice_group, alice_signer, _bob_group, bob_signer, _, bob_credential_with_key) =
+        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+    let new_signer = NewSignerBundle {
+        signer: &bob_signer,
+        credential_with_key: bob_credential_with_key,
+    };
+
+    let err = alice_group
+        .commit_builder()
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build_with_new_signer(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            new_signer,
+            |_| true,
+        )
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        CreateCommitError::ProposalValidationError(ProposalValidationError::DuplicateSignatureKey)
+    );
+}
+
 // Alice proposes a signer swap; Bob processes the proposal (envelope verifies
 // against Alice's OLD leaf sig key, embedded leaf verifies against the NEW sig
 // key), stores it, and commits it. After both merge, everyone's view of
@@ -3853,4 +4294,147 @@ fn propose_self_update_with_new_signer_committed_by_proposer() {
             "{name} sees stale signature key for Alice after self-committed rotation",
         );
     }
+}
+
+// Alice adds Charlie and rotates her own signature key in the same commit. Both
+// GroupInfos that fall out of that commit are verified by their receivers
+// against Alice's leaf in the post-commit ratchet tree, which already carries
+// the new signature key, so both have to be signed with the new signer.
+#[openmls_test::openmls_test]
+fn commit_with_new_signer_signs_group_info_with_new_signer() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config.clone(),
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let new_pre_group_state = alice_party.generate_pre_group(ciphersuite);
+    let new_signature_key = new_pre_group_state
+        .credential_with_key
+        .signature_key
+        .clone();
+    let charlie_key_package = charlie_pre_group.key_package_bundle.key_package().clone();
+
+    // An Add on its own does not require a path, but the new signer does: the
+    // new signature key only reaches Alice's leaf through an UpdatePath.
+    let (commit, welcome, group_info) = {
+        let [alice_group_state] = group_state.members_mut(&["alice"]);
+        let provider = &alice_group_state.party.core_state.provider;
+        let new_signer = NewSignerBundle {
+            signer: &new_pre_group_state.signer,
+            credential_with_key: new_pre_group_state.credential_with_key.clone(),
+        };
+
+        let bundle = alice_group_state
+            .group
+            .commit_builder()
+            .propose_adds(Some(charlie_key_package))
+            .load_psks(provider.storage())
+            .expect("load_psks")
+            .build_with_new_signer(
+                provider.rand(),
+                provider.crypto(),
+                &alice_group_state.party.signer,
+                new_signer,
+                |_| true,
+            )
+            .expect("build_with_new_signer")
+            .stage_commit(provider)
+            .expect("stage_commit");
+
+        // The new signer alone must have forced an UpdatePath that carries the
+        // new signature key.
+        let update_path_leaf_node = alice_group_state
+            .group
+            .pending_commit()
+            .expect("expected a pending commit")
+            .update_path_leaf_node()
+            .expect("the new signer must force an UpdatePath");
+        assert_eq!(
+            update_path_leaf_node.signature_key().as_slice(),
+            new_signature_key.as_slice()
+        );
+
+        alice_group_state
+            .group
+            .merge_pending_commit(provider)
+            .expect("Alice failed to merge her commit");
+
+        let (commit, welcome, group_info) = bundle.into_messages();
+        (
+            commit,
+            welcome.expect("the Add should have produced a Welcome"),
+            group_info.expect("the group uses the ratchet tree extension"),
+        )
+    };
+
+    // Bob verifies the commit against Alice's old leaf, which is still the one
+    // in his pre-commit tree.
+    group_state
+        .deliver_and_apply_if(commit.into(), |state| state.party.core_state.name == "bob")
+        .expect("Bob failed to apply Alice's rotation commit");
+
+    let ratchet_tree = {
+        let [alice_group_state] = group_state.members_mut(&["alice"]);
+        alice_group_state.group.export_ratchet_tree()
+    };
+
+    for name in ["alice", "bob"] {
+        let [member] = group_state.members_mut(&[name]);
+        let alice_sigkey = member
+            .group
+            .members()
+            .find(|m| m.index == LeafNodeIndex::new(0))
+            .unwrap()
+            .signature_key;
+        assert_eq!(
+            alice_sigkey.as_slice(),
+            new_signature_key.as_slice(),
+            "{name} sees stale signature key for Alice after the rotation commit",
+        );
+    }
+
+    // The Welcome's GroupInfo.
+    let welcome = welcome.into_welcome().expect("expected a Welcome");
+    StagedWelcome::new_from_welcome(
+        &charlie_party.provider,
+        &mls_group_join_config,
+        welcome,
+        Some(ratchet_tree.clone().into()),
+    )
+    .expect("Charlie failed to process the Welcome");
+
+    // The exported GroupInfo.
+    let verifiable_group_info = group_info
+        .into_verifiable_group_info()
+        .expect("expected a GroupInfo");
+    PublicGroup::from_external(
+        charlie_party.provider.crypto(),
+        charlie_party.provider.storage(),
+        ratchet_tree.into(),
+        verifiable_group_info,
+        ProposalStore::new(),
+    )
+    .expect("Charlie failed to track the group from the exported GroupInfo");
 }

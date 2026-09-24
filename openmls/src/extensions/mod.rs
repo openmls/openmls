@@ -22,6 +22,7 @@
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
 use std::{
+    collections::HashSet,
     convert::Infallible,
     fmt::Debug,
     io::{Read, Write},
@@ -31,7 +32,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 // Private
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 mod app_data_dict_extension;
 mod application_id_extension;
 mod codec;
@@ -46,7 +47,7 @@ use errors::*;
 pub mod errors;
 
 // Public re-exports
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 pub use app_data_dict_extension::{AppDataDictionary, AppDataDictionaryExtension};
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
@@ -85,39 +86,59 @@ mod tests;
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A        | N/A         | RFC XXXX  |
 ///
 /// Note: OpenMLS does not provide a `Reserved` variant in [ExtensionType].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[cfg_attr(
+    feature = "0-8-1-storage-format",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    not(feature = "0-8-1-storage-format"),
+    derive(
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )
+)]
 pub enum ExtensionType {
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 0)]
     /// The application id extension allows applications to add an explicit,
     /// application-defined identifier to a KeyPackage.
     ApplicationId,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 1)]
     /// The ratchet tree extensions provides the whole public state of the
     /// ratchet tree.
     RatchetTree,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 2)]
     /// The required capabilities extension defines the configuration of a group
     /// that imposes certain requirements on clients in the group.
     RequiredCapabilities,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 3)]
     /// To join a group via an External Commit, a new member needs a GroupInfo
     /// with an ExternalPub extension present in its extensions field.
     ExternalPub,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 4)]
     /// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
     ExternalSenders,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 5)]
     /// KeyPackage extension that marks a KeyPackage for use in a last resort
     /// scenario.
     LastResort,
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 8)]
     /// AppDataDictionary extension
     AppDataDictionary,
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
     /// A GREASE extension type for ensuring extensibility.
     Grease(u16),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     /// A currently unknown extension type.
     Unknown(u16),
 }
@@ -134,7 +155,7 @@ impl ExtensionType {
             ExtensionType::LastResort | ExtensionType::Grease(_) | ExtensionType::Unknown(_) => {
                 false
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => false,
         }
     }
@@ -145,41 +166,53 @@ impl ExtensionType {
     //  https://validation.openmls.tech/#valn1601
     pub(crate) fn is_valid_in_leaf_node(self) -> bool {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => false,
-            ExtensionType::Unknown(_) | ExtensionType::ApplicationId => true,
-            #[cfg(feature = "extensions-draft-08")]
+            // GREASE may appear as an extension type in `leaf_node.extensions`
+            // and must be tolerated there. It is still subject to the normal rule
+            // that it must be declared in `capabilities` (checked separately),
+            // so this only permits the type, it does not exempt it from that check.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::ApplicationId => {
+                true
+            }
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
     }
     pub(crate) fn is_valid_in_group_info(self) -> Option<bool> {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => Some(false),
             ExtensionType::RatchetTree | ExtensionType::ExternalPub => Some(true),
-            ExtensionType::Unknown(_) => None,
-            #[cfg(feature = "extensions-draft-08")]
+            // GREASE is treated like an unknown extension type (tolerated): a
+            // GREASE-valued extension used to be reported as `Unknown` here, and
+            // must not become stricter now that it maps to `Grease`.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => None,
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => Some(true),
         }
     }
 
     pub(crate) fn is_valid_in_key_package(self) -> bool {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::RatchetTree
+            ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => false,
-            ExtensionType::Unknown(_) | ExtensionType::LastResort => true,
-            #[cfg(feature = "extensions-draft-08")]
+            // GREASE may appear as an extension type in `key_package.extensions`
+            // and must be tolerated there. It is still subject to the normal rule
+            // that it be declared in `capabilities` (checked separately), so this
+            // only permits the type, it does not exempt it from that check.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::LastResort => {
+                true
+            }
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
     }
@@ -189,7 +222,13 @@ impl ExtensionType {
             ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
             | ExtensionType::Unknown(_) => true,
-            #[cfg(feature = "extensions-draft-08")]
+            // GREASE is treated like an unknown extension type: structurally
+            // allowed to appear here, but (like any unknown extension in the
+            // GroupContext) still subject to the per-member support check, which
+            // enforces the consensus rule that every member support it. GREASE
+            // does not bypass that check.
+            ExtensionType::Grease(_) => true,
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
             _ => false,
         }
@@ -229,8 +268,7 @@ impl DeserializeBytes for ExtensionType {
     {
         let mut bytes_ref = bytes;
         let extension_type = ExtensionType::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extension_type.tls_serialized_len()..];
-        Ok((extension_type, remainder))
+        Ok((extension_type, bytes_ref))
     }
 }
 
@@ -250,7 +288,7 @@ impl From<u16> for ExtensionType {
             3 => ExtensionType::RequiredCapabilities,
             4 => ExtensionType::ExternalPub,
             5 => ExtensionType::ExternalSenders,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             6 => ExtensionType::AppDataDictionary,
             10 => ExtensionType::LastResort,
             unknown if crate::grease::is_grease_value(unknown) => ExtensionType::Grease(unknown),
@@ -267,7 +305,7 @@ impl From<ExtensionType> for u16 {
             ExtensionType::RequiredCapabilities => 3,
             ExtensionType::ExternalPub => 4,
             ExtensionType::ExternalSenders => 5,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => 6,
             ExtensionType::LastResort => 10,
             ExtensionType::Grease(value) => value,
@@ -290,30 +328,49 @@ impl From<ExtensionType> for u16 {
 ///     opaque extension_data<V>;
 /// } Extension;
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "0-8-1-storage-format",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    not(feature = "0-8-1-storage-format"),
+    derive(
+        openmls_serialization_helpers::Serialize,
+        openmls_serialization_helpers::Deserialize,
+    )
+)]
 pub enum Extension {
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 0)]
     /// An [`ApplicationIdExtension`]
     ApplicationId(ApplicationIdExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 1)]
     /// A [`RatchetTreeExtension`]
     RatchetTree(RatchetTreeExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 2)]
     /// A [`RequiredCapabilitiesExtension`]
     RequiredCapabilities(RequiredCapabilitiesExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 3)]
     /// An [`ExternalPubExtension`]
     ExternalPub(ExternalPubExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 4)]
     /// An [`ExternalSendersExtension`]
     ExternalSenders(ExternalSendersExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 7)]
     /// An [`AppDataDictionaryExtension`]
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     AppDataDictionary(AppDataDictionaryExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 5)]
     /// A [`LastResortExtension`]
     LastResort(LastResortExtension),
 
+    #[cfg_attr(not(feature = "0-8-1-storage-format"), storage_tag = 6)]
     /// A currently unknown extension.
     Unknown(u16, UnknownExtension),
 }
@@ -381,8 +438,7 @@ where
     {
         let mut bytes_ref = bytes;
         let extensions = Extensions::<T>::tls_deserialize(&mut bytes_ref)?;
-        let remainder = &bytes[extensions.tls_serialized_len()..];
-        Ok((extensions, remainder))
+        Ok((extensions, bytes_ref))
     }
 }
 
@@ -486,6 +542,21 @@ where
     }
 }
 
+impl Extensions<AnyObject> {
+    /// Assume that the extensions contain the given extension type.
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that the extensions are of the correct type.
+    #[cfg(feature = "unchecked-conversions")]
+    pub fn into_unchecked<T>(self) -> Extensions<T> {
+        Extensions {
+            unique: self.unique,
+            _object: PhantomData,
+        }
+    }
+}
+
 /// Can be implemented by a type to validate extensions.
 pub trait ExtensionValidator {
     /// The error returned by the validator
@@ -510,22 +581,17 @@ where
     type Error = InvalidExtensionError;
 
     fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
-        let mut unique: Vec<Extension> = Vec::new();
-        for extension in candidate.into_iter() {
-            T::validate_extension_type(&extension)?;
+        let mut seen = HashSet::with_capacity(candidate.len());
+        for extension in candidate.iter() {
+            T::validate_extension_type(extension)?;
 
-            if unique
-                .iter()
-                .any(|ext| ext.extension_type() == extension.extension_type())
-            {
+            if !seen.insert(extension.extension_type()) {
                 return Err(InvalidExtensionError::Duplicate);
-            } else {
-                unique.push(extension);
             }
         }
 
         Ok(Self {
-            unique,
+            unique: candidate,
             _object: PhantomData,
         })
     }
@@ -648,7 +714,7 @@ impl<T> Extensions<T> {
             })
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Get a reference to the [`AppDataDictionaryExtension`] if there is any.
     pub fn app_data_dictionary(&self) -> Option<&AppDataDictionaryExtension> {
         self.find_by_type(ExtensionType::AppDataDictionary)
@@ -663,10 +729,12 @@ impl<T> Extensions<T> {
         let extension_type: ExtensionType = extension_type_id.into();
 
         match extension_type {
-            ExtensionType::Unknown(_) => self.find_by_type(extension_type).and_then(|e| match e {
-                Extension::Unknown(_, e) => Some(e),
-                _ => None,
-            }),
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => {
+                self.find_by_type(extension_type).and_then(|e| match e {
+                    Extension::Unknown(_, e) => Some(e),
+                    _ => None,
+                })
+            }
             _ => None,
         }
     }
@@ -684,7 +752,7 @@ impl Extension {
             )),
         }
     }
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     /// Get a reference to this extension as [`AppDataDictionaryExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
     /// [`Extension`] that's not an [`AppDataDictionaryExtension`].
@@ -760,9 +828,16 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Extension::AppDataDictionary(_) => ExtensionType::AppDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
+            // Map GREASE-valued extension types to `Grease`, consistent with
+            // `ExtensionType::from(u16)`. Without this an extension carrying a
+            // GREASE value would be reported as `Unknown`, so GREASE-aware
+            // validation (which ignores `Grease(_)`) would not recognize it.
+            Extension::Unknown(kind, _) if crate::grease::is_grease_value(*kind) => {
+                ExtensionType::Grease(*kind)
+            }
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }
@@ -831,6 +906,47 @@ mod test {
                 RequiredCapabilitiesExtension::default()
             ))
             .is_err());
+    }
+
+    #[test]
+    fn grease_extension_type_mapping() {
+        // A GREASE-valued extension must report a `Grease` extension type
+        // (consistent with `ExtensionType::from(u16)`), not `Unknown`. Otherwise
+        // GREASE-aware validation would fail to recognize it and reject peers
+        // (e.g. MLS++) that decorate leaf/key-package extensions with GREASE.
+        let grease = Extension::Unknown(0x5A5A, UnknownExtension(vec![1, 2, 3]));
+        assert_eq!(grease.extension_type(), ExtensionType::Grease(0x5A5A));
+        assert!(grease.extension_type().is_grease());
+
+        // A non-GREASE unknown value stays `Unknown`.
+        let unknown = Extension::Unknown(0xABCD, UnknownExtension(vec![]));
+        assert_eq!(unknown.extension_type(), ExtensionType::Unknown(0xABCD));
+    }
+
+    #[test]
+    fn grease_extension_must_be_declared_in_capabilities() {
+        // GREASE does NOT bypass the capability check: a GREASE extension type is
+        // "contained" only if it is advertised in the capabilities (RFC 9420:
+        // extensions in leaf_node.extensions/key_package.extensions MUST be in
+        // capabilities). The fix that makes this work is that a GREASE-valued
+        // extension now reports a `Grease(_)` type that matches the `Grease(_)`
+        // parsed into the capabilities list.
+        let advertised = crate::treesync::node::leaf_node::Capabilities::new(
+            None,
+            None,
+            Some(&[ExtensionType::Grease(0x5A5A)]),
+            None,
+            None,
+        );
+        assert!(advertised.contains_extension_type(&ExtensionType::Grease(0x5A5A)));
+        // A GREASE value that is not advertised is not contained.
+        assert!(!advertised.contains_extension_type(&ExtensionType::Grease(0xAAAA)));
+
+        // Empty capabilities contain no (non-default) extension, GREASE included.
+        let empty =
+            crate::treesync::node::leaf_node::Capabilities::new(None, None, None, None, None);
+        assert!(!empty.contains_extension_type(&ExtensionType::Grease(0x5A5A)));
+        assert!(!empty.contains_extension_type(&ExtensionType::Unknown(0xABCD)));
     }
 
     #[test]

@@ -10,6 +10,8 @@ use hkdf::Hkdf;
 use hpke::Hpke;
 use hpke_rs_crypto::types as hpke_types;
 use hpke_rs_rust_crypto::HpkeRustCrypto;
+#[cfg(feature = "targeted-messages-draft")]
+use openmls_traits::crypto::HpkeSealPskResolvedAadError;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -58,9 +60,12 @@ fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
         HpkeKemType::DhKemP521 => hpke_types::KemAlgorithm::DhKemP521,
         HpkeKemType::DhKem25519 => hpke_types::KemAlgorithm::DhKem25519,
         HpkeKemType::DhKem448 => hpke_types::KemAlgorithm::DhKem448,
-        HpkeKemType::XWingKemDraft6 => {
-            unimplemented!("XWingKemDraft6 is not supported by the RustCrypto provider.")
-        }
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::XWingKemDraft6 => hpke_types::KemAlgorithm::XWingDraft06,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem768 => hpke_types::KemAlgorithm::MlKem768,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem1024 => hpke_types::KemAlgorithm::MlKem1024,
     }
 }
 
@@ -89,6 +94,16 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(()),
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384
+            | Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519
+            | Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256
+            | Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44
+            | Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65
+            | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87
+            | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87
+            | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }
     }
@@ -98,6 +113,24 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519,
         ]
     }
 
@@ -264,6 +297,66 @@ impl OpenMlsCrypto for RustCrypto {
                 let pk = sk.verifying_key().to_bytes().into();
                 Ok((sk.to_bytes().into(), pk))
             }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let mut rng = self
+                    .rng
+                    .write()
+                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+                let k = p384::ecdsa::SigningKey::random(&mut *rng);
+                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
+                Ok((k.to_bytes().as_slice().into(), pk))
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 => {
+                use crate::rand_shim::RandCore0_10;
+                use ml_dsa::{Generate, Keypair};
+                let sk = {
+                    let mut rng = self
+                        .rng
+                        .write()
+                        .map_err(|_| CryptoError::InsufficientRandomness)?;
+                    ml_dsa::SigningKey::<ml_dsa::MlDsa44>::generate_from_rng(&mut RandCore0_10(
+                        &mut *rng,
+                    ))
+                };
+                let pk = sk.verifying_key().encode().to_vec();
+                let sk = sk.to_seed().to_vec();
+                Ok((sk, pk))
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA65 => {
+                use crate::rand_shim::RandCore0_10;
+                use ml_dsa::{Generate, Keypair};
+                let sk = {
+                    let mut rng = self
+                        .rng
+                        .write()
+                        .map_err(|_| CryptoError::InsufficientRandomness)?;
+                    ml_dsa::SigningKey::<ml_dsa::MlDsa65>::generate_from_rng(&mut RandCore0_10(
+                        &mut *rng,
+                    ))
+                };
+                let pk = sk.verifying_key().encode().to_vec();
+                let sk = sk.to_seed().to_vec();
+                Ok((sk, pk))
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA87 => {
+                use crate::rand_shim::RandCore0_10;
+                use ml_dsa::{Generate, Keypair};
+                let sk = {
+                    let mut rng = self
+                        .rng
+                        .write()
+                        .map_err(|_| CryptoError::InsufficientRandomness)?;
+                    ml_dsa::SigningKey::<ml_dsa::MlDsa87>::generate_from_rng(&mut RandCore0_10(
+                        &mut *rng,
+                    ))
+                };
+                let pk = sk.verifying_key().encode().to_vec();
+                let sk = sk.to_seed().to_vec();
+                Ok((sk, pk))
+            }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }
@@ -298,6 +391,61 @@ impl OpenMlsCrypto for RustCrypto {
                 k.verify_strict(data, &ed25519_dalek::Signature::from(sig))
                     .map_err(|_| CryptoError::InvalidSignature)
             }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let k = p384::ecdsa::VerifyingKey::from_encoded_point(
+                    &p384::EncodedPoint::from_bytes(pk)
+                        .map_err(|_| CryptoError::CryptoLibraryError)?,
+                )
+                .map_err(|_| CryptoError::CryptoLibraryError)?;
+                k.verify(
+                    data,
+                    &p384::ecdsa::Signature::from_der(signature)
+                        .map_err(|_| CryptoError::InvalidSignature)?,
+                )
+                .map_err(|_| CryptoError::InvalidSignature)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 => {
+                use ml_dsa::Verifier;
+                let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa44> =
+                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let encoded_signature: &ml_dsa::EncodedSignature<ml_dsa::MlDsa44> = signature
+                    .try_into()
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                let key = ml_dsa::VerifyingKey::<ml_dsa::MlDsa44>::decode(encoded_key);
+                let signature = ml_dsa::Signature::<ml_dsa::MlDsa44>::decode(encoded_signature)
+                    .ok_or(CryptoError::InvalidSignature)?;
+                key.verify(data, &signature)
+                    .map_err(|_| CryptoError::InvalidSignature)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA65 => {
+                use ml_dsa::Verifier;
+                let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa65> =
+                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let encoded_signature: &ml_dsa::EncodedSignature<ml_dsa::MlDsa65> = signature
+                    .try_into()
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                let key = ml_dsa::VerifyingKey::<ml_dsa::MlDsa65>::decode(encoded_key);
+                let signature = ml_dsa::Signature::<ml_dsa::MlDsa65>::decode(encoded_signature)
+                    .ok_or(CryptoError::InvalidSignature)?;
+                key.verify(data, &signature)
+                    .map_err(|_| CryptoError::InvalidSignature)
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA87 => {
+                use ml_dsa::Verifier;
+                let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa87> =
+                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let encoded_signature: &ml_dsa::EncodedSignature<ml_dsa::MlDsa87> = signature
+                    .try_into()
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                let key = ml_dsa::VerifyingKey::<ml_dsa::MlDsa87>::decode(encoded_key);
+                let signature = ml_dsa::Signature::<ml_dsa::MlDsa87>::decode(encoded_signature)
+                    .ok_or(CryptoError::InvalidSignature)?;
+                key.verify(data, &signature)
+                    .map_err(|_| CryptoError::InvalidSignature)
+            }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }
@@ -315,11 +463,41 @@ impl OpenMlsCrypto for RustCrypto {
                 let signature: Signature = k.sign(data);
                 Ok(signature.to_der().to_bytes().into())
             }
+            SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+                let k = p384::ecdsa::SigningKey::from_bytes(key.into())
+                    .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let signature: p384::ecdsa::Signature = k.sign(data);
+                Ok(signature.to_der().to_bytes().into())
+            }
             SignatureScheme::ED25519 => {
                 let k = ed25519_dalek::SigningKey::try_from(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
                 let signature = k.sign(data);
                 Ok(signature.to_bytes().into())
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA44 => {
+                use ml_dsa::Signer;
+                let seed: &ml_dsa::Seed = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa44>::from_seed(seed);
+                let signature = k.sign(data);
+                Ok(signature.encode().to_vec())
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA65 => {
+                use ml_dsa::Signer;
+                let seed: &ml_dsa::Seed = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa65>::from_seed(seed);
+                let signature = k.sign(data);
+                Ok(signature.encode().to_vec())
+            }
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            SignatureScheme::MLDSA87 => {
+                use ml_dsa::Signer;
+                let seed: &ml_dsa::Seed = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::from_seed(seed);
+                let signature = k.sign(data);
+                Ok(signature.encode().to_vec())
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
@@ -419,11 +597,91 @@ impl OpenMlsCrypto for RustCrypto {
             public: kp.1.as_slice().into(),
         })
     }
+
+    #[cfg(feature = "targeted-messages-draft")]
+    fn hpke_open_psk(
+        &self,
+        config: HpkeConfig,
+        input: &types::HpkeCiphertext,
+        sk_r: &[u8],
+        info: &[u8],
+        aad: &[u8],
+        psk: &[u8],
+        psk_id: &[u8],
+    ) -> Result<Vec<u8>, CryptoError> {
+        hpke_psk_from_config(config)
+            .open(
+                input.kem_output.as_slice(),
+                &sk_r.into(),
+                info,
+                aad,
+                input.ciphertext.as_slice(),
+                Some(psk),
+                Some(psk_id),
+                None,
+            )
+            .map_err(|_| CryptoError::HpkeDecryptionError)
+    }
+
+    #[cfg(feature = "targeted-messages-draft")]
+    fn hpke_seal_psk_resolved_aad<F, E>(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        ptxt: &[u8],
+        psk: &[u8],
+        psk_id: &[u8],
+        aad_builder: F,
+    ) -> Result<HpkeCiphertext, HpkeSealPskResolvedAadError<E>>
+    where
+        F: FnOnce(&[u8]) -> Result<Vec<u8>, E>,
+    {
+        let mut hpke = hpke_psk_from_config(config);
+        let (kem_output, mut context) = hpke
+            .setup_sender(&pk_r.into(), info, Some(psk), Some(psk_id), None)
+            .map_err(|_| HpkeSealPskResolvedAadError::CryptoError(CryptoError::SenderSetupError))?;
+        let aad = aad_builder(kem_output.as_slice())
+            .map_err(HpkeSealPskResolvedAadError::AadBuildError)?;
+        let ciphertext = context.seal(&aad, ptxt).map_err(|e| match e {
+            hpke::HpkeError::InvalidInput => {
+                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InvalidLength)
+            }
+            hpke::HpkeError::InsufficientRandomness => {
+                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InsufficientRandomness)
+            }
+            _ => HpkeSealPskResolvedAadError::CryptoError(CryptoError::HpkeEncryptionError),
+        })?;
+        Ok(HpkeCiphertext {
+            kem_output: kem_output.into(),
+            ciphertext: ciphertext.into(),
+        })
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_encrypt(&self, key: &[u8; 16], plaintext: u32) -> Result<u32, CryptoError> {
+        crate::ff1::encrypt(key, plaintext)
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError> {
+        crate::ff1::decrypt(key, ciphertext)
+    }
 }
 
 fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeRustCrypto> {
     Hpke::<HpkeRustCrypto>::new(
         hpke::Mode::Base,
+        kem_mode(config.0),
+        kdf_mode(config.1),
+        aead_mode(config.2),
+    )
+}
+
+#[cfg(feature = "targeted-messages-draft")]
+fn hpke_psk_from_config(config: HpkeConfig) -> Hpke<HpkeRustCrypto> {
+    Hpke::<HpkeRustCrypto>::new(
+        hpke::Mode::Psk,
         kem_mode(config.0),
         kdf_mode(config.1),
         aead_mode(config.2),
@@ -456,4 +714,20 @@ pub enum RandError {
     LockPoisoned,
     #[error("Unable to collect enough randomness.")]
     NotEnoughRandomness,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn supports_is_consistent_with_supported_ciphersuites() {
+        let crypto = RustCrypto::default();
+        for ciphersuite in crypto.supported_ciphersuites() {
+            assert!(
+                crypto.supports(ciphersuite).is_ok(),
+                "{ciphersuite:?} is advertised by supported_ciphersuites() but rejected by supports()"
+            );
+        }
+    }
 }

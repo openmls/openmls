@@ -1,27 +1,32 @@
-use openmls_traits::{signatures::Signer, storage::StorageProvider as _, types::Ciphersuite};
+use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
 
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use super::CreateGroupContextExtProposalError;
+#[cfg(feature = "virtual-clients-draft")]
+use super::HandshakeConfirmationData;
 use super::{
     errors::{ProposalError, ProposeAddMemberError, ProposeRemoveMemberError, RemoveProposalError},
-    AddProposal, CreateGroupContextExtProposalError, CustomProposal, FramingParameters, MlsGroup,
+    AddProposal, CustomProposal, FramingParameters, HandshakeFramingOutput, MlsGroup,
     PreSharedKeyProposal, Proposal, QueuedProposal, RemoveProposal, UpdateProposal, WireFormat,
 };
+#[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+use crate::messages::group_info::GroupInfo;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
-    credentials::Credential,
+    credentials::{Credential, NewSignerBundle},
     error::LibraryError,
     extensions::Extensions,
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut},
-    group::{errors::CreateAddProposalError, GroupContext, GroupId, ValidationError},
+    group::{errors::CreateAddProposalError, GroupContext, ValidationError},
     key_packages::KeyPackage,
-    messages::{group_info::GroupInfo, proposals::ProposalOrRefType},
+    messages::proposals::ProposalOrRefType,
     schedule::PreSharedKeyId,
     storage::{OpenMlsProvider, StorageProvider},
     treesync::{LeafNode, LeafNodeParameters},
-    versions::ProtocolVersion,
 };
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::{
     component::ComponentId,
     messages::proposals::{AppDataUpdateOperation, AppDataUpdateProposal},
@@ -34,6 +39,9 @@ pub enum Propose {
     Add(KeyPackage),
 
     /// An update proposal requires a new leaf node.
+    ///
+    /// An update proposal is always queued by reference as per RFC 9420 a
+    /// member must not commit its own update proposal.
     Update(LeafNodeParameters),
 
     /// A remove proposal consists of the leaf index of the leaf to be removed.
@@ -45,30 +53,21 @@ pub enum Propose {
     /// A PSK proposal gets a pre shared key id.
     PreSharedKey(PreSharedKeyId),
 
-    /// A re-init proposal gets the [`GroupId`], [`ProtocolVersion`], [`Ciphersuite`], and [`Extensions`].
-    ReInit {
-        group_id: GroupId,
-        version: ProtocolVersion,
-        ciphersuite: Ciphersuite,
-        extensions: Extensions<GroupContext>,
-    },
-
-    /// An external init proposal gets the raw bytes from the KEM output.
-    ExternalInit(Vec<u8>),
-
     /// Propose adding new group context extensions.
     GroupContextExtensions(Extensions<GroupContext>),
 
-    #[cfg(feature = "extensions-draft-08")]
-    /// Propose an update to a component in the [`AppDataDictionary`]
+    #[cfg(feature = "extensions-draft")]
+    /// Propose an update to a component in the
+    /// [`AppDataDictionary`](crate::extensions::AppDataDictionary)
     UpdateAppDataComponent {
         /// The component_id to update in the dictionary
         component_id: ComponentId,
         /// The data representing the update
         update: Vec<u8>,
     },
-    #[cfg(feature = "extensions-draft-08")]
-    /// Propose removal of a component in the [`AppDataDictionary`]
+    #[cfg(feature = "extensions-draft")]
+    /// Propose removal of a component in the
+    /// [`AppDataDictionary`](crate::extensions::AppDataDictionary)
     RemoveAppDataComponent {
         /// The component_id to remove in the dictionary
         component_id: ComponentId,
@@ -79,21 +78,21 @@ pub enum Propose {
 }
 
 macro_rules! impl_propose_fun {
-    ($name:ident, $value_ty:ty, $group_fun:ident, $ref_or_value:expr) => {
-        // TODO: Documentation wrong.
-        /// Creates proposals to add an external PSK to the key schedule.
-        ///
-        /// Returns an error if there is a pending commit.
+    ($name:ident, $impl_name:ident, $value_ty:ty, $group_fun:ident, $ref_or_value:expr, $doc:expr) => {
+        /// Builds the proposal, queues it, and frames it, returning the framing
+        /// output so callers can surface the handshake confirmation data.
         #[maybe_async::maybe_async]
-        pub async fn $name<Provider: OpenMlsProvider>(
+        async fn $impl_name<Provider: OpenMlsProvider>(
             &mut self,
             provider: &Provider,
             signer: &impl Signer,
             value: $value_ty,
-        ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        ) -> Result<(HandshakeFramingOutput, ProposalRef), ProposalError<Provider::StorageError>> {
             self.is_operational()?;
 
-            let proposal = self.$group_fun(self.framing_parameters(), value, signer)?;
+            let aad = self.outgoing_authenticated_data()?;
+            let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
+            let proposal = self.$group_fun(framing_parameters, value, signer)?;
 
             let queued_proposal = QueuedProposal::from_authenticated_content(
                 self.ciphersuite(),
@@ -111,10 +110,29 @@ macro_rules! impl_propose_fun {
                 .map_err(ProposalError::StorageError)?;
             self.proposal_store_mut().add(queued_proposal);
 
-            let mls_message = self.content_to_mls_message(proposal, provider).await?;
+            let framing = self.content_to_mls_message(proposal, provider).await?;
 
             self.reset_aad();
-            Ok((mls_message, proposal_ref))
+            Ok((framing, proposal_ref))
+        }
+
+        #[doc = $doc]
+        ///
+        /// Returns an error if there is a pending commit.
+        ///
+        /// Under the `virtual-clients-draft` feature this function is
+        /// unavailable. Use [`Self::propose_unconfirmed`], which retains the
+        /// handshake secret and returns the confirmation data.
+        #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+        #[maybe_async::maybe_async]
+        pub async fn $name<Provider: OpenMlsProvider>(
+            &mut self,
+            provider: &Provider,
+            signer: &impl Signer,
+            value: $value_ty,
+        ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+            let (framing, proposal_ref) = self.$impl_name(provider, signer, value).await?;
+            Ok((framing.message, proposal_ref))
         }
     };
 }
@@ -122,47 +140,95 @@ macro_rules! impl_propose_fun {
 impl MlsGroup {
     impl_propose_fun!(
         propose_add_member_by_value,
+        propose_add_member_by_value_impl,
         KeyPackage,
         create_add_proposal,
-        ProposalOrRefType::Proposal
+        ProposalOrRefType::Proposal,
+        "Creates a proposal to add a member to the group, committed by value."
     );
 
     impl_propose_fun!(
         propose_remove_member_by_value,
+        propose_remove_member_by_value_impl,
         LeafNodeIndex,
         create_remove_proposal,
-        ProposalOrRefType::Proposal
+        ProposalOrRefType::Proposal,
+        "Creates a proposal to remove a member from the group, committed by value."
     );
 
     impl_propose_fun!(
-        propose_external_psk,
+        propose_pre_shared_key,
+        propose_pre_shared_key_impl,
         PreSharedKeyId,
         create_presharedkey_proposal,
-        ProposalOrRefType::Reference
+        ProposalOrRefType::Reference,
+        "Creates a proposal to add a pre-shared key to the key schedule, committed by reference."
     );
 
     impl_propose_fun!(
-        propose_external_psk_by_value,
+        propose_pre_shared_key_by_value,
+        propose_pre_shared_key_by_value_impl,
         PreSharedKeyId,
         create_presharedkey_proposal,
-        ProposalOrRefType::Proposal
+        ProposalOrRefType::Proposal,
+        "Creates a proposal to add a pre-shared key to the key schedule, committed by value."
     );
+
+    /// Creates proposals to add a non-resumption PSK to the key schedule.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+    #[deprecated(
+        note = "Renamed to `propose_pre_shared_key`; works for any non-resumption PSK, not just external"
+    )]
+    #[maybe_async::maybe_async]
+    pub async fn propose_external_psk<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        value: PreSharedKeyId,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        self.propose_pre_shared_key(provider, signer, value).await
+    }
+
+    /// Creates proposals to add a non-resumption PSK to the key schedule by value.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+    #[deprecated(
+        note = "Renamed to `propose_pre_shared_key_by_value`; works for any non-resumption PSK, not just external"
+    )]
+    #[maybe_async::maybe_async]
+    pub async fn propose_external_psk_by_value<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        value: PreSharedKeyId,
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        self.propose_pre_shared_key_by_value(provider, signer, value)
+            .await
+    }
 
     impl_propose_fun!(
         propose_custom_proposal_by_value,
+        propose_custom_proposal_by_value_impl,
         CustomProposal,
         create_custom_proposal,
-        ProposalOrRefType::Proposal
+        ProposalOrRefType::Proposal,
+        "Creates a custom proposal, committed by value."
     );
 
     impl_propose_fun!(
         propose_custom_proposal_by_reference,
+        propose_custom_proposal_by_reference_impl,
         CustomProposal,
         create_custom_proposal,
-        ProposalOrRefType::Reference
+        ProposalOrRefType::Reference,
+        "Creates a custom proposal, committed by reference."
     );
 
-    /// Generate a proposal
+    /// Generate a proposal.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[maybe_async::maybe_async]
     pub async fn propose<Provider: OpenMlsProvider>(
         &mut self,
@@ -171,32 +237,78 @@ impl MlsGroup {
         propose: Propose,
         ref_or_value: ProposalOrRefType,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        let (framing, proposal_ref) = self
+            .propose_dispatch(provider, signer, propose, ref_or_value)
+            .await?;
+        Ok((framing.message, proposal_ref))
+    }
+
+    /// Like [`Self::propose`], but retains the handshake secret and returns the
+    /// [`HandshakeConfirmationData`] alongside the framed proposal, so a
+    /// virtual client can confirm the proposal with
+    /// [`MlsGroup::confirm_handshake_message`] once the DS has accepted it. The
+    /// confirmation is `None` for a proposal framed as a plaintext
+    /// PublicMessage.
+    ///
+    /// [`MlsGroup::confirm_handshake_message`]: crate::group::MlsGroup::confirm_handshake_message
+    #[cfg(feature = "virtual-clients-draft")]
+    #[maybe_async::maybe_async]
+    pub async fn propose_unconfirmed<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        propose: Propose,
+        ref_or_value: ProposalOrRefType,
+    ) -> Result<
+        (
+            MlsMessageOut,
+            ProposalRef,
+            Option<HandshakeConfirmationData>,
+        ),
+        ProposalError<Provider::StorageError>,
+    > {
+        let (framing, proposal_ref) = self
+            .propose_dispatch(provider, signer, propose, ref_or_value)
+            .await?;
+        Ok((framing.message, proposal_ref, framing.confirmation))
+    }
+
+    /// Shared dispatch for [`Self::propose`] and [`Self::propose_unconfirmed`].
+    /// Routes to the per-proposal-type helpers and returns the framing output
+    /// so the caller can decide whether to surface the confirmation data.
+    #[maybe_async::maybe_async]
+    async fn propose_dispatch<Provider: OpenMlsProvider, S: Signer>(
+        &mut self,
+        provider: &Provider,
+        signer: &S,
+        propose: Propose,
+        ref_or_value: ProposalOrRefType,
+    ) -> Result<(HandshakeFramingOutput, ProposalRef), ProposalError<Provider::StorageError>> {
         match propose {
             Propose::Add(key_package) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
-                    self.propose_add_member_by_value(provider, signer, key_package)
+                    self.propose_add_member_by_value_impl(provider, signer, key_package)
                         .await
                 }
                 ProposalOrRefType::Reference => self
-                    .propose_add_member(provider, signer, &key_package)
+                    .propose_add_member_impl(provider, signer, &key_package)
                     .await
                     .map_err(|e| e.into()),
             },
 
-            Propose::Update(leaf_node_parameters) => match ref_or_value {
-                ProposalOrRefType::Proposal => self
-                    .propose_self_update(provider, signer, leaf_node_parameters)
-                    .await
-                    .map_err(|e| e.into()),
-                ProposalOrRefType::Reference => self
-                    .propose_self_update(provider, signer, leaf_node_parameters)
-                    .await
-                    .map_err(|e| e.into()),
-            },
+            Propose::Update(leaf_node_parameters) => self
+                .propose_self_update_internal(
+                    provider,
+                    signer,
+                    None::<NewSignerBundle<'_, S>>,
+                    leaf_node_parameters,
+                )
+                .await
+                .map_err(|e| e.into()),
 
             Propose::Remove(leaf_index) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
-                    self.propose_remove_member_by_value(
+                    self.propose_remove_member_by_value_impl(
                         provider,
                         signer,
                         LeafNodeIndex::new(leaf_index),
@@ -204,70 +316,79 @@ impl MlsGroup {
                     .await
                 }
                 ProposalOrRefType::Reference => self
-                    .propose_remove_member(provider, signer, LeafNodeIndex::new(leaf_index))
+                    .propose_remove_member_impl(provider, signer, LeafNodeIndex::new(leaf_index))
                     .await
                     .map_err(|e| e.into()),
             },
 
             Propose::RemoveCredential(credential) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
-                    self.propose_remove_member_by_credential_by_value(provider, signer, &credential)
-                        .await
+                    self.propose_remove_member_by_credential_by_value_impl(
+                        provider,
+                        signer,
+                        &credential,
+                    )
+                    .await
                 }
                 ProposalOrRefType::Reference => self
-                    .propose_remove_member_by_credential(provider, signer, &credential)
+                    .propose_remove_member_by_credential_impl(provider, signer, &credential)
                     .await
                     .map_err(|e| e.into()),
             },
-            Propose::PreSharedKey(psk_id) => match psk_id.psk() {
-                crate::schedule::Psk::External(_) => match ref_or_value {
+            Propose::PreSharedKey(psk_id) => {
+                match psk_id.psk() {
+                    crate::schedule::Psk::External(_) => {}
+                    #[cfg(feature = "extensions-draft")]
+                    crate::schedule::Psk::Application(_) => {}
+                    crate::schedule::Psk::Resumption(_) => {
+                        return Err(ProposalError::LibraryError(LibraryError::custom(
+                            "Invalid PSk argument",
+                        )))
+                    }
+                };
+                match ref_or_value {
                     ProposalOrRefType::Proposal => {
-                        self.propose_external_psk_by_value(provider, signer, psk_id)
+                        self.propose_pre_shared_key_by_value_impl(provider, signer, psk_id)
                             .await
                     }
                     ProposalOrRefType::Reference => {
-                        self.propose_external_psk(provider, signer, psk_id).await
+                        self.propose_pre_shared_key_impl(provider, signer, psk_id)
+                            .await
                     }
-                },
-                crate::schedule::Psk::Resumption(_) => Err(ProposalError::LibraryError(
-                    LibraryError::custom("Invalid PSk argument"),
-                )),
-            },
-            Propose::ReInit {
-                group_id: _,
-                version: _,
-                ciphersuite: _,
-                extensions: _,
-            } => Err(ProposalError::LibraryError(LibraryError::custom(
-                "Unsupported proposal type ReInit",
-            ))),
-            Propose::ExternalInit(_) => Err(ProposalError::LibraryError(LibraryError::custom(
-                "Unsupported proposal type ExternalInit",
-            ))),
-            Propose::GroupContextExtensions(_) => Err(ProposalError::LibraryError(
-                LibraryError::custom("Unsupported proposal type GroupContextExtensions"),
-            )),
-            // extensions-draft-08
-            #[cfg(feature = "extensions-draft-08")]
+                }
+            }
+            Propose::GroupContextExtensions(extensions) => {
+                self.propose_group_context_extensions_impl(
+                    provider,
+                    extensions,
+                    signer,
+                    ref_or_value,
+                )
+                .await
+            }
+            // extensions-draft
+            #[cfg(feature = "extensions-draft")]
             Propose::UpdateAppDataComponent {
                 component_id,
                 update,
             } => {
-                self.propose_app_data_update(
+                self.propose_app_data_update_impl(
                     provider,
                     signer,
                     component_id,
                     AppDataUpdateOperation::Update(update.into()),
+                    ref_or_value,
                 )
                 .await
             }
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             Propose::RemoveAppDataComponent { component_id } => {
-                self.propose_app_data_update(
+                self.propose_app_data_update_impl(
                     provider,
                     signer,
                     component_id,
                     AppDataUpdateOperation::Remove,
+                    ref_or_value,
                 )
                 .await
             }
@@ -275,12 +396,16 @@ impl MlsGroup {
             // custom
             Propose::Custom(custom_proposal) => match ref_or_value {
                 ProposalOrRefType::Proposal => {
-                    self.propose_custom_proposal_by_value(provider, signer, custom_proposal)
+                    self.propose_custom_proposal_by_value_impl(provider, signer, custom_proposal)
                         .await
                 }
                 ProposalOrRefType::Reference => {
-                    self.propose_custom_proposal_by_reference(provider, signer, custom_proposal)
-                        .await
+                    self.propose_custom_proposal_by_reference_impl(
+                        provider,
+                        signer,
+                        custom_proposal,
+                    )
+                    .await
                 }
             },
         }
@@ -289,6 +414,11 @@ impl MlsGroup {
     /// Creates proposals to add members to the group.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[maybe_async::maybe_async]
     pub async fn propose_add_member<Provider: OpenMlsProvider>(
         &mut self,
@@ -296,10 +426,26 @@ impl MlsGroup {
         signer: &impl Signer,
         key_package: &KeyPackage,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError<Provider::StorageError>> {
+        let (framing, proposal_ref) = self
+            .propose_add_member_impl(provider, signer, key_package)
+            .await?;
+        Ok((framing.message, proposal_ref))
+    }
+
+    #[maybe_async::maybe_async]
+    async fn propose_add_member_impl<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        key_package: &KeyPackage,
+    ) -> Result<(HandshakeFramingOutput, ProposalRef), ProposeAddMemberError<Provider::StorageError>>
+    {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let add_proposal = self
-            .create_add_proposal(self.framing_parameters(), key_package.clone(), signer)
+            .create_add_proposal(framing_parameters, key_package.clone(), signer)
             .map_err(|e| match e {
                 CreateAddProposalError::LibraryError(e) => e.into(),
                 CreateAddProposalError::LeafNodeValidation(error) => {
@@ -320,16 +466,21 @@ impl MlsGroup {
             .map_err(ProposeAddMemberError::StorageError)?;
         self.proposal_store_mut().add(proposal);
 
-        let mls_message = self.content_to_mls_message(add_proposal, provider).await?;
+        let framing = self.content_to_mls_message(add_proposal, provider).await?;
 
         self.reset_aad();
-        Ok((mls_message, proposal_ref))
+        Ok((framing, proposal_ref))
     }
 
     /// Creates proposals to remove members from the group.
     /// The `member` has to be the member's leaf index.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[maybe_async::maybe_async]
     pub async fn propose_remove_member<Provider: OpenMlsProvider>(
         &mut self,
@@ -338,10 +489,28 @@ impl MlsGroup {
         member: LeafNodeIndex,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError<Provider::StorageError>>
     {
+        let (framing, proposal_ref) = self
+            .propose_remove_member_impl(provider, signer, member)
+            .await?;
+        Ok((framing.message, proposal_ref))
+    }
+
+    #[maybe_async::maybe_async]
+    async fn propose_remove_member_impl<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        member: LeafNodeIndex,
+    ) -> Result<
+        (HandshakeFramingOutput, ProposalRef),
+        ProposeRemoveMemberError<Provider::StorageError>,
+    > {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let remove_proposal = self
-            .create_remove_proposal(self.framing_parameters(), member, signer)
+            .create_remove_proposal(framing_parameters, member, signer)
             .map_err(|_| ProposeRemoveMemberError::UnknownMember)?;
 
         let proposal = QueuedProposal::from_authenticated_content_by_ref(
@@ -357,18 +526,23 @@ impl MlsGroup {
             .map_err(ProposeRemoveMemberError::StorageError)?;
         self.proposal_store_mut().add(proposal);
 
-        let mls_message = self
+        let framing = self
             .content_to_mls_message(remove_proposal, provider)
             .await?;
 
         self.reset_aad();
-        Ok((mls_message, proposal_ref))
+        Ok((framing, proposal_ref))
     }
 
     /// Creates proposals to remove members from the group.
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[maybe_async::maybe_async]
     pub async fn propose_remove_member_by_credential<Provider: OpenMlsProvider>(
         &mut self,
@@ -377,6 +551,22 @@ impl MlsGroup {
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError<Provider::StorageError>>
     {
+        let (framing, proposal_ref) = self
+            .propose_remove_member_by_credential_impl(provider, signer, member)
+            .await?;
+        Ok((framing.message, proposal_ref))
+    }
+
+    #[maybe_async::maybe_async]
+    async fn propose_remove_member_by_credential_impl<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        member: &Credential,
+    ) -> Result<
+        (HandshakeFramingOutput, ProposalRef),
+        ProposeRemoveMemberError<Provider::StorageError>,
+    > {
         // Find the user for the credential first.
         let member_index = self
             .public_group()
@@ -385,7 +575,7 @@ impl MlsGroup {
             .map(|m| m.index);
 
         if let Some(member_index) = member_index {
-            self.propose_remove_member(provider, signer, member_index)
+            self.propose_remove_member_impl(provider, signer, member_index)
                 .await
         } else {
             Err(ProposeRemoveMemberError::UnknownMember)
@@ -396,6 +586,11 @@ impl MlsGroup {
     /// The `member` has to be the member's credential.
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[maybe_async::maybe_async]
     pub async fn propose_remove_member_by_credential_by_value<Provider: OpenMlsProvider>(
         &mut self,
@@ -403,6 +598,19 @@ impl MlsGroup {
         signer: &impl Signer,
         member: &Credential,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        let (framing, proposal_ref) = self
+            .propose_remove_member_by_credential_by_value_impl(provider, signer, member)
+            .await?;
+        Ok((framing.message, proposal_ref))
+    }
+
+    #[maybe_async::maybe_async]
+    async fn propose_remove_member_by_credential_by_value_impl<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        member: &Credential,
+    ) -> Result<(HandshakeFramingOutput, ProposalRef), ProposalError<Provider::StorageError>> {
         // Find the user for the credential first.
         let member_index = self
             .public_group()
@@ -411,7 +619,7 @@ impl MlsGroup {
             .map(|m| m.index);
 
         if let Some(member_index) = member_index {
-            self.propose_remove_member_by_value(provider, signer, member_index)
+            self.propose_remove_member_by_value_impl(provider, signer, member_index)
                 .await
         } else {
             Err(ProposalError::ProposeRemoveMemberError(
@@ -424,6 +632,12 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions`.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`] with
+    /// [`Propose::GroupContextExtensions`], which retains the handshake secret
+    /// and returns the confirmation data.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[maybe_async::maybe_async]
     pub async fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
@@ -431,18 +645,40 @@ impl MlsGroup {
         extensions: Extensions<GroupContext>,
         signer: &impl Signer,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        let (framing, proposal_ref) = self
+            .propose_group_context_extensions_impl(
+                provider,
+                extensions,
+                signer,
+                ProposalOrRefType::Reference,
+            )
+            .await?;
+        Ok((framing.message, proposal_ref))
+    }
+
+    #[maybe_async::maybe_async]
+    async fn propose_group_context_extensions_impl<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        extensions: Extensions<GroupContext>,
+        signer: &impl Signer,
+        ref_or_value: ProposalOrRefType,
+    ) -> Result<(HandshakeFramingOutput, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let proposal = self.create_group_context_ext_proposal::<Provider>(
-            self.framing_parameters(),
+            framing_parameters,
             extensions,
             signer,
         )?;
 
-        let queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
+        let queued_proposal = QueuedProposal::from_authenticated_content(
             self.ciphersuite(),
             provider.crypto(),
             proposal.clone(),
+            ref_or_value,
         )?;
 
         let proposal_ref = queued_proposal.proposal_reference();
@@ -453,10 +689,10 @@ impl MlsGroup {
             .map_err(ProposalError::StorageError)?;
         self.proposal_store_mut().add(queued_proposal);
 
-        let mls_message = self.content_to_mls_message(proposal, provider).await?;
+        let framing = self.content_to_mls_message(proposal, provider).await?;
 
         self.reset_aad();
-        Ok((mls_message, proposal_ref))
+        Ok((framing, proposal_ref))
     }
 
     /// Updates Group Context Extensions
@@ -465,7 +701,13 @@ impl MlsGroup {
     ///
     /// Returns an error when the group does not support all the required capabilities
     /// in the new `extensions` or if there is a pending commit.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`MlsGroup::commit_builder`], whose
+    /// [`CommitMessageBundle::confirmation`](crate::group::CommitMessageBundle::confirmation)
+    /// surfaces the handshake confirmation data.
     //// FIXME: #1217
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
     #[maybe_async::maybe_async]
     pub async fn update_group_context_extensions<Provider: OpenMlsProvider>(
@@ -496,8 +738,15 @@ impl MlsGroup {
         Ok((commit, welcome, group_info))
     }
 
-    /// Updates the AppDataDictionary
-    #[cfg(feature = "extensions-draft-08")]
+    /// Updates the AppDataDictionary, committed by value.
+    ///
+    /// Under the `virtual-clients-draft` feature this function is unavailable.
+    /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
+    /// returns the confirmation data.
+    #[cfg(all(
+        feature = "extensions-draft",
+        any(not(feature = "virtual-clients-draft"), feature = "test-utils", test)
+    ))]
     #[maybe_async::maybe_async]
     pub async fn propose_app_data_update<Provider: OpenMlsProvider>(
         &mut self,
@@ -506,10 +755,34 @@ impl MlsGroup {
         component_id: ComponentId,
         operation: AppDataUpdateOperation,
     ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<Provider::StorageError>> {
+        let (framing, proposal_ref) = self
+            .propose_app_data_update_impl(
+                provider,
+                signer,
+                component_id,
+                operation,
+                ProposalOrRefType::Proposal,
+            )
+            .await?;
+        Ok((framing.message, proposal_ref))
+    }
+
+    #[cfg(feature = "extensions-draft")]
+    #[maybe_async::maybe_async]
+    async fn propose_app_data_update_impl<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        component_id: ComponentId,
+        operation: AppDataUpdateOperation,
+        ref_or_value: ProposalOrRefType,
+    ) -> Result<(HandshakeFramingOutput, ProposalRef), ProposalError<Provider::StorageError>> {
         self.is_operational()?;
 
+        let aad = self.outgoing_authenticated_data()?;
+        let framing_parameters = FramingParameters::new(&aad, self.outgoing_wire_format());
         let proposal = self.create_app_data_update_proposal(
-            self.framing_parameters(),
+            framing_parameters,
             component_id,
             operation,
             signer,
@@ -519,7 +792,7 @@ impl MlsGroup {
             self.ciphersuite(),
             provider.crypto(),
             proposal.clone(),
-            ProposalOrRefType::Proposal,
+            ref_or_value,
         )?;
         let proposal_ref = queued_proposal.proposal_reference();
 
@@ -531,10 +804,10 @@ impl MlsGroup {
             .map_err(ProposalError::StorageError)?;
         self.proposal_store_mut().add(queued_proposal);
 
-        let mls_message = self.content_to_mls_message(proposal, provider).await?;
+        let framing = self.content_to_mls_message(proposal, provider).await?;
 
         self.reset_aad();
-        Ok((mls_message, proposal_ref))
+        Ok((framing, proposal_ref))
     }
 
     /// Removes a specific proposal from the store.
@@ -673,7 +946,7 @@ impl MlsGroup {
         )
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     pub(crate) fn create_app_data_update_proposal(
         &self,
         framing_parameters: FramingParameters,

@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 
 use super::*;
+#[cfg(feature = "extensions-draft")]
+use crate::component::ComponentId;
 use crate::{
     group::{GroupEpoch, GroupId},
     schedule::psk::store::ResumptionPskStore,
@@ -144,6 +146,51 @@ impl ResumptionPsk {
     }
 }
 
+/// Application PSK according to the [draft-ietf-mls-extensions]
+///
+/// [draft-ietf-mls-protocol]: https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions-09#name-pre-shared-keys-psks
+#[cfg(feature = "extensions-draft")]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsDeserializeBytes,
+    TlsSerialize,
+    TlsSize,
+    Hash,
+)]
+pub struct ApplicationPsk {
+    pub(crate) component_id: ComponentId,
+    pub(crate) psk_id: VLBytes,
+}
+
+#[cfg(feature = "extensions-draft")]
+impl ApplicationPsk {
+    /// Create a new `ApplicationPsk`
+    pub fn new(component_id: ComponentId, psk_id: VLBytes) -> Self {
+        Self {
+            component_id,
+            psk_id,
+        }
+    }
+
+    /// Return the `ComponentId`
+    pub fn component_id(&self) -> ComponentId {
+        self.component_id
+    }
+
+    /// Return the `psk_id`
+    pub fn psk_id(&self) -> &[u8] {
+        self.psk_id.as_slice()
+    }
+}
+
 /// The different PSK types.
 #[derive(
     Clone,
@@ -168,14 +215,20 @@ pub enum Psk {
     /// A resumption PSK derived from the MLS key schedule.
     #[tls_codec(discriminant = 2)]
     Resumption(ResumptionPsk),
+    #[cfg(feature = "extensions-draft")]
+    /// An application component PSK.
+    #[tls_codec(discriminant = 3)]
+    Application(ApplicationPsk),
 }
 
 /// ```c
-/// // draft-ietf-mls-protocol-19
+/// // RFC 9420 and draft-ietf-mls-extensions-09
 /// enum {
 ///   reserved(0),
 ///   external(1),
 ///   resumption(2),
+///   // draft-ietf-mls-extensions-09
+///   application(3),
 ///   (255)
 /// } PSKType;
 /// ```
@@ -186,6 +239,9 @@ pub enum PskType {
     External = 1,
     /// A resumption PSK.
     Resumption = 2,
+    #[cfg(feature = "extensions-draft")]
+    /// An application component PSK.
+    Application = 3,
 }
 
 /// A `PreSharedKeyID` is used to uniquely identify the PSKs that get injected
@@ -267,6 +323,17 @@ impl PreSharedKeyId {
         }
     }
 
+    /// Construct an application `PreSharedKeyID`.
+    #[cfg(feature = "extensions-draft")]
+    pub fn application(component_id: ComponentId, psk_id: Vec<u8>, psk_nonce: Vec<u8>) -> Self {
+        let psk = Psk::Application(ApplicationPsk::new(component_id, psk_id.into()));
+
+        Self {
+            psk,
+            psk_nonce: psk_nonce.into(),
+        }
+    }
+
     /// Return the PSK.
     pub fn psk(&self) -> &Psk {
         &self.psk
@@ -303,20 +370,30 @@ impl PreSharedKeyId {
 
     // ----- Validation ----------------------------------------------------------------------------
 
-    pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<(), PskError> {
+    pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<Self, PskError> {
         // ValSem402
         match self.psk() {
             Psk::Resumption(resumption_psk) => {
                 // https://validation.openmls.tech/#valn0801
                 // https://validation.openmls.tech/#valn0802
-                if resumption_psk.usage != ResumptionPskUsage::Application {
-                    return Err(PskError::UsageMismatch {
-                        allowed: vec![ResumptionPskUsage::Application],
-                        got: resumption_psk.usage,
-                    });
+                match resumption_psk.usage {
+                    ResumptionPskUsage::Application => {}
+                    ResumptionPskUsage::Reinit => {
+                        return Err(PskError::UsageMismatch {
+                            allowed: vec![ResumptionPskUsage::Application],
+                            got: resumption_psk.usage,
+                        });
+                    }
+                    ResumptionPskUsage::Branch => {
+                        // We can't check anything in here since we need more
+                        // information about the commit. We do this check
+                        // on the outside.
+                    }
                 }
             }
             Psk::External(_) => {}
+            #[cfg(feature = "extensions-draft")]
+            Psk::Application(_) => {}
         };
 
         // ValSem401
@@ -333,7 +410,7 @@ impl PreSharedKeyId {
             }
         }
 
-        Ok(())
+        Ok(self)
     }
 
     pub(crate) fn validate_in_welcome(
@@ -382,6 +459,8 @@ impl PreSharedKeyId {
                     }
                 },
                 Psk::External(_) => {}
+                #[cfg(feature = "extensions-draft")]
+                Psk::Application(_) => {}
             };
 
             {
@@ -519,6 +598,7 @@ impl From<Secret> for PskSecret {
     }
 }
 
+/// Load PSKs from storage
 #[maybe_async::maybe_async]
 pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
@@ -532,13 +612,36 @@ pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
 
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
-                if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
+                let psk_epoch = match resumption.usage() {
+                    // Application and Reinit PSKs are looked up by their own epoch.
+                    ResumptionPskUsage::Application | ResumptionPskUsage::Reinit => {
+                        resumption.psk_epoch()
+                    }
+                    // The branch PSK is not in this group's resumption store: it
+                    // comes from the parent group and is injected at the sentinel
+                    // epoch 0 (see `CommitBuilder::branch` and
+                    // `ProcessedWelcome::new_from_welcome_inner`).
+                    ResumptionPskUsage::Branch => 0.into(),
+                };
+                if let Some(psk_bundle) = resumption_psk_store.get(psk_epoch) {
                     psk_bundles.push((psk_id, psk_bundle.secret.clone()));
                 } else {
                     return Err(PskError::KeyNotFound);
                 }
             }
             Psk::External(_) => {
+                let psk_bundle: Option<PskBundle> = storage
+                    .psk(psk_id.psk())
+                    .await
+                    .map_err(|_| PskError::KeyNotFound)?;
+                if let Some(psk_bundle) = psk_bundle {
+                    psk_bundles.push((psk_id, psk_bundle.secret));
+                } else {
+                    return Err(PskError::KeyNotFound);
+                }
+            }
+            #[cfg(feature = "extensions-draft")]
+            Psk::Application(_) => {
                 let psk_bundle: Option<PskBundle> = storage
                     .psk(psk_id.psk())
                     .await
@@ -580,6 +683,12 @@ pub mod store {
                 resumption_psk: vec![],
                 cursor: 0,
             }
+        }
+
+        /// Clear all PSKs.
+        pub(crate) fn clear(&mut self) {
+            self.resumption_psk = vec![];
+            self.cursor = 0;
         }
 
         /// Adds a new entry to the store.

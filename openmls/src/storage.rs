@@ -9,10 +9,15 @@
 
 use openmls_traits::storage::{traits, Entity, Key, CURRENT_VERSION};
 
+/// Bundle used to import a group exported from a previous OpenMLS version. See
+/// [`GroupMigrationBundle::store`].
+#[cfg(feature = "migration-import")]
+pub use crate::group::migration_import::GroupMigrationBundle;
+
 use crate::binary_tree::LeafNodeIndex;
 use crate::group::proposal_store::QueuedProposal;
 use crate::group::{MlsGroupJoinConfig, MlsGroupState};
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 use crate::schedule::application_export_tree::ApplicationExportTree;
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
@@ -146,10 +151,40 @@ impl traits::PskId<CURRENT_VERSION> for Psk {}
 impl Entity<CURRENT_VERSION> for PskBundle {}
 impl traits::PskBundle<CURRENT_VERSION> for PskBundle {}
 
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl Entity<CURRENT_VERSION> for ApplicationExportTree {}
-#[cfg(feature = "extensions-draft-08")]
+#[cfg(feature = "extensions-draft")]
 impl traits::ApplicationExportTree<CURRENT_VERSION> for ApplicationExportTree {}
+
+#[cfg(feature = "virtual-clients-draft")]
+mod virtual_clients_storage {
+    use super::*;
+    use crate::components::vc_derivation_info::{
+        EpochId, RetainedKeyPackageMaterial, VcDerivationEpochLogEntry, VcDerivationEpochState,
+        VcEmulationBinding,
+    };
+    use crate::components::vc_operation_tree::OperationSecretTree;
+
+    // EpochId is both used as a key and a value, so it implements both traits.
+    impl Key<CURRENT_VERSION> for EpochId {}
+    impl Entity<CURRENT_VERSION> for EpochId {}
+    impl traits::VcEpochId<CURRENT_VERSION> for EpochId {}
+
+    impl Entity<CURRENT_VERSION> for VcDerivationEpochState {}
+    impl traits::VcDerivationEpochState<CURRENT_VERSION> for VcDerivationEpochState {}
+
+    impl Entity<CURRENT_VERSION> for VcEmulationBinding {}
+    impl traits::VcEmulationBinding<CURRENT_VERSION> for VcEmulationBinding {}
+
+    impl Entity<CURRENT_VERSION> for VcDerivationEpochLogEntry {}
+    impl traits::VcDerivationEpochLogEntry<CURRENT_VERSION> for VcDerivationEpochLogEntry {}
+
+    impl Entity<CURRENT_VERSION> for OperationSecretTree {}
+    impl traits::VcOperationTree<CURRENT_VERSION> for OperationSecretTree {}
+
+    impl Entity<CURRENT_VERSION> for RetainedKeyPackageMaterial {}
+    impl traits::RetainedKeyPackageMaterial<CURRENT_VERSION> for RetainedKeyPackageMaterial {}
+}
 
 #[cfg(test)]
 mod test {

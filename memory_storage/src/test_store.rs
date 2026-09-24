@@ -529,7 +529,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn write_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -541,7 +541,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
@@ -552,13 +552,205 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     fn delete_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
         &self,
         _group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_derivation_epoch_state<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _vc_derivation_epoch_state: &VcDerivationEpochState,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_derivation_epoch_state<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcDerivationEpochState: traits::VcDerivationEpochState<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<Option<VcDerivationEpochState>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_unreferenced_vc_derivation_epoch_states<EpochId: traits::VcEpochId<V_TEST>>(
+        &self,
+    ) -> Result<Vec<EpochId>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_emulation_binding<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochKey: traits::EpochKey<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcEmulationBinding: traits::VcEmulationBinding<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _group_epoch: &EpochKey,
+        _epoch_id: &EpochId,
+        _binding: &VcEmulationBinding,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_binding<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochKey: traits::EpochKey<V_TEST>,
+        VcEmulationBinding: traits::VcEmulationBinding<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _group_epoch: &EpochKey,
+    ) -> Result<Option<VcEmulationBinding>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_emulation_bindings<
+        GroupId: traits::GroupId<V_TEST>,
+        VcEmulationBinding: traits::VcEmulationBinding<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<Vec<VcEmulationBinding>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_emulation_bindings<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochKey: traits::EpochKey<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _group_epochs: &[EpochKey],
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_all_vc_emulation_bindings<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_derivation_epoch_log_entry<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcDerivationEpochLogEntry: traits::VcDerivationEpochLogEntry<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _epoch_id: &EpochId,
+        _entry: &VcDerivationEpochLogEntry,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_derivation_epoch_log_entries<
+        GroupId: traits::GroupId<V_TEST>,
+        VcDerivationEpochLogEntry: traits::VcDerivationEpochLogEntry<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<Vec<VcDerivationEpochLogEntry>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_derivation_epoch_log_entries<
+        GroupId: traits::GroupId<V_TEST>,
+        EpochId: traits::VcEpochId<V_TEST>,
+    >(
+        &self,
+        _group_id: &GroupId,
+        _epoch_ids: &[EpochId],
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_vc_derivation_epoch_log<GroupId: traits::GroupId<V_TEST>>(
+        &self,
+        _group_id: &GroupId,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_vc_operation_tree<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcOperationTree: traits::VcOperationTree<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _vc_operation_tree: &VcOperationTree,
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn vc_operation_tree<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcOperationTree: traits::VcOperationTree<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+    ) -> Result<Option<VcOperationTree>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn write_retained_key_package_material_batch<
+        EpochId: traits::VcEpochId<V_TEST>,
+        VcOperationTree: traits::VcOperationTree<V_TEST>,
+        KeyPackageRef: traits::HashReference<V_TEST>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<V_TEST>,
+    >(
+        &self,
+        _epoch_id: &EpochId,
+        _operation_tree: &VcOperationTree,
+        _materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
+    ) -> Result<(), Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn retained_key_package_material<
+        KeyPackageRef: traits::HashReference<V_TEST>,
+        RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<V_TEST>,
+    >(
+        &self,
+        _hash_ref: &KeyPackageRef,
+    ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error> {
+        todo!()
+    }
+
+    #[cfg(feature = "virtual-clients-draft")]
+    fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<V_TEST>>(
+        &self,
+        _hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         todo!()
     }

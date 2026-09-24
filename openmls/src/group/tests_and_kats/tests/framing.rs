@@ -333,14 +333,16 @@ fn bad_padding() {
             LeafNodeIndex::new(0),
             &SenderRatchetConfiguration::default(),
             sender_data,
+            #[cfg(feature = "virtual-clients-draft")]
+            None,
         );
 
         if should_fail && calculated_padding_length > 0 {
             // Decryption should fail because the padding contains a non-zero byte.
-            assert_eq!(
+            assert!(matches!(
                 verifiable_plaintext_result,
                 Err(MessageDecryptionError::MalformedContent)
-            );
+            ));
         } else {
             assert!(verifiable_plaintext_result.is_ok())
         }

@@ -325,7 +325,7 @@ fn discard_commit_psk() {
 
     // Create commit including propose external psk
     let (_message_out, _proposal_ref) = alice_group
-        .propose_external_psk(alice_provider, alice_signer, psk_id)
+        .propose_pre_shared_key(alice_provider, alice_signer, psk_id)
         .expect("Could not propose adding an external psk");
 
     assert_eq!(alice_group.pending_proposals().count(), 1);

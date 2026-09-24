@@ -183,6 +183,16 @@ impl<Provider: OpenMlsProvider> Client<Provider> {
                     }
                     group_state.merge_staged_commit(&self.provider, *staged_commit)?;
                 }
+                ProcessedMessageContent::OwnPendingCommit => {
+                    group_state.merge_pending_commit(&self.provider)?;
+                }
+                // Own PrivateMessages echoed by the DS cannot be decrypted, so
+                // skip them.
+                ProcessedMessageContent::OwnPrivateMessage => {}
+                #[cfg(feature = "extensions-draft")]
+                ProcessedMessageContent::UnresolvedAppDataCommit(_) => {
+                    unimplemented!("this test framework does not handle AppDataUpdate proposals")
+                }
             }
         }
 

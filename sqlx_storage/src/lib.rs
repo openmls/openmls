@@ -14,6 +14,28 @@
 //! The crate manages its own database migrations in its own migrations table
 //! with the name `_openmls_sqlx_migrations`. All tables created by this crate
 //! are prefixed with `openmls_` to avoid name clashes.
+//!
+//! ## Transactions
+//!
+//! [`SqliteStorageProvider`] borrows a [`SqliteConnection`]. A
+//! [`sqlx::Transaction`] dereferences to a [`SqliteConnection`], so a provider
+//! can run against an open transaction by passing `&mut *transaction` to
+//! [`SqliteStorageProvider::new`]. Every write the provider performs is then
+//! part of that transaction and commits or rolls back together with your
+//! application's own writes against the same database. The provider borrows the
+//! transaction for as long as it is alive, so scope it and let it drop before
+//! using the transaction directly again or committing it.
+//!
+//! Run [`SqliteStorageProvider::run_migrations`] on the bare connection rather
+//! than inside a transaction, so the schema is not tied to the lifetime of a
+//! single transaction.
+//!
+//! See `examples/transaction.rs` for a complete, runnable example.
+//!
+//! ## Runtime
+//!
+//! The provider exposes an async API. It requires `openmls_traits` to be
+//! built with the `async` feature.
 
 use std::{cell::RefCell, marker::PhantomData};
 

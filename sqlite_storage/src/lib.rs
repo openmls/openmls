@@ -37,6 +37,8 @@ mod proposals;
 mod psks;
 mod signature_key_pairs;
 mod storage_provider;
+#[cfg(feature = "virtual-clients-draft")]
+mod vc_secrets;
 mod wrappers;
 
 pub use codec::Codec;

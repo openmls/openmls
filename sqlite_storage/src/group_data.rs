@@ -5,7 +5,7 @@ use rusqlite::{params, types::FromSql, Connection, OptionalExtension, ToSql};
 
 use crate::{
     codec::Codec,
-    storage_provider::StorableGroupIdRef,
+    storage_provider::StorableKeyRef,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
     STORAGE_PROVIDER_VERSION,
 };
@@ -23,7 +23,7 @@ pub(super) enum GroupDataType {
     OwnLeafIndex,
     UseRatchetTreeExtension,
     GroupEpochSecrets,
-    #[cfg(feature = "extensions-draft-08")]
+    #[cfg(feature = "extensions-draft")]
     ApplicationExportTree,
 }
 
@@ -41,7 +41,7 @@ impl ToSql for GroupDataType {
             GroupDataType::OwnLeafIndex => "own_leaf_index".to_sql(),
             GroupDataType::UseRatchetTreeExtension => "use_ratchet_tree_extension".to_sql(),
             GroupDataType::GroupEpochSecrets => "group_epoch_secrets".to_sql(),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             GroupDataType::ApplicationExportTree => "application_export_tree".to_sql(),
         }
     }
@@ -62,7 +62,7 @@ impl FromSql for GroupDataType {
             "own_leaf_index" => Ok(GroupDataType::OwnLeafIndex),
             "use_ratchet_tree_extension" => Ok(GroupDataType::UseRatchetTreeExtension),
             "group_epoch_secrets" => Ok(GroupDataType::GroupEpochSecrets),
-            #[cfg(feature = "extensions-draft-08")]
+            #[cfg(feature = "extensions-draft")]
             "application_export_tree" => Ok(GroupDataType::ApplicationExportTree),
             _ => Err(rusqlite::types::FromSqlError::InvalidType),
         }
@@ -83,9 +83,9 @@ impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupData<GroupData> {
         data_type: GroupDataType,
     ) -> Result<Option<GroupData>, rusqlite::Error> {
         let mut stmt = connection.prepare(
-            "SELECT group_data 
-            FROM openmls_group_data 
-            WHERE group_id = ? 
+            "SELECT group_data
+            FROM openmls_group_data
+            WHERE group_id = ?
                 AND data_type = ?
                 AND provider_version = ?",
         )?;
@@ -114,7 +114,7 @@ impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupDataRef<'_, Group
         data_type: GroupDataType,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data, provider_version) 
+            "INSERT OR REPLACE INTO openmls_group_data (group_id, data_type, group_data, provider_version)
             VALUES (?, ?, ?, ?)",
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
@@ -127,15 +127,15 @@ impl<GroupData: Entity<STORAGE_PROVIDER_VERSION>> StorableGroupDataRef<'_, Group
     }
 }
 
-impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
+impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
     pub(super) fn delete_group_data<C: Codec>(
         &self,
         connection: &Connection,
         data_type: GroupDataType,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_group_data 
-            WHERE group_id = ? 
+            "DELETE FROM openmls_group_data
+            WHERE group_id = ?
                 AND data_type = ?
                 AND provider_version = ?",
             params![

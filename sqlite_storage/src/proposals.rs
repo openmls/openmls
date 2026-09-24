@@ -5,7 +5,7 @@ use rusqlite::params;
 
 use crate::{
     codec::Codec,
-    storage_provider::StorableGroupIdRef,
+    storage_provider::StorableKeyRef,
     wrappers::{EntityRefWrapper, EntityWrapper, KeyRefWrapper},
     STORAGE_PROVIDER_VERSION,
 };
@@ -29,8 +29,8 @@ impl<Proposal: Entity<STORAGE_PROVIDER_VERSION>, ProposalRef: Entity<STORAGE_PRO
         group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, Proposal)>, rusqlite::Error> {
         let mut stmt = connection.prepare(
-            "SELECT proposal_ref, proposal 
-            FROM openmls_proposals 
+            "SELECT proposal_ref, proposal
+            FROM openmls_proposals
             WHERE group_id = ?1
                 AND provider_version = ?2",
         )?;
@@ -51,8 +51,8 @@ impl<Proposal: Entity<STORAGE_PROVIDER_VERSION>, ProposalRef: Entity<STORAGE_PRO
         group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, rusqlite::Error> {
         let mut stmt = connection.prepare(
-            "SELECT proposal_ref 
-                FROM openmls_proposals 
+            "SELECT proposal_ref
+                FROM openmls_proposals
                 WHERE group_id = ?1
                     AND provider_version = ?2",
         )?;
@@ -89,7 +89,7 @@ impl<Proposal: Entity<STORAGE_PROVIDER_VERSION>, ProposalRef: Entity<STORAGE_PRO
         // We insert or ignore here, because if the proposal ref matches, the
         // content will match as well.
         connection.execute(
-            "INSERT OR IGNORE INTO openmls_proposals (group_id, proposal_ref, proposal, provider_version) 
+            "INSERT OR IGNORE INTO openmls_proposals (group_id, proposal_ref, proposal, provider_version)
             VALUES (?1, ?2, ?3, ?4)",
             params![
                 KeyRefWrapper::<C, _>(group_id, PhantomData),
@@ -102,14 +102,14 @@ impl<Proposal: Entity<STORAGE_PROVIDER_VERSION>, ProposalRef: Entity<STORAGE_PRO
     }
 }
 
-impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
+impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableKeyRef<'_, GroupId> {
     pub(super) fn delete_all_proposals<C: Codec>(
         &self,
         connection: &rusqlite::Connection,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_proposals 
-            WHERE group_id = ?1 
+            "DELETE FROM openmls_proposals
+            WHERE group_id = ?1
                 AND provider_version = ?2",
             params![
                 KeyRefWrapper::<C, _>(self.0, PhantomData),
@@ -128,8 +128,8 @@ impl<GroupId: Key<STORAGE_PROVIDER_VERSION>> StorableGroupIdRef<'_, GroupId> {
         proposal_ref: &ProposalRef,
     ) -> Result<(), rusqlite::Error> {
         connection.execute(
-            "DELETE FROM openmls_proposals 
-            WHERE group_id = ?1 
+            "DELETE FROM openmls_proposals
+            WHERE group_id = ?1
                 AND proposal_ref = ?2
                 AND provider_version = ?3",
             params![

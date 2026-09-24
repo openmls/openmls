@@ -33,7 +33,7 @@
 //! * `sibling[i]` is the node index of the sibling of the node with index `i`
 //!   in a tree with `n_leaves` leaves
 
-#[cfg(test)]
+#[cfg(all(test, feature = "generate-kats"))]
 use crate::test_utils::*;
 
 use super::treemath::*;
@@ -113,6 +113,7 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     test_vector
 }
 
+#[cfg(feature = "generate-kats")]
 #[test]
 fn write_test_vectors() {
     let mut tests = Vec::new();

@@ -5,12 +5,15 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-use openmls_traits::crypto::OpenMlsCrypto;
 use std::collections::VecDeque;
+
+use openmls_traits::crypto::OpenMlsCrypto;
 
 use openmls_traits::types::Ciphersuite;
 
-use crate::ciphersuite::{AeadNonce, *};
+use crate::ciphersuite::AeadNonce;
+#[cfg(feature = "virtual-clients-draft")]
+use crate::tree::dual_use_ratchet::DualUseRatchet;
 use crate::tree::secret_tree::*;
 
 use super::*;
@@ -69,13 +72,76 @@ pub(crate) type RatchetKeyMaterial = (AeadKey, AeadNonce);
 /// ([`DecryptionRatchet`]). A [`DecryptionRatchet`] can be configured with an
 /// `out_of_order_tolerance` and a `maximum_forward_distance` (see
 /// [`SenderRatchetConfiguration`]) while an Encryption Ratchet never keeps past
-/// secrets around.
+/// secrets around. With the `virtual-clients-draft` feature, own sender
+/// ratchets are
+/// [`DualUseRatchet`](super::dual_use_ratchet::DualUseRatchet)s, which can
+/// output key material for both encryption and decryption.
 #[derive(Serialize, Deserialize)]
+#[serde(from = "SerdeSenderRatchet")]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 #[cfg_attr(any(feature = "crypto-debug", test), derive(Debug))]
 pub(crate) enum SenderRatchet {
+    #[cfg_attr(feature = "virtual-clients-draft", allow(unused))]
     EncryptionRatchet(RatchetSecret),
     DecryptionRatchet(DecryptionRatchet),
+    #[cfg(feature = "virtual-clients-draft")]
+    DualUse(DualUseRatchet),
+}
+
+/// Wire representation of [`SenderRatchet`] used to deserialize it via
+/// `#[serde(from = ...)]`. Unlike [`SenderRatchet`], the `DualUse` variant
+/// here is always present (its payload just changes shape depending on the
+/// `virtual-clients-draft` feature), so a value persisted by a build with the
+/// feature enabled can still be read by a build with the feature disabled,
+/// and vice versa. This avoids two failure modes of deserializing directly
+/// into [`SenderRatchet`]: an own ratchet persisted as `EncryptionRatchet`
+/// before the feature was turned on would otherwise never become a
+/// `DualUse` ratchet, and an own ratchet persisted as `DualUse` would
+/// otherwise fail to deserialize at all once the feature is turned off.
+#[derive(Deserialize)]
+enum SerdeSenderRatchet {
+    EncryptionRatchet(RatchetSecret),
+    DecryptionRatchet(DecryptionRatchet),
+    DualUse(SerdeDualUseRatchet),
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+type SerdeDualUseRatchet = DualUseRatchet;
+
+#[cfg(not(feature = "virtual-clients-draft"))]
+#[derive(Deserialize)]
+struct SerdeDualUseRatchet {
+    ratchet_head: RatchetSecret,
+}
+
+impl From<SerdeSenderRatchet> for SenderRatchet {
+    fn from(repr: SerdeSenderRatchet) -> Self {
+        match repr {
+            SerdeSenderRatchet::EncryptionRatchet(ratchet_secret) => {
+                #[cfg(feature = "virtual-clients-draft")]
+                {
+                    SenderRatchet::DualUse(DualUseRatchet::from(ratchet_secret))
+                }
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                {
+                    SenderRatchet::EncryptionRatchet(ratchet_secret)
+                }
+            }
+            SerdeSenderRatchet::DecryptionRatchet(dec_ratchet) => {
+                SenderRatchet::DecryptionRatchet(dec_ratchet)
+            }
+            SerdeSenderRatchet::DualUse(dual_ratchet) => {
+                #[cfg(feature = "virtual-clients-draft")]
+                {
+                    SenderRatchet::DualUse(dual_ratchet)
+                }
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                {
+                    SenderRatchet::EncryptionRatchet(dual_ratchet.ratchet_head)
+                }
+            }
+        }
+    }
 }
 
 impl SenderRatchet {
@@ -84,6 +150,8 @@ impl SenderRatchet {
         match self {
             SenderRatchet::EncryptionRatchet(enc_ratchet) => enc_ratchet.generation(),
             SenderRatchet::DecryptionRatchet(dec_ratchet) => dec_ratchet.generation(),
+            #[cfg(feature = "virtual-clients-draft")]
+            SenderRatchet::DualUse(dual_ratchet) => dual_ratchet.generation(),
         }
     }
 }
@@ -190,14 +258,8 @@ impl DecryptionRatchet {
         }
     }
 
-    /// Remove elements from the `past_secrets` queue until it is within the
-    /// bounds determined by the [`SenderRatchetConfiguration`].
-    fn prune_past_secrets(&mut self, configuration: &SenderRatchetConfiguration) {
-        self.past_secrets
-            .truncate(configuration.out_of_order_tolerance() as usize)
-    }
-
     /// Get the generation of the ratchet head.
+    #[cfg(test)]
     pub(crate) fn generation(&self) -> Generation {
         self.ratchet_head.generation()
     }
@@ -217,45 +279,45 @@ impl DecryptionRatchet {
         configuration: &SenderRatchetConfiguration,
     ) -> Result<RatchetKeyMaterial, SecretTreeError> {
         log::debug!("secret_for_decryption");
+        let head_generation = self.ratchet_head.generation();
         // If generation is too distant in the future
-        if self.generation() < u32::MAX - configuration.maximum_forward_distance()
-            && generation > self.generation() + configuration.maximum_forward_distance()
+        if head_generation < u32::MAX - configuration.maximum_forward_distance()
+            && generation > head_generation + configuration.maximum_forward_distance()
         {
             return Err(SecretTreeError::TooDistantInTheFuture);
         }
-        // If generation id too distant in the past
-        if generation < self.generation()
-            && (self.generation() - generation) > configuration.out_of_order_tolerance()
+        // If generation is too distant in the past
+        if generation < head_generation
+            && (head_generation - generation) > configuration.out_of_order_tolerance()
         {
-            log::error!("  Generation is too far in the past (broke out of order tolerance ({}) {generation} < {}).", configuration.out_of_order_tolerance(), self.generation());
+            log::error!("  Generation is too far in the past (broke out of order tolerance ({}) {generation} < {head_generation}).", configuration.out_of_order_tolerance());
             return Err(SecretTreeError::TooDistantInThePast);
         }
         // If generation is the one the ratchet is currently at or in the future
-        if generation >= self.generation() {
+        if generation >= head_generation {
             // Ratchet the chain forward as far as necessary
-            for _ in 0..(generation - self.generation()) {
+            for _ in 0..(generation - head_generation) {
                 // Derive the key material
-                let ratchet_secrets = {
-                    self.ratchet_head
-                        .ratchet_forward(crypto, ciphersuite)
-                        .map(|(_, key_material)| key_material)
-                }?;
+                let ratchet_secrets = self
+                    .ratchet_head
+                    .ratchet_forward(crypto, ciphersuite)
+                    .map(|(_, key_material)| key_material)?;
                 // Add it to the front of the queue
                 self.past_secrets.push_front(Some(ratchet_secrets));
             }
-            let ratchet_secrets = {
-                self.ratchet_head
-                    .ratchet_forward(crypto, ciphersuite)
-                    .map(|(_, key_material)| key_material)
-            }?;
+            let ratchet_secrets = self
+                .ratchet_head
+                .ratchet_forward(crypto, ciphersuite)
+                .map(|(_, key_material)| key_material)?;
             // Add an entry to the past secrets queue to keep indexing consistent.
             self.past_secrets.push_front(None);
-            self.prune_past_secrets(configuration);
+            self.past_secrets
+                .truncate(configuration.out_of_order_tolerance() as usize);
             Ok(ratchet_secrets)
         } else {
             // If the requested generation is within the window of past secrets,
             // we should get a positive index.
-            let window_index = ((self.generation() - generation) as i32) - 1;
+            let window_index = ((head_generation - generation) as i32) - 1;
             // We might not have the key material (e.g. we might have discarded
             // it when generating an encryption secret).
             let index = if window_index >= 0 {
@@ -275,6 +337,44 @@ impl DecryptionRatchet {
                 // If the requested generation was used to decrypt a message
                 // earlier, throw an error.
                 .ok_or(SecretTreeError::SecretReuseError)
+        }
+    }
+}
+
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+
+    // Reading an `EncryptionRatchet` as `DualUse` when enabling the `virtual-clients-draft` feature.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[test]
+    fn pre_feature_encryption_ratchet_is_promoted_to_dual_use() {
+        let ratchet_head = RatchetSecret::initial_ratchet_secret(Secret::from_slice(&[0; 32]));
+        let restored: SenderRatchet =
+            SerdeSenderRatchet::EncryptionRatchet(ratchet_head.clone()).into();
+        match restored {
+            SenderRatchet::DualUse(dual_use) => {
+                assert_eq!(dual_use.generation(), ratchet_head.generation())
+            }
+            _ => panic!("expected promotion to DualUse"),
+        }
+    }
+
+    // A `DualUse` ratchet persisted when using the `virtual-clients-draft` that should
+    // be downgraded to a `EncryptionRatchet` when not using the feature.
+    #[cfg(not(feature = "virtual-clients-draft"))]
+    #[test]
+    fn persisted_dual_use_is_readable_without_the_feature() {
+        let ratchet_head = RatchetSecret::initial_ratchet_secret(Secret::from_slice(&[0; 32]));
+        let restored: SenderRatchet = SerdeSenderRatchet::DualUse(SerdeDualUseRatchet {
+            ratchet_head: ratchet_head.clone(),
+        })
+        .into();
+        match restored {
+            SenderRatchet::EncryptionRatchet(rs) => {
+                assert_eq!(rs.generation(), ratchet_head.generation())
+            }
+            _ => panic!("expected fallback to EncryptionRatchet"),
         }
     }
 }

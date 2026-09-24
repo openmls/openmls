@@ -5,7 +5,6 @@ use crate::{
     },
     key_packages::KeyPackage,
     prelude::*,
-    storage::OpenMlsProvider,
 };
 
 mod test_diff;

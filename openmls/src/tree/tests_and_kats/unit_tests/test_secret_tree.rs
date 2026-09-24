@@ -19,6 +19,7 @@ fn test_boundaries() {
         TreeSize::from_leaf_count(3u32),
         LeafNodeIndex::new(2u32),
     );
+    assert_eq!(secret_tree.own_index(), LeafNodeIndex::new(2u32));
     let secret_type = SecretType::ApplicationSecret;
     assert!(secret_tree
         .secret_for_decryption(
