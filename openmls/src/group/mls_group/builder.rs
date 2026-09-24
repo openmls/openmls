@@ -583,8 +583,7 @@ impl ReInitGroupBuilder {
     /// This creates a fresh group with the ReInit proposal's group_id, ciphersuite and
     /// group_context.extensions, adds the reinit
     /// resumption PSK (mixing in the old group's resumption PSK secret), and commits
-    /// the additions (plus any extra proposals set via
-    /// [`Self::propose_group_context_extensions`] / [`Self::force_self_update`]).
+    /// the additions (plus [`Self::force_self_update`]).
     /// It returns the new (epoch-0) group and the [`CommitMessageBundle`]
     /// carrying the first commit and `Welcome`.
     ///

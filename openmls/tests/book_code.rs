@@ -1,5 +1,3 @@
-use std::assert_matches;
-
 use openmls::{
     prelude::{tls_codec::*, CustomProposal, *},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
@@ -2412,7 +2410,7 @@ fn reinit_group_by_reference_pending_welcome() {
         .expect("not a reinit welcome");
     assert_eq!(required_info.psk_group_id(), bob_reinit_info.old_group_id());
     assert_eq!(required_info.psk_epoch(), bob_reinit_info.old_group_epoch());
-    assert_matches!(required_info.usage(), ResumptionPskUsage::Reinit);
+    assert_eq!(required_info.usage(), ResumptionPskUsage::Reinit);
 
     // Bob finishes the Welcome
     let bob_successor = pending_welcome

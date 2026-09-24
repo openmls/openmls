@@ -349,7 +349,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// Note that this should not be used for sub-group branching or reinit, as
     /// those PSKs are not allowed in regular proposals. Please use
     /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) or
-    /// [`Self::reinit`] instead.
+    /// [`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit) instead.
     pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
         self.stage.own_proposals.extend(
             psk_ids
