@@ -722,7 +722,10 @@ fn test_valn0104_incoming_update_credential_not_supported_by_member() {
 
     let err = charlie
         .group
-        .process_message(&charlie.party.core_state.provider, to_protocol_message(commit))
+        .process_message(
+            &charlie.party.core_state.provider,
+            to_protocol_message(commit),
+        )
         .expect_err("Charlie doesn't support Other(3)");
     // Caught by the ValSem109 capabilities check, which reports any
     // capability mismatch of an Update leaf this way.
