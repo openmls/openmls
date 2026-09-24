@@ -1978,39 +1978,26 @@ impl MlsClient for MlsClientImpl {
             .ok_or_else(|| Status::new(Code::InvalidArgument, "unknown reinit old state_id"))?
             .group;
 
-        // Create the successor group with the ReInit parameters.
-        let mut successor = MlsGroup::builder()
-            .with_group_id(reinit_proposal.group_id().clone())
-            .ciphersuite(reinit_proposal.ciphersuite())
-            .with_group_context_extensions(reinit_proposal.extensions().clone())
+        let reinit_info = old_group.reinit_info(reinit_proposal).ok_or_else(|| {
+            Status::new(
+                Code::InvalidArgument,
+                "old group did not commit reinit proposal",
+            )
+        })?;
+
+        let (mut successor, bundle) = MlsGroup::builder()
             .use_ratchet_tree_extension(true)
             .max_past_epochs(32)
             .number_of_resumption_psks(32)
             .with_wire_format_policy(wire_format_policy)
-            .build(&crypto_provider, &signature_keys, credential.clone())
-            .map_err(into_status)?;
-
-        // Build the reinit commit that adds the other members and mixes in the
-        // old group's resumption PSK (usage `Reinit`).
-        let mut builder = successor
-            .commit_builder()
-            .reinit(crypto_provider.rand(), old_group)
-            .map_err(into_status)?
-            .propose_adds(key_packages);
-        if request.force_path {
-            builder = builder.force_self_update(true);
-        }
-        let bundle = builder
-            .load_psks(crypto_provider.storage())
-            .map_err(into_status)?
-            .build(
-                crypto_provider.rand(),
-                crypto_provider.crypto(),
+            .reinit(reinit_info)
+            .force_self_update(request.force_path)
+            .build_reinit(
+                &crypto_provider,
                 &signature_keys,
-                |_| true,
+                credential.clone(),
+                key_packages,
             )
-            .map_err(into_status)?
-            .stage_commit(&crypto_provider)
             .map_err(into_status)?;
 
         let welcome = MlsMessageOut::from_welcome(
@@ -2117,7 +2104,7 @@ impl MlsClient for MlsClientImpl {
             &crypto_provider,
             &join_config,
             welcome,
-            old_group.reinit_info(&reinit_proposal).ok_or_else(|| {
+            old_group.reinit_info(reinit_proposal).ok_or_else(|| {
                 Status::new(Code::InvalidArgument, "group did not apply reinit proposal")
             })?,
         )

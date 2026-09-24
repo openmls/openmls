@@ -45,12 +45,12 @@ impl ReInitInfo {
     }
 
     /// The group_id of the old group.
-    pub(crate) fn old_group_id(&self) -> &GroupId {
+    pub fn old_group_id(&self) -> &GroupId {
         &self.old_group_id
     }
 
     /// The final epoch of the old group.
-    pub(crate) fn old_group_epoch(&self) -> GroupEpoch {
+    pub fn old_group_epoch(&self) -> GroupEpoch {
         self.old_group_epoch
     }
 

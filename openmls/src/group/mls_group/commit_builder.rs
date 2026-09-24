@@ -16,8 +16,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, ExternalPubExtension, GroupContext,
-        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
-        WireFormatPolicy,
+        GroupEpoch, GroupId, ProposalQueue, ProposalQueueError, QueuedProposal,
+        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -29,9 +29,8 @@ use crate::{
         NewSignerBundle, PreSharedKeyProposal,
     },
     schedule::{
-        errors::PskError,
         psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
-        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
+        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk, ResumptionPskSecret,
     },
     storage::{OpenMlsProvider, StorageProvider},
     treesync::errors::LeafNodeValidationError,
@@ -47,7 +46,6 @@ use crate::{
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
-    group::GroupId,
 };
 #[cfg(feature = "extensions-draft")]
 use crate::{
@@ -409,42 +407,35 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         Ok(self)
     }
 
-    /// Reinitializes `old_group` into this (freshly created) successor group, as
-    /// described in [RFC 9420 §11.2].
+    /// Reinitializes a group into this freshly created group, as described in [RFC 9420 §11.2].
     ///
-    /// `old_group` must have merged a commit containing a ReInit proposal, so it
-    /// is suspended (inactive); see [`MlsGroup::propose_reinit`]. The caller is
-    /// responsible for creating this successor group with the parameters from
-    /// that ReInit proposal (group id, protocol version, ciphersuite and group
-    /// context extensions) and for not reusing a suspended group to seed more
-    /// than one successor.
+    /// Information about the old group comes from `reinit_info`, which the
+    /// predecessor exports with [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
+    /// We acept only the required parts here to avoid unnecessary `clone`.
     ///
     /// This adds a resumption [`PreSharedKeyId`] of usage `Reinit` to the initial
-    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh (of *this*,
-    /// possibly different, ciphersuite), and injects the old group's resumption
-    /// PSK secret so it is mixed into the successor group's key schedule.
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
+    /// the old group's resumption PSK secret so it is mixed into this
+    /// new group's key schedule.
     ///
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
-    pub fn reinit(
+    pub(crate) fn reinit(
         mut self,
         rand: &impl OpenMlsRand,
-        old_group: &MlsGroup,
+        old_group_id: GroupId,
+        old_group_epoch: GroupEpoch,
+        resumption_psk_secret: ResumptionPskSecret,
     ) -> Result<Self, CreateCommitError> {
-        if self.group.epoch() != 0.into() {
-            // A reinit psk proposal is only allowed in a fresh group
-            return Err(PskError::NotAllowed.into());
-        }
         // Sample a fresh random nonce of length KDF.Nh. Unlike branching, the
         // successor group may use a different ciphersuite than the old group, so
         // the nonce length is that of the successor group's ciphersuite.
-        let successor_ciphersuite = self.group.borrow_mut().ciphersuite();
         let psk_id = PreSharedKeyId::new(
-            successor_ciphersuite,
+            self.group.ciphersuite(),
             rand,
             Psk::Resumption(ResumptionPsk::new(
                 ResumptionPskUsage::Reinit,
-                old_group.group_id().clone(),
-                old_group.epoch(),
+                old_group_id,
+                old_group_epoch,
             )),
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
@@ -453,12 +444,11 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         // The reinit PSK secret comes from a different group, so we clear this
         // group's resumption PSK store and inject it at the sentinel epoch 0,
         // where `load_psks` looks it up for reinit usage.
-        let secret = old_group.resumption_psk_secret().clone();
         self.group.borrow_mut().resumption_psk_store.clear();
         self.group
             .borrow_mut()
             .resumption_psk_store
-            .add(0.into(), secret);
+            .add(0.into(), resumption_psk_secret);
         Ok(self)
     }
 

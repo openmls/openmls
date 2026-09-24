@@ -13,7 +13,7 @@ use crate::{
         public_group::errors::PublicGroupBuildError, BranchInfo, CommitBuilderStageError,
         CommitMessageBundle, CreateCommitError, GroupContext, GroupId, MlsGroup,
         MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
-        PublicGroup, WireFormatPolicy,
+        PublicGroup, ReInitInfo, WireFormatPolicy,
     },
     key_packages::{KeyPackage, Lifetime},
     schedule::{
@@ -97,6 +97,25 @@ impl MlsGroupBuilder {
             group_builder: self,
             branch_info,
             extensions: None,
+            force_self_update: false,
+        }
+    }
+
+    /// Turn this builder into a reinit builder, as described in [RFC 9420 §11.2].
+    ///
+    /// The reinit parameters are provided via `reinit_info`, which the predecessor
+    /// exports with [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
+    /// The successor is created with the ReInit proposal's protocol version, group_id,
+    /// ciphersuite, group_context extensions. Set any other group
+    /// configuration on this builder before calling `reinit`, then create the
+    /// new group and its reinit commit with
+    /// [`ReInitGroupBuilder::build_reinit`].
+    ///
+    /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
+    pub fn reinit(self, reinit_info: ReInitInfo) -> ReInitGroupBuilder {
+        ReInitGroupBuilder {
+            group_builder: self,
+            reinit_info,
             force_self_update: false,
         }
     }
@@ -530,6 +549,104 @@ pub enum BranchError<StorageError> {
     #[error(transparent)]
     CreateCommit(#[from] CreateCommitError),
     /// An error occurred while staging the branch commit.
+    #[error(transparent)]
+    CommitBuilderStage(#[from] CommitBuilderStageError<StorageError>),
+}
+
+/// Builder that creates a freshly reinitialized group and its reinit commit in a single
+/// step, as described in [RFC 9420 §11.2].
+///
+/// This overrides the group_id, ciphersuite and group_context.extensions of the group_builder
+/// with value from the ReInit proposal.
+///
+/// Create this with [`MlsGroupBuilder::reinit`].
+///
+/// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
+pub struct ReInitGroupBuilder {
+    group_builder: MlsGroupBuilder,
+    reinit_info: ReInitInfo,
+    force_self_update: bool,
+}
+
+impl ReInitGroupBuilder {
+    /// Force a self-update (path) in the reinit commit. See
+    /// [`CommitBuilder::force_self_update`](crate::group::CommitBuilder::force_self_update).
+    pub fn force_self_update(mut self, force_self_update: bool) -> Self {
+        self.force_self_update = force_self_update;
+        self
+    }
+
+    /// Create the reinitialized group and a reinit commit that adds `members` to it.
+    /// The application must ensure that `members` match the members of the predecessor group,
+    /// otherwise joiners will reject the Welcome, see also [`JoinBuilder::check_members`](crate::group::mls_group::creation::JoinBuilder::check_members).
+    ///
+    /// This creates a fresh group with the ReInit proposal's group_id, ciphersuite and
+    /// group_context.extensions, adds the reinit
+    /// resumption PSK (mixing in the old group's resumption PSK secret), and commits
+    /// the additions (plus any extra proposals set via
+    /// [`Self::propose_group_context_extensions`] / [`Self::force_self_update`]).
+    /// It returns the new (epoch-0) group and the [`CommitMessageBundle`]
+    /// carrying the first commit and `Welcome`.
+    ///
+    /// The commit is staged but **not** merged: merge it with
+    /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
+    /// only once the delivery service has confirmed it.
+    pub fn build_reinit<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        signer: &impl Signer,
+        credential_with_key: CredentialWithKey,
+        members: impl IntoIterator<Item = KeyPackage>,
+    ) -> Result<(MlsGroup, CommitMessageBundle), ReInitError<Provider::StorageError>> {
+        // The group must match the proposal.
+        let ReInitInfo {
+            proposal,
+            old_group_id,
+            old_group_epoch,
+            resumption_psk_secret,
+            member_credentials: _,
+        } = self.reinit_info;
+        let group_builder = self
+            .group_builder
+            .ciphersuite(proposal.ciphersuite)
+            // As there is only one, the build ecosystem does not support setting the version yet.
+            // .version(proposal.version)
+            .with_group_id(proposal.group_id)
+            .with_group_context_extensions(proposal.extensions);
+        let mut group = group_builder.build(provider, signer, credential_with_key)?;
+
+        let mut commit_builder = group
+            .commit_builder()
+            .reinit(
+                provider.rand(),
+                old_group_id,
+                old_group_epoch,
+                resumption_psk_secret,
+            )?
+            .propose_adds(members);
+        if self.force_self_update {
+            commit_builder = commit_builder.force_self_update(true);
+        }
+        let bundle = commit_builder
+            .load_psks(provider.storage())?
+            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .stage_commit(provider)?;
+
+        Ok((group, bundle))
+    }
+}
+
+/// Indicates an error occurred while creating a reinitialized group with
+/// [`ReInitGroupBuilder::build_reinit`].
+#[derive(Debug, thiserror::Error)]
+pub enum ReInitError<StorageError> {
+    /// An error occurred while creating the sub-group.
+    #[error(transparent)]
+    NewGroup(#[from] NewGroupError<StorageError>),
+    /// An error occurred while creating the reinit commit.
+    #[error(transparent)]
+    CreateCommit(#[from] CreateCommitError),
+    /// An error occurred while staging the reinit commit.
     #[error(transparent)]
     CommitBuilderStage(#[from] CommitBuilderStageError<StorageError>),
 }
