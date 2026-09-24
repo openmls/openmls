@@ -1,10 +1,14 @@
 use super::{super::errors::*, diff::apply_proposals::ApplyProposalsValues, *};
 use crate::{
-    framing::{Sender, mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody}, group::{
-        StagedCommit, mls_group::staged_commit::StagedCommitState, proposal_store::ProposalQueue,
-    }, messages::{
-        Commit, proposals::{ProposalOrRef, ProposalType},
-    }, treesync::errors::LeafNodeValidationError, versions::VersionError,
+    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
+    group::{
+        mls_group::staged_commit::StagedCommitState, proposal_store::ProposalQueue, StagedCommit,
+    },
+    messages::{
+        proposals::{ProposalOrRef, ProposalType},
+        Commit,
+    },
+    treesync::errors::LeafNodeValidationError,
 };
 
 #[cfg(feature = "extensions-draft")]
@@ -281,6 +285,11 @@ impl PublicGroup {
         }
 
         // https://validation.openmls.tech/#valn0901
+        // Match positively on supported versions.
+        // TODO: Keep updated when new versions are supported.
+        if !matches!(reinit.version(), ProtocolVersion::Mls10) {
+            return Err(ProposalValidationError::ReInitUnsupportedVersion);
+        }
         if reinit.version() < self.group_context.protocol_version() {
             return Err(ProposalValidationError::ReInitDowngrade);
         }
