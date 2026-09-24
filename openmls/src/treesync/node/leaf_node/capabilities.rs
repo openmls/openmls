@@ -355,7 +355,7 @@ impl Capabilities {
     /// requirements is rejected instead — see
     /// [`Capabilities::supports_required_capabilities`].
     ///
-    /// `is_default()` extension types are skipped: RFC 9420 makes support for
+    /// Default extension types are skipped: RFC 9420 makes support for
     /// them implicit, so they never need listing. GREASE extension types are
     /// never default, so a GREASE extension actually present on the leaf is
     /// covered here.

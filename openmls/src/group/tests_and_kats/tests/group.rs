@@ -132,14 +132,6 @@ fn basic_group_setup() {
 /// Specifically, we test that the extensions in the leaf node must be supported by the lead node's
 /// own capabilities ([valn0107]).
 ///
-/// `MlsGroupCreateConfigBuilder::with_leaf_node_extensions()` used to check
-/// this eagerly and return an error itself. That check was order-dependent
-/// (it read whatever capabilities happened to be configured at the time of
-/// the call) and has been removed; the same mismatch is now caught
-/// uniformly at leaf-construction time instead,
-/// so this test builds an actual `MlsGroup` and checks the error surfaces
-/// there.
-///
 /// [valn0107]: https://validation.openmls.tech/#valn0107
 #[openmls_test::openmls_test]
 fn wrong_group_create_config() {

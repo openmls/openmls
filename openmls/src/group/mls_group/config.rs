@@ -739,13 +739,7 @@ impl MlsGroupCreateConfigBuilder {
     /// Sets extensions of the group creator's [`LeafNode`].
     ///
     /// The extensions are checked against the creator's capabilities when the
-    /// leaf is built, not here: doing it here was order-dependent, since it
-    /// read whatever capabilities happened to be configured at the time of the
-    /// call and a later `.capabilities(..)` silently invalidated the result.
-    ///
-    /// The `Result` is therefore always `Ok` today. It is kept so existing
-    /// callers keep compiling, and because the check may become eager again if
-    /// the builder ever gains enough context to do it correctly.
+    /// leaf is built, not here.
     pub fn with_leaf_node_extensions(
         mut self,
         extensions: Extensions<LeafNode>,

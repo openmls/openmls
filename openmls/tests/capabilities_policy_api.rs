@@ -2,8 +2,7 @@
 //! crate: they appear in the signatures of `MlsGroupBuilder`,
 //! `MlsGroupCreateConfigBuilder`, `KeyPackageBuilder` and
 //! `LeafNodeParametersBuilder`, and in the `LeafNodeBuild` error variants.
-//! Every other test for them lives inside the crate, which is how the gap went
-//! unnoticed.
+//! Every other test for them lives inside the crate.
 
 use openmls::prelude::*;
 

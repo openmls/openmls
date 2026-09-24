@@ -38,10 +38,9 @@ present in its leaf node.
 That is the minimum a leaf node has to advertise.
 
 Setting capabilities explicitly, via `KeyPackage::builder().leaf_node_capabilities(..)`,
-is how a client advertises more than that.
-For example, other ciphersuites, extensions, proposal types and credential types
-it supports.
-If the list does not cover what the types the key package itself uses, building
+is how a client advertises support for ciphersuites, extensions, proposal types
+and credential types beyond that.
+If the list does not cover the extensions the key package itself uses, building
 it fails rather than producing a key package other clients would reject.
 Pass `CapabilitiesPolicy::Widen` to `KeyPackage::builder().capabilities_policy(..)`
 to have the missing capabilities added instead.
