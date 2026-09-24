@@ -1,14 +1,10 @@
 use super::{super::errors::*, diff::apply_proposals::ApplyProposalsValues, *};
 use crate::{
-    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
-    group::{
-        mls_group::staged_commit::StagedCommitState, proposal_store::ProposalQueue, StagedCommit,
-    },
-    messages::{
-        proposals::{ProposalOrRef, ProposalType},
-        Commit,
-    },
-    treesync::errors::LeafNodeValidationError,
+    framing::{Sender, mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody}, group::{
+        StagedCommit, mls_group::staged_commit::StagedCommitState, proposal_store::ProposalQueue,
+    }, messages::{
+        Commit, proposals::{ProposalOrRef, ProposalType},
+    }, treesync::errors::LeafNodeValidationError, versions::VersionError,
 };
 
 #[cfg(feature = "extensions-draft")]

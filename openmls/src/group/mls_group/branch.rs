@@ -19,11 +19,11 @@ use openmls_traits::types::Ciphersuite;
 /// The information a sub-group branch needs from its parent group.
 ///
 /// Export this from the parent group with
-/// [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info) and pass it to
-/// the reinit APIs: the sender uses
-/// [`CommitBuilder::reinit`](crate::group::CommitBuilder::reinit) and the
+/// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info) and pass it to
+/// the subgroup branch APIs: the sender uses
+/// [`CommitBuilder::branch`](crate::group::CommitBuilder::branch) and the
 /// receiver uses
-/// [`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit).
+/// [`StagedWelcome::build_from_branch`](crate::group::StagedWelcome::build_from_branch).
 ///
 /// This is an owned snapshot, so it does not borrow the parent group and can
 /// outlive it.
@@ -70,7 +70,7 @@ impl BranchInfo {
 
     /// The credentials of the parent group's members, used by the receiver to
     /// check that every sub-group member is also a parent-group member.
-    pub(crate) fn member_credentials(&self) -> &[Credential] {
+    pub fn member_credentials(&self) -> &[Credential] {
         &self.member_credentials
     }
 }

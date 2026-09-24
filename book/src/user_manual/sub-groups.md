@@ -78,10 +78,15 @@ verifies that the branch PSK in the `Welcome` references the same parent group a
 epoch as the `BranchInfo` you selected (before that secret is mixed into the key
 schedule); a `BranchInfo` from the wrong parent epoch fails with
 `WelcomeError::SubgroupParentMismatch`. The remaining checks run when `build` is
-called: the protocol version and ciphersuite must match the parent, the sub-group
-must be at epoch 1, and every sub-group member must also be a member of the parent
-group. The membership check is on by default and can be disabled with
-`.check_members(false)`.
+called: the protocol version and ciphersuite must match the parent, and the sub-group
+must be at epoch 1.
+
+Every sub-group member must also be a member of the parent group.
+A simple membership check by equal credential is on by default and can be disabled with
+`JoinBuilder::check_members(false)`. In that case, the application **must** ensure that the new
+member credentials match old ones captured in `BranchInfo::member_credentials()`.
+This is the case when the application uses credentials that don't allow checking
+equivalence of members by checking exact equality of credentials.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_sub_groups.rs:receiver_peek_branch}}
