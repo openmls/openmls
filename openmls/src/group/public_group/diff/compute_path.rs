@@ -16,8 +16,8 @@ use crate::{
         node::{
             encryption_keys::EncryptionKeyPair,
             leaf_node::{
-                resolve_capabilities, resolve_capabilities_for_existing_leaf, LeafNodeParameters,
-                UpdateLeafNodeParams,
+                resolve_capabilities, resolve_capabilities_for_existing_leaf, LeafNodeConstraints,
+                LeafNodeParameters, UpdateLeafNodeParams,
             },
             parent_node::PlainUpdatePathNode,
         },
@@ -56,18 +56,10 @@ impl PublicGroupDiff<'_> {
         leaf_node_params: &LeafNodeParameters,
         signer: &impl Signer,
         gc_extensions: Option<Extensions<GroupContext>>,
+        leaf_node_constraints: LeafNodeConstraints,
         own_update_override: Option<OwnUpdatePathOverride>,
     ) -> Result<PathComputationResult, CreateCommitError> {
         let ciphersuite = self.group_context().ciphersuite();
-        // A GroupContextExtensions proposal in this commit puts the group's
-        // *new* required capabilities in `gc_extensions`; the group context
-        // itself isn't updated until after the new leaf is built (see
-        // `self.update_group_context` below).
-        let required_capabilities = gc_extensions
-            .as_ref()
-            .unwrap_or_else(|| self.group_context().extensions())
-            .required_capabilities()
-            .cloned();
 
         let leaf_node_params = match commit_type {
             CommitType::External => {
@@ -96,7 +88,7 @@ impl PublicGroupDiff<'_> {
                     credential_with_key,
                     capabilities,
                     extensions,
-                    required_capabilities,
+                    constraints: leaf_node_constraints,
                     capabilities_policy,
                 }
             }
@@ -129,7 +121,7 @@ impl PublicGroupDiff<'_> {
                     credential_with_key,
                     capabilities,
                     extensions,
-                    required_capabilities,
+                    constraints: leaf_node_constraints,
                     capabilities_policy,
                 }
             }

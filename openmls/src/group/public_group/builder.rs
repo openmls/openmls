@@ -13,7 +13,10 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{resolve_capabilities, Capabilities, CapabilitiesPolicy, LeafNode},
+            leaf_node::{
+                resolve_capabilities, Capabilities, CapabilitiesPolicy, LeafNode,
+                LeafNodeConstraints,
+            },
         },
         TreeSync,
     },
@@ -65,10 +68,8 @@ impl TempBuilderPG1 {
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError> {
-        let required_capabilities = self
-            .group_context_extensions
-            .required_capabilities()
-            .cloned();
+        let constraints =
+            LeafNodeConstraints::from_group_context_extensions(&self.group_context_extensions);
         let (capabilities, capabilities_policy) =
             resolve_capabilities(self.capabilities, self.capabilities_policy);
         let (treesync, commit_secret, leaf_keypair) = TreeSync::new(
@@ -79,7 +80,7 @@ impl TempBuilderPG1 {
             self.lifetime.unwrap_or_default(),
             capabilities,
             self.leaf_node_extensions,
-            required_capabilities,
+            constraints,
             capabilities_policy,
         )?;
 

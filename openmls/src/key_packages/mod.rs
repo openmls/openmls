@@ -102,8 +102,8 @@ use crate::{
         node::{
             encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
             leaf_node::{
-                resolve_capabilities, Capabilities, CapabilitiesPolicy, LeafNodeSource,
-                NewLeafNodeParams, TreeInfoTbs,
+                resolve_capabilities, Capabilities, CapabilitiesPolicy, LeafNodeConstraints,
+                LeafNodeSource, NewLeafNodeParams, TreeInfoTbs,
             },
         },
         LeafNode,
@@ -376,7 +376,7 @@ impl KeyPackage {
             tree_info_tbs: TreeInfoTbs::KeyPackage,
             // A bare KeyPackage has no group context to source required
             // capabilities from.
-            required_capabilities: None,
+            constraints: LeafNodeConstraints::default(),
             capabilities_policy,
         };
 
@@ -428,7 +428,7 @@ impl KeyPackage {
             tree_info_tbs: TreeInfoTbs::KeyPackage,
             // A bare KeyPackage has no group context to source required
             // capabilities from.
-            required_capabilities: None,
+            constraints: LeafNodeConstraints::default(),
             capabilities_policy,
         };
 

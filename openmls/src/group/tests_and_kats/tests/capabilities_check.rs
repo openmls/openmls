@@ -1,6 +1,9 @@
 use crate::prelude::*;
 use crate::test_utils::single_group_test_framework::*;
-use crate::treesync::errors::LeafNodeValidationError;
+use crate::treesync::{
+    errors::{ApplyOwnUpdatePathError, LeafNodeValidationError},
+    node::leaf_node::LeafNodeBuildError,
+};
 
 // Helper macro for checking error matches a provided pattern
 macro_rules! assert_err_matches {
@@ -370,6 +373,195 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
             ],
         )
         .expect("Should succeed");
+}
+
+// A member's own new leaf needs to be valid according to valn0104 when it is built.
+// Switching to a credential type another member doesn't support is rejected.
+#[openmls_test::openmls_test]
+fn test_valn0104_own_update_credential_not_supported_by_member() {
+    // Alice only supports Basic.
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+
+    // Bob supports Basic and Other(3), and uses Basic.
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    bob_pre_group.update_credential_capabilities(
+        vec![CredentialType::Basic, CredentialType::Other(3)],
+        ciphersuite,
+    );
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config,
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [bob] = group_state.members_mut(&["bob"]);
+
+    // Same signature key, but a credential type Alice doesn't support.
+    let other_credential = CredentialWithKey {
+        credential: Credential::new(
+            CredentialType::Other(3),
+            bob.party
+                .credential_with_key
+                .credential
+                .serialized_content()
+                .to_vec(),
+        ),
+        signature_key: bob.party.credential_with_key.signature_key.clone(),
+    };
+    let leaf_node_parameters = || {
+        LeafNodeParameters::builder()
+            .with_credential_with_key(other_credential.clone())
+            .build()
+    };
+
+    let err = bob
+        .group
+        .propose_self_update(
+            &bob.party.core_state.provider,
+            &bob.party.signer,
+            leaf_node_parameters(),
+        )
+        .expect_err("Alice doesn't support Other(3)");
+    assert!(
+        matches!(
+            err,
+            ProposeSelfUpdateError::LeafNodeUpdateError(
+                crate::treesync::node::leaf_node::LeafNodeUpdateError::Validation(
+                    LeafNodeValidationError::LeafNodeCredentialNotSupportedByMember
+                )
+            )
+        ),
+        "unexpected error: {err:?}"
+    );
+
+    let err = bob
+        .build_commit_and_stage(|builder| {
+            builder
+                .force_self_update(true)
+                .leaf_node_parameters(leaf_node_parameters())
+        })
+        .expect_err("Alice doesn't support Other(3)");
+    assert!(
+        matches!(
+            err,
+            GroupError::<Provider>::CreateCommit(CreateCommitError::ApplyOwnUpdatePath(
+                ApplyOwnUpdatePathError::LeafNodeBuild(LeafNodeBuildError::Validation(
+                    LeafNodeValidationError::LeafNodeCredentialNotSupportedByMember
+                ))
+            ))
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+// The other direction of valn0104 for a member's own new leaf: dropping
+// support for a credential type another member uses is rejected when the leaf
+// is built.
+#[openmls_test::openmls_test]
+fn test_valn0104_own_update_drops_member_credential() {
+    // Alice supports Basic and Other(3), and uses Other(3).
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let mut alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let alice_capabilities = alice_pre_group.update_credential_capabilities(
+        vec![CredentialType::Basic, CredentialType::Other(3)],
+        ciphersuite,
+    );
+    alice_pre_group.update_credential_type(CredentialType::Other(3), ciphersuite);
+
+    // Bob supports Basic and Other(3), and uses Basic.
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    bob_pre_group.update_credential_capabilities(
+        vec![CredentialType::Basic, CredentialType::Other(3)],
+        ciphersuite,
+    );
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .capabilities(alice_capabilities)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config,
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [bob] = group_state.members_mut(&["bob"]);
+
+    // Bob stops advertising Other(3), which Alice uses.
+    let leaf_node_parameters = || {
+        LeafNodeParameters::builder()
+            .with_capabilities(
+                Capabilities::builder()
+                    .ciphersuites(vec![ciphersuite])
+                    .credentials(vec![CredentialType::Basic])
+                    .build(),
+            )
+            .build()
+    };
+
+    let err = bob
+        .group
+        .propose_self_update(
+            &bob.party.core_state.provider,
+            &bob.party.signer,
+            leaf_node_parameters(),
+        )
+        .expect_err("Bob must keep supporting Alice's Other(3)");
+    assert!(
+        matches!(
+            err,
+            ProposeSelfUpdateError::LeafNodeUpdateError(
+                crate::treesync::node::leaf_node::LeafNodeUpdateError::Validation(
+                    LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode
+                )
+            )
+        ),
+        "unexpected error: {err:?}"
+    );
+
+    let err = bob
+        .build_commit_and_stage(|builder| {
+            builder
+                .force_self_update(true)
+                .leaf_node_parameters(leaf_node_parameters())
+        })
+        .expect_err("Bob must keep supporting Alice's Other(3)");
+    assert!(
+        matches!(
+            err,
+            GroupError::<Provider>::CreateCommit(CreateCommitError::ApplyOwnUpdatePath(
+                ApplyOwnUpdatePathError::LeafNodeBuild(LeafNodeBuildError::Validation(
+                    LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode
+                ))
+            ))
+        ),
+        "unexpected error: {err:?}"
+    );
 }
 
 // Ensure that removed members are skipped in the capabilities check

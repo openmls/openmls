@@ -2643,7 +2643,7 @@ fn update_path() {
             bob_group.group_id().clone(),
             bob_group.own_leaf_index(),
             LeafNodeParameters::default(),
-            None,
+            &bob_group.public_group().leaf_node_constraints(),
         )
         .unwrap();
 

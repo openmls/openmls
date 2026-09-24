@@ -34,7 +34,8 @@ use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::{
         leaf_node::{
-            Capabilities, NewLeafNodeParams, TreeInfoTbs, TreePosition, VerifiableLeafNode,
+            Capabilities, LeafNodeConstraints, NewLeafNodeParams, TreeInfoTbs, TreePosition,
+            VerifiableLeafNode,
         },
         NodeIn,
     },
@@ -53,7 +54,7 @@ use crate::{
     ciphersuite::{signable::Verifiable, Secret},
     credentials::CredentialWithKey,
     error::LibraryError,
-    extensions::{Extensions, RequiredCapabilitiesExtension},
+    extensions::Extensions,
     group::{GroupId, Member},
     key_packages::Lifetime,
     messages::{PathSecret, PathSecretError},
@@ -449,7 +450,7 @@ impl TreeSync {
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions<LeafNode>,
-        required_capabilities: Option<RequiredCapabilitiesExtension>,
+        constraints: LeafNodeConstraints,
         capabilities_policy: CapabilitiesPolicy,
     ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LeafNodeBuildError> {
         let new_leaf_node_params = NewLeafNodeParams {
@@ -460,7 +461,7 @@ impl TreeSync {
             capabilities,
             extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
-            required_capabilities,
+            constraints,
             capabilities_policy,
         };
         let (leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)?;
@@ -506,7 +507,7 @@ impl TreeSync {
         capabilities: Capabilities,
         leaf_extensions: Extensions<LeafNode>,
         encryption_key_pair: EncryptionKeyPair,
-        required_capabilities: Option<RequiredCapabilitiesExtension>,
+        constraints: LeafNodeConstraints,
         capabilities_policy: CapabilitiesPolicy,
     ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         let new_leaf_node_params = NewLeafNodeParams {
@@ -518,7 +519,7 @@ impl TreeSync {
             capabilities,
             extensions: leaf_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
-            required_capabilities,
+            constraints,
             capabilities_policy,
         };
         let (leaf, encryption_key_pair) = LeafNode::new_with_encryption_key_pair(

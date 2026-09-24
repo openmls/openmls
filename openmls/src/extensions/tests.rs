@@ -255,9 +255,17 @@ fn with_group_context_extensions() {
     let alice_credential_with_key_and_signer =
         generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
 
+    // The must support every GroupContext extension.
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(extensions)
         .ciphersuite(ciphersuite)
+        .capabilities(
+            Capabilities::builder()
+                .ciphersuites(vec![ciphersuite])
+                .extensions(vec![ExtensionType::Unknown(0xf023)])
+                .credentials(vec![CredentialType::Basic])
+                .build(),
+        )
         .build();
 
     // === Alice creates a group ===

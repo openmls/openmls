@@ -29,7 +29,7 @@ use crate::{
 };
 
 #[cfg(feature = "virtual-clients-draft")]
-use crate::treesync::node::leaf_node::resolve_capabilities;
+use crate::treesync::node::leaf_node::{resolve_capabilities, LeafNodeConstraints};
 
 /// Builder struct for an [`MlsGroup`].
 #[derive(Default, Debug)]
@@ -687,10 +687,9 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         capabilities,
         leaf_extensions,
         leaf_encryption_keypair,
-        mls_group_create_config
-            .group_context_extensions
-            .required_capabilities()
-            .cloned(),
+        LeafNodeConstraints::from_group_context_extensions(
+            &mls_group_create_config.group_context_extensions,
+        ),
         capabilities_policy,
     )?;
     let group_context = GroupContext::create_initial_group_context(

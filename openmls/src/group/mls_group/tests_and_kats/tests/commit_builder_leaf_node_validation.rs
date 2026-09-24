@@ -1,4 +1,5 @@
-//! Tests for CommitBuilder leaf node validation against required capabilities.
+//! Tests for CommitBuilder leaf node validation against what the group demands
+//! of the committer's new leaf.
 
 use openmls_test::openmls_test;
 
@@ -117,7 +118,7 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient_required_capabi
 /// Test that building a commit with a leaf node that doesn't support one of the group context
 /// extensions fails.
 ///
-/// This test verifies the validation added at commit build time (valn0103):
+/// This test verifies the validation added at commit build time (valn1210):
 /// 1. Create Alice and Bob with capabilities supporting extension `0xf001`
 /// 2. Alice creates a group with GroupContextExtension of type `0xf001`
 /// 3. Alice adds Bob to the group
@@ -199,8 +200,10 @@ fn commit_builder_fails_when_leaf_node_capabilities_insufficient() {
     assert!(
         matches!(
             err,
-            GroupError::<Provider>::CreateCommit(CreateCommitError::LeafNodeValidation(
-                LeafNodeValidationError::UnsupportedExtensions
+            GroupError::<Provider>::CreateCommit(CreateCommitError::ApplyOwnUpdatePath(
+                ApplyOwnUpdatePathError::LeafNodeBuild(LeafNodeBuildError::Validation(
+                    LeafNodeValidationError::UnsupportedExtensions,
+                )),
             ))
         ),
         "Expected UnsupportedExtensions error, got {:?}",

@@ -23,8 +23,8 @@ use crate::{
     },
     credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
-    extensions::{ExtensionType, Extensions, RequiredCapabilitiesExtension},
-    group::GroupId,
+    extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
+    group::{GroupContext, GroupId},
     key_packages::{KeyPackage, Lifetime},
     prelude::KeyPackageBundle,
     storage::OpenMlsProvider,
@@ -45,9 +45,9 @@ pub(crate) struct NewLeafNodeParams {
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions<LeafNode>,
     pub(crate) tree_info_tbs: TreeInfoTbs,
-    /// The group's required capabilities, if any is known at this point.
-    /// `None` for a bare `KeyPackage`, which has no group context.
-    pub(crate) required_capabilities: Option<RequiredCapabilitiesExtension>,
+    /// What the group the leaf is built for requires of it. Empty for a
+    /// `KeyPackage`, which has no group.
+    pub(crate) constraints: LeafNodeConstraints,
     /// How `capabilities` is treated when it doesn't cover what the leaf
     /// needs. See [`LeafNodePayload::enforce_capabilities`].
     pub(crate) capabilities_policy: CapabilitiesPolicy,
@@ -60,8 +60,8 @@ pub(crate) struct UpdateLeafNodeParams {
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions<LeafNode>,
-    /// The group's required capabilities, if any.
-    pub(crate) required_capabilities: Option<RequiredCapabilitiesExtension>,
+    /// What the group the leaf is built for requires.
+    pub(crate) constraints: LeafNodeConstraints,
     /// How `capabilities` is treated when it doesn't cover what the leaf
     /// needs. See [`LeafNodePayload::enforce_capabilities`].
     pub(crate) capabilities_policy: CapabilitiesPolicy,
@@ -78,10 +78,110 @@ impl UpdateLeafNodeParams {
             capabilities: leaf_node.payload.capabilities.clone(),
             extensions: leaf_node.payload.extensions.clone(),
             // This reconstructs an already-consistent leaf; there's no group
-            // context available here to source required capabilities from.
-            required_capabilities: None,
+            // available here to source constraints from.
+            constraints: LeafNodeConstraints::default(),
             capabilities_policy: CapabilitiesPolicy::Reject,
         }
+    }
+}
+
+/// We need to build a leaf node that's compatible with the group.
+///
+/// These are the checks a receiving member applies to the leaf's capabilities
+/// (see [`PublicGroup::validate_leaf_node`] and the GroupContext extension
+/// checks), so a leaf that passes them is valid for the group.
+///
+/// The default requires nothing, which is used for [`KeyPackage`].
+///
+/// [`PublicGroup::validate_leaf_node`]: crate::group::PublicGroup::validate_leaf_node
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct LeafNodeConstraints {
+    /// Commits may change the required capabilities.
+    /// The leaf must support all of them.
+    required_capabilities: Vec<RequiredCapabilitiesExtension>,
+
+    /// Group context extensions.
+    group_context_extensions: HashSet<ExtensionType>,
+
+    /// Credential types of the members.
+    /// The leaf must support all of them.
+    credentials_in_use: HashSet<CredentialType>,
+
+    /// Credential types every member supports.
+    /// The leaf's own credential must be one of them.
+    /// Empty, i.e. no restriction, while there are no members (the group
+    /// creator, a key package). Never empty with members, since each
+    /// supports every credential type in use (valn0104).
+    credentials_supported_by_all: HashSet<CredentialType>,
+}
+
+impl LeafNodeConstraints {
+    /// Constraints from a group's GroupContext extensions alone, e.g. for the
+    /// creator of a group that has no other members yet.
+    pub(crate) fn from_group_context_extensions(extensions: &Extensions<GroupContext>) -> Self {
+        let mut constraints = Self::default();
+        constraints.add_group_context_extensions(extensions);
+        constraints
+    }
+
+    /// Also demand support for `extensions` and their required capabilities.
+    pub(crate) fn add_group_context_extensions(&mut self, extensions: &Extensions<GroupContext>) {
+        if let Some(required_capabilities) = extensions.required_capabilities() {
+            self.required_capabilities
+                .push(required_capabilities.clone());
+        }
+        self.group_context_extensions
+            .extend(extensions.iter().map(Extension::extension_type));
+    }
+
+    /// Add compatibility with the credential of `member`.
+    pub(crate) fn add_member(&mut self, member: &LeafNode) {
+        let supported = member.capabilities().credentials();
+        let is_first_member = self.credentials_in_use.is_empty();
+        if is_first_member {
+            self.credentials_supported_by_all = supported.iter().copied().collect();
+        } else {
+            self.credentials_supported_by_all
+                .retain(|credential_type| supported.contains(credential_type));
+        }
+        self.credentials_in_use
+            .insert(member.credential().credential_type());
+    }
+
+    /// Check `capabilities` against the constraints.
+    fn check(
+        &self,
+        capabilities: &Capabilities,
+        credential_type: CredentialType,
+    ) -> Result<(), LeafNodeValidationError> {
+        // https://validation.openmls.tech/#valn0103
+        for required_capabilities in &self.required_capabilities {
+            capabilities.supports_required_capabilities(required_capabilities)?;
+        }
+
+        // https://validation.openmls.tech/#valn0602
+        // https://validation.openmls.tech/#valn1210
+        if self.group_context_extensions.iter().any(|extension_type| {
+            !extension_type.is_default() && !capabilities.extensions().contains(extension_type)
+        }) {
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        }
+
+        // https://validation.openmls.tech/#valn0104
+        if !self.credentials_supported_by_all.is_empty()
+            && !self.credentials_supported_by_all.contains(&credential_type)
+        {
+            return Err(LeafNodeValidationError::LeafNodeCredentialNotSupportedByMember);
+        }
+        if self
+            .credentials_in_use
+            .iter()
+            .any(|in_use| !capabilities.contains_credential(*in_use))
+        {
+            return Err(LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode);
+        }
+
+        Ok(())
     }
 }
 
@@ -255,7 +355,7 @@ impl LeafNode {
             capabilities,
             extensions,
             tree_info_tbs,
-            required_capabilities,
+            constraints,
             capabilities_policy,
         } = new_leaf_node_params;
 
@@ -271,7 +371,7 @@ impl LeafNode {
             capabilities,
             extensions,
             tree_info_tbs,
-            required_capabilities.as_ref(),
+            &constraints,
             capabilities_policy,
             signer,
         )?;
@@ -298,7 +398,7 @@ impl LeafNode {
             capabilities,
             extensions,
             tree_info_tbs,
-            required_capabilities,
+            constraints,
             capabilities_policy,
         } = new_leaf_node_params;
 
@@ -310,7 +410,7 @@ impl LeafNode {
             capabilities,
             extensions,
             tree_info_tbs,
-            required_capabilities.as_ref(),
+            &constraints,
             capabilities_policy,
             signer,
         )?;
@@ -350,7 +450,7 @@ impl LeafNode {
         capabilities: Capabilities,
         extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
-        required_capabilities: Option<&RequiredCapabilitiesExtension>,
+        constraints: &LeafNodeConstraints,
         capabilities_policy: CapabilitiesPolicy,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeBuildError> {
@@ -362,7 +462,7 @@ impl LeafNode {
             leaf_node_source,
             extensions,
             tree_info_tbs,
-            required_capabilities,
+            constraints,
             capabilities_policy,
         )?;
 
@@ -410,7 +510,7 @@ impl LeafNode {
                 group_id,
                 leaf_index,
             }),
-            leaf_node_params.required_capabilities.as_ref(),
+            &leaf_node_params.constraints,
             leaf_node_params.capabilities_policy,
         )?;
 
@@ -449,10 +549,10 @@ impl LeafNode {
             capabilities,
             extensions,
             tree_info_tbs,
-            // KAT generation only; there's no group context to source
-            // required capabilities from, and the leaf built here is
-            // expected to already be self-consistent.
-            required_capabilities: None,
+            // KAT generation only; there's no group to source constraints
+            // from, and the leaf built here is expected to already be
+            // self-consistent.
+            constraints: LeafNodeConstraints::default(),
             capabilities_policy: CapabilitiesPolicy::Reject,
         };
 
@@ -482,7 +582,7 @@ impl LeafNode {
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
         leaf_node_parmeters: LeafNodeParameters,
-        required_capabilities: Option<&RequiredCapabilitiesExtension>,
+        constraints: &LeafNodeConstraints,
     ) -> Result<EncryptionKeyPair, LeafNodeUpdateError<Provider::StorageError>> {
         let tree_info = TreeInfoTbs::Update(TreePosition::new(group_id, leaf_index));
         let mut leaf_node_tbs = LeafNodeTbs::from(self.clone(), tree_info);
@@ -516,7 +616,7 @@ impl LeafNode {
         leaf_node_tbs.payload.enforce_capabilities(
             ciphersuite,
             ProtocolVersion::default(),
-            required_capabilities,
+            constraints,
             capabilities_policy,
         )?;
 
@@ -778,15 +878,15 @@ impl LeafNodePayload {
     /// [`LeafNode::update`], which mutates an existing signed leaf in place and
     /// so bypasses `LeafNodeTbs::new`.
     ///
-    /// The checks run under both policies, so widening is verified rather than
-    /// trusted, and they are the same checks a peer applies on receipt — see
-    /// [`LeafNodePayload::validate_locally`] and
-    /// [`Capabilities::supports_required_capabilities`].
+    /// The checks run under both policies, so widening is verified as well.
+    /// Together with `constraints` they are the capability checks a
+    /// peer applies on receipt ([`LeafNodePayload::validate_locally`]) and
+    /// [`LeafNodeConstraints`]. Widening never covers `constraints`.
     fn enforce_capabilities(
         &mut self,
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
-        required_capabilities: Option<&RequiredCapabilitiesExtension>,
+        constraints: &LeafNodeConstraints,
         policy: CapabilitiesPolicy,
     ) -> Result<(), LeafNodeValidationError> {
         if matches!(policy, CapabilitiesPolicy::Widen) {
@@ -807,10 +907,7 @@ impl LeafNodePayload {
             return Err(LeafNodeValidationError::CiphersuiteNotInCapabilities);
         }
 
-        if let Some(required_capabilities) = required_capabilities {
-            self.capabilities
-                .supports_required_capabilities(required_capabilities)?;
-        }
+        constraints.check(&self.capabilities, self.credential.credential_type())?;
 
         Ok(())
     }
@@ -901,7 +998,7 @@ impl LeafNodeTbs {
         leaf_node_source: LeafNodeSource,
         extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
-        required_capabilities: Option<&RequiredCapabilitiesExtension>,
+        constraints: &LeafNodeConstraints,
         capabilities_policy: CapabilitiesPolicy,
     ) -> Result<Self, LeafNodeValidationError> {
         let mut payload = LeafNodePayload {
@@ -916,7 +1013,7 @@ impl LeafNodeTbs {
         payload.enforce_capabilities(
             ciphersuite,
             ProtocolVersion::default(),
-            required_capabilities,
+            constraints,
             capabilities_policy,
         )?;
 
