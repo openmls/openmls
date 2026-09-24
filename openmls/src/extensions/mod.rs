@@ -2,7 +2,8 @@
 //!
 //! In MLS, extensions appear in the following places:
 //!
-//! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities
+//! - In [`KeyPackages`](`crate::key_packages`) and [`LeafNode`](`crate::treesync::node::leaf_node::LeafNode`),
+//!   to describe client capabilities
 //!   and aspects of their participation in the group.
 //!
 //! - In `GroupInfo`, to inform new members of the group's parameters and to
@@ -20,6 +21,8 @@
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 //! - [`ExternalPubExtension`] (GroupInfo extension)
+//! - [`ExternalSendersExtension`] (GroupContext extension)
+//! - [`LastResortExtension`] (KeyPackage extension)
 
 use std::{
     collections::HashSet,
@@ -161,8 +164,7 @@ impl ExtensionType {
     }
 
     /// Returns whether an extension type is valid when used in leaf nodes.
-    /// Returns None if validity can not be determined.
-    /// This is the case for unknown extensions.
+    /// Returns [`true`] for unknown extensions.
     //  https://validation.openmls.tech/#valn1601
     pub(crate) fn is_valid_in_leaf_node(self) -> bool {
         match self {

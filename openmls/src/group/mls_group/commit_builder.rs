@@ -16,8 +16,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, ExternalPubExtension, GroupContext,
-        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
-        WireFormatPolicy,
+        GroupEpoch, GroupId, ProposalQueue, ProposalQueueError, QueuedProposal,
+        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -30,7 +30,7 @@ use crate::{
     },
     schedule::{
         psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
-        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
+        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk, ResumptionPskSecret,
     },
     storage::{OpenMlsProvider, StorageProvider},
     treesync::errors::LeafNodeValidationError,
@@ -46,7 +46,6 @@ use crate::{
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
-    group::GroupId,
 };
 #[cfg(feature = "extensions-draft")]
 use crate::{
@@ -347,9 +346,10 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// Adds a PreSharedKey proposal for the provided [`PreSharedKeyId`]s to the
     /// list of proposals to be committed.
     ///
-    /// Note that this should not be used for sub-group branching, as those PSKs
-    /// are not allowed in regular proposals. Please use
-    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) instead.
+    /// Note that this should not be used for sub-group branching or reinit, as
+    /// those PSKs are not allowed in regular proposals. Please use
+    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) or
+    /// [`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit) instead.
     pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
         self.stage.own_proposals.extend(
             psk_ids
@@ -404,6 +404,51 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             .borrow_mut()
             .resumption_psk_store
             .add(0.into(), secret);
+        Ok(self)
+    }
+
+    /// Reinitializes a group into this freshly created group, as described in [RFC 9420 §11.2].
+    ///
+    /// Information about the old group comes from `reinit_info`, which the
+    /// predecessor exports with [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
+    /// We acept only the required parts here to avoid unnecessary `clone`.
+    ///
+    /// This adds a resumption [`PreSharedKeyId`] of usage `Reinit` to the initial
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
+    /// the old group's resumption PSK secret so it is mixed into this
+    /// new group's key schedule.
+    ///
+    /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
+    pub(crate) fn reinit(
+        mut self,
+        rand: &impl OpenMlsRand,
+        old_group_id: GroupId,
+        old_group_epoch: GroupEpoch,
+        resumption_psk_secret: ResumptionPskSecret,
+    ) -> Result<Self, CreateCommitError> {
+        // Sample a fresh random nonce of length KDF.Nh. Unlike branching, the
+        // successor group may use a different ciphersuite than the old group, so
+        // the nonce length is that of the successor group's ciphersuite.
+        let psk_id = PreSharedKeyId::new(
+            self.group.ciphersuite(),
+            rand,
+            Psk::Resumption(ResumptionPsk::new(
+                ResumptionPskUsage::Reinit,
+                old_group_id,
+                old_group_epoch,
+            )),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+        self = self.propose_psks([psk_id]);
+
+        // The reinit PSK secret comes from a different group, so we clear this
+        // group's resumption PSK store and inject it at the sentinel epoch 0,
+        // where `load_psks` looks it up for reinit usage.
+        self.group.borrow_mut().resumption_psk_store.clear();
+        self.group
+            .borrow_mut()
+            .resumption_psk_store
+            .add(0.into(), resumption_psk_secret);
         Ok(self)
     }
 
@@ -738,6 +783,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
+    ///
+    /// **Note**: ReInit proposals MUST be the only proposal in the list, others SHOULD be
+    /// preferred. It is the application's responsibility to filter out either all reinit
+    /// or all non-reinit proposals when building a commit.
     pub fn build<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
@@ -748,7 +797,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         self.build_internal(rand, crypto, signer, None::<NewSignerBundle<'_, S>>, f)
     }
 
-    /// Just like `build`, this function validates the inputs and builds the
+    /// Just like [`Self::build`], this function validates the inputs and builds the
     /// commit. The last argument `f` is a function that lets the caller filter
     /// the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
@@ -941,6 +990,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         group
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
+        // #valn0309
+        // #valn0901
+        group
+            .public_group
+            .validate_reinit_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
         // ValSem110
         // ValSem111

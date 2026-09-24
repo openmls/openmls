@@ -16,7 +16,7 @@ interop bug:
   * genuine bug      — a real interoperability failure (⚠️ if some cases still
                        pass, ❌ if all fail).
   * unsupported (🚫) — the error carries `code = Unimplemented`; a feature
-                       OpenMLS does not implement (e.g. reinit, branch).
+                       OpenMLS does not implement.
   * peer RFC          non-conformance (🔶) — the *peer* sent RFC-non-conformant
                        data that OpenMLS correctly rejects (see
                        PEER_NONCONFORMANCE_MARKERS). Cannot be fixed from our
@@ -48,8 +48,7 @@ bug. Unsupported features (🚫), peer RFC non-conformance (🔶), and not-compl
 runs (e.g. deep_random timing out) are expected and do not fail the run. Pass
 --exit-zero to always return 0 (local convenience when you just want the table).
 
-Requires: docker, docker compose, and Python 3.8+. No external `nc`/`timeout`
-binaries are used (readiness uses sockets; the per-run timeout is native).
+Requires: docker, docker compose, and Python 3.8+.
 """
 
 import argparse
@@ -361,10 +360,10 @@ def is_unsupported(r):
 # Errors that are the *peer's* RFC violation, not an OpenMLS interop bug. OpenMLS
 # correctly rejects the message; the failure is expected and must not count.
 #
-# - MLS++ sprinkles GREASE values into `key_package.extensions` that it does not
-#   also list in that leaf's `capabilities`. RFC 9420 §7.2 requires every
-#   non-default extension type in a leaf's `extensions` to appear in that same
-#   leaf's `capabilities`, with no GREASE exemption; mls-rs and OpenMLS both
+# - (https://github.com/cisco/mlspp/issues/470): MLS++ sprinkles GREASE values into
+#   `key_package.extensions` that it does not also list in that leaf's `capabilities`.
+#   RFC 9420 §10 requires every non-default extension type in a `keypackage.extensions`
+#   to appear in the leaf's `capabilities`, with no GREASE exemption; mls-rs and OpenMLS both
 #   enforce this. OpenMLS rejects with the marker below. This cannot be fixed
 #   from our side: the offending key package is minted by the peer.
 PEER_NONCONFORMANCE_MARKERS = (
@@ -388,13 +387,13 @@ def is_peer_limitation(name, r):
     (there the peer sends bad data we reject; here the peer rejects our good data).
     Not an interop bug on our side.
 
-    - mls-rs reuses its ReInit join path for branch and asserts the subgroup's
+    - (https://github.com/awslabs/mls-rs/issues/386) mls-rs reuses its ReInit join path for branch and asserts the subgroup's
       group-context extensions equal the *parent's* (`resumption.rs` `join()`),
       so it rejects a branch that adds new extensions with `ReInitExtensionsMismatch`.
       RFC 9420 §11.3 does not require the subgroup's extensions to match the
       parent's; OpenMLS and MLS++ both accept it (our `new_from_branch` does not
       check extension-equality). Scoped to the `branch` config so a genuine ReInit
-      mismatch (were ReInit ever implemented) is never masked.
+      mismatch is never masked.
     """
     err = r.get("error")
     return name == "branch" and err is not None and "ReInitExtensionsMismatch" in str(err)

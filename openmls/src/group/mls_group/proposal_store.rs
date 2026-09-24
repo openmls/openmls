@@ -12,7 +12,7 @@ use crate::{
     group::errors::*,
     messages::proposals::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
-        ProposalType, RemoveProposal, UpdateProposal,
+        ProposalType, ReInitProposal, RemoveProposal, UpdateProposal,
     },
     schedule::PreSharedKeyId,
     utils::vector_converter,
@@ -461,6 +461,19 @@ impl ProposalQueue {
         })
     }
 
+    /// Returns the ReInit proposal in the queue, if any. A validated commit
+    /// contains at most one ReInit proposal (and no other proposals), so this
+    /// returns the first one found.
+    pub(crate) fn reinit_proposal(&self) -> Option<&ReInitProposal> {
+        self.queued_proposals().find_map(|queued_proposal| {
+            if let Proposal::ReInit(reinit_proposal) = queued_proposal.proposal() {
+                Some(reinit_proposal.as_ref())
+            } else {
+                None
+            }
+        })
+    }
+
     #[cfg(feature = "extensions-draft")]
     /// Returns an iterator over all AppEphemeral proposals in the queue
     /// in the order of the Commit message
@@ -518,23 +531,12 @@ impl ProposalQueue {
 
     /// Filters received proposals
     ///
-    /// 11.2 Commit
-    /// If there are multiple proposals that apply to the same leaf,
-    /// the committer chooses one and includes only that one in the Commit,
-    /// considering the rest invalid. The committer MUST prefer any Remove
-    /// received, or the most recent Update for the leaf if there are no
-    /// Removes. If there are multiple Add proposals for the same client,
-    /// the committer again chooses one to include and considers the rest
-    /// invalid.
+    /// 12.2 Proposal List Validation
+    /// https://www.rfc-editor.org/rfc/rfc9420.html#name-proposal-list-validation
     ///
-    /// The function performs the following steps:
-    ///
-    /// - Extract Adds and filter for duplicates
-    /// - Build member list with chains: Updates, Removes & SelfRemoves
-    /// - Check for invalid indexes and drop proposal
-    /// - Check for presence of SelfRemoves and delete Removes and Updates
-    /// - Check for presence of Removes and delete Updates
-    /// - Only keep the last Update
+    /// Note: ReInit proposals MUST be the only proposal in the list, others SHOULD be
+    /// preferred. It is the application's responsibility to filter out either all reinit
+    /// or all non-reinit proposals when building a commit.
     ///
     /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for
     /// the own node were included
@@ -549,6 +551,7 @@ impl ProposalQueue {
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
         let mut contains_own_updates = false;
         let mut contains_external_init = false;
+        let mut contains_reinit = false;
 
         let mut member_specific_proposals: HashMap<LeafNodeIndex, QueuedProposal> = HashMap::new();
         let mut register_member_specific_proposal =
@@ -606,7 +609,26 @@ impl ProposalQueue {
                     valid_proposals.add(queued_proposal.proposal_reference());
                 }
                 Proposal::ReInit(_) => {
-                    // TODO #751: Only keep one ReInit
+                    // Only keep the first ReInit proposal we find. A commit
+                    // containing a ReInit must not contain any other proposals
+                    // (enforced during commit validation), so keeping one is
+                    // sufficient here.
+                    //
+                    // TODO: (unimplemented SHOULD, allow application to set strategy):
+                    // > If the committer has received other proposals during the epoch,
+                    // > they SHOULD prefer them over the ReInit proposal, allowing the
+                    // > ReInit to be resent and applied in a subsequent epoch.
+                    //
+                    //
+                    // TODO: like the other arms here, this silently drops
+                    // additional (here: duplicate ReInit) proposals rather than
+                    // surfacing an error. Silently dropping proposals hides
+                    // malformed commits from the caller; this filtering should
+                    // eventually return an error instead of quietly discarding.
+                    if !contains_reinit {
+                        valid_proposals.add(queued_proposal.proposal_reference());
+                        contains_reinit = true;
+                    }
                 }
                 Proposal::ExternalInit(_) => {
                     // Only use the first external init proposal we find.

@@ -63,10 +63,13 @@ was taken and when its `Welcome` arrives, so the receiver first needs to find ou
 the `Welcome`'s encrypted `GroupSecrets`, so reading it requires decrypting the
 `Welcome`.
 
-`StagedWelcome::process_branch_welcome` does exactly one decryption and returns a
-`PendingBranchWelcome`. Call `parent()` on it to read the parent `(group_id,
-epoch)` the branch was taken from (see [RFC 9420 §8.4]), select the `BranchInfo` for
-that parent epoch (e.g. from the sliding window above), then finish the join with
+`StagedWelcome::process_psk_welcome` does exactly one decryption and returns a
+`PendingPskWelcome`. Call `required_resumption_secret()` on it to get the branch
+resumption PSK, which holds the parent `(group_id, epoch)` the branch was taken
+from (see [RFC 9420 §8.4]). Its `usage()` is `ResumptionPskUsage::Branch` for a
+branch welcome (a reinit welcome returns `ResumptionPskUsage::Reinit`, and a
+regular welcome returns `None`). Select the `BranchInfo` for that parent epoch
+(e.g. from the sliding window above), then finish the join with
 `build_from_branch`, which reuses the already-decrypted state.
 
 In addition to the regular join processing, this injects the parent's resumption
@@ -75,10 +78,15 @@ verifies that the branch PSK in the `Welcome` references the same parent group a
 epoch as the `BranchInfo` you selected (before that secret is mixed into the key
 schedule); a `BranchInfo` from the wrong parent epoch fails with
 `WelcomeError::SubgroupParentMismatch`. The remaining checks run when `build` is
-called: the protocol version and ciphersuite must match the parent, the sub-group
-must be at epoch 1, and every sub-group member must also be a member of the parent
-group. The membership check is on by default and can be disabled with
-`.check_members(false)`.
+called: the protocol version and ciphersuite must match the parent, and the sub-group
+must be at epoch 1.
+
+Every sub-group member must also be a member of the parent group.
+A simple membership check by equal credential is on by default and can be disabled with
+`JoinBuilder::check_members(false)`. In that case, the application **must** ensure that the new
+member credentials match old ones captured in `BranchInfo::member_credentials()`.
+This is the case when the application uses credentials that don't allow checking
+equivalence of members by checking exact equality of credentials.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_sub_groups.rs:receiver_peek_branch}}
