@@ -2033,4 +2033,84 @@ fn external_commit_builder() {
     assert!(members
         .iter()
         .any(|m| m.credential == charlie_credential_with_key.credential));
+
+    // Bob's group state becomes unusable, so he rejoins the group via
+    // another external commit — carrying over the message secrets of the
+    // past epochs his previous state retained.
+
+    let mut charlie_group = charlie_group;
+
+    // A message Bob has not yet processed at the time of the rejoin.
+    let pending_message = charlie_group
+        .create_message(charlie_provider, &charlie_signer, b"pending")
+        .expect("error creating message")
+        .into_protocol_message()
+        .expect("expected a protocol message");
+
+    let verifiable_group_info = charlie_group
+        .export_group_info(charlie_provider.crypto(), &charlie_signer, true)
+        .expect("error exporting group info")
+        .into_verifiable_group_info()
+        .expect("error verifying group info");
+
+    // ANCHOR: retain_past_epochs
+    let rejoin_config = MlsGroupJoinConfig::builder()
+        .wire_format_policy(POLICY)
+        // The default policy retains no past epochs, so retain some for the
+        // rejoin to carry over.
+        .max_past_epochs(1)
+        .build();
+
+    let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+        .with_config(rejoin_config)
+        // Carry the past epoch message secrets of Bob's previous group
+        // state over into the new group. The previous state is consumed; if
+        // `build_group` fails, it can be reloaded via `MlsGroup::load`.
+        .retain_past_epochs_from(bob_group)
+        .build_group(
+            bob_provider,
+            verifiable_group_info,
+            bob_credential_with_key.clone(),
+        )
+        .expect("error building group")
+        .load_psks(bob_provider.storage())
+        .expect("error loading psks")
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_signer,
+            |_| true,
+        )
+        .expect("error building external commit")
+        .finalize(bob_provider)
+        .expect("error finalizing external commit");
+    // ANCHOR_END: retain_past_epochs
+
+    // Charlie processes Bob's external commit.
+    let plaintext = commit_message_bundle
+        .into_commit()
+        .into_protocol_message()
+        .unwrap();
+    let processed_message = charlie_group
+        .process_message(charlie_provider, plaintext)
+        .unwrap();
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected a staged commit message.");
+    };
+    charlie_group
+        .merge_staged_commit(charlie_provider, *staged_commit)
+        .unwrap();
+
+    // The message sealed before the rejoin still decrypts.
+    let processed_message = bob_group
+        .process_message(bob_provider, pending_message)
+        .unwrap();
+    let ProcessedMessageContent::ApplicationMessage(application_message) =
+        processed_message.into_content()
+    else {
+        panic!("Expected an application message.");
+    };
+    assert_eq!(application_message.into_bytes(), b"pending");
 }
