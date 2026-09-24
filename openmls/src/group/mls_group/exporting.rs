@@ -241,7 +241,7 @@ impl MlsGroup {
     /// which is sensitive key material.
     ///
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
-    pub fn reinit_info(&self, proposal: &ReInitProposal) -> Option<ReInitInfo> {
+    pub fn reinit_info(&self, proposal: ReInitProposal) -> Option<ReInitInfo> {
         // TODO (breaking change to storage): Introduce a dedicated state for shutdown after reinitialization.
         // If that also includes the ReInit proposal, we can query the [`ReInitInfo`] directly from the old group
         // without inspecting incoming commits.
@@ -251,7 +251,7 @@ impl MlsGroup {
         }
 
         Some(ReInitInfo {
-            proposal: proposal.clone(),
+            proposal,
             old_group_id: self.group_id().clone(),
             old_group_epoch: self.epoch(),
             resumption_psk_secret: self.resumption_psk_secret().clone(),

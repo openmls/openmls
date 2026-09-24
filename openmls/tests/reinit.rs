@@ -231,50 +231,46 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
     );
 
     // === Alice creates the successor group and welcomes Bob ===
+
     let bob_new_key_package = KeyPackage::builder()
         .build(new_ciphersuite, bob_provider, &bob_signer, bob_credential)
         .unwrap();
 
-    let successor_join_config = MlsGroupJoinConfig::builder()
-        .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
-        .build();
+    // Alice exports the ReInitInfo
+    let alice_reinit_info = alice_group.reinit_info(reinit_proposal.clone()).unwrap();
+    // Alice no longer needs the predecessor
 
-    let mut alice_successor = MlsGroup::builder()
-        .with_group_id(new_group_id.clone())
-        .ciphersuite(new_ciphersuite)
+    let (mut alice_successor, bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
-        .build(alice_provider, &alice_signer, alice_credential)
+        .reinit(alice_reinit_info)
+        .build_reinit(
+            alice_provider,
+            &alice_signer,
+            alice_credential,
+            [bob_new_key_package.key_package().clone()],
+        )
         .expect("failed to build successor group");
 
-    let bundle = alice_successor
-        .commit_builder()
-        .reinit(alice_provider.rand(), &alice_group)
-        .unwrap()
-        .propose_adds([bob_new_key_package.key_package().clone()])
-        .load_psks(alice_provider.storage())
-        .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        )
-        .unwrap()
-        .stage_commit(alice_provider)
-        .unwrap();
     let successor_welcome = bundle
         .into_welcome()
         .expect("successor produced no welcome");
+
     alice_successor
         .merge_pending_commit(alice_provider)
         .unwrap();
 
     // === Bob joins the successor group from the reinit welcome ===
     let reinit_info = bob_group
-        .reinit_info(&reinit_proposal)
+        .reinit_info(reinit_proposal.clone())
         .expect("Bob's old group must be suspended");
+    // Bob no longer needs the predecessor
+
+    // Bob no longer needs the predecessor
+    let successor_join_config = MlsGroupJoinConfig::builder()
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build();
     let bob_successor = StagedWelcome::build_from_reinit(
         bob_provider,
         &successor_join_config,
