@@ -1,6 +1,6 @@
 //! Tests for group reinitialization (ReInit).
 //!
-//! A group can be reinitialized into a brand-new successor group with new
+//! A group can be reinitialized into a new successor group with new
 //! parameters (group id, protocol version, ciphersuite, extensions). Committing
 //! a ReInit proposal suspends the old group; the successor group is then seeded
 //! with a resumption PSK from the old group's final epoch.
@@ -240,12 +240,17 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
     let alice_reinit_info = alice_group.reinit_info(reinit_proposal.clone()).unwrap();
     // Alice no longer needs the predecessor
 
+    // As the successor is simply a new group, Alice can store it in the same provider.
+    // She can also create a new one, e.g. to switch to one that supports a
+    // new ciphersuite required by the reinit.
+    let alice_successor_provider = Provider::default();
+
     let (mut alice_successor, bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
         .reinit(alice_reinit_info)
         .build_reinit(
-            alice_provider,
+            &alice_successor_provider,
             &alice_signer,
             alice_credential,
             [bob_new_key_package.key_package().clone()],
@@ -257,7 +262,7 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
         .expect("successor produced no welcome");
 
     alice_successor
-        .merge_pending_commit(alice_provider)
+        .merge_pending_commit(&alice_successor_provider)
         .unwrap();
 
     // === Bob joins the successor group from the reinit welcome ===
@@ -265,14 +270,16 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
         .reinit_info(reinit_proposal.clone())
         .expect("Bob's old group must be suspended");
     // Bob no longer needs the predecessor
+    // Like Alice, he could use a new provider but doesn't need to.
+    // For this test, we use a new one to avoid accidentally leaking state.
+    let bob_successor_provider = &Provider::default();
 
-    // Bob no longer needs the predecessor
     let successor_join_config = MlsGroupJoinConfig::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
         .build();
     let bob_successor = StagedWelcome::build_from_reinit(
-        bob_provider,
+        bob_successor_provider,
         &successor_join_config,
         successor_welcome,
         reinit_info,
@@ -281,7 +288,7 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
     .with_ratchet_tree(alice_successor.export_ratchet_tree().into())
     .build()
     .expect("Bob could not join the successor group")
-    .into_group(bob_provider)
+    .into_group(bob_successor_provider)
     .expect("Error creating successor group from StagedWelcome");
 
     assert_eq!(alice_successor.ciphersuite(), new_ciphersuite);

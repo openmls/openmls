@@ -1,6 +1,6 @@
 # Reinitializing a group
 
-Reinitialization (ReInit) replaces a group with a brand-new *successor* group
+Reinitialization (ReInit) replaces a group with a new *successor* group
 that carries over the same members but may use different parameters — a new
 group id, protocol version, ciphersuite, or group context extensions. This is
 the mechanism to use when, for example, a group needs to migrate to a stronger
@@ -77,10 +77,14 @@ the Welcome references the old group and its final epoch; otherwise it fails wit
 `WelcomeError::ReInitPredecessorMismatch`. The remaining checks run when `build`
 is called on the returned `JoinBuilder`: the successor's protocol version,
 ciphersuite, group id and extensions must match the ReInit proposal, the
-successor must be at epoch 1, and its members' credentials must be identical to
-the old group's. The membership check is on by default and can be disabled with
-`.check_members(false)`. In that case, the application must ensure that the new
+successor must be at epoch 1.
+
+New group's members must be identical to the old group's. A simple membership check by
+equal credential is on by default and can be disabled with
+`JoinBuilder::check_members(false)`. In that case, the application **must** ensure that the new
 member credentials match the old ones captured in `ReInitInfo::member_credentials()`.
+This is the case when the application uses credentials that don't allow checking
+equivalence of members by checking exact equality of credentials.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:reinit_join}}

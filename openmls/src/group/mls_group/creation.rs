@@ -1966,7 +1966,7 @@ pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
     /// Triggers the receiver checks in [`Self::build`].
     reinit: Option<ReInitInfo>,
     /// Whether to check the new group's members against the parent or old
-    /// group. Only relevant when [`Self::branch`] or [`Self::reinit`] is set.
+    /// group by credential. Only relevant when [`Self::branch`] or [`Self::reinit`] is set.
     /// Defaults to `true`.
     check_members: bool,
 }
@@ -2001,8 +2001,12 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     }
 
     /// When joining a subgroup branch or a reinitialized group, controls
-    /// whether [`Self::build`] checks the new group's members. Defaults to
-    /// `true`.
+    /// whether [`Self::build`] checks the new group's members by credential
+    /// equality. Defaults to `true`.
+    /// **Note**: This is a shortcut for members that are identical if and only if
+    /// credentials are identical.
+    /// For more complex member equivalence conditions, the application must disable
+    /// this and perform the equivalence check itself.
     ///
     /// For a subgroup branch, every subgroup member must also be a member of
     /// the parent group (receiver check (c)). For a reinit, the new group's
@@ -2089,6 +2093,8 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
         // Receiver check (c): every LeafNode in the subgroup must
         // match a LeafNode in the parent group. For a reinit, the members
         // must be identical to the old group's.
+        // Member equivalence is an application responsibility.
+        // This is a shortcut for a simple case, matching by credential.
         if self.check_members {
             if let Some(branch_info) = &self.branch {
                 for member in staged_welcome.members() {

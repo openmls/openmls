@@ -40,7 +40,7 @@ pub struct ReInitInfo {
 
 impl ReInitInfo {
     /// The committed reinit proposal.
-    pub(crate) fn proposal(&self) -> &ReInitProposal {
+    pub fn proposal(&self) -> &ReInitProposal {
         &self.proposal
     }
 
