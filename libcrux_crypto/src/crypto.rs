@@ -60,33 +60,6 @@ impl CryptoProvider {
     }
 }
 
-/// A fallible rng over the provider's HMAC-DRBG, for libcrux APIs that take a
-/// [`rand::TryCryptoRng`]. Randomness failures surface as errors instead of
-/// panics.
-struct DrbgRng<'a>(&'a CryptoProvider);
-
-impl rand::TryRng for DrbgRng<'_> {
-    type Error = CryptoError;
-
-    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
-        let mut buf = [0u8; 4];
-        self.try_fill_bytes(&mut buf)?;
-        Ok(u32::from_le_bytes(buf))
-    }
-
-    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
-        let mut buf = [0u8; 8];
-        self.try_fill_bytes(&mut buf)?;
-        Ok(u64::from_le_bytes(buf))
-    }
-
-    fn try_fill_bytes(&mut self, dst: &mut [u8]) -> Result<(), Self::Error> {
-        self.0.fill_random(dst)
-    }
-}
-
-impl rand::TryCryptoRng for DrbgRng<'_> {}
-
 impl OpenMlsCrypto for CryptoProvider {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
         match ciphersuite.aead_algorithm() {
@@ -315,25 +288,20 @@ impl OpenMlsCrypto for CryptoProvider {
                 Ok((sk.to_vec(), pk.to_vec()))
             }
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                // Like the Ed25519 arm, sample through the DRBG so a reseed
-                // failure is propagated as an error. Rejection-sample until the
-                // scalar is a valid P-256 private key.
-                const LIMIT: usize = 100;
-                let mut candidate = [0u8; 32];
-                for _ in 0..LIMIT {
-                    self.fill_random(&mut candidate)?;
-                    if let Ok(sk) = libcrux_ecdsa::p256::PrivateKey::try_from(&candidate[..]) {
-                        // Same wire format as the RustCrypto provider: the
-                        // private key is the raw 32-byte scalar, the public key
-                        // the uncompressed SEC1 point.
-                        let pk = sk.public_key().map_err(|_| CryptoError::SigningError)?;
-                        let mut pk_sec1 = Vec::with_capacity(65);
-                        pk_sec1.push(0x04);
-                        pk_sec1.extend_from_slice(pk.as_ref());
-                        return Ok((candidate.to_vec(), pk_sec1));
-                    }
-                }
-                Err(CryptoError::SigningError)
+                let mut drbg = self
+                    .rng
+                    .lock()
+                    .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let sk = libcrux_ecdsa::p256::PrivateKey::random(&mut *drbg)
+                    .map_err(|_| CryptoError::SigningError)?;
+                // Same wire format as the RustCrypto provider: the private key
+                // is the raw 32-byte scalar, the public key the uncompressed
+                // SEC1 point.
+                let pk = sk.public_key().map_err(|_| CryptoError::SigningError)?;
+                let mut pk_sec1 = Vec::with_capacity(65);
+                pk_sec1.push(0x04);
+                pk_sec1.extend_from_slice(pk.as_ref());
+                Ok((AsRef::<[u8; 32]>::as_ref(&sk).to_vec(), pk_sec1))
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
@@ -400,12 +368,16 @@ impl OpenMlsCrypto for CryptoProvider {
                 let sk = libcrux_ecdsa::p256::PrivateKey::try_from(key)
                     .map_err(|_| CryptoError::InvalidLength)?;
                 // The ECDSA nonce is rejection-sampled inside libcrux through
-                // the provider DRBG; a reseed failure surfaces as an error.
+                // the provider DRBG; a randomness failure surfaces as an error.
+                let mut drbg = self
+                    .rng
+                    .lock()
+                    .map_err(|_| CryptoError::CryptoLibraryError)?;
                 let signature = libcrux_ecdsa::p256::rand::sign(
                     libcrux_ecdsa::DigestAlgorithm::Sha256,
                     data,
                     &sk,
-                    &mut DrbgRng(self),
+                    &mut *drbg,
                 )
                 .map_err(|_| CryptoError::SigningError)?;
                 Ok(signature.to_der().as_bytes().to_vec())
