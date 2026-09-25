@@ -15,7 +15,9 @@ use openmls_sqlx_storage::SqliteStorageProvider;
 use sqlx::{Connection, SqliteConnection};
 
 let mut connection = SqliteConnection::connect("sqlite://storage.db").await?;
-SqliteStorageProvider::<JsonCodec>::new(&mut connection).run_migrations()?;
+SqliteStorageProvider::<JsonCodec>::new(&mut connection)
+    .run_migrations()
+    .await?;
 
 let storage = SqliteStorageProvider::<JsonCodec>::new(&mut connection);
 // pass `storage` to OpenMLS via a `Provider`
@@ -38,7 +40,9 @@ let mut transaction = connection.begin().await?;
 // the transaction directly again.
 {
     let storage = SqliteStorageProvider::<JsonCodec>::new(&mut transaction);
-    storage.write_signature_key_pair(&public_key, &key_pair)?;
+    storage
+        .write_signature_key_pair(&public_key, &key_pair)
+        .await?;
 }
 
 // An application write that shares the same transaction.
@@ -71,7 +75,11 @@ cargo run --example transaction
 
 ## Runtime
 
-The provider exposes a synchronous API and drives the underlying async `sqlx`
-calls internally with `tokio::task::block_in_place`. It therefore has to run on
-a multi-threaded tokio runtime (`#[tokio::main(flavor = "multi_thread")]` or
-`#[tokio::test(flavor = "multi_thread")]`).
+The provider exposes an async API and needs the async mode of `openmls_traits`.
+Enable the `async` feature of `openmls` or `openmls_traits`, and make sure no
+crate in the build enables `sync`. Otherwise the crate fails to compile with a
+message that names the problem.
+
+Calls on one provider are serialized by an async mutex around the connection,
+so concurrent OpenMLS operations that share a provider wait for each other. The
+futures are `Send` and can run on a multi-threaded runtime.

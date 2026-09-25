@@ -3,7 +3,12 @@
 //! implements the [`StorageProvider`] trait. The trait mostly defines getters and setters, but
 //! also a few methods that append to lists (which behave similar to setters).
 
+#[cfg(all(feature = "async", not(feature = "sync")))]
+use core::future::Future;
+
 use serde::{de::DeserializeOwned, Serialize};
+
+use crate::{MaybeSend, MaybeSync};
 /// The storage version used by OpenMLS
 pub const CURRENT_VERSION: u16 = 1;
 
@@ -26,9 +31,16 @@ pub const V_TEST: u16 = u16::MAX;
 /// loading a group.
 ///
 /// More details can be taken from the comments on the respective method.
-pub trait StorageProvider<const VERSION: u16> {
+///
+/// In async mode (see the [crate docs](crate)) the methods return `Send`
+/// futures. An implementation can write them as `async fn` and mark the `impl`
+/// block with `#[openmls_traits::maybe_async(AFIT)]`, which removes `async`
+/// and `.await` again in sync mode. In async mode the provider must be `Sync`
+/// and its error type must be `Send`.
+#[crate::maybe_async(AFIT)]
+pub trait StorageProvider<const VERSION: u16>: MaybeSync {
     /// An opaque error returned by all methods on this trait.
-    type Error: core::fmt::Debug + std::error::Error;
+    type Error: core::fmt::Debug + std::error::Error + MaybeSend;
 
     /// Get the version of this provider.
     fn version() -> u16 {
@@ -47,7 +59,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         config: &MlsGroupJoinConfig,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Adds an own leaf node for the group with given id to storage
     fn append_own_leaf_node<
@@ -57,7 +69,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         leaf_node: &LeafNode,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Enqueue a proposal.
     ///
@@ -72,14 +84,14 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
         proposal: &QueuedProposal,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the TreeSync tree.
     fn write_tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
         group_id: &GroupId,
         tree: &TreeSync,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the interim transcript hash.
     fn write_interim_transcript_hash<
@@ -89,7 +101,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         interim_transcript_hash: &InterimTranscriptHash,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the group context.
     fn write_context<
@@ -99,7 +111,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         group_context: &GroupContext,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the confirmation tag.
     fn write_confirmation_tag<
@@ -109,7 +121,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         confirmation_tag: &ConfirmationTag,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the MlsGroupState for group with given id.
     fn write_group_state<
@@ -119,7 +131,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         group_state: &GroupState,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the MessageSecretsStore for the group with the given id.
     fn write_message_secrets<
@@ -129,7 +141,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         message_secrets: &MessageSecrets,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the ResumptionPskStore for the group with the given id.
     fn write_resumption_psk_store<
@@ -139,7 +151,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         resumption_psk_store: &ResumptionPskStore,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the own leaf index inside the group for the group with the given id.
     fn write_own_leaf_index<
@@ -149,7 +161,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         own_leaf_index: &LeafNodeIndex,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Writes the GroupEpochSecrets for the group with the given id.
     fn write_group_epoch_secrets<
@@ -159,7 +171,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         group_epoch_secrets: &GroupEpochSecrets,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the ApplicationExportTree for the group with the given id.
     #[cfg(feature = "extensions-draft")]
@@ -170,7 +182,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         application_export_tree: &ApplicationExportTree,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the virtual clients per-derivation-epoch state (the AEAD key
     /// plus the registering client's emulation-group leaf index) for the
@@ -183,7 +195,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         epoch_id: &EpochId,
         vc_derivation_epoch_state: &VcDerivationEpochState,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store the binding of one epoch of a higher-level group to the
     /// derivation epoch whose virtual-client LeafNode was active at that
@@ -205,7 +217,7 @@ pub trait StorageProvider<const VERSION: u16> {
         group_epoch: &EpochKey,
         epoch_id: &EpochId,
         binding: &VcEmulationBinding,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store one entry of the log of derivation epochs an emulation group
     /// registered, keyed by `(group_id, epoch_id)`.
@@ -219,7 +231,7 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
         epoch_id: &EpochId,
         entry: &VcDerivationEpochLogEntry,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Write the per-derivation-epoch Virtual Client Operation Secret Tree
     /// (the lazily derived node secrets plus the per-leaf operation
@@ -235,7 +247,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         epoch_id: &EpochId,
         vc_operation_tree: &VcOperationTree,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store the advanced operation secret tree for `epoch_id` together with
     /// the retained virtual clients KeyPackage material for every reference in
@@ -265,7 +277,7 @@ pub trait StorageProvider<const VERSION: u16> {
         epoch_id: &EpochId,
         operation_tree: &VcOperationTree,
         materials: &[(KeyPackageRef, RetainedKeyPackageMaterial)],
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     //
     //    ---   setters/writers/enqueuers for crypto objects  ---
@@ -282,7 +294,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         public_key: &SignaturePublicKey,
         signature_key_pair: &SignatureKeyPair,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store an HPKE encryption key pair.
     /// This includes the private and public key
@@ -297,7 +309,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         public_key: &EncryptionKey,
         key_pair: &HpkeKeyPair,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
@@ -311,7 +323,7 @@ pub trait StorageProvider<const VERSION: u16> {
         epoch: &EpochKey,
         leaf_index: u32,
         key_pairs: &[HpkeKeyPair],
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store key packages.
     ///
@@ -329,7 +341,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         hash_ref: &HashReference,
         key_package: &KeyPackage,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
     // ANCHOR_END: write_key_package
 
     /// Store a PSK.
@@ -342,7 +354,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         psk_id: &PskId,
         psk: &PskBundle,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     //
     //    ---   getters for group state  ---
@@ -355,14 +367,14 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<MlsGroupJoinConfig>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<MlsGroupJoinConfig>, Self::Error>> + Send;
 
     // ANCHOR: own_leaf_nodes
     /// Returns the own leaf nodes for the group with given id
     fn own_leaf_nodes<GroupId: traits::GroupId<VERSION>, LeafNode: traits::LeafNode<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<LeafNode>, Self::Error>;
+    ) -> impl Future<Output = Result<Vec<LeafNode>, Self::Error>> + Send;
     // ANCHOR_END: own_leaf_nodes
 
     /// Returns references of all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
@@ -372,7 +384,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<ProposalRef>, Self::Error>;
+    ) -> impl Future<Output = Result<Vec<ProposalRef>, Self::Error>> + Send;
 
     /// Returns all queued proposals for the group with group id `group_id`, or an empty vector of none are stored.
     fn queued_proposals<
@@ -382,13 +394,13 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error>;
+    ) -> impl Future<Output = Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error>> + Send;
 
     /// Returns the TreeSync tree for the group with group id `group_id`.
     fn tree<GroupId: traits::GroupId<VERSION>, TreeSync: traits::TreeSync<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<TreeSync>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<TreeSync>, Self::Error>> + Send;
 
     /// Returns the group context for the group with group id `group_id`.
     fn group_context<
@@ -397,7 +409,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupContext>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<GroupContext>, Self::Error>> + Send;
 
     /// Returns the interim transcript hash for the group with group id `group_id`.
     fn interim_transcript_hash<
@@ -406,7 +418,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<InterimTranscriptHash>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<InterimTranscriptHash>, Self::Error>> + Send;
 
     /// Returns the confirmation tag for the group with group id `group_id`.
     fn confirmation_tag<
@@ -415,13 +427,13 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ConfirmationTag>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<ConfirmationTag>, Self::Error>> + Send;
 
     /// Returns the group state for the group with group id `group_id`.
     fn group_state<GroupState: traits::GroupState<VERSION>, GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupState>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<GroupState>, Self::Error>> + Send;
 
     /// Returns the MessageSecretsStore for the group with the given id.
     fn message_secrets<
@@ -430,7 +442,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<MessageSecrets>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<MessageSecrets>, Self::Error>> + Send;
 
     /// Returns the ResumptionPskStore for the group with the given id.
     ///
@@ -442,7 +454,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ResumptionPskStore>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<ResumptionPskStore>, Self::Error>> + Send;
 
     /// Returns the own leaf index inside the group for the group with the given id.
     fn own_leaf_index<
@@ -451,7 +463,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<LeafNodeIndex>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<LeafNodeIndex>, Self::Error>> + Send;
 
     /// Returns the GroupEpochSecrets for the group with the given id.
     fn group_epoch_secrets<
@@ -460,7 +472,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<GroupEpochSecrets>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<GroupEpochSecrets>, Self::Error>> + Send;
 
     //
     //    ---   getter for crypto objects  ---
@@ -476,7 +488,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         public_key: &SignaturePublicKey,
-    ) -> Result<Option<SignatureKeyPair>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<SignatureKeyPair>, Self::Error>> + Send;
 
     /// Get an HPKE encryption key pair based on the public key.
     ///
@@ -489,7 +501,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<Option<HpkeKeyPair>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<HpkeKeyPair>, Self::Error>> + Send;
 
     /// Get a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
@@ -502,7 +514,7 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<Vec<HpkeKeyPair>, Self::Error>;
+    ) -> impl Future<Output = Result<Vec<HpkeKeyPair>, Self::Error>> + Send;
 
     /// Get a key package based on its hash reference.
     fn key_package<
@@ -511,13 +523,13 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<Option<KeyPackage>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<KeyPackage>, Self::Error>> + Send;
 
     /// Get a PSK based on the PSK identifier.
     fn psk<PskBundle: traits::PskBundle<VERSION>, PskId: traits::PskId<VERSION>>(
         &self,
         psk_id: &PskId,
-    ) -> Result<Option<PskBundle>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<PskBundle>, Self::Error>> + Send;
 
     #[cfg(feature = "extensions-draft")]
     /// Get the application export tree for the group with the given id.
@@ -527,7 +539,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Option<ApplicationExportTree>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<ApplicationExportTree>, Self::Error>> + Send;
 
     #[cfg(feature = "virtual-clients-draft")]
     /// Get the virtual clients per-derivation-epoch state for the given
@@ -539,7 +551,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<Option<VcDerivationEpochState>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<VcDerivationEpochState>, Self::Error>> + Send;
 
     /// Load the emulation binding stored for `(group_id, group_epoch)`, if
     /// any (see [`Self::write_vc_emulation_binding`]). This is the hot lookup
@@ -554,7 +566,7 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         group_epoch: &EpochKey,
-    ) -> Result<Option<VcEmulationBinding>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<VcEmulationBinding>, Self::Error>> + Send;
 
     /// Load all emulation bindings of a higher-level group, in unspecified
     /// order (see [`Self::write_vc_emulation_binding`]). Returns an empty
@@ -566,7 +578,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<VcEmulationBinding>, Self::Error>;
+    ) -> impl Future<Output = Result<Vec<VcEmulationBinding>, Self::Error>> + Send;
 
     /// Load all derivation-epoch log entries of the given emulation group, in
     /// unspecified order (see [`Self::write_vc_derivation_epoch_log_entry`]).
@@ -579,7 +591,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<Vec<VcDerivationEpochLogEntry>, Self::Error>;
+    ) -> impl Future<Output = Result<Vec<VcDerivationEpochLogEntry>, Self::Error>> + Send;
 
     /// Get the per-derivation-epoch Virtual Client Operation Secret Tree for
     /// the given epoch (the lazily derived node secrets plus the per-leaf
@@ -591,7 +603,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         epoch_id: &EpochId,
-    ) -> Result<Option<VcOperationTree>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<VcOperationTree>, Self::Error>> + Send;
 
     /// Get the retained virtual clients KeyPackage material for the given
     /// KeyPackage reference. Returns `None` if no material was stored for that
@@ -603,7 +615,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error>;
+    ) -> impl Future<Output = Result<Option<RetainedKeyPackageMaterial>, Self::Error>> + Send;
 
     //
     //     ---    deleters for group state    ---
@@ -617,73 +629,73 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes own leaf nodes for the given id from storage
     fn delete_own_leaf_nodes<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the MlsGroupJoinConfig for the given id from storage
     fn delete_group_config<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the tree from storage
     fn delete_tree<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the confirmation tag from storage
     fn delete_confirmation_tag<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the MlsGroupState for group with given id.
     fn delete_group_state<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the group context for the group with given id
     fn delete_context<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the interim transcript hash for the group with given id
     fn delete_interim_transcript_hash<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the MessageSecretsStore for the group with the given id.
     fn delete_message_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the ResumptionPskStore for the group with the given id.
     fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the own leaf index inside the group for the group with the given id.
     fn delete_own_leaf_index<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Deletes the GroupEpochSecrets for the group with the given id.
     fn delete_group_epoch_secrets<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Clear the proposal queue for the group with the given id.
     fn clear_proposal_queue<
@@ -692,7 +704,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     //
     //    ---   deleters for crypto objects   ---
@@ -705,7 +717,7 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_signature_key_pair<SignaturePublicKey: traits::SignaturePublicKey<VERSION>>(
         &self,
         public_key: &SignaturePublicKey,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete an encryption key pair for a public key.
     ///
@@ -715,7 +727,7 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<VERSION>>(
         &self,
         public_key: &EncryptionKey,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete a list of HPKE encryption key pairs for a given epoch.
     /// This includes the private and public keys.
@@ -727,7 +739,7 @@ pub trait StorageProvider<const VERSION: u16> {
         group_id: &GroupId,
         epoch: &EpochKey,
         leaf_index: u32,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete a key package based on the hash reference.
     ///
@@ -740,13 +752,13 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_key_package<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete a PSK based on an identifier.
     fn delete_psk<PskKey: traits::PskId<VERSION>>(
         &self,
         psk_id: &PskKey,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete the application export tree for the group with the given id.
     #[cfg(feature = "extensions-draft")]
@@ -756,7 +768,7 @@ pub trait StorageProvider<const VERSION: u16> {
     >(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete the per-epoch state and operation tree of every derivation
     /// epoch that nothing references anymore, and return the ids of the
@@ -778,7 +790,7 @@ pub trait StorageProvider<const VERSION: u16> {
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_unreferenced_vc_derivation_epoch_states<EpochId: traits::VcEpochId<VERSION>>(
         &self,
-    ) -> Result<Vec<EpochId>, Self::Error>;
+    ) -> impl Future<Output = Result<Vec<EpochId>, Self::Error>> + Send;
 
     /// Remove the emulation bindings the given group stored under the given
     /// group epochs. Missing rows are skipped.
@@ -790,14 +802,14 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         group_epochs: &[EpochKey],
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Remove all emulation bindings of the given group.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_all_vc_emulation_bindings<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Remove the derivation-epoch log entries the given group stored for the
     /// given derivation epochs. Missing rows are skipped.
@@ -809,14 +821,14 @@ pub trait StorageProvider<const VERSION: u16> {
         &self,
         group_id: &GroupId,
         epoch_ids: &[EpochId],
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Remove all derivation-epoch log entries of the given group.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_vc_derivation_epoch_log<GroupId: traits::GroupId<VERSION>>(
         &self,
         group_id: &GroupId,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Delete the retained virtual clients KeyPackage material stored for the
     /// given KeyPackage reference. Called from [`Self::delete_key_package`] so
@@ -827,7 +839,7 @@ pub trait StorageProvider<const VERSION: u16> {
     fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,
         hash_ref: &KeyPackageRef,
-    ) -> Result<(), Self::Error>;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }
 
 // base traits for keys and values
@@ -836,12 +848,12 @@ pub trait StorageProvider<const VERSION: u16> {
 /// Key is a trait implemented by all types that serve as a key (in the database sense) to in the
 /// storage. For example, a GroupId is a key to the stored entities for the group with that id.
 /// The point of a key is not to be stored, it's to address something that is stored.
-pub trait Key<const VERSION: u16>: Serialize {}
+pub trait Key<const VERSION: u16>: Serialize + MaybeSync {}
 // ANCHOR_END: key_trait
 
 // ANCHOR: entity_trait
 /// Entity is a trait implemented by the values being stored.
-pub trait Entity<const VERSION: u16>: Serialize + DeserializeOwned {}
+pub trait Entity<const VERSION: u16>: Serialize + DeserializeOwned + MaybeSync {}
 // ANCHOR_END: entity_trait
 
 impl Entity<CURRENT_VERSION> for bool {}

@@ -45,14 +45,16 @@ impl MlsGroup {
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
     #[cfg(not(feature = "virtual-clients-draft"))]
-    pub fn create_message<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {
-        let (_, output) =
-            self.create_message_internal::<_, CreateMessageError>(provider, signer, message)?;
+        let (_, output) = self
+            .create_message_internal::<_, CreateMessageError>(provider, signer, message)
+            .await?;
         Ok(output)
     }
 
@@ -64,20 +66,24 @@ impl MlsGroup {
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
     #[cfg(all(feature = "virtual-clients-draft", any(feature = "test-utils", test)))]
-    pub fn create_message<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
-        let (generation, _generation_id, output) =
-            self.create_message_internal(provider, signer, message)?;
-        self.confirm_application_message(provider.storage(), self.epoch(), generation)?;
+        let (generation, _generation_id, output) = self
+            .create_message_internal(provider, signer, message)
+            .await?;
+        self.confirm_application_message(provider.storage(), self.epoch(), generation)
+            .await?;
         Ok(output)
     }
 
     #[cfg(not(feature = "virtual-clients-draft"))]
-    fn create_message_internal<Provider: OpenMlsProvider, E>(
+    #[openmls_traits::maybe_async]
+    async fn create_message_internal<Provider: OpenMlsProvider, E>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -106,6 +112,7 @@ impl MlsGroup {
             private_message,
         } = self
             .encrypt(authenticated_content, provider)
+            .await
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 
@@ -115,7 +122,8 @@ impl MlsGroup {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn create_message_internal<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    async fn create_message_internal<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -147,7 +155,7 @@ impl MlsGroup {
             generation,
             private_message,
             generation_id,
-        } = self.encrypt(authenticated_content, provider)?;
+        } = self.encrypt(authenticated_content, provider).await?;
 
         let output = MlsMessageOut::from_private_message(private_message, self.version());
         self.reset_aad();
@@ -176,14 +184,16 @@ impl MlsGroup {
     ///
     /// [`GenerationId`]: crate::components::vc_derivation_info::GenerationId
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn create_unconfirmed_message<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn create_unconfirmed_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<UnconfirmedMessage, CreateMessageError<Provider::StorageError>> {
-        let (generation, generation_id, message) =
-            self.create_message_internal(provider, signer, message)?;
+        let (generation, generation_id, message) = self
+            .create_message_internal(provider, signer, message)
+            .await?;
         Ok(UnconfirmedMessage {
             message,
             epoch: self.epoch(),
@@ -196,7 +206,8 @@ impl MlsGroup {
     /// (`epoch`, `generation`). A confirm call deletes exactly the secret its
     /// corresponding create call retained, or nothing.
     #[cfg(feature = "virtual-clients-draft")]
-    fn confirm_own_secret<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    async fn confirm_own_secret<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         epoch: GroupEpoch,
@@ -224,6 +235,7 @@ impl MlsGroup {
             .delete_own_secret_for_generation(secret_type, generation)?;
         storage
             .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await
             .map_err(ConfirmMessageError::StorageError)?;
         Ok(())
     }
@@ -245,13 +257,15 @@ impl MlsGroup {
     /// collision), the secret must not be confirmed, since it is what decrypts
     /// the sibling's winning message at the same generation.
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn confirm_application_message<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn confirm_application_message<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         epoch: GroupEpoch,
         generation: u32,
     ) -> Result<(), ConfirmMessageError<Storage::Error>> {
         self.confirm_own_secret(storage, epoch, generation, SecretType::ApplicationSecret)
+            .await
     }
 
     /// Deletes the retained encryption secret of the handshake message (proposal
@@ -273,12 +287,14 @@ impl MlsGroup {
     /// collision), the secret must not be confirmed, since it is what decrypts
     /// the sibling's winning message at the same generation.
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn confirm_handshake_message<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn confirm_handshake_message<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         epoch: GroupEpoch,
         generation: u32,
     ) -> Result<(), ConfirmMessageError<Storage::Error>> {
         self.confirm_own_secret(storage, epoch, generation, SecretType::HandshakeSecret)
+            .await
     }
 }

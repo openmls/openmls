@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `SignatureKeyPair::store`, `SignatureKeyPair::read` and `SignatureKeyPair::delete` are `async` when `openmls_traits` is in async mode.
 - [#2172](https://github.com/openmls/openmls/pull/2172): `SignatureKeyPair::generate` and `SignatureKeyPair::signer` (returning a `ProviderSigner`) generate keys and sign through an `OpenMlsCrypto` provider instead of RustCrypto, so a provider such as libcrux can be used for all signature operations. Key encodings are unchanged, so provider-generated keys and RustCrypto-generated keys are interchangeable.
 
 ## 0.6.0 (2026-08-25)

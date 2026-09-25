@@ -333,7 +333,8 @@ impl MlsGroup {
     }
 
     /// Sets the configuration.
-    pub fn set_configuration<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn set_configuration<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         mls_group_config: &MlsGroupJoinConfig,
@@ -345,17 +346,21 @@ impl MlsGroup {
             != mls_group_config.vc_derivation_epoch_retention_policy();
 
         self.mls_group_config = mls_group_config.clone();
-        storage.write_mls_join_config(self.group_id(), mls_group_config)?;
+        storage
+            .write_mls_join_config(self.group_id(), mls_group_config)
+            .await?;
 
         if policy_changed {
             // Resize the store to adhere to the new policy.
             self.resize_message_secrets_store(mls_group_config.past_epoch_deletion_policy());
-            storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+            storage
+                .write_message_secrets(self.group_id(), &self.message_secrets_store)
+                .await?;
         }
 
         #[cfg(feature = "virtual-clients-draft")]
         if retention_changed {
-            self.apply_vc_derivation_epoch_retention(storage)?;
+            self.apply_vc_derivation_epoch_retention(storage).await?;
         }
 
         Ok(())
@@ -480,7 +485,8 @@ impl MlsGroup {
     /// the pending commit will not be used in the group. In particular, if a
     /// pending commit is later accepted by the group, this client will lack the
     /// key material to encrypt or decrypt group messages.
-    pub fn clear_pending_commit<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn clear_pending_commit<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
@@ -488,7 +494,9 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(ref pending_commit_state) => {
                 if let PendingCommitState::Member(_) = **pending_commit_state {
                     self.group_state = MlsGroupState::Operational;
-                    storage.write_group_state(self.group_id(), &self.group_state)
+                    storage
+                        .write_group_state(self.group_id(), &self.group_state)
+                        .await
                 } else {
                     Ok(())
                 }
@@ -503,7 +511,8 @@ impl MlsGroup {
     /// a Commit message that references those proposals. Only use this
     /// function as a last resort, e.g. when a call to
     /// `MlsGroup::commit_to_pending_proposals` fails.
-    pub fn clear_pending_proposals<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn clear_pending_proposals<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
@@ -513,7 +522,9 @@ impl MlsGroup {
             self.proposal_store_mut().empty();
 
             // Clear proposals in storage
-            storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+            storage
+                .clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())
+                .await?;
         }
 
         Ok(())
@@ -535,26 +546,28 @@ impl MlsGroup {
     // === Storage Methods ===
 
     /// Loads the state of the group with given id from persisted state.
-    pub fn load<Storage: crate::storage::StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<MlsGroup>, Storage::Error> {
-        let public_group = PublicGroup::load(storage, group_id)?;
-        let group_epoch_secrets = storage.group_epoch_secrets(group_id)?;
-        let own_leaf_index = storage.own_leaf_index(group_id)?;
-        let message_secrets_store = storage.message_secrets(group_id)?;
-        let resumption_psk_store = storage.resumption_psk_store(group_id)?;
-        let mls_group_config = storage.mls_group_join_config(group_id)?;
-        let own_leaf_nodes = storage.own_leaf_nodes(group_id)?;
-        let group_state = storage.group_state(group_id)?;
+        let public_group = PublicGroup::load(storage, group_id).await?;
+        let group_epoch_secrets = storage.group_epoch_secrets(group_id).await?;
+        let own_leaf_index = storage.own_leaf_index(group_id).await?;
+        let message_secrets_store = storage.message_secrets(group_id).await?;
+        let resumption_psk_store = storage.resumption_psk_store(group_id).await?;
+        let mls_group_config = storage.mls_group_join_config(group_id).await?;
+        let own_leaf_nodes = storage.own_leaf_nodes(group_id).await?;
+        let group_state = storage.group_state(group_id).await?;
         #[cfg(feature = "extensions-draft")]
-        let application_export_tree = storage.application_export_tree(group_id)?;
+        let application_export_tree = storage.application_export_tree(group_id).await?;
         // A group has a derivation-epoch registration record for exactly as long
         // as it is an emulation group. The record is written by the initial
         // registration at creation or Welcome join and removed by `delete`.
         #[cfg(feature = "virtual-clients-draft")]
         let emulation_group =
-            crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, group_id)?
+            crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, group_id)
+                .await?
                 .is_some();
 
         let build = || -> Option<Self> {
@@ -583,34 +596,44 @@ impl MlsGroup {
     /// Remove the persisted state of this group from storage. Note that
     /// signature key material is not managed by OpenMLS and has to be removed
     /// from the storage provider separately (if desired).
-    pub fn delete<Storage: crate::storage::StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn delete<Storage: crate::storage::StorageProvider>(
         &mut self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        PublicGroup::delete(storage, self.group_id())?;
-        storage.delete_own_leaf_index(self.group_id())?;
-        storage.delete_group_epoch_secrets(self.group_id())?;
-        storage.delete_message_secrets(self.group_id())?;
-        storage.delete_all_resumption_psk_secrets(self.group_id())?;
-        storage.delete_group_config(self.group_id())?;
-        storage.delete_own_leaf_nodes(self.group_id())?;
-        storage.delete_group_state(self.group_id())?;
-        storage.clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())?;
+        PublicGroup::delete(storage, self.group_id()).await?;
+        storage.delete_own_leaf_index(self.group_id()).await?;
+        storage.delete_group_epoch_secrets(self.group_id()).await?;
+        storage.delete_message_secrets(self.group_id()).await?;
+        storage
+            .delete_all_resumption_psk_secrets(self.group_id())
+            .await?;
+        storage.delete_group_config(self.group_id()).await?;
+        storage.delete_own_leaf_nodes(self.group_id()).await?;
+        storage.delete_group_state(self.group_id()).await?;
+        storage
+            .clear_proposal_queue::<GroupId, ProposalRef>(self.group_id())
+            .await?;
 
         #[cfg(feature = "extensions-draft")]
-        storage.delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
+        storage
+            .delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())
+            .await?;
 
         // The derivation-epoch state itself is keyed on the epoch rather than on
         // this group, so it only goes if this group held the last reference.
         #[cfg(feature = "virtual-clients-draft")]
-        self.drop_all_vc_derivation_epoch_references(storage)?;
+        self.drop_all_vc_derivation_epoch_references(storage)
+            .await?;
 
         self.proposal_store_mut().empty();
-        storage.delete_encryption_epoch_key_pairs(
-            self.group_id(),
-            &self.epoch(),
-            self.own_leaf_index().u32(),
-        )?;
+        storage
+            .delete_encryption_epoch_key_pairs(
+                self.group_id(),
+                &self.epoch(),
+                self.own_leaf_index().u32(),
+            )
+            .await?;
 
         Ok(())
     }
@@ -669,7 +692,8 @@ impl MlsGroup {
     }
 
     /// Set the past epoch secret deletion policy for the group.
-    pub fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         policy: PastEpochDeletionPolicy,
@@ -683,12 +707,14 @@ impl MlsGroup {
         // persist the join config
         provider
             .storage()
-            .write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)
+            .await?;
 
         // update the message secrets store in storage
         provider
             .storage()
-            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await?;
 
         Ok(())
     }
@@ -702,7 +728,8 @@ impl MlsGroup {
     /// Set the derivation-epoch retention policy for the group and apply it
     /// right away. See [`VcDerivationEpochRetentionPolicy`].
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn set_vc_derivation_epoch_retention_policy<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn set_vc_derivation_epoch_retention_policy<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         policy: VcDerivationEpochRetentionPolicy,
@@ -710,8 +737,10 @@ impl MlsGroup {
         self.mls_group_config.vc_derivation_epoch_retention_policy = policy;
         provider
             .storage()
-            .write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)
+            .await?;
         self.apply_vc_derivation_epoch_retention(provider.storage())
+            .await
     }
 
     /// Get the message secrets. Either from the secrets store or from the group.
@@ -807,7 +836,8 @@ impl MlsGroup {
     ///
     /// [`VcDerivationEpochState`]: crate::components::vc_derivation_info::VcDerivationEpochState
     #[cfg(feature = "virtual-clients-draft")]
-    pub(crate) fn vc_derivation_state_at_epoch<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn vc_derivation_state_at_epoch<Storage: StorageProvider>(
         &self,
         storage: &Storage,
         epoch: GroupEpoch,
@@ -817,12 +847,14 @@ impl MlsGroup {
     > {
         let binding: Option<crate::components::vc_derivation_info::VcEmulationBinding> = storage
             .vc_emulation_binding(self.group_id(), &epoch)
+            .await
             .map_err(VcDerivationStateError::Storage)?;
         let Some(epoch_id) = binding.map(|binding| binding.into_epoch_id()) else {
             return Ok(None);
         };
         let state = storage
             .vc_derivation_epoch_state(&epoch_id)
+            .await
             .map_err(VcDerivationStateError::Storage)?
             .ok_or_else(|| {
                 log::error!("vc: group is bound to derivation epoch, but state is missing");
@@ -837,13 +869,15 @@ impl MlsGroup {
     ///
     /// [`EpochId`]: crate::components::vc_derivation_info::EpochId
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn vc_derivation_epoch_at<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn vc_derivation_epoch_at<Storage: StorageProvider>(
         &self,
         storage: &Storage,
         epoch: GroupEpoch,
     ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
-        let binding: Option<crate::components::vc_derivation_info::VcEmulationBinding> =
-            storage.vc_emulation_binding(self.group_id(), &epoch)?;
+        let binding: Option<crate::components::vc_derivation_info::VcEmulationBinding> = storage
+            .vc_emulation_binding(self.group_id(), &epoch)
+            .await?;
         Ok(binding.map(|binding| binding.into_epoch_id()))
     }
 
@@ -874,11 +908,13 @@ impl MlsGroup {
     ///
     /// [`EpochId`]: crate::components::vc_derivation_info::EpochId
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn newest_vc_derivation_epoch<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn newest_vc_derivation_epoch<Storage: StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<Option<crate::components::vc_derivation_info::EpochId>, Storage::Error> {
         crate::components::vc_derivation_info::newest_vc_derivation_epoch(storage, self.group_id())
+            .await
     }
 
     /// Delete the derivation epochs of this emulation group that `deletion`
@@ -888,7 +924,8 @@ impl MlsGroup {
     /// Performs several storage writes, so wrap the call in a storage
     /// transaction.
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn delete_vc_derivation_epochs<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn delete_vc_derivation_epochs<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         deletion: VcDerivationEpochDeletion,
@@ -896,7 +933,7 @@ impl MlsGroup {
         use crate::components::vc_derivation_info::VcDerivationEpochLog;
 
         let storage = provider.storage();
-        let mut log = VcDerivationEpochLog::load(storage, self.group_id())?;
+        let mut log = VcDerivationEpochLog::load(storage, self.group_id()).await?;
         if log.is_empty() {
             return Ok(VcDerivationEpochDeletionResult::default());
         }
@@ -913,19 +950,20 @@ impl MlsGroup {
         if let Some(max_epochs) = deletion.max_epochs {
             dropped.extend(log.shrink_to(max_epochs));
         }
-        self.release_vc_derivation_epochs(storage, dropped)
+        self.release_vc_derivation_epochs(storage, dropped).await
     }
 
     /// Shrink this group's derivation-epoch log to its retention policy and
     /// release the epochs that dropped out.
     #[cfg(feature = "virtual-clients-draft")]
-    fn apply_vc_derivation_epoch_retention<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    async fn apply_vc_derivation_epoch_retention<Storage: StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
         use crate::components::vc_derivation_info::VcDerivationEpochLog;
 
-        let mut log = VcDerivationEpochLog::load(storage, self.group_id())?;
+        let mut log = VcDerivationEpochLog::load(storage, self.group_id()).await?;
         let max_epochs = self
             .mls_group_config
             .vc_derivation_epoch_retention_policy()
@@ -935,7 +973,7 @@ impl MlsGroup {
         if dropped.is_empty() {
             return Ok(());
         }
-        self.release_vc_derivation_epochs(storage, dropped)?;
+        self.release_vc_derivation_epochs(storage, dropped).await?;
         Ok(())
     }
 
@@ -943,15 +981,20 @@ impl MlsGroup {
     /// reporting which of them were deleted and which were kept. Epochs whose
     /// state was already absent appear in neither list.
     #[cfg(feature = "virtual-clients-draft")]
-    fn release_vc_derivation_epochs<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    async fn release_vc_derivation_epochs<Storage: StorageProvider>(
         &self,
         storage: &Storage,
         dropped: Vec<crate::components::vc_derivation_info::EpochId>,
     ) -> Result<VcDerivationEpochDeletionResult, Storage::Error> {
         use crate::components::vc_derivation_info::{EpochId, VcDerivationEpochState};
 
-        storage.delete_vc_derivation_epoch_log_entries(self.group_id(), &dropped)?;
-        let swept: Vec<EpochId> = storage.delete_unreferenced_vc_derivation_epoch_states()?;
+        storage
+            .delete_vc_derivation_epoch_log_entries(self.group_id(), &dropped)
+            .await?;
+        let swept: Vec<EpochId> = storage
+            .delete_unreferenced_vc_derivation_epoch_states()
+            .await?;
         let mut result = VcDerivationEpochDeletionResult::default();
         for epoch_id in dropped {
             if swept.contains(&epoch_id) {
@@ -961,7 +1004,7 @@ impl MlsGroup {
             // The sweep reports only what it deleted, so an epoch it left
             // alone is either still referenced or was already gone.
             let state: Option<VcDerivationEpochState> =
-                storage.vc_derivation_epoch_state(&epoch_id)?;
+                storage.vc_derivation_epoch_state(&epoch_id).await?;
             if state.is_some() {
                 result.kept.push(epoch_id);
             }
@@ -973,20 +1016,28 @@ impl MlsGroup {
     /// emulation bindings and its own derivation-epoch log, then sweep the
     /// epochs that are now unreferenced.
     #[cfg(feature = "virtual-clients-draft")]
-    fn drop_all_vc_derivation_epoch_references<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    async fn drop_all_vc_derivation_epoch_references<Storage: StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
         use crate::components::vc_derivation_info::EpochId;
 
-        storage.delete_all_vc_emulation_bindings(self.group_id())?;
-        storage.delete_vc_derivation_epoch_log(self.group_id())?;
-        storage.delete_unreferenced_vc_derivation_epoch_states::<EpochId>()?;
+        storage
+            .delete_all_vc_emulation_bindings(self.group_id())
+            .await?;
+        storage
+            .delete_vc_derivation_epoch_log(self.group_id())
+            .await?;
+        storage
+            .delete_unreferenced_vc_derivation_epoch_states::<EpochId>()
+            .await?;
         Ok(())
     }
 
     // Encrypt an AuthenticatedContent into an PrivateMessage
-    pub(crate) fn encrypt<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn encrypt<Provider: OpenMlsProvider>(
         &mut self,
         public_message: AuthenticatedContent,
         provider: &Provider,
@@ -999,6 +1050,7 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")]
         let derivation_state = self
             .vc_derivation_state_at_epoch(provider.storage(), self.epoch())
+            .await
             .map_err(|e| match e {
                 VcDerivationStateError::Storage(e) => MessageEncryptionError::StorageError(e),
                 VcDerivationStateError::MissingDerivationEpochState => {
@@ -1053,6 +1105,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await
             .map_err(MessageEncryptionError::StorageError)?;
 
         Ok(msg)
@@ -1095,7 +1148,8 @@ impl MlsGroup {
     /// Delete all past epoch secrets.
     ///
     /// For more information on the arguments to this method, see [`PastEpochDeletion`].
-    pub fn delete_past_epoch_secrets<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn delete_past_epoch_secrets<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         policy: PastEpochDeletion,
@@ -1105,7 +1159,8 @@ impl MlsGroup {
         // update the message secrets store in storage
         provider
             .storage()
-            .write_message_secrets(self.group_id(), &self.message_secrets_store)?;
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await?;
 
         Ok(())
     }
@@ -1190,32 +1245,38 @@ impl MlsGroup {
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///
     /// Returns an error if access to the key store fails.
-    pub(super) fn store_epoch_keypairs<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(super) async fn store_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
         keypair_references: &[EncryptionKeyPair],
     ) -> Result<(), Storage::Error> {
-        store.write_encryption_epoch_key_pairs(
-            self.group_id(),
-            &self.context().epoch(),
-            self.own_leaf_index().u32(),
-            keypair_references,
-        )
+        store
+            .write_encryption_epoch_key_pairs(
+                self.group_id(),
+                &self.context().epoch(),
+                self.own_leaf_index().u32(),
+                keypair_references,
+            )
+            .await
     }
 
     /// Read the [`EncryptionKeyPair`]s of this group and its current
     /// [`GroupEpoch`] from the `provider`'s storage.
     ///
     /// Returns an error if the lookup in the [`StorageProvider`] fails.
-    pub(super) fn read_epoch_keypairs<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(super) async fn read_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Result<Vec<EncryptionKeyPair>, Storage::Error> {
-        store.encryption_epoch_key_pairs(
-            self.group_id(),
-            &self.context().epoch(),
-            self.own_leaf_index().u32(),
-        )
+        store
+            .encryption_epoch_key_pairs(
+                self.group_id(),
+                &self.context().epoch(),
+                self.own_leaf_index().u32(),
+            )
+            .await
     }
 
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
@@ -1223,19 +1284,23 @@ impl MlsGroup {
     ///
     /// Returns an error if access to the key store fails.
     #[cfg(not(feature = "virtual-clients-draft"))]
-    pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(super) async fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {
-        store.delete_encryption_epoch_key_pairs(
-            self.group_id(),
-            &GroupEpoch::from(self.context().epoch().as_u64() - 1),
-            self.own_leaf_index().u32(),
-        )
+        store
+            .delete_encryption_epoch_key_pairs(
+                self.group_id(),
+                &GroupEpoch::from(self.context().epoch().as_u64() - 1),
+                self.own_leaf_index().u32(),
+            )
+            .await
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    pub(super) fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(super) async fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
         previous_own_leaf_index: LeafNodeIndex,
@@ -1245,29 +1310,46 @@ impl MlsGroup {
         // keypairs. Previous-epoch keypairs are still stored under the leaf
         // index from that previous epoch, so the caller must pass that index
         // explicitly instead of having this helper read `self.own_leaf_index()`.
-        store.delete_encryption_epoch_key_pairs(
-            self.group_id(),
-            &GroupEpoch::from(self.context().epoch().as_u64() - 1),
-            previous_own_leaf_index.u32(),
-        )
+        store
+            .delete_encryption_epoch_key_pairs(
+                self.group_id(),
+                &GroupEpoch::from(self.context().epoch().as_u64() - 1),
+                previous_own_leaf_index.u32(),
+            )
+            .await
     }
 
     /// Stores the state of this group. Only to be called from constructors to
     /// store the initial state of the group.
-    pub(super) fn store<Storage: crate::storage::StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(super) async fn store<Storage: crate::storage::StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        self.public_group.store(storage)?;
-        storage.write_group_epoch_secrets(self.group_id(), &self.group_epoch_secrets)?;
-        storage.write_own_leaf_index(self.group_id(), &self.own_leaf_index)?;
-        storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
-        storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
-        storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
-        storage.write_group_state(self.group_id(), &self.group_state)?;
+        self.public_group.store(storage).await?;
+        storage
+            .write_group_epoch_secrets(self.group_id(), &self.group_epoch_secrets)
+            .await?;
+        storage
+            .write_own_leaf_index(self.group_id(), &self.own_leaf_index)
+            .await?;
+        storage
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await?;
+        storage
+            .write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)
+            .await?;
+        storage
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)
+            .await?;
+        storage
+            .write_group_state(self.group_id(), &self.group_state)
+            .await?;
         #[cfg(feature = "extensions-draft")]
         if let Some(application_export_tree) = &self.application_export_tree {
-            storage.write_application_export_tree(self.group_id(), application_export_tree)?;
+            storage
+                .write_application_export_tree(self.group_id(), application_export_tree)
+                .await?;
         }
 
         Ok(())
@@ -1276,7 +1358,8 @@ impl MlsGroup {
     /// Converts PublicMessage to MlsMessage. Depending on whether handshake
     /// message should be encrypted, PublicMessage messages are encrypted to
     /// PrivateMessage first.
-    fn content_to_mls_message(
+    #[openmls_traits::maybe_async]
+    async fn content_to_mls_message(
         &mut self,
         mls_auth_content: AuthenticatedContent,
         provider: &impl OpenMlsProvider,
@@ -1307,6 +1390,7 @@ impl MlsGroup {
                 let epoch = self.epoch();
                 let encryption_output = self
                     .encrypt(mls_auth_content, provider)
+                    .await
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
                 let message = MlsMessageOut::from_private_message(
@@ -1391,8 +1475,13 @@ impl MlsGroup {
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn ensure_persistence(&self, storage: &impl StorageProvider) -> Result<(), LibraryError> {
+    #[openmls_traits::maybe_async]
+    pub async fn ensure_persistence(
+        &self,
+        storage: &impl StorageProvider,
+    ) -> Result<(), LibraryError> {
         let loaded = MlsGroup::load(storage, self.group_id())
+            .await
             .map_err(|_| LibraryError::custom("Failed to load group from storage"))?;
         let other = loaded.ok_or_else(|| LibraryError::custom("Group not found in storage"))?;
 

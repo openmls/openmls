@@ -11,7 +11,7 @@ repository = "https://github.com/openmls/openmls/tree/main/sqlite_storage"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { workspace = true }
+openmls_traits = { workspace = true, features = ["sync"] }
 serde = { workspace = true, features = ["derive"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 refinery = { version = "0.9", features = ["rusqlite", "enums"] }

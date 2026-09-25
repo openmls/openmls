@@ -501,14 +501,15 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// Implies that a self-update takes place: the commit will always have
     /// a path even if no other proposals are queued.
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         self,
         crypto: &Crypto,
         storage: &Storage,
         emulation_group_id: &GroupId,
     ) -> Result<Self, CreateCommitError> {
-        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group_id)?;
-        self.vc_emulation_internal(crypto, storage, epoch_id)
+        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group_id).await?;
+        self.vc_emulation_internal(crypto, storage, epoch_id).await
     }
 
     /// Test-only variant of [`Self::vc_emulation`] that commits from the named
@@ -520,17 +521,19 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// construct scenarios that an application must not produce, such as a
     /// sibling that acts on a stale emulation-group state.
     #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
-    pub fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         self,
         crypto: &Crypto,
         storage: &Storage,
         epoch_id: EpochId,
     ) -> Result<Self, CreateCommitError> {
-        self.vc_emulation_internal(crypto, storage, epoch_id)
+        self.vc_emulation_internal(crypto, storage, epoch_id).await
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_internal<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    async fn vc_emulation_internal<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         mut self,
         crypto: &Crypto,
         storage: &Storage,
@@ -538,6 +541,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     ) -> Result<Self, CreateCommitError> {
         let state: VcDerivationEpochState = storage
             .vc_derivation_epoch_state(&epoch_id)
+            .await
             .map_err(|e| {
                 log::error!("vc: load derivation epoch state in vc_emulation failed: {e:?}");
                 CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
@@ -545,6 +549,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
         let mut operation_tree: OperationSecretTree = storage
             .vc_operation_tree(&epoch_id)
+            .await
             .map_err(|e| {
                 log::error!("vc: load operation tree in vc_emulation failed: {e:?}");
                 CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
@@ -584,6 +589,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         // be observed on the wire before it is persisted.
         storage
             .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .await
             .map_err(|e| {
                 log::error!("vc: persist advanced operation tree failed: {e:?}");
                 CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
@@ -631,7 +637,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     }
 
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
-    pub fn load_psks<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
     ) -> Result<CommitBuilder<'a, LoadedPsks, G>, CreateCommitError> {
@@ -653,7 +660,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .collect();
 
         // Load the PSKs and make the PskIds owned.
-        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)?
+        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)
+            .await?
             .into_iter()
             .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
             .collect();
@@ -1420,7 +1428,8 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     }
 
     /// Stages the commit and returns the protocol messages.
-    pub fn stage_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn stage_commit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<CommitMessageBundle, CommitBuilderStageError<Provider::StorageError>> {
@@ -1443,6 +1452,7 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
         provider
             .storage()
             .write_group_state(group.group_id(), &group.group_state)
+            .await
             .map_err(CommitBuilderStageError::KeyStoreError)?;
 
         group.reset_aad();
@@ -1452,7 +1462,9 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
         //
         // Note that this performs writes to the storage, so we should do that here, rather than
         // when working with the result.
-        let framing = group.content_to_mls_message(create_commit_result.commit, provider)?;
+        let framing = group
+            .content_to_mls_message(create_commit_result.commit, provider)
+            .await?;
 
         Ok(CommitMessageBundle {
             version: group.version(),
