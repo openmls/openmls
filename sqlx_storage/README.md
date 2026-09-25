@@ -75,5 +75,11 @@ cargo run --example transaction
 
 ## Runtime
 
-The provider exposes an async API. It requires `openmls_traits` to be built
-with the `async` feature.
+The provider exposes an async API and needs the async mode of `openmls_traits`.
+Enable the `async` feature of `openmls` or `openmls_traits`, and make sure no
+crate in the build enables `sync`. Otherwise the crate fails to compile with a
+message that names the problem.
+
+Calls on one provider are serialized by an async mutex around the connection,
+so concurrent OpenMLS operations that share a provider wait for each other. The
+futures are `Send` and can run on a multi-threaded runtime.

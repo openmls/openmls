@@ -417,7 +417,7 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
     ///
     /// In contrast to the deprecated [`MlsGroup::join_by_external_commit`]
     /// there is no need to merge the pending commit.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn finalize<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,

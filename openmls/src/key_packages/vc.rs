@@ -79,7 +79,7 @@ impl VcKeyPackageBatchBuilder {
     ///
     /// Nothing is persisted yet. Dropping the builder without calling `finalize` burns no
     /// generation.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn new(
         provider: &impl OpenMlsProvider,
         emulation_group_id: &GroupId,
@@ -88,7 +88,7 @@ impl VcKeyPackageBatchBuilder {
     }
 
     /// Same as [`Self::new`], but with a capacity hint for the number of key packages.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn with_capacity(
         provider: &impl OpenMlsProvider,
         emulation_group_id: &GroupId,
@@ -101,7 +101,7 @@ impl VcKeyPackageBatchBuilder {
 
     /// Same as [`Self::with_capacity`], but for an explicitly named derivation
     /// epoch instead of the emulation group's newest one.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn with_capacity_at_epoch(
         provider: &impl OpenMlsProvider,
         epoch_id: EpochId,
@@ -183,7 +183,7 @@ impl VcKeyPackageBatchBuilder {
     /// Persists the operation tree and the key packages. The operation is not atomic. On failure,
     /// the generation should be considered as burned. Few orphaned key packages may be left in
     /// storage.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn finalize(
         self,
         provider: &impl OpenMlsProvider,

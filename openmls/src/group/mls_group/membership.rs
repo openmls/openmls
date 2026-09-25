@@ -46,7 +46,7 @@ impl MlsGroup {
     // FIXME: #1217
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn add_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -76,7 +76,7 @@ impl MlsGroup {
     /// [`CommitMessageBundle::confirmation`](crate::group::CommitMessageBundle::confirmation)
     /// surfaces the handshake confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn swap_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -141,7 +141,7 @@ impl MlsGroup {
     // FIXME: #1217
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn add_members_without_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -157,7 +157,7 @@ impl MlsGroup {
 
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn add_members_internal<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -222,7 +222,7 @@ impl MlsGroup {
     // FIXME: #1217
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn remove_members<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -274,7 +274,7 @@ impl MlsGroup {
     /// [`Propose::Remove`](crate::group::Propose::Remove) of the own leaf index,
     /// which retains the handshake secret and returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn leave_group<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -327,7 +327,7 @@ impl MlsGroup {
     /// it.
     ///
     /// Returns an error if there is a pending commit.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn leave_group_via_self_remove<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,

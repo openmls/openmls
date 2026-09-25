@@ -358,7 +358,7 @@ impl LeafNode {
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[cfg(all(test, feature = "generate-kats"))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn generate_update<Provider: OpenMlsProvider>(
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
@@ -398,7 +398,7 @@ impl LeafNode {
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn update<Provider: OpenMlsProvider>(
         &mut self,
         ciphersuite: Ciphersuite,

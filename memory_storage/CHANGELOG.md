@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `MemoryStorage` implements the storage traits in both the sync and the async mode of `openmls_traits`.
+
 ## 0.6.0 (2026-08-25)
 
 ### Added

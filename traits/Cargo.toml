@@ -15,7 +15,8 @@ path = "src/traits.rs"
 
 [features]
 default = []
-sync = ["maybe-async/is_sync"]
+# The storage traits are async only with `async` and without `sync`.
+sync = []
 async = []
 test-utils = []
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information

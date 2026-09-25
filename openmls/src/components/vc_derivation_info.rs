@@ -646,7 +646,7 @@ fn validate_key_package_infos(infos: &[KeyPackageInfo]) -> Result<(), VirtualCli
 /// registered for `epoch_id`.
 ///
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 pub async fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     epoch_id: EpochId,
@@ -684,7 +684,7 @@ pub async fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProv
 /// leaf-encryption keys are later derived from each seed under the same
 /// ciphersuite at Welcome time. The operation secret is dropped once all seeds
 /// are derived. The batch generation is consumed in the tree exactly once.
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 pub async fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
     provider: &Provider,
     upload: &KeyPackageUpload,
@@ -836,7 +836,7 @@ pub(crate) struct VcDerivationEpochLog {
 impl VcDerivationEpochLog {
     /// Reconstruct the log of `group_id` from its stored entries. The log is
     /// empty for a group that never registered a derivation epoch.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
@@ -942,7 +942,7 @@ pub struct RegisteredVcDerivationEpoch {
 ///
 /// Read from storage, so the result reflects the state at the time of the
 /// call.
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 pub(crate) async fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     emulation_group_id: &GroupId,
@@ -968,7 +968,7 @@ pub(crate) async fn newest_vc_derivation_epoch<Storage: crate::storage::StorageP
 /// Returns [`VirtualClientsError::NoDerivationEpoch`] when no derivation epoch
 /// is registered, which is the case for every group that is not an emulation
 /// group.
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 pub(crate) async fn require_newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     emulation_group_id: &GroupId,
@@ -1050,7 +1050,7 @@ impl<'a> VcDerivationEpochParams<'a> {
 /// `export_tree` when it is handed a fresh, unpunctured tree for that epoch,
 /// as a retried Welcome join does. Without the puncture the caller would
 /// persist a tree that can re-derive the consumed secret.
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 pub(crate) async fn register_vc_derivation_epoch<
     Crypto: OpenMlsCrypto,
     Storage: crate::storage::StorageProvider,
@@ -1235,7 +1235,7 @@ impl VcEmulationBindings {
 /// with the lowest group epochs. `max_entries` follows the group's
 /// message-secrets retention, so bindings age out in lockstep with the message
 /// secrets they are needed for.
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 pub(crate) async fn write_vc_emulation_binding_with_pruning<
     Storage: crate::storage::StorageProvider,
 >(
@@ -1907,7 +1907,7 @@ impl DerivationInfoTbe {
 /// returned [`VirtualClientsError`] into their own error type.
 ///
 /// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 pub(crate) async fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
     provider: &Provider,
     epoch_id: &EpochId,

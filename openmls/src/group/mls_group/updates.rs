@@ -29,7 +29,7 @@ impl MlsGroup {
     ///
     /// [`Welcome`]: crate::messages::Welcome
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn self_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -77,7 +77,7 @@ impl MlsGroup {
     ///
     /// [`Welcome`]: crate::messages::Welcome
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
@@ -111,7 +111,7 @@ impl MlsGroup {
     /// Creates a proposal to update the own leaf node. Optionally, a
     /// [`LeafNode`] can be provided to update the leaf node. Note that its
     /// private key must be manually added to the key store.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn create_self_update_proposal_internal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
@@ -198,7 +198,7 @@ impl MlsGroup {
         Ok(update_proposal)
     }
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn propose_self_update_internal<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
@@ -245,7 +245,7 @@ impl MlsGroup {
     /// [`Propose::Update`](crate::group::Propose::Update), which retains the
     /// handshake secret and returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_self_update<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
@@ -283,7 +283,7 @@ impl MlsGroup {
     /// Use [`Self::propose_self_update_with_new_signer_unconfirmed`], which
     /// retains the handshake secret and returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_self_update_with_new_signer<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
@@ -311,7 +311,7 @@ impl MlsGroup {
     ///
     /// [`MlsGroup::confirm_handshake_message`]: crate::group::MlsGroup::confirm_handshake_message
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_self_update_with_new_signer_unconfirmed<
         Provider: OpenMlsProvider,
         S: Signer,

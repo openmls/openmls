@@ -27,7 +27,8 @@ rust-version = "1.91.0"
 tls_codec = { version = "0.5", features = ["derive", "serde", "mls"] }
 serde = { version = "^1.0" }
 thiserror = { version = "^2.0" }
-maybe-async = "0.2"
+# 0.2.11 is the first version that rewrites `-> impl Future` returns in sync mode.
+maybe-async = "0.2.11"
 
 openmls = { version = "0.9.0", path = "openmls" }
 

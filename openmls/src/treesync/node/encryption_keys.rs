@@ -191,7 +191,7 @@ impl EncryptionKeyPair {
     /// This must only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn write<Storage: StorageProvider>(
         &self,
         store: &Storage,
@@ -210,7 +210,7 @@ impl EncryptionKeyPair {
     /// of the key package or the epoch encryption key pairs.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn read(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
@@ -228,7 +228,7 @@ impl EncryptionKeyPair {
     /// This must only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
         store: &Storage,
@@ -262,7 +262,7 @@ impl EncryptionKeyPair {
 pub mod test_utils {
     use super::*;
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn read_keys_from_key_store(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
@@ -277,7 +277,7 @@ pub mod test_utils {
         }
     }
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn write_keys_from_key_store(
         provider: &impl OpenMlsProvider,
         encryption_key: HpkeKeyPair,

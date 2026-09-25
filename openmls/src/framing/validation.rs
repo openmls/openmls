@@ -40,7 +40,6 @@ use crate::{
     component::ComponentId,
     framing::safe_aad::SafeAad,
     group::{
-        errors::StageCommitError,
         mls_group::{errors::ResolveAppDataCommitError, processing::UnresolvedAppDataCommit},
         ExportedSecret, StagedCommitSafeExport,
     },
@@ -394,7 +393,7 @@ pub struct ProcessedMessage {
     epoch: GroupEpoch,
     sender: Sender,
     authenticated_data: Vec<u8>,
-    pub(crate) content: ProcessedMessageContent,
+    content: ProcessedMessageContent,
     credential: Credential,
     /// See [`Self::emulator_sender_leaf_index`].
     #[cfg(feature = "virtual-clients-draft")]
@@ -436,24 +435,31 @@ impl ProcessedMessage {
         }
     }
 
-    /// Swaps an [`ProcessedMessageContent::UnresolvedAppDataCommit`] for the
-    /// [`StagedCommit`] produced by `stage`, keeping all other fields (sender,
-    /// credential, authenticated data, Safe AAD state) intact.
+    /// Splits off the [`UnresolvedAppDataCommit`] this message carries so the
+    /// caller can stage it. The returned function puts the [`StagedCommit`]
+    /// back as [`ProcessedMessageContent::StagedCommitMessage`] content and
+    /// keeps all other fields (sender, credential, authenticated data, Safe AAD
+    /// state) intact. Staging may be sync or async, so we return the pieces
+    /// rather than take a staging closure.
     ///
-    /// Returns an error if the content is not an unresolved app data commit;
-    /// the message is consumed either way.
+    /// Returns an error if the content is not an unresolved app data commit.
+    /// The message is consumed either way.
     #[cfg(feature = "extensions-draft")]
-    pub(crate) fn resolve_app_data_commit(
-        mut self,
-        stage: impl FnOnce(UnresolvedAppDataCommit) -> Result<StagedCommit, StageCommitError>,
-    ) -> Result<Self, ResolveAppDataCommitError> {
+    pub(crate) fn split_unresolved_app_data_commit(
+        self,
+    ) -> Result<
+        (UnresolvedAppDataCommit, impl FnOnce(StagedCommit) -> Self),
+        ResolveAppDataCommitError,
+    > {
         let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) = self.content
         else {
             return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
         };
-        let staged_commit = stage(*unresolved_commit)?;
-        self.content = ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
-        Ok(self)
+        let with_staged_commit = move |staged_commit: StagedCommit| Self {
+            content: ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit)),
+            ..self
+        };
+        Ok((*unresolved_commit, with_staged_commit))
     }
 
     /// Parse the Safe AAD prefix at the start of `authenticated_data` and

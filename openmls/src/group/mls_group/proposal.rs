@@ -81,7 +81,7 @@ macro_rules! impl_propose_fun {
     ($name:ident, $impl_name:ident, $value_ty:ty, $group_fun:ident, $ref_or_value:expr, $doc:expr) => {
         /// Builds the proposal, queues it, and frames it, returning the framing
         /// output so callers can surface the handshake confirmation data.
-        #[maybe_async::maybe_async]
+        #[openmls_traits::maybe_async]
         async fn $impl_name<Provider: OpenMlsProvider>(
             &mut self,
             provider: &Provider,
@@ -124,7 +124,7 @@ macro_rules! impl_propose_fun {
         /// unavailable. Use [`Self::propose_unconfirmed`], which retains the
         /// handshake secret and returns the confirmation data.
         #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-        #[maybe_async::maybe_async]
+        #[openmls_traits::maybe_async]
         pub async fn $name<Provider: OpenMlsProvider>(
             &mut self,
             provider: &Provider,
@@ -179,7 +179,7 @@ impl MlsGroup {
     #[deprecated(
         note = "Renamed to `propose_pre_shared_key`; works for any non-resumption PSK, not just external"
     )]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_external_psk<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -194,7 +194,7 @@ impl MlsGroup {
     #[deprecated(
         note = "Renamed to `propose_pre_shared_key_by_value`; works for any non-resumption PSK, not just external"
     )]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_external_psk_by_value<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -229,7 +229,7 @@ impl MlsGroup {
     /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
     /// returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -252,7 +252,7 @@ impl MlsGroup {
     ///
     /// [`MlsGroup::confirm_handshake_message`]: crate::group::MlsGroup::confirm_handshake_message
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_unconfirmed<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -276,7 +276,7 @@ impl MlsGroup {
     /// Shared dispatch for [`Self::propose`] and [`Self::propose_unconfirmed`].
     /// Routes to the per-proposal-type helpers and returns the framing output
     /// so the caller can decide whether to surface the confirmation data.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn propose_dispatch<Provider: OpenMlsProvider, S: Signer>(
         &mut self,
         provider: &Provider,
@@ -419,7 +419,7 @@ impl MlsGroup {
     /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
     /// returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_add_member<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -432,7 +432,7 @@ impl MlsGroup {
         Ok((framing.message, proposal_ref))
     }
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn propose_add_member_impl<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -481,7 +481,7 @@ impl MlsGroup {
     /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
     /// returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_remove_member<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -495,7 +495,7 @@ impl MlsGroup {
         Ok((framing.message, proposal_ref))
     }
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn propose_remove_member_impl<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -543,7 +543,7 @@ impl MlsGroup {
     /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
     /// returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_remove_member_by_credential<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -557,7 +557,7 @@ impl MlsGroup {
         Ok((framing.message, proposal_ref))
     }
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn propose_remove_member_by_credential_impl<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -591,7 +591,7 @@ impl MlsGroup {
     /// Use [`Self::propose_unconfirmed`], which retains the handshake secret and
     /// returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_remove_member_by_credential_by_value<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -604,7 +604,7 @@ impl MlsGroup {
         Ok((framing.message, proposal_ref))
     }
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn propose_remove_member_by_credential_by_value_impl<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -638,7 +638,7 @@ impl MlsGroup {
     /// [`Propose::GroupContextExtensions`], which retains the handshake secret
     /// and returns the confirmation data.
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -656,7 +656,7 @@ impl MlsGroup {
         Ok((framing.message, proposal_ref))
     }
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn propose_group_context_extensions_impl<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -709,7 +709,7 @@ impl MlsGroup {
     //// FIXME: #1217
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn update_group_context_extensions<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -747,7 +747,7 @@ impl MlsGroup {
         feature = "extensions-draft",
         any(not(feature = "virtual-clients-draft"), feature = "test-utils", test)
     ))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn propose_app_data_update<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -768,7 +768,7 @@ impl MlsGroup {
     }
 
     #[cfg(feature = "extensions-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn propose_app_data_update_impl<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -811,7 +811,7 @@ impl MlsGroup {
     }
 
     /// Removes a specific proposal from the store.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn remove_pending_proposal<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,

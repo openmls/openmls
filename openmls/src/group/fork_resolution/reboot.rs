@@ -73,7 +73,7 @@ impl<'a> RebootBuilder<'a> {
     /// Creates the group and commit using the provided `extensions` and `new_members`. The caller
     /// can also make further changes to the [`CommitBuilder`] using the `refine_commit_builder`
     /// argument. If that is not desired, provide the identity function (`|b| b`).
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn finish<Provider: OpenMlsProvider>(
         self,
         extensions: Extensions<GroupContext>,

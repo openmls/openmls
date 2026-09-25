@@ -501,7 +501,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// Implies that a self-update takes place: the commit will always have
     /// a path even if no other proposals are queued.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         self,
         crypto: &Crypto,
@@ -521,17 +521,18 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// construct scenarios that an application must not produce, such as a
     /// sibling that acts on a stale emulation-group state.
     #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
-    pub fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         self,
         crypto: &Crypto,
         storage: &Storage,
         epoch_id: EpochId,
     ) -> Result<Self, CreateCommitError> {
-        self.vc_emulation_internal(crypto, storage, epoch_id)
+        self.vc_emulation_internal(crypto, storage, epoch_id).await
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn vc_emulation_internal<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         mut self,
         crypto: &Crypto,
@@ -636,7 +637,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     }
 
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
@@ -1427,7 +1428,7 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     }
 
     /// Stages the commit and returns the protocol messages.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn stage_commit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,

@@ -23,7 +23,7 @@ pub struct NonProposalGroupStorageState {
 }
 
 impl NonProposalGroupStorageState {
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn from_storage(
         store: &impl StorageProvider<CURRENT_VERSION>,
         group_id: &impl GroupId<CURRENT_VERSION>,
@@ -79,7 +79,7 @@ impl GroupStorageState {
     pub fn non_proposal_state(&self) -> &NonProposalGroupStorageState {
         &self.non_proposal_state
     }
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn from_storage(
         store: &impl StorageProvider<CURRENT_VERSION>,
         group_id: &impl GroupId<CURRENT_VERSION>,

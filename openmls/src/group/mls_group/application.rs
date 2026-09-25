@@ -45,7 +45,7 @@ impl MlsGroup {
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
     #[cfg(not(feature = "virtual-clients-draft"))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -66,7 +66,7 @@ impl MlsGroup {
     /// called first and incoming messages from the DS must be processed
     /// afterwards.
     #[cfg(all(feature = "virtual-clients-draft", any(feature = "test-utils", test)))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn create_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -82,7 +82,7 @@ impl MlsGroup {
     }
 
     #[cfg(not(feature = "virtual-clients-draft"))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn create_message_internal<Provider: OpenMlsProvider, E>(
         &mut self,
         provider: &Provider,
@@ -122,7 +122,7 @@ impl MlsGroup {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn create_message_internal<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -184,7 +184,7 @@ impl MlsGroup {
     ///
     /// [`GenerationId`]: crate::components::vc_derivation_info::GenerationId
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn create_unconfirmed_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -206,7 +206,7 @@ impl MlsGroup {
     /// (`epoch`, `generation`). A confirm call deletes exactly the secret its
     /// corresponding create call retained, or nothing.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn confirm_own_secret<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -257,7 +257,7 @@ impl MlsGroup {
     /// collision), the secret must not be confirmed, since it is what decrypts
     /// the sibling's winning message at the same generation.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn confirm_application_message<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -287,7 +287,7 @@ impl MlsGroup {
     /// collision), the secret must not be confirmed, since it is what decrypts
     /// the sibling's winning message at the same generation.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn confirm_handshake_message<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,

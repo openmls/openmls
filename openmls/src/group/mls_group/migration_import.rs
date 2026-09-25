@@ -25,7 +25,7 @@ impl MlsGroup {
     /// encoding differs between versions (e.g. postcard → JSON), old-format entries
     /// live under different keys and are not changed; remove those with the
     /// older version's `MlsGroup::delete`.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn store_for_migration<Storage: crate::storage::StorageProvider>(
         &self,
         storage: &Storage,
@@ -90,7 +90,7 @@ impl GroupMigrationBundle {
     /// (own leaf nodes, proposal queue) are cleared before writing.
     ///
     /// Old-format entries under a different key encoding are not changed.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn store<Storage: crate::storage::StorageProvider>(
         &self,
         storage: &Storage,

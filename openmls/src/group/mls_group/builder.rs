@@ -102,7 +102,7 @@ impl MlsGroupBuilder {
     }
 
     /// Build a new group as configured by this builder.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -121,7 +121,7 @@ impl MlsGroupBuilder {
     ///
     /// If a group with the same ID already exists in storage and
     /// `replace_old_group` was not set, an error will be returned.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(super) async fn build_internal<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -497,7 +497,7 @@ impl BranchGroupBuilder {
     /// The commit is staged but **not** merged: merge it with
     /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
     /// only once the delivery service has confirmed it.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn build_branch<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -565,7 +565,7 @@ pub enum BranchError<StorageError> {
 /// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
 #[cfg(feature = "virtual-clients-draft")]
 #[allow(clippy::too_many_arguments)]
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 async fn build_vc_internal<Provider: OpenMlsProvider>(
     provider: &Provider,
     signer: &impl Signer,

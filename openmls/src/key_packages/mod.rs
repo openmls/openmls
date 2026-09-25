@@ -602,7 +602,7 @@ impl KeyPackageBuilder {
     }
 
     /// Finalize and build the key package.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn build(
         mut self,
         ciphersuite: Ciphersuite,
@@ -686,7 +686,7 @@ impl KeyPackageBuilder {
     /// Returns [`KeyPackageNewError::EmptyBatch`] when `count` is 0, before
     /// loading any state or consuming a generation.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn build_vc_batch(
         self,
         ciphersuite: Ciphersuite,

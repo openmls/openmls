@@ -63,7 +63,7 @@ impl MlsGroup {
     /// Processes a received targeted message. Decrypts the message content and
     /// verifies the sender's signature. Returns the sender's leaf index and the
     /// decrypted application data.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn process_targeted_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,

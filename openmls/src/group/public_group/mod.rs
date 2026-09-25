@@ -122,7 +122,7 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn from_external<StorageProvider, StorageError>(
         crypto: &impl OpenMlsCrypto,
         storage: &StorageProvider,
@@ -409,7 +409,7 @@ impl PublicGroup {
     }
 
     /// Add the [`QueuedProposal`] to the [`PublicGroup`]s internal [`ProposalStore`].
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn add_proposal<Storage: PublicStorageProvider>(
         &mut self,
         storage: &Storage,
@@ -423,7 +423,7 @@ impl PublicGroup {
     }
 
     /// Remove the Proposal with the given [`ProposalRef`] from the [`PublicGroup`]s internal [`ProposalStore`].
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn remove_proposal<Storage: PublicStorageProvider>(
         &mut self,
         storage: &Storage,
@@ -437,7 +437,7 @@ impl PublicGroup {
     }
 
     /// Return all queued proposals
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn queued_proposals<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
@@ -508,7 +508,7 @@ impl PublicGroup {
     /// existing group, both inside [`PublicGroup`] and in [`MlsGroup`].
     ///
     /// [`MlsGroup`]: crate::group::MlsGroup
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn store<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
@@ -531,7 +531,7 @@ impl PublicGroup {
     }
 
     /// Deletes the [`PublicGroup`] from storage.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn delete<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
@@ -545,7 +545,7 @@ impl PublicGroup {
     }
 
     /// Loads the [`PublicGroup`] corresponding to a [`GroupId`] from storage.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn load<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,

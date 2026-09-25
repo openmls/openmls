@@ -1,4 +1,4 @@
-use std::{future::Future, marker::PhantomData};
+use std::marker::PhantomData;
 
 use openmls_traits::storage::{
     CURRENT_VERSION, Entity, Key, StorageProvider,
@@ -36,10 +36,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         config: &MlsGroupJoinConfig,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(config);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             storable.store::<_, C>(&mut **connection, group_id, GroupDataType::JoinGroupConfig);
-        run_task(task).await
+        task.await
     }
 
     async fn append_own_leaf_node<
@@ -51,9 +51,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         leaf_node: &LeafNode,
     ) -> Result<(), Self::Error> {
         let storable = StorableLeafNodeRef(leaf_node);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, group_id);
-        run_task(task).await
+        task.await
     }
 
     async fn queue_proposal<
@@ -67,9 +67,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         proposal: &QueuedProposal,
     ) -> Result<(), Self::Error> {
         let storable = StorableProposalRef(proposal_ref, proposal);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, group_id);
-        run_task(task).await
+        task.await
     }
 
     async fn write_tree<
@@ -81,9 +81,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         tree: &TreeSync,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(tree);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, group_id, GroupDataType::Tree);
-        run_task(task).await
+        task.await
     }
 
     async fn write_interim_transcript_hash<
@@ -95,13 +95,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         interim_transcript_hash: &InterimTranscriptHash,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(interim_transcript_hash);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::InterimTranscriptHash,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn write_context<
@@ -113,9 +113,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_context: &GroupContext,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(group_context);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, group_id, GroupDataType::Context);
-        run_task(task).await
+        task.await
     }
 
     async fn write_confirmation_tag<
@@ -127,10 +127,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         confirmation_tag: &ConfirmationTag,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(confirmation_tag);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             storable.store::<_, C>(&mut **connection, group_id, GroupDataType::ConfirmationTag);
-        run_task(task).await
+        task.await
     }
 
     async fn write_group_state<
@@ -142,9 +142,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_state: &GroupState,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(group_state);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, group_id, GroupDataType::GroupState);
-        run_task(task).await
+        task.await
     }
 
     async fn write_message_secrets<
@@ -156,10 +156,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         message_secrets: &MessageSecrets,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(message_secrets);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             storable.store::<_, C>(&mut **connection, group_id, GroupDataType::MessageSecrets);
-        run_task(task).await
+        task.await
     }
 
     async fn write_resumption_psk_store<
@@ -171,13 +171,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         resumption_psk_store: &ResumptionPskStore,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(resumption_psk_store);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::ResumptionPskStore,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn write_own_leaf_index<
@@ -189,9 +189,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         own_leaf_index: &LeafNodeIndex,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(own_leaf_index);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, group_id, GroupDataType::OwnLeafIndex);
-        run_task(task).await
+        task.await
     }
 
     async fn write_group_epoch_secrets<
@@ -203,13 +203,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_epoch_secrets: &GroupEpochSecrets,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(group_epoch_secrets);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::GroupEpochSecrets,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn write_signature_key_pair<
@@ -221,9 +221,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         signature_key_pair: &SignatureKeyPair,
     ) -> Result<(), Self::Error> {
         let storable = StorableSignatureKeyPairsRef(signature_key_pair);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, public_key);
-        run_task(task).await
+        task.await
     }
 
     async fn write_encryption_key_pair<
@@ -235,9 +235,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         key_pair: &HpkeKeyPair,
     ) -> Result<(), Self::Error> {
         let storable = StorableEncryptionKeyPairRef(key_pair);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, public_key);
-        run_task(task).await
+        task.await
     }
 
     async fn write_encryption_epoch_key_pairs<
@@ -252,9 +252,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         key_pairs: &[HpkeKeyPair],
     ) -> Result<(), Self::Error> {
         let storable = StorableEpochKeyPairsRef(key_pairs);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, _, C>(&mut **connection, group_id, epoch, leaf_index);
-        run_task(task).await
+        task.await
     }
 
     async fn write_key_package<
@@ -266,9 +266,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         key_package: &KeyPackage,
     ) -> Result<(), Self::Error> {
         let storable = StorableKeyPackageRef(key_package);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, hash_ref);
-        run_task(task).await
+        task.await
     }
 
     async fn write_psk<
@@ -280,9 +280,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         psk: &PskBundle,
     ) -> Result<(), Self::Error> {
         let storable = StorablePskBundleRef(psk);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(&mut **connection, psk_id);
-        run_task(task).await
+        task.await
     }
 
     async fn mls_group_join_config<
@@ -292,13 +292,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<MlsGroupJoinConfig>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableGroupData::load::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::JoinGroupConfig,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn own_leaf_nodes<
@@ -308,9 +308,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableLeafNode::load::<_, C>(&mut **connection, group_id);
-        run_task(task).await
+        task.await
     }
 
     async fn queued_proposal_refs<
@@ -320,10 +320,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<ProposalRef>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             StorableProposal::<u8, ProposalRef>::load_refs::<_, C>(&mut **connection, group_id);
-        run_task(task).await
+        task.await
     }
 
     async fn queued_proposals<
@@ -334,9 +334,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableProposal::load::<_, C>(&mut **connection, group_id);
-        run_task(task).await
+        task.await
     }
 
     async fn tree<
@@ -346,10 +346,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             StorableGroupData::load::<_, C>(&mut **connection, group_id, GroupDataType::Tree);
-        run_task(task).await
+        task.await
     }
 
     async fn group_context<
@@ -359,10 +359,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             StorableGroupData::load::<_, C>(&mut **connection, group_id, GroupDataType::Context);
-        run_task(task).await
+        task.await
     }
 
     async fn interim_transcript_hash<
@@ -372,13 +372,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableGroupData::load::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::InterimTranscriptHash,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn confirmation_tag<
@@ -388,13 +388,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableGroupData::load::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::ConfirmationTag,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn group_state<
@@ -404,10 +404,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             StorableGroupData::load::<_, C>(&mut **connection, group_id, GroupDataType::GroupState);
-        run_task(task).await
+        task.await
     }
 
     async fn message_secrets<
@@ -417,13 +417,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<MessageSecrets>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableGroupData::load::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::MessageSecrets,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn resumption_psk_store<
@@ -433,13 +433,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ResumptionPskStore>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableGroupData::load::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::ResumptionPskStore,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn own_leaf_index<
@@ -449,13 +449,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<LeafNodeIndex>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableGroupData::load::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::OwnLeafIndex,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn group_epoch_secrets<
@@ -465,13 +465,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<GroupEpochSecrets>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableGroupData::load::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::GroupEpochSecrets,
         );
-        run_task(task).await
+        task.await
     }
 
     async fn signature_key_pair<
@@ -481,9 +481,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         public_key: &SignaturePublicKey,
     ) -> Result<Option<SignatureKeyPair>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableSignatureKeyPairs::load::<_, C>(&mut **connection, public_key);
-        run_task(task).await
+        task.await
     }
 
     async fn encryption_key_pair<
@@ -493,9 +493,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         public_key: &EncryptionKey,
     ) -> Result<Option<HpkeKeyPair>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableEncryptionKeyPair::load::<_, C>(&mut **connection, public_key);
-        run_task(task).await
+        task.await
     }
 
     async fn encryption_epoch_key_pairs<
@@ -508,10 +508,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         epoch: &EpochKey,
         leaf_index: u32,
     ) -> Result<Vec<HpkeKeyPair>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             load_epoch_key_pairs::<_, _, _, C>(&mut **connection, group_id, epoch, leaf_index);
-        run_task(task).await
+        task.await
     }
 
     async fn key_package<
@@ -521,9 +521,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<Option<KeyPackage>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableKeyPackage::load::<_, C>(&mut **connection, hash_ref);
-        run_task(task).await
+        task.await
     }
 
     async fn psk<
@@ -533,9 +533,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = load_psk_bundle::<_, _, C>(&mut **connection, psk_id);
-        run_task(task).await
+        task.await
     }
 
     async fn remove_proposal<
@@ -546,10 +546,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
         proposal_ref: &ProposalRef,
     ) -> Result<(), Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let storable = self.wrap_storable_group_id_ref(group_id);
         let task = storable.delete_proposal(&mut **connection, proposal_ref);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_own_leaf_nodes<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -557,9 +557,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_leaf_nodes(&mut **connection);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_group_config<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -567,9 +567,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_group_data(&mut **connection, GroupDataType::JoinGroupConfig);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_tree<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -577,9 +577,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_group_data(&mut **connection, GroupDataType::Tree);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_confirmation_tag<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -587,9 +587,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_group_data(&mut **connection, GroupDataType::ConfirmationTag);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_group_state<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -597,9 +597,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_group_data(&mut **connection, GroupDataType::GroupState);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_context<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -607,9 +607,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_group_data(&mut **connection, GroupDataType::Context);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_interim_transcript_hash<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -617,10 +617,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             storable.delete_group_data(&mut **connection, GroupDataType::InterimTranscriptHash);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_message_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -628,9 +628,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_group_data(&mut **connection, GroupDataType::MessageSecrets);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -638,9 +638,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_group_data(&mut **connection, GroupDataType::ResumptionPskStore);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_own_leaf_index<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -648,9 +648,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_group_data(&mut **connection, GroupDataType::OwnLeafIndex);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_group_epoch_secrets<GroupId: traits::GroupId<CURRENT_VERSION>>(
@@ -658,9 +658,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_group_data(&mut **connection, GroupDataType::GroupEpochSecrets);
-        run_task(task).await
+        task.await
     }
 
     async fn clear_proposal_queue<
@@ -671,9 +671,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_all_proposals(&mut **connection);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_signature_key_pair<
@@ -683,9 +683,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         public_key: &SignaturePublicKey,
     ) -> Result<(), Self::Error> {
         let storable = StorableSignaturePublicKeyRef(public_key);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete::<C>(&mut **connection);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<CURRENT_VERSION>>(
@@ -693,9 +693,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         public_key: &EncryptionKey,
     ) -> Result<(), Self::Error> {
         let storable = StorableEncryptionPublicKeyRef(public_key);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete::<C>(&mut **connection);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_encryption_epoch_key_pairs<
@@ -708,9 +708,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         leaf_index: u32,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_epoch_key_pair(&mut **connection, epoch, leaf_index);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_key_package<KeyPackageRef: traits::HashReference<CURRENT_VERSION>>(
@@ -718,9 +718,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         let storable = StorableHashRef(hash_ref);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete_key_package::<C>(&mut **connection);
-        run_task(task).await
+        task.await
     }
 
     async fn delete_psk<PskKey: traits::PskId<CURRENT_VERSION>>(
@@ -728,9 +728,9 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
         let storable = StorablePskIdRef(psk_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.delete::<C>(&mut **connection);
-        run_task(task).await
+        task.await
     }
 
     #[cfg(feature = "extensions-draft")]
@@ -743,13 +743,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         application_export_tree: &ApplicationExportTree,
     ) -> Result<(), Self::Error> {
         let storable = StorableGroupDataRef(application_export_tree);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = storable.store::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::ApplicationExportTree,
         );
-        run_task(task).await
+        task.await
     }
 
     #[cfg(feature = "extensions-draft")]
@@ -760,13 +760,13 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error> {
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task = StorableGroupData::load::<_, C>(
             &mut **connection,
             group_id,
             GroupDataType::ApplicationExportTree,
         );
-        run_task(task).await
+        task.await
     }
 
     #[cfg(feature = "extensions-draft")]
@@ -778,10 +778,10 @@ impl<C: Codec> StorageProvider<CURRENT_VERSION> for SqliteStorageProvider<'_, C>
         group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         let storable = self.wrap_storable_group_id_ref(group_id);
-        let mut connection = self.connection.borrow_mut();
+        let mut connection = self.connection.lock().await;
         let task =
             storable.delete_group_data(&mut **connection, GroupDataType::ApplicationExportTree);
-        run_task(task).await
+        task.await
     }
 }
 
@@ -1305,11 +1305,4 @@ impl<PskId: Key<CURRENT_VERSION>> StorablePskIdRef<'_, PskId> {
             .await?;
         Ok(())
     }
-}
-
-async fn run_task<F>(task: F) -> F::Output
-where
-    F: Future,
-{
-    task.await
 }

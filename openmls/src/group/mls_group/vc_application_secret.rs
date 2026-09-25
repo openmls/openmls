@@ -27,7 +27,7 @@ impl MlsGroup {
     /// See the `# Concurrency` note on [`OperationSecretTree`].
     ///
     /// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn next_vc_application_secret<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -48,7 +48,8 @@ impl MlsGroup {
         provider
             .storage()
             .write_vc_operation_tree(&epoch_id, &operation_tree)
-            .await.map_err(|e| {
+            .await
+            .map_err(|e| {
                 log::error!(
                     "vc: persist operation tree after allocating an application secret failed: {e:?}"
                 );
@@ -69,7 +70,7 @@ impl MlsGroup {
     ///
     /// The same concurrency requirement as for
     /// [`Self::next_vc_application_secret`] applies.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn derive_vc_application_secret<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -95,7 +96,8 @@ impl MlsGroup {
         provider
             .storage()
             .write_vc_operation_tree(&info.epoch_id, &operation_tree)
-            .await.map_err(|e| {
+            .await
+            .map_err(|e| {
                 log::error!(
                     "vc: persist operation tree after rederiving an application secret failed: {e:?}"
                 );

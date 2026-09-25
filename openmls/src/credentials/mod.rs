@@ -384,7 +384,7 @@ pub mod test_utils {
     /// Returns the [`Credential`] and the [`SignatureKeyPair`].
     ///
     /// [`Credential`]: super::Credential
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn new_credential(
         provider: &impl OpenMlsProvider,
         identity: &[u8],

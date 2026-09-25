@@ -65,7 +65,7 @@ impl MlsGroup {
 
     /// Creates a new group with the creator as the only member (and a random
     /// group ID).
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn new<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
@@ -84,7 +84,7 @@ impl MlsGroup {
 
     /// Creates a new group with a given group ID with the creator as the only
     /// member.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn new_with_group_id<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
@@ -122,7 +122,7 @@ impl MlsGroup {
         since = "0.7.1",
         note = "Use the `MlsGroup::external_commit_builder` instead."
     )]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn join_by_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
@@ -174,7 +174,7 @@ impl ProcessedWelcome {
     /// This does not require a ratchet tree yet.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
@@ -190,7 +190,7 @@ impl ProcessedWelcome {
     /// secret comes from the parent group and is injected at the sentinel epoch
     /// 0, where [`load_psks`](crate::schedule::psk::load_psks) looks it up for
     /// branch usage. See [`StagedWelcome::build_from_branch`].
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn new_from_welcome_inner<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
@@ -229,7 +229,7 @@ impl ProcessedWelcome {
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn into_staged_welcome<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -246,7 +246,7 @@ impl ProcessedWelcome {
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
         mut self,
         provider: &Provider,
@@ -489,7 +489,7 @@ impl StagedWelcome {
     /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
@@ -508,7 +508,7 @@ impl StagedWelcome {
     ///
     /// The builder allows to set the ratchet tree, skip leaf node lifetime
     /// validation, and get the [`ProcessedWelcome`] for inspection before staging.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn build_from_welcome<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
@@ -559,7 +559,7 @@ impl StagedWelcome {
     /// decrypts only once, via the same carrier.
     ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn build_from_branch<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
@@ -590,7 +590,7 @@ impl StagedWelcome {
     /// is not a branch welcome and the carrier cannot complete a regular join
     /// (the key package is already consumed); use the normal
     /// [`ProcessedWelcome`] flow when the message may not be a branch welcome.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn process_branch_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
@@ -668,7 +668,7 @@ impl StagedWelcome {
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -879,7 +879,7 @@ impl PendingBranchWelcome {
     /// [`StagedWelcome::build_from_branch`]); a `branch_info` from the wrong
     /// parent epoch fails with [`WelcomeError::SubgroupParentMismatch`]. The
     /// remaining receiver checks run when [`JoinBuilder::build`] is called.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn build_from_branch<'a, Provider: OpenMlsProvider>(
         self,
         provider: &'a Provider,
@@ -911,7 +911,7 @@ impl PendingBranchWelcome {
 /// [`keys_for_welcome`]. The branch resumption PSK secret is not injected
 /// here: injection and the parent-reference check happen in
 /// [`finish_processed_welcome`], so this step is identical on both paths.
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 async fn decrypt_group_secrets<Provider: OpenMlsProvider>(
     provider: &Provider,
     mls_group_config: &MlsGroupJoinConfig,
@@ -977,7 +977,7 @@ async fn decrypt_group_secrets<Provider: OpenMlsProvider>(
 /// wrong-epoch secret fails cleanly with [`WelcomeError::SubgroupParentMismatch`]
 /// rather than as an opaque group-info decryption failure further down.
 #[allow(clippy::too_many_arguments)]
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 async fn finish_processed_welcome<Provider: OpenMlsProvider>(
     provider: &Provider,
     mls_group_config: &MlsGroupJoinConfig,
@@ -1098,7 +1098,7 @@ async fn finish_processed_welcome<Provider: OpenMlsProvider>(
 }
 
 /// Read keys for decrypting the welcome message.
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 async fn keys_for_welcome<Provider: OpenMlsProvider>(
     mls_group_config: &MlsGroupJoinConfig,
     welcome: &Welcome,
@@ -1163,7 +1163,7 @@ async fn keys_for_welcome<Provider: OpenMlsProvider>(
 ///
 /// [`RetainedKeyPackageMaterial`]: RetainedKeyPackageMaterial
 #[cfg(feature = "virtual-clients-draft")]
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 pub(crate) async fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
     provider: &Provider,
     ciphersuite: Ciphersuite,
@@ -1220,7 +1220,7 @@ pub(crate) async fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
 /// [`VC_COMPONENT_ID`]: crate::components::vc_derivation_info::VC_COMPONENT_ID
 /// [`DerivationInfoTbe`]: crate::components::vc_derivation_info::DerivationInfoTbe
 #[cfg(feature = "virtual-clients-draft")]
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 async fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     provider: &Provider,
     public_group: &PublicGroup,
@@ -1322,7 +1322,7 @@ impl MlsGroup {
     /// this client on the shared virtual-client leaf (index 0).
     ///
     /// [`MlsGroupBuilder::vc_emulation`]: crate::group::MlsGroupBuilder::vc_emulation
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn vc_join_at_creation<Provider: OpenMlsProvider>(
         provider: &Provider,
         join_config: &MlsGroupJoinConfig,
@@ -1583,7 +1583,7 @@ impl VcExternalCommitJoinBuilder {
     /// Nothing is consumed or persisted at this point. Dropping the returned
     /// [`StagedVcExternalCommitJoin`] discards the join without advancing
     /// the shared operation secret tree.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn process_commit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -1818,7 +1818,7 @@ impl StagedVcExternalCommitJoin {
     /// the committing sibling's dictionary fail with a confirmation tag
     /// mismatch after the generation is consumed, so they should be computed
     /// deterministically from the proposals rather than guessed.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
@@ -1968,7 +1968,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     }
 
     /// Build the [`StagedWelcome`].
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
         // Receiver checks (a) and (b): when joining a subgroup branch, the
         // version and ciphersuite must match the parent group, and the subgroup

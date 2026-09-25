@@ -111,7 +111,7 @@ impl MlsGroup {
         member_state.staged_diff.confirmation_tag() == received_tag
     }
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn derive_epoch_secrets(
         &self,
         provider: &impl OpenMlsProvider,
@@ -243,7 +243,7 @@ impl MlsGroup {
     ///  - ValSem241
     ///  - ValSem242
     ///  - ValSem244
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
@@ -290,7 +290,7 @@ impl MlsGroup {
 
     #[cfg(feature = "extensions-draft")]
     #[allow(clippy::too_many_arguments)]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn stage_commit_with_app_data_updates(
         &self,
         mls_content: &AuthenticatedContent,
@@ -333,7 +333,7 @@ impl MlsGroup {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn stage_applied_proposal_values(
         &self,
         apply_proposals_values: ApplyProposalsValues,
@@ -743,7 +743,7 @@ impl MlsGroup {
     /// commit creates fails. The group is already advanced in memory by then,
     /// and a storage transaction does not roll that back, so a caller that sees
     /// an error has to discard this group and load it again.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn merge_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -830,7 +830,8 @@ impl MlsGroup {
                                     .vc_derivation_epoch_retention_policy()
                                     .clone(),
                             ),
-                        ).await?;
+                        )
+                        .await?;
                     }
 
                     if let Some(application_export_tree) = application_export_tree {

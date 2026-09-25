@@ -34,17 +34,25 @@
 //!
 //! ## Runtime
 //!
-//! The provider exposes an async API. It requires `openmls_traits` to be
-//! built with the `async` feature.
+//! The provider exposes an async API and needs the async mode of
+//! `openmls_traits`. Enable its `async` feature, or the `async` feature of
+//! `openmls`, and make sure no crate in the build enables `sync`.
+//!
+//! Calls on one provider are serialized by an async mutex around the
+//! connection, so concurrent OpenMLS operations that share a provider wait for
+//! each other. The futures are `Send` and can run on a multi-threaded runtime.
 
-use std::{cell::RefCell, marker::PhantomData};
+use std::marker::PhantomData;
 
 use openmls_traits::storage::{CURRENT_VERSION, Entity, Key};
 use serde::Serialize;
 use sqlx::SqliteConnection;
+use tokio::sync::Mutex;
 
 pub use crate::codec::Codec;
 use crate::migrator::MigratorWrapper;
+
+openmls_traits::require_async_mode!("openmls_sqlx_storage");
 
 mod codec;
 mod group_data;
@@ -60,7 +68,7 @@ mod wrappers;
 /// The codec is used to serialize and deserialize the data stored in the
 /// underlying database.
 pub struct SqliteStorageProvider<'a, C> {
-    connection: RefCell<&'a mut SqliteConnection>,
+    connection: Mutex<&'a mut SqliteConnection>,
     codec: PhantomData<C>,
 }
 
@@ -69,7 +77,7 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
     /// [`SqliteConnection`].
     pub fn new(connection: &'a mut SqliteConnection) -> Self {
         Self {
-            connection: RefCell::new(connection),
+            connection: Mutex::new(connection),
             codec: PhantomData,
         }
     }
@@ -77,9 +85,9 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
     /// Run the migrations for the storage provider using sqlx's built-in
     /// migration support.
     pub async fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
-        let mut conn = self.connection.borrow_mut();
+        let connection = self.connection.get_mut();
         sqlx::migrate!("./migrations")
-            .run_direct(&mut MigratorWrapper(*conn))
+            .run_direct(&mut MigratorWrapper(connection))
             .await?;
         Ok(())
     }

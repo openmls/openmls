@@ -349,7 +349,7 @@ impl PreSharedKeyId {
     /// Save this `PreSharedKeyId` in the keystore.
     ///
     /// Note: The nonce is not saved as it must be unique for each time it's being applied.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn store<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -599,7 +599,7 @@ impl From<Secret> for PskSecret {
 }
 
 /// Load PSKs from storage
-#[maybe_async::maybe_async]
+#[openmls_traits::maybe_async]
 pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,

@@ -56,8 +56,6 @@ virtual-clients-draft = [
     "dep:aes",
 ]
 targeted-messages-draft = ["openmls_traits/targeted-messages-draft"]
-sync = ["openmls_traits/sync"]
-async = ["openmls_traits/async"]
 
 [dev-dependencies]
 openmls_rust_crypto = { workspace = true }

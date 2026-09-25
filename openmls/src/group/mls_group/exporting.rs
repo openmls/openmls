@@ -141,7 +141,7 @@ impl MlsGroup {
     /// Export a secret from the forward secure exporter for the component with
     /// the given component ID.
     #[cfg(feature = "extensions-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         &mut self,
         crypto: &Crypto,
@@ -171,7 +171,7 @@ impl MlsGroup {
     /// Export a secret from the forward secure exporter of the pending commit
     /// state for the component with the given component ID.
     #[cfg(feature = "extensions-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn safe_export_secret_from_pending<Provider: StorageProvider>(
         &mut self,
         crypto: &impl OpenMlsCrypto,

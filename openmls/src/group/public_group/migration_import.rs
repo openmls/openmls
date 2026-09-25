@@ -5,7 +5,7 @@ impl PublicGroup {
     /// existing group, both inside [`PublicGroup`] and in [`MlsGroup`].
     ///
     /// [`MlsGroup`]: crate::group::MlsGroup
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn store_for_migration<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,

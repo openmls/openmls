@@ -128,7 +128,7 @@ impl Welcome {
     /// Read-only: nothing is deleted or consumed, in contrast to
     /// [`crate::group::ProcessedWelcome::new_from_welcome`]. Returns `None` if no secret addresses
     /// this client (not found in the provider's storage).
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn resolve_own_key_material<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,

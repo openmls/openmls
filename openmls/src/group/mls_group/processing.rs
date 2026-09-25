@@ -242,7 +242,7 @@ impl MlsGroup {
     /// # Errors:
     /// Returns an [`ProcessMessageError`] when the validation checks fail
     /// with the exact reason of the failure.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn process_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -289,7 +289,7 @@ impl MlsGroup {
 
     /// Parses and deprotects incoming messages from the DS. Checks for syntactic errors, but only
     /// performs limited semantic checks.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn unprotect_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -401,7 +401,7 @@ impl MlsGroup {
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn store_pending_proposal<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -439,7 +439,7 @@ impl MlsGroup {
     // FIXME: #1217
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn commit_to_pending_proposals<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -473,7 +473,7 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn merge_staged_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -577,7 +577,7 @@ impl MlsGroup {
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn merge_pending_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -628,7 +628,7 @@ impl MlsGroup {
     /// `OperationGenerationConsumed`. Operation secrets are consume-once,
     /// matching the semantics of regular PrivateMessage decryption.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(super) async fn load_vc_commit_material<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -744,7 +744,7 @@ impl MlsGroup {
     }
 
     /// Helper function to read decryption keypairs.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(super) async fn read_decryption_keypairs(
         &self,
         provider: &impl OpenMlsProvider,
@@ -780,7 +780,7 @@ impl MlsGroup {
     /// The returned [`StagedCommit`] can be inspected and merged into the
     /// group's state using [`MlsGroup::merge_staged_commit()`].
     #[cfg(feature = "extensions-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn stage_app_data_commit<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -822,26 +822,19 @@ impl MlsGroup {
     /// Returns an error if the message content is not an unresolved app data
     /// commit; the message is consumed either way.
     #[cfg(feature = "extensions-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn resolve_app_data_commit<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
-        mut processed_message: ProcessedMessage,
+        processed_message: ProcessedMessage,
         app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<ProcessedMessage, ResolveAppDataCommitError> {
-        // Staging reads from storage and may be async, so we cannot use the
-        // closure-based `ProcessedMessage::resolve_app_data_commit` here.
-        let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) =
-            processed_message.content
-        else {
-            return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
-        };
+        let (unresolved_commit, with_staged_commit) =
+            processed_message.split_unresolved_app_data_commit()?;
         let staged_commit = self
-            .stage_app_data_commit(provider, *unresolved_commit, app_data_dict_updates)
+            .stage_app_data_commit(provider, unresolved_commit, app_data_dict_updates)
             .await?;
-        processed_message.content =
-            ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
-        Ok(processed_message)
+        Ok(with_staged_commit(staged_commit))
     }
 
     /// This processing function does most of the semantic verifications.
@@ -868,7 +861,7 @@ impl MlsGroup {
     ///  - ValSem204: Public keys from Path must be verified and match the
     ///    private keys from the direct path
     ///  - ValSem205
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -909,7 +902,7 @@ impl MlsGroup {
         Ok(processed)
     }
 
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn process_internal_authenticated_content<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,

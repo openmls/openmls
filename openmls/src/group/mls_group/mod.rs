@@ -333,7 +333,7 @@ impl MlsGroup {
     }
 
     /// Sets the configuration.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn set_configuration<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -485,7 +485,7 @@ impl MlsGroup {
     /// the pending commit will not be used in the group. In particular, if a
     /// pending commit is later accepted by the group, this client will lack the
     /// key material to encrypt or decrypt group messages.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn clear_pending_commit<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -511,7 +511,7 @@ impl MlsGroup {
     /// a Commit message that references those proposals. Only use this
     /// function as a last resort, e.g. when a call to
     /// `MlsGroup::commit_to_pending_proposals` fails.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn clear_pending_proposals<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -546,7 +546,7 @@ impl MlsGroup {
     // === Storage Methods ===
 
     /// Loads the state of the group with given id from persisted state.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
@@ -596,7 +596,7 @@ impl MlsGroup {
     /// Remove the persisted state of this group from storage. Note that
     /// signature key material is not managed by OpenMLS and has to be removed
     /// from the storage provider separately (if desired).
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn delete<Storage: crate::storage::StorageProvider>(
         &mut self,
         storage: &Storage,
@@ -692,7 +692,7 @@ impl MlsGroup {
     }
 
     /// Set the past epoch secret deletion policy for the group.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn set_past_epoch_deletion_policy<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -728,7 +728,7 @@ impl MlsGroup {
     /// Set the derivation-epoch retention policy for the group and apply it
     /// right away. See [`VcDerivationEpochRetentionPolicy`].
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn set_vc_derivation_epoch_retention_policy<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -836,7 +836,7 @@ impl MlsGroup {
     ///
     /// [`VcDerivationEpochState`]: crate::components::vc_derivation_info::VcDerivationEpochState
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn vc_derivation_state_at_epoch<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -869,7 +869,7 @@ impl MlsGroup {
     ///
     /// [`EpochId`]: crate::components::vc_derivation_info::EpochId
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn vc_derivation_epoch_at<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -908,7 +908,7 @@ impl MlsGroup {
     ///
     /// [`EpochId`]: crate::components::vc_derivation_info::EpochId
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn newest_vc_derivation_epoch<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -924,7 +924,7 @@ impl MlsGroup {
     /// Performs several storage writes, so wrap the call in a storage
     /// transaction.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn delete_vc_derivation_epochs<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
@@ -956,7 +956,7 @@ impl MlsGroup {
     /// Shrink this group's derivation-epoch log to its retention policy and
     /// release the epochs that dropped out.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn apply_vc_derivation_epoch_retention<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -981,7 +981,7 @@ impl MlsGroup {
     /// reporting which of them were deleted and which were kept. Epochs whose
     /// state was already absent appear in neither list.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn release_vc_derivation_epochs<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -1016,7 +1016,7 @@ impl MlsGroup {
     /// emulation bindings and its own derivation-epoch log, then sweep the
     /// epochs that are now unreferenced.
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn drop_all_vc_derivation_epoch_references<Storage: StorageProvider>(
         &self,
         storage: &Storage,
@@ -1036,7 +1036,7 @@ impl MlsGroup {
     }
 
     // Encrypt an AuthenticatedContent into an PrivateMessage
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(crate) async fn encrypt<Provider: OpenMlsProvider>(
         &mut self,
         public_message: AuthenticatedContent,
@@ -1050,7 +1050,8 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")]
         let derivation_state = self
             .vc_derivation_state_at_epoch(provider.storage(), self.epoch())
-            .await.map_err(|e| match e {
+            .await
+            .map_err(|e| match e {
                 VcDerivationStateError::Storage(e) => MessageEncryptionError::StorageError(e),
                 VcDerivationStateError::MissingDerivationEpochState => {
                     MessageEncryptionError::VirtualClientsError(
@@ -1147,7 +1148,7 @@ impl MlsGroup {
     /// Delete all past epoch secrets.
     ///
     /// For more information on the arguments to this method, see [`PastEpochDeletion`].
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn delete_past_epoch_secrets<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
@@ -1244,7 +1245,7 @@ impl MlsGroup {
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///
     /// Returns an error if access to the key store fails.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(super) async fn store_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
@@ -1264,7 +1265,7 @@ impl MlsGroup {
     /// [`GroupEpoch`] from the `provider`'s storage.
     ///
     /// Returns an error if the lookup in the [`StorageProvider`] fails.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(super) async fn read_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
@@ -1283,7 +1284,7 @@ impl MlsGroup {
     ///
     /// Returns an error if access to the key store fails.
     #[cfg(not(feature = "virtual-clients-draft"))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(super) async fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
@@ -1298,7 +1299,7 @@ impl MlsGroup {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(super) async fn delete_previous_epoch_keypairs<Storage: StorageProvider>(
         &self,
         store: &Storage,
@@ -1320,7 +1321,7 @@ impl MlsGroup {
 
     /// Stores the state of this group. Only to be called from constructors to
     /// store the initial state of the group.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub(super) async fn store<Storage: crate::storage::StorageProvider>(
         &self,
         storage: &Storage,
@@ -1357,7 +1358,7 @@ impl MlsGroup {
     /// Converts PublicMessage to MlsMessage. Depending on whether handshake
     /// message should be encrypted, PublicMessage messages are encrypted to
     /// PrivateMessage first.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     async fn content_to_mls_message(
         &mut self,
         mls_auth_content: AuthenticatedContent,
@@ -1474,7 +1475,7 @@ impl MlsGroup {
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn ensure_persistence(
         &self,
         storage: &impl StorageProvider,

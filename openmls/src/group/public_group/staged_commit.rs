@@ -444,7 +444,7 @@ impl PublicGroup {
     }
 
     /// Merges a [StagedCommit] into the public group state.
-    #[maybe_async::maybe_async]
+    #[openmls_traits::maybe_async]
     pub async fn merge_commit<Storage: PublicStorageProvider>(
         &mut self,
         storage: &Storage,

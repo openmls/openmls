@@ -2670,7 +2670,6 @@ dependencies = [
  "indicatif",
  "itertools 0.14.0",
  "log",
- "maybe-async",
  "openmls",
  "openmls_basic_credential",
  "openmls_libcrux_crypto",
@@ -2721,7 +2720,6 @@ name = "openmls_basic_credential"
 version = "0.6.0"
 dependencies = [
  "ed25519-dalek",
- "maybe-async",
  "ml-dsa",
  "openmls_libcrux_crypto",
  "openmls_rust_crypto",
