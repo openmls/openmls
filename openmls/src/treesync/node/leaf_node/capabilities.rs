@@ -7,7 +7,6 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
-#[cfg(doc)]
 use super::LeafNode;
 use crate::{
     credentials::CredentialType,
@@ -18,6 +17,73 @@ use crate::{
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
+
+/// How a leaf's capabilities are treated when they don't already cover what
+/// the leaf being built needs.
+///
+/// There is deliberately no [`Default`]: which policy applies depends on
+/// whether the caller set capabilities at all, so every call site resolves it
+/// through `resolve_capabilities` rather than falling back on its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CapabilitiesPolicy {
+    /// Reject construction unless the given capabilities already cover the
+    /// leaf's own ciphersuite, credential type and extension types, and the
+    /// group's required capabilities.
+    Reject,
+    /// Add whatever the leaf itself uses — its ciphersuite, credential type
+    /// and extension types — and reject only if the group's required
+    /// capabilities are still unmet. Never removes anything the caller set.
+    ///
+    /// Note that this widens only capabilities the library can derive from the
+    /// leaf. It never claims support for the group's required extension,
+    /// proposal or credential types on its own, and it cannot
+    /// cover the cross-member credential checks a group applies on receipt.
+    /// Therefore, a widened leaf is not automatically an acceptable one.
+    Widen,
+}
+
+/// Resolve builder-level capabilities and policy into what leaf construction
+/// needs.
+///
+/// Capabilities the caller never set are widened from the leaf itself: there is
+/// exactly one sensible answer for what an unconfigured leaf should advertise,
+/// and it is derivable. Capabilities the caller set explicitly are held to
+/// exactly what they listed, because a list that doesn't cover the leaf is a
+/// mistake worth reporting rather than papering over.
+///
+/// An explicit policy always wins over both defaults.
+pub(crate) fn resolve_capabilities(
+    capabilities: Option<Capabilities>,
+    policy: Option<CapabilitiesPolicy>,
+) -> (Capabilities, CapabilitiesPolicy) {
+    match capabilities {
+        Some(capabilities) => (capabilities, policy.unwrap_or(CapabilitiesPolicy::Reject)),
+        None => (
+            Capabilities::default(),
+            policy.unwrap_or(CapabilitiesPolicy::Widen),
+        ),
+    }
+}
+
+/// Like [`resolve_capabilities`], but for a leaf that already exists in a tree.
+///
+/// Unset capabilities are inherited from that leaf rather than derived from
+/// scratch: they were already validated when it entered the tree, so there is
+/// nothing to widen from, and a rejection means the group's requirements have
+/// changed since.
+pub(crate) fn resolve_capabilities_for_existing_leaf(
+    capabilities: Option<Capabilities>,
+    policy: Option<CapabilitiesPolicy>,
+    existing: &Capabilities,
+) -> (Capabilities, CapabilitiesPolicy) {
+    match capabilities {
+        Some(_) => resolve_capabilities(capabilities, policy),
+        None => (
+            existing.clone(),
+            policy.unwrap_or(CapabilitiesPolicy::Reject),
+        ),
+    }
+}
 
 /// Capabilities of [`LeafNode`]s.
 ///
@@ -52,8 +118,14 @@ pub struct Capabilities {
 
 impl Capabilities {
     /// Create a new [`Capabilities`] struct with the given configuration.
-    /// Any argument that is `None` is filled with the default values from the
-    /// global configuration.
+    ///
+    /// Only `versions` has a default (`Mls1.0`); every other `None`
+    /// produces an **empty** list. An empty list is an
+    /// explicit statement that nothing is supported, so a leaf built from it is
+    /// rejected unless the caller also asks for [`CapabilitiesPolicy::Widen`].
+    ///
+    /// Prefer [`Capabilities::builder`], which makes the empty starting point
+    /// obvious.
     // TODO(#1232)
     pub fn new(
         versions: Option<&[ProtocolVersion]>,
@@ -69,10 +141,7 @@ impl Capabilities {
             },
             ciphersuites: match ciphersuites {
                 Some(c) => c.iter().map(|c| VerifiableCiphersuite::from(*c)).collect(),
-                None => default_ciphersuites()
-                    .into_iter()
-                    .map(VerifiableCiphersuite::from)
-                    .collect(),
+                None => vec![],
             },
             extensions: match extensions {
                 Some(e) => e.into(),
@@ -84,7 +153,7 @@ impl Capabilities {
             },
             credentials: match credentials {
                 Some(c) => c.into(),
-                None => default_credentials(),
+                None => vec![],
             },
         }
     }
@@ -100,18 +169,21 @@ impl Capabilities {
         }
     }
 
-    /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`]
+    /// Creates a new [`CapabilitiesBuilder`] for constructing [`Capabilities`].
+    ///
+    /// Starts from empty lists, except `versions`, which is seeded with
+    /// `default_versions` since the library currently only supports `Mls10`.
     pub fn builder() -> CapabilitiesBuilder {
         CapabilitiesBuilder(Self::default())
     }
 
     /// Creates [`Capabilities`] advertising exactly the ciphersuites supported
-    /// by the given crypto provider, with defaults for all other fields.
-    ///
-    /// In contrast to [`Capabilities::default()`], which advertises a
-    /// hardcoded ciphersuite list independently of what the crypto provider
-    /// can actually perform, this constructor derives the advertised list from
+    /// by the given crypto provider, derived from
     /// [`OpenMlsCrypto::supported_ciphersuites()`].
+    ///
+    /// All other lists are left empty, as everywhere else; only `versions` is
+    /// seeded. Useful for a client that wants to advertise its full crypto
+    /// reach rather than just the one ciphersuite a given leaf uses.
     pub fn for_provider(crypto: &impl OpenMlsCrypto) -> Self {
         Capabilities {
             ciphersuites: crypto
@@ -252,6 +324,58 @@ impl Capabilities {
     /// Check if these [`Capabilities`] contain the ciphersuite.
     pub(crate) fn contains_ciphersuite(&self, ciphersuite: VerifiableCiphersuite) -> bool {
         self.ciphersuites().contains(&ciphersuite)
+    }
+
+    /// Ensure `version` is advertised.
+    ///
+    /// This is deliberately outside [`CapabilitiesPolicy`]: OpenMLS only ever
+    /// builds `Mls10` leaves, so there is no choice for a caller to get wrong
+    /// and nothing to reject. Real per-version negotiation would need to
+    /// revisit this.
+    pub(super) fn ensure_version(&mut self, version: ProtocolVersion) {
+        if !self.contains_version(version) {
+            self.versions.push(version);
+        }
+    }
+
+    /// Widen `self` to cover what the leaf itself uses: its ciphersuite, its
+    /// credential type, and its non-default extension types.
+    ///
+    /// Only ever adds; never removes anything the caller set. Every added
+    /// entry is a fact about the leaf being built, so advertising it is
+    /// always truthful.
+    ///
+    /// Note what this deliberately does *not* do: it never adds the group's
+    /// [`RequiredCapabilitiesExtension`] entries. Those would be claims about
+    /// what the *application* implements, which the library is in no position
+    /// to make on its behalf, so a leaf that doesn't meet the group's
+    /// requirements is rejected instead — see
+    /// [`Capabilities::supports_required_capabilities`].
+    ///
+    /// Default extension types are skipped: RFC 9420 makes support for
+    /// them implicit, so they never need listing. GREASE extension types are
+    /// never default, so a GREASE extension actually present on the leaf is
+    /// covered here.
+    pub(super) fn widen_for(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        credential_type: CredentialType,
+        leaf_extensions: &Extensions<LeafNode>,
+    ) {
+        let verifiable_ciphersuite = VerifiableCiphersuite::from(ciphersuite);
+        if !self.contains_ciphersuite(verifiable_ciphersuite) {
+            self.ciphersuites.push(verifiable_ciphersuite);
+        }
+
+        if !self.contains_credential(credential_type) {
+            self.credentials.push(credential_type);
+        }
+
+        for extension_type in leaf_extensions.iter().map(Extension::extension_type) {
+            if !extension_type.is_default() && !self.extensions.contains(&extension_type) {
+                self.extensions.push(extension_type);
+            }
+        }
     }
 
     /// Add random GREASE values to the capabilities to ensure extensibility.
@@ -408,55 +532,24 @@ impl Capabilities {
 }
 
 impl Default for Capabilities {
+    /// Like empty, but setting the default version to MLS1.0
     fn default() -> Self {
         Capabilities {
             versions: default_versions(),
-            ciphersuites: default_ciphersuites()
-                .into_iter()
-                .map(VerifiableCiphersuite::from)
-                .collect(),
+            ciphersuites: vec![],
             extensions: vec![],
             proposals: vec![],
-            credentials: default_credentials(),
+            credentials: vec![],
         }
     }
 }
 
+/// We have a default version because this is the only version supported by
+/// OpenMLS right now.
+///
+/// All other capabilities do not have default values.
 pub(super) fn default_versions() -> Vec<ProtocolVersion> {
     vec![ProtocolVersion::Mls10]
-}
-
-pub(super) fn default_ciphersuites() -> Vec<Ciphersuite> {
-    vec![
-        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
-        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
-        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-        Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519,
-    ]
-}
-
-// TODO(#1231)
-pub(super) fn default_credentials() -> Vec<CredentialType> {
-    vec![CredentialType::Basic]
 }
 
 #[cfg(test)]

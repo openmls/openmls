@@ -235,7 +235,7 @@ fn key_package_validation_with_many_extensions() {
             Some(&[ciphersuite]),
             Some(&capability_extensions),
             None,
-            None,
+            Some(&[CredentialType::Basic]),
         ))
         .key_package_extensions(key_package_extensions)
         .build(
@@ -338,7 +338,7 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
             DerivationInfo, DerivationInfoTbe, VcDerivationEpochState, VirtualClientOperationType,
             VC_COMPONENT_ID,
         },
-        credentials::test_utils::new_credential,
+        credentials::{test_utils::new_credential, CredentialType},
         extensions::{AppDataDictionary, AppDataDictionaryExtension},
         group::{MlsGroup, MlsGroupCreateConfig, PURE_PLAINTEXT_WIRE_FORMAT_POLICY},
         key_packages::errors::KeyPackageNewError,
@@ -351,6 +351,8 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
     // VC-capable leaf config: declares AppDataDictionary support and lists
     // VC_COMPONENT_ID in its AppComponents entry (component id 1).
     let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
         .extensions(vec![ExtensionType::AppDataDictionary])
         .build();
     let vc_leaf_extensions = {

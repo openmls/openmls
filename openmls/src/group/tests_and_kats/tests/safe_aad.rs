@@ -4,6 +4,7 @@ use tls_codec::{Deserialize as _, Serialize as _, VLBytes};
 
 use crate::{
     component::{ComponentId, ComponentType, ComponentsList},
+    credentials::CredentialType,
     extensions::{
         AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
     },
@@ -31,13 +32,13 @@ fn app_data_dictionary_with_safe_aad(required_ids: Vec<ComponentId>) -> Extensio
 /// Build a leaf-node capability set advertising `AppDataDictionary` support,
 /// which the SafeAAD-enabled groups in these tests require for adds and
 /// self-updates to pass the GroupContext-extension capability check.
-fn safe_aad_capabilities() -> Capabilities {
+fn safe_aad_capabilities(ciphersuite: openmls_traits::types::Ciphersuite) -> Capabilities {
     Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         Some(&[ExtensionType::AppDataDictionary]),
         None,
-        None,
+        Some(&[CredentialType::Basic]),
     )
 }
 
@@ -47,7 +48,7 @@ fn key_package_with_app_data_dictionary_support<Provider: crate::storage::OpenMl
     credential_with_keys: CredentialWithKeyAndSigner,
 ) -> KeyPackageBundle {
     KeyPackage::builder()
-        .leaf_node_capabilities(safe_aad_capabilities())
+        .leaf_node_capabilities(safe_aad_capabilities(ciphersuite))
         .build(
             ciphersuite,
             provider,
@@ -86,7 +87,7 @@ fn create_group_pair<Provider: crate::storage::OpenMlsProvider>(
     let builder = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .wire_format_policy(wire_format_policy)
-        .capabilities(safe_aad_capabilities());
+        .capabilities(safe_aad_capabilities(ciphersuite));
 
     let mls_group_create_config = if safe_aad_required {
         builder
@@ -268,7 +269,7 @@ fn safe_aad_set_rejects_invalid_items() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .capabilities(safe_aad_capabilities())
+        .capabilities(safe_aad_capabilities(ciphersuite))
         .with_group_context_extensions(app_data_dictionary_with_safe_aad(vec![]))
         .build();
 

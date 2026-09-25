@@ -15,7 +15,10 @@ use crate::{
         diff::OwnUpdatePathOverride,
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNodeParameters, UpdateLeafNodeParams},
+            leaf_node::{
+                resolve_capabilities, resolve_capabilities_for_existing_leaf, LeafNodeConstraints,
+                LeafNodeParameters, UpdateLeafNodeParams,
+            },
             parent_node::PlainUpdatePathNode,
         },
         treekem::UpdatePath,
@@ -53,6 +56,7 @@ impl PublicGroupDiff<'_> {
         leaf_node_params: &LeafNodeParameters,
         signer: &impl Signer,
         gc_extensions: Option<Extensions<GroupContext>>,
+        leaf_node_constraints: LeafNodeConstraints,
         own_update_override: Option<OwnUpdatePathOverride>,
     ) -> Result<PathComputationResult, CreateCommitError> {
         let ciphersuite = self.group_context().ciphersuite();
@@ -68,10 +72,12 @@ impl PublicGroupDiff<'_> {
                     .cloned()
                     .ok_or(CreateCommitError::MissingCredential)?;
 
-                let capabilities = match leaf_node_params.capabilities() {
-                    Some(c) => c.to_owned(),
-                    None => Capabilities::default(),
-                };
+                // No leaf to inherit from, so unset capabilities are derived
+                // from the leaf being built.
+                let (capabilities, capabilities_policy) = resolve_capabilities(
+                    leaf_node_params.capabilities().cloned(),
+                    leaf_node_params.capabilities_policy(),
+                );
 
                 let extensions = match leaf_node_params.extensions() {
                     Some(e) => e.to_owned(),
@@ -82,6 +88,8 @@ impl PublicGroupDiff<'_> {
                     credential_with_key,
                     capabilities,
                     extensions,
+                    constraints: leaf_node_constraints,
+                    capabilities_policy,
                 }
             }
             CommitType::Member => {
@@ -98,10 +106,11 @@ impl PublicGroupDiff<'_> {
                     },
                 };
 
-                let capabilities = match leaf_node_params.capabilities() {
-                    Some(c) => c.to_owned(),
-                    None => leaf.capabilities().clone(),
-                };
+                let (capabilities, capabilities_policy) = resolve_capabilities_for_existing_leaf(
+                    leaf_node_params.capabilities().cloned(),
+                    leaf_node_params.capabilities_policy(),
+                    leaf.capabilities(),
+                );
 
                 let extensions = match leaf_node_params.extensions() {
                     Some(e) => e.to_owned(),
@@ -112,6 +121,8 @@ impl PublicGroupDiff<'_> {
                     credential_with_key,
                     capabilities,
                     extensions,
+                    constraints: leaf_node_constraints,
+                    capabilities_policy,
                 }
             }
         };

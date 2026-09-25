@@ -2,7 +2,10 @@
 use std::collections::HashSet;
 
 use openmls_traits::{
-    crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, types::Ciphersuite,
+    crypto::OpenMlsCrypto,
+    random::OpenMlsRand,
+    signatures::Signer,
+    types::{Ciphersuite, VerifiableCiphersuite},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -20,11 +23,12 @@ use crate::{
     },
     credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
-    extensions::{ExtensionType, Extensions},
-    group::GroupId,
+    extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
+    group::{GroupContext, GroupId},
     key_packages::{KeyPackage, Lifetime},
     prelude::KeyPackageBundle,
     storage::OpenMlsProvider,
+    versions::ProtocolVersion,
 };
 
 use crate::treesync::errors::LeafNodeValidationError;
@@ -41,6 +45,12 @@ pub(crate) struct NewLeafNodeParams {
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions<LeafNode>,
     pub(crate) tree_info_tbs: TreeInfoTbs,
+    /// What the group the leaf is built for requires of it. Empty for a
+    /// `KeyPackage`, which has no group.
+    pub(crate) constraints: LeafNodeConstraints,
+    /// How `capabilities` is treated when it doesn't cover what the leaf
+    /// needs. See [`LeafNodePayload::enforce_capabilities`].
+    pub(crate) capabilities_policy: CapabilitiesPolicy,
 }
 
 /// Set of LeafNode parameters that are used when regenerating a LeafNodes
@@ -50,6 +60,11 @@ pub(crate) struct UpdateLeafNodeParams {
     pub(crate) credential_with_key: CredentialWithKey,
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions<LeafNode>,
+    /// What the group the leaf is built for requires.
+    pub(crate) constraints: LeafNodeConstraints,
+    /// How `capabilities` is treated when it doesn't cover what the leaf
+    /// needs. See [`LeafNodePayload::enforce_capabilities`].
+    pub(crate) capabilities_policy: CapabilitiesPolicy,
 }
 
 impl UpdateLeafNodeParams {
@@ -62,7 +77,111 @@ impl UpdateLeafNodeParams {
             },
             capabilities: leaf_node.payload.capabilities.clone(),
             extensions: leaf_node.payload.extensions.clone(),
+            // This reconstructs an already-consistent leaf; there's no group
+            // available here to source constraints from.
+            constraints: LeafNodeConstraints::default(),
+            capabilities_policy: CapabilitiesPolicy::Reject,
         }
+    }
+}
+
+/// We need to build a leaf node that's compatible with the group.
+///
+/// These are the checks a receiving member applies to the leaf's capabilities
+/// (see [`PublicGroup::validate_leaf_node`] and the GroupContext extension
+/// checks), so a leaf that passes them is valid for the group.
+///
+/// The default requires nothing, which is used for [`KeyPackage`].
+///
+/// [`PublicGroup::validate_leaf_node`]: crate::group::PublicGroup::validate_leaf_node
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct LeafNodeConstraints {
+    /// Commits may change the required capabilities.
+    /// The leaf must support all of them.
+    required_capabilities: Vec<RequiredCapabilitiesExtension>,
+
+    /// Group context extensions.
+    group_context_extensions: HashSet<ExtensionType>,
+
+    /// Credential types of the members.
+    /// The leaf must support all of them.
+    credentials_in_use: HashSet<CredentialType>,
+
+    /// Credential types every member supports.
+    /// The leaf's own credential must be one of them.
+    /// Empty, i.e. no restriction, while there are no members (the group
+    /// creator, a key package). Never empty with members, since each
+    /// supports every credential type in use (valn0104).
+    credentials_supported_by_all: HashSet<CredentialType>,
+}
+
+impl LeafNodeConstraints {
+    /// Constraints from a group's GroupContext extensions alone, e.g. for the
+    /// creator of a group that has no other members yet.
+    pub(crate) fn from_group_context_extensions(extensions: &Extensions<GroupContext>) -> Self {
+        let mut constraints = Self::default();
+        constraints.add_group_context_extensions(extensions);
+        constraints
+    }
+
+    /// Also demand support for `extensions` and their required capabilities.
+    pub(crate) fn add_group_context_extensions(&mut self, extensions: &Extensions<GroupContext>) {
+        if let Some(required_capabilities) = extensions.required_capabilities() {
+            self.required_capabilities
+                .push(required_capabilities.clone());
+        }
+        self.group_context_extensions
+            .extend(extensions.iter().map(Extension::extension_type));
+    }
+
+    /// Add compatibility with the credential of `member`.
+    pub(crate) fn add_member(&mut self, member: &LeafNode) {
+        let supported = member.capabilities().credentials();
+        let is_first_member = self.credentials_in_use.is_empty();
+        if is_first_member {
+            self.credentials_supported_by_all = supported.iter().copied().collect();
+        } else {
+            self.credentials_supported_by_all
+                .retain(|credential_type| supported.contains(credential_type));
+        }
+        self.credentials_in_use
+            .insert(member.credential().credential_type());
+    }
+
+    /// Check `capabilities` against the constraints.
+    fn check(
+        &self,
+        capabilities: &Capabilities,
+        credential_type: CredentialType,
+    ) -> Result<(), LeafNodeValidationError> {
+        // https://validation.openmls.tech/#valn0103
+        for required_capabilities in &self.required_capabilities {
+            capabilities.supports_required_capabilities(required_capabilities)?;
+        }
+
+        // https://validation.openmls.tech/#valn0602
+        // https://validation.openmls.tech/#valn1210
+        if self.group_context_extensions.iter().any(|extension_type| {
+            !extension_type.is_default() && !capabilities.extensions().contains(extension_type)
+        }) {
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        }
+
+        // https://validation.openmls.tech/#valn0104
+        if !self.credentials_supported_by_all.is_empty()
+            && !self.credentials_supported_by_all.contains(&credential_type)
+        {
+            return Err(LeafNodeValidationError::LeafNodeCredentialNotSupportedByMember);
+        }
+        if self
+            .credentials_in_use
+            .iter()
+            .any(|in_use| !capabilities.contains_credential(*in_use))
+        {
+            return Err(LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode);
+        }
+
+        Ok(())
     }
 }
 
@@ -72,6 +191,7 @@ pub struct LeafNodeParameters {
     credential_with_key: Option<CredentialWithKey>,
     capabilities: Option<Capabilities>,
     extensions: Option<Extensions<LeafNode>>,
+    capabilities_policy: Option<CapabilitiesPolicy>,
 }
 
 impl LeafNodeParameters {
@@ -93,6 +213,13 @@ impl LeafNodeParameters {
     /// Returns the extensions.
     pub fn extensions(&self) -> Option<&Extensions<LeafNode>> {
         self.extensions.as_ref()
+    }
+
+    /// Returns the capabilities policy the caller set, if any. `None` lets
+    /// [`resolve_capabilities`] pick, which depends on whether `capabilities`
+    /// was set as well.
+    pub(crate) fn capabilities_policy(&self) -> Option<CapabilitiesPolicy> {
+        self.capabilities_policy
     }
 
     pub(crate) fn is_empty(&self) -> bool {
@@ -117,6 +244,7 @@ pub struct LeafNodeParametersBuilder {
     credential_with_key: Option<CredentialWithKey>,
     capabilities: Option<Capabilities>,
     extensions: Option<Extensions<LeafNode>>,
+    capabilities_policy: Option<CapabilitiesPolicy>,
 }
 
 impl LeafNodeParametersBuilder {
@@ -140,12 +268,23 @@ impl LeafNodeParametersBuilder {
         self
     }
 
+    /// Set how `capabilities` is treated when it doesn't cover what the leaf
+    /// needs.
+    ///
+    /// If never called, explicitly set capabilities are used and unset
+    /// capabilities are derived from the leaf.
+    pub fn with_capabilities_policy(mut self, policy: CapabilitiesPolicy) -> Self {
+        self.capabilities_policy = Some(policy);
+        self
+    }
+
     /// Build the [`LeafNodeParameters`].
     pub fn build(self) -> LeafNodeParameters {
         LeafNodeParameters {
             credential_with_key: self.credential_with_key,
             capabilities: self.capabilities,
             extensions: self.extensions,
+            capabilities_policy: self.capabilities_policy,
         }
     }
 }
@@ -183,6 +322,19 @@ pub struct LeafNode {
     signature: Signature,
 }
 
+/// Error building a [`LeafNode`]: either the leaf's capabilities don't
+/// cover what the leaf uses under [`CapabilitiesPolicy::Reject`],
+/// or an unrelated library error occurred (key generation, signing).
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum LeafNodeBuildError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    Validation(#[from] LeafNodeValidationError),
+}
+
 impl LeafNode {
     /// Create a new [`LeafNode`].
     /// This first creates a `LeadNodeTbs` and returns the result of signing
@@ -195,7 +347,7 @@ impl LeafNode {
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         new_leaf_node_params: NewLeafNodeParams,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+    ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         let NewLeafNodeParams {
             ciphersuite,
             credential_with_key,
@@ -203,6 +355,8 @@ impl LeafNode {
             capabilities,
             extensions,
             tree_info_tbs,
+            constraints,
+            capabilities_policy,
         } = new_leaf_node_params;
 
         // Create a new encryption key pair.
@@ -210,12 +364,15 @@ impl LeafNode {
             EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)?;
 
         let leaf_node = Self::new_with_key(
+            ciphersuite,
             encryption_key_pair.public_key().clone(),
             credential_with_key,
             leaf_node_source,
             capabilities,
             extensions,
             tree_info_tbs,
+            &constraints,
+            capabilities_policy,
             signer,
         )?;
 
@@ -233,23 +390,28 @@ impl LeafNode {
         signer: &impl Signer,
         new_leaf_node_params: NewLeafNodeParams,
         encryption_key_pair: EncryptionKeyPair,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+    ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         let NewLeafNodeParams {
-            ciphersuite: _,
+            ciphersuite,
             credential_with_key,
             leaf_node_source,
             capabilities,
             extensions,
             tree_info_tbs,
+            constraints,
+            capabilities_policy,
         } = new_leaf_node_params;
 
         let leaf_node = Self::new_with_key(
+            ciphersuite,
             encryption_key_pair.public_key().clone(),
             credential_with_key,
             leaf_node_source,
             capabilities,
             extensions,
             tree_info_tbs,
+            &constraints,
+            capabilities_policy,
             signer,
         )?;
 
@@ -266,7 +428,7 @@ impl LeafNode {
             encryption_key: EncryptionKey::from(Vec::new()),
             signature_key: Vec::new().into(),
             credential: Credential::new(CredentialType::Basic, Vec::new()),
-            capabilities: Capabilities::default(),
+            capabilities: Capabilities::empty(),
             leaf_node_source: LeafNodeSource::Update,
             extensions: Extensions::default(),
         };
@@ -279,27 +441,34 @@ impl LeafNode {
 
     /// Create a new leaf node with a given HPKE encryption key pair.
     /// The key pair must be stored in the key store by the caller.
+    #[allow(clippy::too_many_arguments)]
     fn new_with_key(
+        ciphersuite: Ciphersuite,
         encryption_key: EncryptionKey,
         credential_with_key: CredentialWithKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
+        constraints: &LeafNodeConstraints,
+        capabilities_policy: CapabilitiesPolicy,
         signer: &impl Signer,
-    ) -> Result<Self, LibraryError> {
+    ) -> Result<Self, LeafNodeBuildError> {
         let leaf_node_tbs = LeafNodeTbs::new(
+            ciphersuite,
             encryption_key,
             credential_with_key,
             capabilities,
             leaf_node_source,
             extensions,
             tree_info_tbs,
-        );
+            constraints,
+            capabilities_policy,
+        )?;
 
         leaf_node_tbs
             .sign(signer)
-            .map_err(|_| LibraryError::custom("Signing failed"))
+            .map_err(|_| LibraryError::custom("Signing failed").into())
     }
 
     /// New [`LeafNode`] with a parent hash.
@@ -321,7 +490,7 @@ impl LeafNode {
         #[cfg(feature = "virtual-clients-draft")] encryption_key_pair_override: Option<
             EncryptionKeyPair,
         >,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+    ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         #[cfg(feature = "virtual-clients-draft")]
         let encryption_key_pair = match encryption_key_pair_override {
             Some(kp) => kp,
@@ -331,6 +500,7 @@ impl LeafNode {
         let encryption_key_pair = EncryptionKeyPair::random(rand, crypto, ciphersuite)?;
 
         let leaf_node_tbs = LeafNodeTbs::new(
+            ciphersuite,
             encryption_key_pair.public_key().clone(),
             leaf_node_params.credential_with_key,
             leaf_node_params.capabilities,
@@ -340,7 +510,9 @@ impl LeafNode {
                 group_id,
                 leaf_index,
             }),
-        );
+            &leaf_node_params.constraints,
+            leaf_node_params.capabilities_policy,
+        )?;
 
         // Sign the leaf node
         let leaf_node = leaf_node_tbs
@@ -377,6 +549,11 @@ impl LeafNode {
             capabilities,
             extensions,
             tree_info_tbs,
+            // KAT generation only; there's no group to source constraints
+            // from, and the leaf built here is expected to already be
+            // self-consistent.
+            constraints: LeafNodeConstraints::default(),
+            capabilities_policy: CapabilitiesPolicy::Reject,
         };
 
         let (leaf_node, encryption_key_pair) = Self::new(provider, signer, new_leaf_node_params)?;
@@ -396,6 +573,7 @@ impl LeafNode {
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn update<Provider: OpenMlsProvider>(
         &mut self,
         ciphersuite: Ciphersuite,
@@ -404,6 +582,7 @@ impl LeafNode {
         group_id: GroupId,
         leaf_index: LeafNodeIndex,
         leaf_node_parmeters: LeafNodeParameters,
+        constraints: &LeafNodeConstraints,
     ) -> Result<EncryptionKeyPair, LeafNodeUpdateError<Provider::StorageError>> {
         let tree_info = TreeInfoTbs::Update(TreePosition::new(group_id, leaf_index));
         let mut leaf_node_tbs = LeafNodeTbs::from(self.clone(), tree_info);
@@ -420,9 +599,26 @@ impl LeafNode {
         }
 
         // Update capabilities
-        if let Some(capabilities) = leaf_node_parmeters.capabilities {
-            leaf_node_tbs.payload.capabilities = capabilities;
-        }
+        let (capabilities, capabilities_policy) = resolve_capabilities_for_existing_leaf(
+            leaf_node_parmeters.capabilities,
+            leaf_node_parmeters.capabilities_policy,
+            &leaf_node_tbs.payload.capabilities,
+        );
+        leaf_node_tbs.payload.capabilities = capabilities;
+
+        // Set the leaf node source to update
+        leaf_node_tbs.payload.leaf_node_source = LeafNodeSource::Update;
+
+        // `LeafNodeTbs::from` above bypasses `LeafNodeTbs::new`, the usual
+        // enforcement chokepoint, so it is applied here explicitly instead.
+        // This runs before the key pair below is generated and stored, so a
+        // rejected update leaves nothing behind in the key store.
+        leaf_node_tbs.payload.enforce_capabilities(
+            ciphersuite,
+            ProtocolVersion::default(),
+            constraints,
+            capabilities_policy,
+        )?;
 
         // Create a new encryption key pair
         let encryption_key_pair =
@@ -433,9 +629,6 @@ impl LeafNode {
         encryption_key_pair
             .write(provider.storage())
             .map_err(LeafNodeUpdateError::Storage)?;
-
-        // Set the leaf node source to update
-        leaf_node_tbs.payload.leaf_node_source = LeafNodeSource::Update;
 
         // Sign the leaf node
         let leaf_node = leaf_node_tbs.sign(signer)?;
@@ -576,46 +769,7 @@ impl LeafNode {
     /// - the types of the used extensions are covered by the capabilities
     /// - the type of the credential is covered by the capabilities
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
-        // Check that no extension is invalid when used in leaf nodes.
-        // https://validation.openmls.tech/#valn1601
-        // NOTE: This check is conducted manually for now, instead of using the method
-        // Extensions::validate_extension_types_for_leaf_node(),
-        // in order to collect the invalid extension types for the log message below.
-        // However, it could be better to instead return the list of invalid extension types
-        // as part of Extensions::validate_extension_types_for_leaf_node(),
-        // as part of the error message.
-        let invalid_extension_types = self
-            .extensions()
-            .iter()
-            .filter(|ext| !ext.extension_type().is_valid_in_leaf_node())
-            .collect::<Vec<_>>();
-        if !invalid_extension_types.is_empty() {
-            log::error!("Invalid extension used in leaf node: {invalid_extension_types:?}");
-            return Err(LeafNodeValidationError::UnsupportedExtensions);
-        }
-
-        // Check that all extensions are contained in the capabilities.
-        if !self.capabilities().contains_extensions(self.extensions()) {
-            log::error!(
-                "Leaf node does not support all extensions it uses\n
-                Supported extensions: {:?}\n
-                Used extensions: {:?}",
-                self.payload.capabilities.extensions,
-                self.extensions()
-            );
-            return Err(LeafNodeValidationError::UnsupportedExtensions);
-        }
-
-        // Check that the capabilities contain the leaf node's credential type.
-        // (https://validation.openmls.tech/#valn0113)
-        if !self
-            .capabilities()
-            .contains_credential(self.credential().credential_type())
-        {
-            return Err(LeafNodeValidationError::UnsupportedCredentials);
-        }
-
-        Ok(())
+        self.payload.validate_locally()
     }
 }
 
@@ -663,6 +817,100 @@ struct LeafNodePayload {
     capabilities: Capabilities,
     leaf_node_source: LeafNodeSource,
     extensions: Extensions<LeafNode>,
+}
+
+impl LeafNodePayload {
+    /// Perform all checks that can be done without further context:
+    /// - the used extensions are not known to be invalid in leaf nodes
+    /// - the types of the used extensions are covered by the capabilities
+    /// - the type of the credential is covered by the capabilities
+    ///
+    /// This lives on the payload rather than on [`LeafNode`] so that leaf
+    /// construction can run it *before* signing, and so that a leaf we build
+    /// is held to exactly the checks a peer will apply on receipt.
+    pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
+        // Check that no extension is invalid when used in leaf nodes.
+        // https://validation.openmls.tech/#valn1601
+        // NOTE: This check is conducted manually for now, instead of using the method
+        // Extensions::validate_extension_types_for_leaf_node(),
+        // in order to collect the invalid extension types for the log message below.
+        // However, it could be better to instead return the list of invalid extension types
+        // as part of Extensions::validate_extension_types_for_leaf_node(),
+        // as part of the error message.
+        let invalid_extension_types = self
+            .extensions
+            .iter()
+            .filter(|ext| !ext.extension_type().is_valid_in_leaf_node())
+            .collect::<Vec<_>>();
+        if !invalid_extension_types.is_empty() {
+            log::error!("Invalid extension used in leaf node: {invalid_extension_types:?}");
+            return Err(LeafNodeValidationError::UnsupportedExtensions);
+        }
+
+        // Check that all extensions are contained in the capabilities.
+        if !self.capabilities.contains_extensions(&self.extensions) {
+            log::error!(
+                "Leaf node does not support all extensions it uses\n
+                Supported extensions: {:?}\n
+                Used extensions: {:?}",
+                self.capabilities.extensions(),
+                self.extensions
+            );
+            return Err(LeafNodeValidationError::ExtensionsNotInCapabilities);
+        }
+
+        // Check that the capabilities contain the leaf node's credential type.
+        // (https://validation.openmls.tech/#valn0113)
+        if !self
+            .capabilities
+            .contains_credential(self.credential.credential_type())
+        {
+            return Err(LeafNodeValidationError::CredentialNotInCapabilities);
+        }
+
+        Ok(())
+    }
+
+    /// Apply `policy` to this leaf's capabilities, then check them.
+    ///
+    /// This is the single enforcement point for every leaf OpenMLS builds. It
+    /// is reached from [`LeafNodeTbs::new`] (every freshly-built leaf) and from
+    /// [`LeafNode::update`], which mutates an existing signed leaf in place and
+    /// so bypasses `LeafNodeTbs::new`.
+    ///
+    /// The checks run under both policies, so widening is verified as well.
+    /// Together with `constraints` they are the capability checks a
+    /// peer applies on receipt ([`LeafNodePayload::validate_locally`]) and
+    /// [`LeafNodeConstraints`]. Widening never covers `constraints`.
+    fn enforce_capabilities(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        version: ProtocolVersion,
+        constraints: &LeafNodeConstraints,
+        policy: CapabilitiesPolicy,
+    ) -> Result<(), LeafNodeValidationError> {
+        if matches!(policy, CapabilitiesPolicy::Widen) {
+            self.capabilities.widen_for(
+                ciphersuite,
+                self.credential.credential_type(),
+                &self.extensions,
+            );
+        }
+        self.capabilities.ensure_version(version);
+
+        self.validate_locally()?;
+
+        if !self
+            .capabilities
+            .contains_ciphersuite(VerifiableCiphersuite::from(ciphersuite))
+        {
+            return Err(LeafNodeValidationError::CiphersuiteNotInCapabilities);
+        }
+
+        constraints.check(&self.capabilities, self.credential.credential_type())?;
+
+        Ok(())
+    }
 }
 
 /// The source of the `LeafNode`.
@@ -736,15 +984,24 @@ impl LeafNodeTbs {
 
     /// Build a new [`LeafNodeTbs`] from a [`KeyPackage`] and [`Credential`].
     /// To get the [`LeafNode`] call [`LeafNode::sign`].
+    ///
+    /// This is the single point through which every leaf node the library
+    /// creates is built, so it is where we enforce that a leaf's capabilities
+    /// are consistent with the leaf itself and the group's requirements — see
+    /// [`LeafNodePayload::enforce_capabilities`].
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
+        ciphersuite: Ciphersuite,
         encryption_key: EncryptionKey,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         leaf_node_source: LeafNodeSource,
         extensions: Extensions<LeafNode>,
         tree_info_tbs: TreeInfoTbs,
-    ) -> Self {
-        let payload = LeafNodePayload {
+        constraints: &LeafNodeConstraints,
+        capabilities_policy: CapabilitiesPolicy,
+    ) -> Result<Self, LeafNodeValidationError> {
+        let mut payload = LeafNodePayload {
             encryption_key,
             signature_key: credential_with_key.signature_key,
             credential: credential_with_key.credential,
@@ -753,10 +1010,17 @@ impl LeafNodeTbs {
             extensions,
         };
 
-        LeafNodeTbs {
+        payload.enforce_capabilities(
+            ciphersuite,
+            ProtocolVersion::default(),
+            constraints,
+            capabilities_policy,
+        )?;
+
+        Ok(LeafNodeTbs {
             payload,
             tree_info_tbs,
-        }
+        })
     }
 }
 
@@ -1111,6 +1375,10 @@ pub enum LeafNodeGenerationError<StorageError> {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
 
+    /// See [`LeafNodeBuildError`] for more details.
+    #[error(transparent)]
+    Build(#[from] LeafNodeBuildError),
+
     /// Error storing leaf private key in storage.
     #[error("Error storing leaf private key.")]
     StorageError(StorageError),
@@ -1130,4 +1398,8 @@ pub enum LeafNodeUpdateError<StorageError> {
     /// Signature error.
     #[error(transparent)]
     Signature(#[from] crate::ciphersuite::signable::SignatureError),
+
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    Validation(#[from] LeafNodeValidationError),
 }

@@ -33,7 +33,6 @@ use crate::{
         EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
     },
     storage::{OpenMlsProvider, StorageProvider},
-    treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
 #[cfg(feature = "virtual-clients-draft")]
@@ -1036,6 +1035,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 } else {
                     CommitType::Member
                 };
+                // Build the leaf node constraints from the old state and add
+                // group context extensions as they may change.
+                let mut leaf_node_constraints = group.public_group.leaf_node_constraints();
+                if let Some(extensions) = &apply_proposals_values.extensions {
+                    leaf_node_constraints.add_group_context_extensions(extensions);
+                }
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
                 // tree hash.
@@ -1049,6 +1054,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         &cur_stage.leaf_node_parameters,
                         new_signer,
                         apply_proposals_values.extensions.clone(),
+                        leaf_node_constraints,
                         own_update_override,
                     )?,
                     None => diff.compute_path(
@@ -1060,6 +1066,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         &cur_stage.leaf_node_parameters,
                         old_signer,
                         apply_proposals_values.extensions.clone(),
+                        leaf_node_constraints,
                         own_update_override,
                     )?,
                 }
@@ -1074,36 +1081,6 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .encrypted_path
             .as_ref()
             .map(|path| path.leaf_node().clone());
-
-        // Validate that the update path leaf node's capabilities
-        if let Some(ref leaf_node) = update_path_leaf_node {
-            // Check that all extension types in the group context that are valid in leaf nodes
-            // are supported by the leaf node
-            //
-            // This is currently not required by the RFC, likely by mistake:
-            // https://mailarchive.ietf.org/arch/msg/mls/k18P4FP7dfS2cBmP0kL6Uh50-ok/
-            if !diff
-                .group_context()
-                .extensions()
-                .iter()
-                .map(Extension::extension_type)
-                .all(|ext_type| leaf_node.supports_extension(&ext_type))
-            {
-                return Err(CreateCommitError::LeafNodeValidation(
-                    LeafNodeValidationError::UnsupportedExtensions,
-                ));
-            }
-
-            // Check that the leaf node supports everything listed in the required capabilities.
-            // https://validation.openmls.tech/#valn0103
-            if let Some(required_capabilities) =
-                diff.group_context().extensions().required_capabilities()
-            {
-                leaf_node
-                    .capabilities()
-                    .supports_required_capabilities(required_capabilities)?
-            }
-        }
 
         // Create commit message
         let commit = Commit {

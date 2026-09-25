@@ -6,8 +6,10 @@ use openmls_traits::types::Ciphersuite;
 use thiserror::Error;
 
 use crate::{
-    ciphersuite::signable::SignatureError, error::LibraryError,
-    prelude::ExtensionTypeNotValidInKeyPackageError, treesync::errors::LifetimeError,
+    ciphersuite::signable::SignatureError,
+    error::LibraryError,
+    prelude::ExtensionTypeNotValidInKeyPackageError,
+    treesync::{errors::LifetimeError, node::leaf_node::LeafNodeBuildError},
 };
 
 /// KeyPackage verify error
@@ -71,6 +73,9 @@ pub enum KeyPackageNewError {
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
+    /// The leaf node's capabilities don't cover what the leaf itself uses.
+    #[error(transparent)]
+    LeafNodeBuild(#[from] LeafNodeBuildError),
     /// A virtual-clients operation failed while building the key package.
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]

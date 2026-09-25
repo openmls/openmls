@@ -129,10 +129,14 @@ impl MlsGroup {
         credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError<Provider::StorageError>>
     {
-        let leaf_node_parameters = LeafNodeParameters::builder()
-            .with_capabilities(capabilities.unwrap_or_default())
-            .with_extensions(extensions.unwrap_or_default())
-            .build();
+        // `None` has to stay unset rather than become an empty `Capabilities`,
+        // so the leaf's own capabilities get derived from it.
+        let mut leaf_node_parameters =
+            LeafNodeParameters::builder().with_extensions(extensions.unwrap_or_default());
+        if let Some(capabilities) = capabilities {
+            leaf_node_parameters = leaf_node_parameters.with_capabilities(capabilities);
+        }
+        let leaf_node_parameters = leaf_node_parameters.build();
 
         let mut external_commit_builder = ExternalCommitBuilder::new()
             .with_aad(aad.to_vec())

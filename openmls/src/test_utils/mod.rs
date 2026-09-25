@@ -24,7 +24,10 @@ use crate::{
     credentials::{Credential, CredentialType, CredentialWithKey},
     key_packages::{KeyPackage, KeyPackageBuilder},
     prelude::KeyPackageBundle,
-    treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
+    treesync::node::{
+        encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
+        leaf_node::{Capabilities, CapabilitiesBuilder},
+    },
 };
 
 pub mod frankenstein;
@@ -33,6 +36,29 @@ pub mod storage_state;
 pub mod test_framework;
 
 pub mod single_group_test_framework;
+
+/// A capabilities builder covering exactly the two dimensions every leaf node
+/// must advertise about itself: `ciphersuite`, and a `Basic` credential.
+///
+/// Setting capabilities explicitly means they are taken at face value, so a
+/// test that needs a particular extension or proposal type advertised has to
+/// state the ciphersuite and credential type too. This is the base to chain
+/// `.extensions(...)` / `.proposals(...)` onto for that. Use
+/// `Capabilities::builder()` directly when the credential under test isn't
+/// `Basic`.
+///
+/// A test that doesn't care about capabilities at all should set none, and let
+/// them be derived from the leaf.
+///
+/// This helper must keep setting *exactly* these two dimensions. Tests rely on
+/// the ones it leaves empty: `capabilities_check.rs` builds a party through it
+/// specifically so that party does **not** support a custom proposal type, and
+/// adding `.proposals(...)` here would make that test vacuous without failing.
+pub fn minimal_capabilities_for(ciphersuite: Ciphersuite) -> CapabilitiesBuilder {
+    Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+}
 
 pub(crate) fn write(file_name: &str, obj: impl Serialize) {
     let mut file = match File::create(file_name) {
