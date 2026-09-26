@@ -11,6 +11,7 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
+    framing::errors::MessageEncryptionError,
     group::{
         errors::{
             CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
@@ -202,13 +203,40 @@ pub enum ProcessMessageError<StorageError> {
 /// Create message error
 #[cfg(not(feature = "virtual-clients-draft"))]
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateMessageError {
+pub enum CreateMessageError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// Error writing to storage.
+    #[error("Error writing to storage: {0}")]
+    StorageError(StorageError),
+}
+
+/// Preserve the real storage error when that's the underlying cause of a
+/// failure while encrypting an outgoing application message; otherwise fall
+/// back to a library error rather than masking it as a generic one (see
+/// #2212).
+#[cfg(not(feature = "virtual-clients-draft"))]
+impl<StorageError: std::fmt::Debug> From<MessageEncryptionError<StorageError>>
+    for CreateMessageError<StorageError>
+{
+    fn from(error: MessageEncryptionError<StorageError>) -> Self {
+        match error {
+            MessageEncryptionError::StorageError(error) => CreateMessageError::StorageError(error),
+            MessageEncryptionError::LibraryError(library_error) => {
+                CreateMessageError::LibraryError(library_error)
+            }
+            other => {
+                log::error!("Error encrypting application message: {other:?}");
+                CreateMessageError::LibraryError(LibraryError::custom(
+                    "Error encrypting application message",
+                ))
+            }
+        }
+    }
 }
 
 /// Add members error
@@ -290,6 +318,30 @@ pub enum ProposeAddMemberError<StorageError> {
     StorageError(StorageError),
 }
 
+/// Preserve the real storage error when that's the underlying cause of a
+/// failure while encrypting an outgoing add proposal; otherwise fall back to
+/// a library error rather than masking it as a generic one (see #2212).
+impl<StorageError: std::fmt::Debug> From<MessageEncryptionError<StorageError>>
+    for ProposeAddMemberError<StorageError>
+{
+    fn from(error: MessageEncryptionError<StorageError>) -> Self {
+        match error {
+            MessageEncryptionError::StorageError(error) => {
+                ProposeAddMemberError::StorageError(error)
+            }
+            MessageEncryptionError::LibraryError(library_error) => {
+                ProposeAddMemberError::LibraryError(library_error)
+            }
+            other => {
+                log::error!("Error encrypting add proposal message: {other:?}");
+                ProposeAddMemberError::LibraryError(LibraryError::custom(
+                    "Error encrypting add proposal message",
+                ))
+            }
+        }
+    }
+}
+
 /// Propose remove members error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ProposeRemoveMemberError<StorageError> {
@@ -305,6 +357,30 @@ pub enum ProposeRemoveMemberError<StorageError> {
     /// Error writing to storage
     #[error("Error writing to storage: {0}")]
     StorageError(StorageError),
+}
+
+/// Preserve the real storage error when that's the underlying cause of a
+/// failure while encrypting an outgoing remove proposal; otherwise fall back
+/// to a library error rather than masking it as a generic one (see #2212).
+impl<StorageError: std::fmt::Debug> From<MessageEncryptionError<StorageError>>
+    for ProposeRemoveMemberError<StorageError>
+{
+    fn from(error: MessageEncryptionError<StorageError>) -> Self {
+        match error {
+            MessageEncryptionError::StorageError(error) => {
+                ProposeRemoveMemberError::StorageError(error)
+            }
+            MessageEncryptionError::LibraryError(library_error) => {
+                ProposeRemoveMemberError::LibraryError(library_error)
+            }
+            other => {
+                log::error!("Error encrypting remove proposal message: {other:?}");
+                ProposeRemoveMemberError::LibraryError(LibraryError::custom(
+                    "Error encrypting remove proposal message",
+                ))
+            }
+        }
+    }
 }
 
 /// Remove members error
@@ -348,6 +424,29 @@ pub enum LeaveGroupError<StorageError> {
     /// SelfRemove not allowed with pure ciphertext outgoing wire format policy.
     #[error("SelfRemove not allowed with pure ciphertext outgoing wire format policy.")]
     CannotSelfRemoveWithPureCiphertext,
+}
+
+/// Preserve the real storage error when that's the underlying cause of a
+/// failure while encrypting an outgoing leave-group (self-remove) message;
+/// otherwise fall back to a library error rather than masking it as a
+/// generic one (see #2212).
+impl<StorageError: std::fmt::Debug> From<MessageEncryptionError<StorageError>>
+    for LeaveGroupError<StorageError>
+{
+    fn from(error: MessageEncryptionError<StorageError>) -> Self {
+        match error {
+            MessageEncryptionError::StorageError(error) => LeaveGroupError::StorageError(error),
+            MessageEncryptionError::LibraryError(library_error) => {
+                LeaveGroupError::LibraryError(library_error)
+            }
+            other => {
+                log::error!("Error encrypting leave-group message: {other:?}");
+                LeaveGroupError::LibraryError(LibraryError::custom(
+                    "Error encrypting leave-group message",
+                ))
+            }
+        }
+    }
 }
 
 /// Self update error
@@ -404,6 +503,31 @@ pub enum ProposeSelfUpdateError<StorageError> {
     /// `new_signer.credential_with_key` (rotation paths only).
     #[error("Mismatched ciphersuite between new_signer and the group")]
     InvalidSignerCiphersuite,
+}
+
+/// Preserve the real storage error when that's the underlying cause of a
+/// failure while encrypting an outgoing self-update proposal; otherwise fall
+/// back to a library error rather than masking it as a generic one (see
+/// #2212).
+impl<StorageError: std::fmt::Debug> From<MessageEncryptionError<StorageError>>
+    for ProposeSelfUpdateError<StorageError>
+{
+    fn from(error: MessageEncryptionError<StorageError>) -> Self {
+        match error {
+            MessageEncryptionError::StorageError(error) => {
+                ProposeSelfUpdateError::StorageError(error)
+            }
+            MessageEncryptionError::LibraryError(library_error) => {
+                ProposeSelfUpdateError::LibraryError(library_error)
+            }
+            other => {
+                log::error!("Error encrypting self-update proposal message: {other:?}");
+                ProposeSelfUpdateError::LibraryError(LibraryError::custom(
+                    "Error encrypting self-update proposal message",
+                ))
+            }
+        }
+    }
 }
 
 /// Commit to pending proposals error
@@ -576,6 +700,28 @@ pub enum ProposalError<StorageError> {
     /// Error writing proposal to storage.
     #[error("error writing proposal to storage")]
     StorageError(StorageError),
+}
+
+/// Preserve the real storage error when that's the underlying cause of a
+/// failure while encrypting an outgoing proposal; otherwise fall back to a
+/// library error rather than masking it as a generic one (see #2212).
+impl<StorageError: std::fmt::Debug> From<MessageEncryptionError<StorageError>>
+    for ProposalError<StorageError>
+{
+    fn from(error: MessageEncryptionError<StorageError>) -> Self {
+        match error {
+            MessageEncryptionError::StorageError(error) => ProposalError::StorageError(error),
+            MessageEncryptionError::LibraryError(library_error) => {
+                ProposalError::LibraryError(library_error)
+            }
+            other => {
+                log::error!("Error encrypting proposal message: {other:?}");
+                ProposalError::LibraryError(LibraryError::custom(
+                    "Error encrypting proposal message",
+                ))
+            }
+        }
+    }
 }
 
 /// Remove proposal error
