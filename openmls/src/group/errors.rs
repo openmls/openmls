@@ -315,23 +315,6 @@ impl<StorageError: std::fmt::Debug> From<ExternalCommitBuilderFinalizeError<Stor
             ExternalCommitBuilderFinalizeError::StorageError(error) => {
                 ExternalCommitError::StorageError(error)
             }
-            // Preserve the real storage error when that's the underlying
-            // cause; otherwise fall back to a library error rather than
-            // masking it as a generic one (see #2212).
-            ExternalCommitBuilderFinalizeError::MessageEncryptionError(e) => match e {
-                MessageEncryptionError::StorageError(error) => {
-                    ExternalCommitError::StorageError(error)
-                }
-                MessageEncryptionError::LibraryError(library_error) => {
-                    ExternalCommitError::LibraryError(library_error)
-                }
-                other => {
-                    log::error!("Error encrypting external commit message: {other:?}");
-                    ExternalCommitError::LibraryError(LibraryError::custom(
-                        "Error encrypting external commit message",
-                    ))
-                }
-            },
             ExternalCommitBuilderFinalizeError::MergeCommitError(e) => {
                 log::error!("Error merging external commit: {e}");
                 // This shouldn't happen, since we merge our own external
@@ -540,12 +523,33 @@ pub enum CommitBuilderStageError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// See [`MessageEncryptionError`] for more details.
-    #[error(transparent)]
-    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
     /// Error interacting with storage.
     #[error("Error interacting with storage.")]
     KeyStoreError(StorageError),
+}
+
+/// Preserve the real storage error when that's the underlying cause of a
+/// failure while encrypting an outgoing commit message; otherwise fall back
+/// to a library error rather than masking it as a generic one (see #2212).
+impl<StorageError: std::fmt::Debug> From<MessageEncryptionError<StorageError>>
+    for CommitBuilderStageError<StorageError>
+{
+    fn from(error: MessageEncryptionError<StorageError>) -> Self {
+        match error {
+            MessageEncryptionError::StorageError(error) => {
+                CommitBuilderStageError::KeyStoreError(error)
+            }
+            MessageEncryptionError::LibraryError(library_error) => {
+                CommitBuilderStageError::LibraryError(library_error)
+            }
+            other => {
+                log::error!("Error encrypting commit message: {other:?}");
+                CommitBuilderStageError::LibraryError(LibraryError::custom(
+                    "Error encrypting commit message",
+                ))
+            }
+        }
+    }
 }
 
 /// Stage commit error
@@ -554,15 +558,37 @@ pub enum ExternalCommitBuilderFinalizeError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// See [`MessageEncryptionError`] for more details.
-    #[error(transparent)]
-    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
     /// Error interacting with storage.
     #[error("Error interacting with storage.")]
     StorageError(StorageError),
     /// Error merging external commit.
     #[error("Error merging external commit.")]
     MergeCommitError(#[from] MergePendingCommitError<StorageError>),
+}
+
+/// Preserve the real storage error when that's the underlying cause of a
+/// failure while encrypting an outgoing external commit message; otherwise
+/// fall back to a library error rather than masking it as a generic one (see
+/// #2212).
+impl<StorageError: std::fmt::Debug> From<MessageEncryptionError<StorageError>>
+    for ExternalCommitBuilderFinalizeError<StorageError>
+{
+    fn from(error: MessageEncryptionError<StorageError>) -> Self {
+        match error {
+            MessageEncryptionError::StorageError(error) => {
+                ExternalCommitBuilderFinalizeError::StorageError(error)
+            }
+            MessageEncryptionError::LibraryError(library_error) => {
+                ExternalCommitBuilderFinalizeError::LibraryError(library_error)
+            }
+            other => {
+                log::error!("Error encrypting external commit message: {other:?}");
+                ExternalCommitBuilderFinalizeError::LibraryError(LibraryError::custom(
+                    "Error encrypting external commit message",
+                ))
+            }
+        }
+    }
 }
 
 /// Validation error

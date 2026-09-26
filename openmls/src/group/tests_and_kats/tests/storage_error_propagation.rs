@@ -5,15 +5,10 @@
 
 use std::{cell::RefCell, collections::HashMap};
 
-use crate::{
-    framing::errors::MessageEncryptionError,
-    group::{
-        errors::CommitBuilderStageError,
-        mls_group::tests_and_kats::utils::{setup_alice_group, setup_client},
-        tests_and_kats::utils::storage_error::{
-            TestProvider, TestStorageError, TestStorageProvider,
-        },
-    },
+use crate::group::{
+    errors::CommitBuilderStageError,
+    mls_group::tests_and_kats::utils::{setup_alice_group, setup_client},
+    tests_and_kats::utils::storage_error::{TestProvider, TestStorageError, TestStorageProvider},
 };
 
 #[openmls_test::openmls_test]
@@ -50,17 +45,14 @@ fn stage_commit_surfaces_storage_error_instead_of_malformed_plaintext() {
 
     // Before the fix: this was `CommitBuilderStageError::LibraryError(_)`
     // wrapping "Malformed plaintext", discarding the real cause. After the
-    // fix, the error surfaces via the new `MessageEncryptionError` variant
-    // (added alongside the pre-existing `KeyStoreError` variant, not in
-    // place of it), which carries the real storage error underneath.
+    // fix, the error is flattened into the pre-existing `KeyStoreError`
+    // variant, matching the shape the issue itself expects.
     match err {
-        CommitBuilderStageError::MessageEncryptionError(MessageEncryptionError::StorageError(
-            TestStorageError::Injected(reason),
-        )) => {
+        CommitBuilderStageError::KeyStoreError(TestStorageError::Injected(reason)) => {
             assert_eq!(reason, "writing message secrets");
         }
         other => {
-            panic!("expected a MessageEncryptionError carrying the injected cause, got: {other:?}")
+            panic!("expected a KeyStoreError carrying the injected cause, got: {other:?}")
         }
     }
 }
@@ -91,13 +83,11 @@ fn propose_add_member_surfaces_storage_error_instead_of_malformed_plaintext() {
         .expect_err("expected the injected storage error to surface");
 
     match err {
-        ProposeAddMemberError::MessageEncryptionError(MessageEncryptionError::StorageError(
-            TestStorageError::Injected(reason),
-        )) => {
+        ProposeAddMemberError::StorageError(TestStorageError::Injected(reason)) => {
             assert_eq!(reason, "writing message secrets");
         }
         other => {
-            panic!("expected a MessageEncryptionError carrying the injected cause, got: {other:?}")
+            panic!("expected a StorageError carrying the injected cause, got: {other:?}")
         }
     }
 }
@@ -105,6 +95,12 @@ fn propose_add_member_surfaces_storage_error_instead_of_malformed_plaintext() {
 #[openmls_test::openmls_test]
 fn create_message_surfaces_storage_error_instead_of_malformed_plaintext() {
     use crate::group::errors::CreateMessageError;
+    // Only needed to match the vc-draft build's `CreateMessageError` below,
+    // whose `MessageEncryptionError` variant predates this branch (it is
+    // untouched by the flattening fix, which is scoped to the non-vc
+    // `CreateMessageError`) and is therefore still nested.
+    #[cfg(feature = "virtual-clients-draft")]
+    use crate::framing::errors::MessageEncryptionError;
 
     let provider = &Provider::default();
     let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
@@ -127,13 +123,16 @@ fn create_message_surfaces_storage_error_instead_of_malformed_plaintext() {
         .expect_err("expected the injected storage error to surface");
 
     match err {
+        #[cfg(not(feature = "virtual-clients-draft"))]
+        CreateMessageError::StorageError(TestStorageError::Injected(reason)) => {
+            assert_eq!(reason, "writing message secret");
+        }
+        #[cfg(feature = "virtual-clients-draft")]
         CreateMessageError::MessageEncryptionError(MessageEncryptionError::StorageError(
             TestStorageError::Injected(reason),
         )) => {
             assert_eq!(reason, "writing message secret");
         }
-        other => panic!(
-            "expected a MessageEncryptionError::StorageError carrying the injected cause, got: {other:?}"
-        ),
+        other => panic!("expected a CreateMessageError::StorageError carrying the injected cause, got: {other:?}"),
     }
 }
