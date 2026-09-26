@@ -43,7 +43,8 @@ impl MlsGroup {
     /// `CreateMessageError::MlsGroupStateError::PendingProposal` if pending
     /// proposals exist. In that case `.process_pending_proposals()` must be
     /// called first and incoming messages from the DS must be processed
-    /// afterwards.
+    /// afterwards. Returns `CreateMessageError::StorageError(_)` if a storage
+    /// failure occurs while persisting the message's encryption secrets.
     #[cfg(not(feature = "virtual-clients-draft"))]
     pub fn create_message<Provider: OpenMlsProvider>(
         &mut self,
@@ -88,7 +89,7 @@ impl MlsGroup {
     where
         E: From<LibraryError>
             + From<MlsGroupStateError>
-            + From<crate::framing::errors::MessageEncryptionError<Provider::StorageError>>,
+            + From<MessageEncryptionError<Provider::StorageError>>,
     {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction.into());
