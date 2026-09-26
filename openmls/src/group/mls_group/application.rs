@@ -51,9 +51,11 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
-    ) -> Result<MlsMessageOut, CreateMessageError> {
+    ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
         let (_, output) = self
-            .create_message_internal::<_, CreateMessageError>(provider, signer, message)
+            .create_message_internal::<_, CreateMessageError<Provider::StorageError>>(
+                provider, signer, message,
+            )
             .await?;
         Ok(output)
     }
@@ -90,7 +92,9 @@ impl MlsGroup {
         message: &[u8],
     ) -> Result<(u32, MlsMessageOut), E>
     where
-        E: From<LibraryError> + From<MlsGroupStateError>,
+        E: From<LibraryError>
+            + From<MlsGroupStateError>
+            + From<crate::framing::errors::MessageEncryptionError<Provider::StorageError>>,
     {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction.into());
@@ -110,11 +114,7 @@ impl MlsGroup {
         let EncryptionOutput {
             generation,
             private_message,
-        } = self
-            .encrypt(authenticated_content, provider)
-            .await
-            // We know the application message is wellformed and we have the key material of the current epoch
-            .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
+        } = self.encrypt(authenticated_content, provider).await?;
 
         let output = MlsMessageOut::from_private_message(private_message, self.version());
         self.reset_aad();
