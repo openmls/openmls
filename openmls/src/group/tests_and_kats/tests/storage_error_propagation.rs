@@ -101,3 +101,39 @@ fn propose_add_member_surfaces_storage_error_instead_of_malformed_plaintext() {
         }
     }
 }
+
+#[openmls_test::openmls_test]
+fn create_message_surfaces_storage_error_instead_of_malformed_plaintext() {
+    use crate::group::errors::CreateMessageError;
+
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    let test_storage = TestStorageProvider {
+        delegate: provider.storage(),
+        errors: RefCell::new(HashMap::from([(
+            "write_message_secrets",
+            vec![TestStorageError::Injected("writing message secret")],
+        )])),
+    };
+    let test_provider = TestProvider {
+        storage: &test_storage,
+        crypto: provider.crypto(),
+        rand: provider.rand(),
+    };
+
+    let err = group
+        .create_message(&test_provider, &signer, b"hello")
+        .expect_err("expected the injected storage error to surface");
+
+    match err {
+        CreateMessageError::MessageEncryptionError(MessageEncryptionError::StorageError(
+            TestStorageError::Injected(reason),
+        )) => {
+            assert_eq!(reason, "writing message secret");
+        }
+        other => panic!(
+            "expected a MessageEncryptionError::StorageError carrying the injected cause, got: {other:?}"
+        ),
+    }
+}

@@ -203,13 +203,16 @@ pub enum ProcessMessageError<StorageError> {
 /// Create message error
 #[cfg(not(feature = "virtual-clients-draft"))]
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateMessageError {
+pub enum CreateMessageError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] crate::framing::errors::MessageEncryptionError<StorageError>),
 }
 
 /// Add members error
