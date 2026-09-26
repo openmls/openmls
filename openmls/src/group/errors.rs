@@ -14,7 +14,7 @@ use crate::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
-    framing::errors::MessageDecryptionError,
+    framing::errors::{MessageDecryptionError, MessageEncryptionError},
     group::commit_builder::external_commits::ExternalCommitBuilderError,
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageVerifyError},
     messages::{group_info::GroupInfoError, GroupSecretsError},
@@ -304,7 +304,7 @@ pub enum VcGroupCreationJoinError<StorageError> {
     StorageError(StorageError),
 }
 
-impl<StorageError> From<ExternalCommitBuilderFinalizeError<StorageError>>
+impl<StorageError: std::fmt::Debug> From<ExternalCommitBuilderFinalizeError<StorageError>>
     for ExternalCommitError<StorageError>
 {
     fn from(error: ExternalCommitBuilderFinalizeError<StorageError>) -> Self {
@@ -315,6 +315,23 @@ impl<StorageError> From<ExternalCommitBuilderFinalizeError<StorageError>>
             ExternalCommitBuilderFinalizeError::StorageError(error) => {
                 ExternalCommitError::StorageError(error)
             }
+            // Preserve the real storage error when that's the underlying
+            // cause; otherwise fall back to a library error rather than
+            // masking it as a generic one (see #2212).
+            ExternalCommitBuilderFinalizeError::MessageEncryptionError(e) => match e {
+                MessageEncryptionError::StorageError(error) => {
+                    ExternalCommitError::StorageError(error)
+                }
+                MessageEncryptionError::LibraryError(library_error) => {
+                    ExternalCommitError::LibraryError(library_error)
+                }
+                other => {
+                    log::error!("Error encrypting external commit message: {other:?}");
+                    ExternalCommitError::LibraryError(LibraryError::custom(
+                        "Error encrypting external commit message",
+                    ))
+                }
+            },
             ExternalCommitBuilderFinalizeError::MergeCommitError(e) => {
                 log::error!("Error merging external commit: {e}");
                 // This shouldn't happen, since we merge our own external
@@ -523,6 +540,9 @@ pub enum CommitBuilderStageError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
     /// Error interacting with storage.
     #[error("Error interacting with storage.")]
     KeyStoreError(StorageError),
@@ -534,6 +554,9 @@ pub enum ExternalCommitBuilderFinalizeError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
     /// Error interacting with storage.
     #[error("Error interacting with storage.")]
     StorageError(StorageError),
