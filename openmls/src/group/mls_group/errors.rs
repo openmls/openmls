@@ -11,6 +11,7 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
+    framing::errors::MessageEncryptionError,
     group::{
         errors::{
             CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
@@ -276,6 +277,9 @@ pub enum ProposeAddMemberError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
     /// The new member does not support all required extensions.
     #[error("The new member does not support all required extensions.")]
     UnsupportedExtensions,
@@ -296,6 +300,9 @@ pub enum ProposeRemoveMemberError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -339,6 +346,9 @@ pub enum LeaveGroupError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -380,6 +390,9 @@ pub enum ProposeSelfUpdateError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
 
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
@@ -549,6 +562,9 @@ pub enum ProposalError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`MessageEncryptionError`] for more details.
+    #[error(transparent)]
+    MessageEncryptionError(#[from] MessageEncryptionError<StorageError>),
     /// See [`ProposeAddMemberError`] for more details.
     #[error(transparent)]
     ProposeAddMemberError(#[from] ProposeAddMemberError<StorageError>),
