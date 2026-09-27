@@ -288,6 +288,7 @@ fn wire_format_checks() {
             ciphersuite,
             &mut message_secrets,
             0,
+            false,
             #[cfg(feature = "virtual-clients-draft")]
             None,
         )

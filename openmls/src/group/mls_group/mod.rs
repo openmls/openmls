@@ -774,6 +774,17 @@ impl MlsGroup {
         public_message: AuthenticatedContent,
         provider: &Provider,
     ) -> Result<EncryptionOutput, MessageEncryptionError<Provider::StorageError>> {
+        self.encrypt_with_key_export(public_message, provider, false)
+    }
+
+    // Encrypt an AuthenticatedContent into a PrivateMessage, optionally exporting
+    // the per-message AEAD key/nonce of an application message.
+    pub(crate) fn encrypt_with_key_export<Provider: OpenMlsProvider>(
+        &mut self,
+        public_message: AuthenticatedContent,
+        provider: &Provider,
+        export_key: bool,
+    ) -> Result<EncryptionOutput, MessageEncryptionError<Provider::StorageError>> {
         let padding_size = self.configuration().padding_size();
 
         // If this group is bound to an emulation epoch at its current epoch,
@@ -802,6 +813,7 @@ impl MlsGroup {
             self.ciphersuite(),
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
+            export_key,
             #[cfg(feature = "virtual-clients-draft")]
             emulator_ctx.as_ref(),
         )?;

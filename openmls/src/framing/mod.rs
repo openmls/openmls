@@ -55,6 +55,7 @@ use crate::{
 };
 
 pub(crate) mod codec;
+pub(crate) mod key_export;
 
 pub(crate) mod message_in;
 pub(crate) mod message_out;
@@ -90,6 +91,7 @@ pub(crate) use sender::*;
 // Public
 pub mod errors;
 
+pub use key_export::ExportedMessageKey;
 pub use message_in::*;
 pub use message_out::*;
 pub use private_message::*;

@@ -46,6 +46,8 @@ pub(crate) struct EncryptionOutput {
     /// [`MlsGroup::encrypt`]: crate::group::MlsGroup::encrypt
     #[cfg(feature = "virtual-clients-draft")]
     pub(crate) generation_id: Option<crate::components::vc_derivation_info::GenerationId>,
+    /// Per-message key export, when requested for an application message.
+    pub(crate) exported_key: Option<ExportedMessageKey>,
 }
 
 /// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
@@ -120,6 +122,7 @@ impl PrivateMessage {
     ///
     /// TODO #1148: Refactor theses constructors to avoid test code in main and
     /// to avoid validation using a special feature flag.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn try_from_authenticated_content<T>(
         crypto: &impl OpenMlsCrypto,
         rand: &impl OpenMlsRand,
@@ -127,6 +130,7 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
+        export_key: bool,
         #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<&EmulatorReuseGuardCtx<'_>>,
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         log::debug!("PrivateMessage::try_from_authenticated_content");
@@ -143,6 +147,7 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
+            export_key,
             #[cfg(feature = "virtual-clients-draft")]
             emulator_ctx,
         )
@@ -165,6 +170,7 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
+            false,
             #[cfg(feature = "virtual-clients-draft")]
             None,
         )
@@ -188,6 +194,7 @@ impl PrivateMessage {
             ciphersuite,
             message_secrets,
             padding_size,
+            false,
             #[cfg(feature = "virtual-clients-draft")]
             None,
         )
@@ -204,6 +211,7 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
+        export_key: bool,
         #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<&EmulatorReuseGuardCtx<'_>>,
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         // https://validation.openmls.tech/#valn1305
@@ -286,6 +294,22 @@ impl PrivateMessage {
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
         log::trace!("Encrypted ciphertext {ciphertext:x?}");
+        // Per-message key export: capture the raw key and final nonce.
+        let exported_key = if export_key
+            && public_message.content().content_type() == ContentType::Application
+        {
+            Some(ExportedMessageKey::new(
+                ratchet_key.export_bytes(),
+                *prepared_nonce.export_bytes(),
+                header.group_id.clone(),
+                header.epoch,
+                sender_index.u32(),
+                generation,
+                ciphertext.clone(),
+            ))
+        } else {
+            None
+        };
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
@@ -342,6 +366,7 @@ impl PrivateMessage {
             private_message,
             #[cfg(feature = "virtual-clients-draft")]
             generation_id: None,
+            exported_key,
         })
     }
 

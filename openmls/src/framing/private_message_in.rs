@@ -273,6 +273,15 @@ impl PrivateMessageIn {
         self.content_type
     }
 
+    /// Get the ciphertext bytes of the `PrivateMessage`. Used by the
+    /// per-message key export extension to match an [`ExportedMessageKey`].
+    ///
+    /// [`ExportedMessageKey`]: super::ExportedMessageKey
+    #[cfg(feature = "message-key-export")]
+    pub fn ciphertext(&self) -> &[u8] {
+        self.ciphertext.as_slice()
+    }
+
     /// Set the ciphertext.
     #[cfg(test)]
     pub(crate) fn set_ciphertext(&mut self, ciphertext: Vec<u8>) {

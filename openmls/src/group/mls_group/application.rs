@@ -51,9 +51,30 @@ impl MlsGroup {
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {
-        let (_, output) =
-            self.create_message_internal::<_, CreateMessageError>(provider, signer, message)?;
+        let (_, output, _) = self.create_message_internal::<_, CreateMessageError>(
+            provider, signer, message, false,
+        )?;
         Ok(output)
+    }
+
+    /// Creates an application message and exports the per-message AEAD key and
+    /// nonce that open exactly this one message, as an [`ExportedMessageKey`].
+    ///
+    /// NON-STANDARD extension. The [`MlsMessageOut`] is unchanged on the wire;
+    /// the [`ExportedMessageKey`] is never sent to members and is raw key
+    /// material the caller must protect.
+    #[cfg(all(feature = "message-key-export", not(feature = "virtual-clients-draft")))]
+    pub fn create_message_with_key_export<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        message: &[u8],
+    ) -> Result<(MlsMessageOut, ExportedMessageKey), CreateMessageError> {
+        let (_, output, exported_key) = self
+            .create_message_internal::<_, CreateMessageError>(provider, signer, message, true)?;
+        let exported_key = exported_key
+            .ok_or_else(|| LibraryError::custom("exported key missing for application message"))?;
+        Ok((output, exported_key))
     }
 
     /// Creates an application message. Returns
@@ -82,7 +103,8 @@ impl MlsGroup {
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
-    ) -> Result<(u32, MlsMessageOut), E>
+        export_key: bool,
+    ) -> Result<(u32, MlsMessageOut, Option<ExportedMessageKey>), E>
     where
         E: From<LibraryError> + From<MlsGroupStateError>,
     {
@@ -104,14 +126,15 @@ impl MlsGroup {
         let EncryptionOutput {
             generation,
             private_message,
+            exported_key,
         } = self
-            .encrypt(authenticated_content, provider)
+            .encrypt_with_key_export(authenticated_content, provider, export_key)
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
 
         let output = MlsMessageOut::from_private_message(private_message, self.version());
         self.reset_aad();
-        Ok((generation, output))
+        Ok((generation, output, exported_key))
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -147,6 +170,7 @@ impl MlsGroup {
             generation,
             private_message,
             generation_id,
+            ..
         } = self.encrypt(authenticated_content, provider)?;
 
         let output = MlsMessageOut::from_private_message(private_message, self.version());

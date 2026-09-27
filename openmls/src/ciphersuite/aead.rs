@@ -51,6 +51,11 @@ impl AeadKey {
         }
     }
 
+    /// Raw key bytes, exposed only for the per-message key export extension.
+    pub(crate) fn export_bytes(&self) -> &[u8] {
+        self.value.as_slice()
+    }
+
     #[cfg(test)]
     /// Generate a random AEAD Key
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
@@ -106,6 +111,11 @@ impl AeadNonce {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(secret.value.as_slice());
         Self(nonce)
+    }
+
+    /// Raw nonce bytes, exposed only for the per-message key export extension.
+    pub(crate) fn export_bytes(&self) -> &[u8; NONCE_BYTES] {
+        &self.0
     }
 
     /// Generate a new random nonce.
