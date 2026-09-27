@@ -84,31 +84,22 @@ fn content_aad(pm: &PrivateMessageIn) -> Vec<u8> {
     aad
 }
 
-#[test]
-fn exported_key_opens_the_ciphertext() {
-    let (alice_p, mut alice, alice_keys, _bob_p, _bob) = two_member_group();
-
-    let (msg_out, exported) = alice
-        .create_message_with_key_export(&alice_p, &alice_keys, b"hello bob")
-        .unwrap();
-
-    // The exported key describes exactly this message.
-    assert_eq!(exported.group_id(), alice.group_id());
-    assert_eq!(exported.epoch().as_u64(), alice.epoch().as_u64());
-    assert_eq!(exported.sender_leaf_index(), alice.own_leaf_index().u32());
-    assert_eq!(exported.generation(), 0);
-
-    // Serialize + deserialize the wire message, as a third party would.
+/// Serialize `msg_out` to the wire, deserialize it as a third party would, and
+/// open its ciphertext directly with `exported` (key, final nonce, rebuilt AAD).
+/// Asserts the exported ciphertext matches the wire and that the plaintext's
+/// application data equals `expected`.
+fn assert_exported_key_opens(
+    crypto: &impl OpenMlsCrypto,
+    msg_out: &MlsMessageOut,
+    exported: &ExportedMessageKey,
+    expected: &[u8],
+) {
     let wire = msg_out.tls_serialize_detached().unwrap();
     let pm = private_message_from_wire(&wire);
-
-    // The exported ciphertext matches the one on the wire.
     assert_eq!(exported.ciphertext(), pm.ciphertext());
 
-    // Decrypt the ciphertext directly with the exported key/nonce + rebuilt AAD.
     let aad = content_aad(&pm);
-    let plaintext = alice_p
-        .crypto()
+    let plaintext = crypto
         .aead_decrypt(
             CS.aead_algorithm(),
             exported.key(),
@@ -122,46 +113,117 @@ fn exported_key_opens_the_ciphertext() {
     // (a VLBytes), followed by auth data and padding.
     let mut cursor = plaintext.as_slice();
     let application_data = VLBytes::tls_deserialize(&mut cursor).unwrap();
-    assert_eq!(application_data.as_slice(), b"hello bob");
+    assert_eq!(application_data.as_slice(), expected);
 }
 
-#[test]
-fn receiver_decrypts_unchanged() {
-    let (alice_p, mut alice, alice_keys, bob_p, mut bob) = two_member_group();
-
-    let (msg_out, _exported) = alice
-        .create_message_with_key_export(&alice_p, &alice_keys, b"hello bob")
-        .unwrap();
-
-    // Bob processes the very same wire message: the wire format is untouched.
+/// Feed `msg_out` to `bob` and assert it decrypts to `expected`: the wire
+/// format is untouched by the key export.
+fn assert_receiver_decrypts(
+    bob_p: &OpenMlsRustCrypto,
+    bob: &mut MlsGroup,
+    msg_out: &MlsMessageOut,
+    expected: &[u8],
+) {
     let wire = msg_out.tls_serialize_detached().unwrap();
     let protocol_message = MlsMessageIn::tls_deserialize_exact(&wire)
         .unwrap()
         .try_into_protocol_message()
         .unwrap();
-    let processed = bob.process_message(&bob_p, protocol_message).unwrap();
+    let processed = bob.process_message(bob_p, protocol_message).unwrap();
     match processed.into_content() {
         ProcessedMessageContent::ApplicationMessage(m) => {
-            assert_eq!(m.into_bytes(), b"hello bob");
+            assert_eq!(m.into_bytes(), expected);
         }
         _ => panic!("expected application message"),
     }
 }
 
-#[test]
-fn each_message_exports_a_distinct_key() {
-    let (alice_p, mut alice, alice_keys, _bob_p, _bob) = two_member_group();
+#[cfg(not(feature = "virtual-clients-draft"))]
+mod plain {
+    use super::*;
 
-    let (_m1, k1) = alice
-        .create_message_with_key_export(&alice_p, &alice_keys, b"first")
-        .unwrap();
-    let (_m2, k2) = alice
-        .create_message_with_key_export(&alice_p, &alice_keys, b"second")
-        .unwrap();
+    #[test]
+    fn exported_key_opens_the_ciphertext() {
+        let (alice_p, mut alice, alice_keys, _bob_p, _bob) = two_member_group();
 
-    // Consecutive messages in the same epoch ratchet forward.
-    assert_eq!(k1.generation(), 0);
-    assert_eq!(k2.generation(), 1);
-    assert_ne!(k1.key(), k2.key());
-    assert_ne!(k1.nonce(), k2.nonce());
+        let (msg_out, exported) = alice
+            .create_message_with_key_export(&alice_p, &alice_keys, b"hello bob")
+            .unwrap();
+
+        // The exported key describes exactly this message.
+        assert_eq!(exported.group_id(), alice.group_id());
+        assert_eq!(exported.epoch().as_u64(), alice.epoch().as_u64());
+        assert_eq!(exported.sender_leaf_index(), alice.own_leaf_index().u32());
+        assert_eq!(exported.generation(), 0);
+
+        assert_exported_key_opens(alice_p.crypto(), &msg_out, &exported, b"hello bob");
+    }
+
+    #[test]
+    fn receiver_decrypts_unchanged() {
+        let (alice_p, mut alice, alice_keys, bob_p, mut bob) = two_member_group();
+
+        let (msg_out, _exported) = alice
+            .create_message_with_key_export(&alice_p, &alice_keys, b"hello bob")
+            .unwrap();
+
+        assert_receiver_decrypts(&bob_p, &mut bob, &msg_out, b"hello bob");
+    }
+
+    #[test]
+    fn each_message_exports_a_distinct_key() {
+        let (alice_p, mut alice, alice_keys, _bob_p, _bob) = two_member_group();
+
+        let (_m1, k1) = alice
+            .create_message_with_key_export(&alice_p, &alice_keys, b"first")
+            .unwrap();
+        let (_m2, k2) = alice
+            .create_message_with_key_export(&alice_p, &alice_keys, b"second")
+            .unwrap();
+
+        // Consecutive messages in the same epoch ratchet forward.
+        assert_eq!(k1.generation(), 0);
+        assert_eq!(k2.generation(), 1);
+        assert_ne!(k1.key(), k2.key());
+        assert_ne!(k1.nonce(), k2.nonce());
+    }
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+mod virtual_clients {
+    use super::*;
+
+    #[test]
+    fn unconfirmed_export_opens_the_ciphertext() {
+        let (alice_p, mut alice, alice_keys, bob_p, mut bob) = two_member_group();
+
+        let (unconfirmed, exported) = alice
+            .create_unconfirmed_message_with_key_export(&alice_p, &alice_keys, b"hello bob")
+            .unwrap();
+
+        // The exported key describes exactly this message.
+        assert_eq!(exported.group_id(), alice.group_id());
+        assert_eq!(exported.epoch(), unconfirmed.epoch);
+        assert_eq!(exported.generation(), unconfirmed.generation);
+        assert_eq!(exported.sender_leaf_index(), alice.own_leaf_index().u32());
+
+        assert_exported_key_opens(
+            alice_p.crypto(),
+            &unconfirmed.message,
+            &exported,
+            b"hello bob",
+        );
+
+        // Confirm the send, as the application would once the DS accepts it.
+        alice
+            .confirm_application_message(
+                alice_p.storage(),
+                unconfirmed.epoch,
+                unconfirmed.generation,
+            )
+            .unwrap();
+
+        // Bob still decrypts normally: the wire format is untouched.
+        assert_receiver_decrypts(&bob_p, &mut bob, &unconfirmed.message, b"hello bob");
+    }
 }

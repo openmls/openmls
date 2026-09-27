@@ -91,8 +91,8 @@ impl MlsGroup {
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError<Provider::StorageError>> {
-        let (generation, _generation_id, output) =
-            self.create_message_internal(provider, signer, message)?;
+        let (generation, _generation_id, output, _) =
+            self.create_message_internal(provider, signer, message, false)?;
         self.confirm_application_message(provider.storage(), self.epoch(), generation)?;
         Ok(output)
     }
@@ -138,16 +138,19 @@ impl MlsGroup {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
+    #[allow(clippy::type_complexity)]
     fn create_message_internal<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
         message: &[u8],
+        export_key: bool,
     ) -> Result<
         (
             u32,
             Option<crate::components::vc_derivation_info::GenerationId>,
             MlsMessageOut,
+            Option<ExportedMessageKey>,
         ),
         CreateMessageError<Provider::StorageError>,
     > {
@@ -170,12 +173,12 @@ impl MlsGroup {
             generation,
             private_message,
             generation_id,
-            ..
-        } = self.encrypt(authenticated_content, provider)?;
+            exported_key,
+        } = self.encrypt_with_key_export(authenticated_content, provider, export_key)?;
 
         let output = MlsMessageOut::from_private_message(private_message, self.version());
         self.reset_aad();
-        Ok((generation, generation_id, output))
+        Ok((generation, generation_id, output, exported_key))
     }
 
     /// Creates an application message. Encryption secrets are only deleted
@@ -206,14 +209,44 @@ impl MlsGroup {
         signer: &impl Signer,
         message: &[u8],
     ) -> Result<UnconfirmedMessage, CreateMessageError<Provider::StorageError>> {
-        let (generation, generation_id, message) =
-            self.create_message_internal(provider, signer, message)?;
+        let (generation, generation_id, message, _) =
+            self.create_message_internal(provider, signer, message, false)?;
         Ok(UnconfirmedMessage {
             message,
             epoch: self.epoch(),
             generation,
             generation_id,
         })
+    }
+
+    /// Like [`MlsGroup::create_unconfirmed_message`], but also exports the
+    /// per-message AEAD key and nonce that open exactly this one message, as an
+    /// [`ExportedMessageKey`].
+    ///
+    /// NON-STANDARD extension. The [`UnconfirmedMessage`] is unchanged on the
+    /// wire; the [`ExportedMessageKey`] is never sent to members and is raw key
+    /// material the caller must protect.
+    #[cfg(all(feature = "message-key-export", feature = "virtual-clients-draft"))]
+    pub fn create_unconfirmed_message_with_key_export<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        signer: &impl Signer,
+        message: &[u8],
+    ) -> Result<(UnconfirmedMessage, ExportedMessageKey), CreateMessageError<Provider::StorageError>>
+    {
+        let (generation, generation_id, message, exported_key) =
+            self.create_message_internal(provider, signer, message, true)?;
+        let exported_key = exported_key
+            .ok_or_else(|| LibraryError::custom("exported key missing for application message"))?;
+        Ok((
+            UnconfirmedMessage {
+                message,
+                epoch: self.epoch(),
+                generation,
+                generation_id,
+            },
+            exported_key,
+        ))
     }
 
     /// Deletes the retained own secret of the given `secret_type` created at
