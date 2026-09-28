@@ -230,10 +230,20 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
         "reinit epoch authenticators must match"
     );
 
+    // Bob no longer needs the predecessor
+    // He could use a new provider but doesn't need to.
+    // For this test, we use a new one to avoid accidentally leaking state.
+    let bob_successor_provider = &Provider::default();
+
     // === Alice creates the successor group and welcomes Bob ===
 
     let bob_new_key_package = KeyPackage::builder()
-        .build(new_ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .build(
+            new_ciphersuite,
+            bob_successor_provider,
+            &bob_signer,
+            bob_credential,
+        )
         .unwrap();
 
     // Alice exports the ReInitInfo
@@ -269,10 +279,6 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
     let reinit_info = bob_group
         .reinit_info(reinit_proposal.clone())
         .expect("Bob's old group must be suspended");
-    // Bob no longer needs the predecessor
-    // Like Alice, he could use a new provider but doesn't need to.
-    // For this test, we use a new one to avoid accidentally leaking state.
-    let bob_successor_provider = &Provider::default();
 
     let successor_join_config = MlsGroupJoinConfig::builder()
         .use_ratchet_tree_extension(true)
