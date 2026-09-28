@@ -80,7 +80,7 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Turn this builder into a sub-group branch builder, as described in
+    /// Turn this builder into a [`BranchGroupBuilder`] to build a sub-group
     /// [RFC 9420 §11.3].
     ///
     /// The parent group's parameters are provided via `branch_info`, which the
@@ -101,7 +101,8 @@ impl MlsGroupBuilder {
         }
     }
 
-    /// Turn this builder into a reinit builder, as described in [RFC 9420 §11.2].
+    /// Turn this builder into a [`ReInitGroupBuilder`] to build a reinitialized successor
+    /// group [RFC 9420 §11.2].
     ///
     /// The reinit parameters are provided via `reinit_info`, which the predecessor
     /// exports with [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
