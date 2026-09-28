@@ -385,14 +385,22 @@ impl PreSharedKeyId {
         Ok(())
     }
 
+    /// Validates the list of PSKs in a Welcome message:
+    ///
+    /// * ValSem401 (https://validation.openmls.tech/#valn0803)
+    /// * https://validation.openmls.tech/#valn1401 (2/2)
     pub(crate) fn validate_in_welcome(
         psk_ids: &[PreSharedKeyId],
         ciphersuite: Ciphersuite,
     ) -> Result<(), PskError> {
-        let mut contains_branch_psk = false;
-        let mut contains_reinit_psk = false;
+        let mut contained_resumption_usage: Option<ResumptionPskUsage> = None;
         for id in psk_ids {
-            // https://validation.openmls.tech/#valn1401
+            // ValSem401
+            // https://validation.openmls.tech/#valn0803
+            id.validate_nonce(ciphersuite)?;
+
+            // https://validation.openmls.tech/#valn1401 (2/2)
+            // If a PreSharedKeyID has type resumption with usage reinit or branch, verify that it is the only such PSK.
             match id.psk() {
                 Psk::Resumption(resumption_psk) => match resumption_psk.usage {
                     ResumptionPskUsage::Application => {
@@ -401,51 +409,27 @@ impl PreSharedKeyId {
                             got: resumption_psk.usage,
                         });
                     }
-                    ResumptionPskUsage::Reinit => {
-                        if contains_reinit_psk {
-                            return Err(PskError::UsageDuplicate {
-                                usage: ResumptionPskUsage::Reinit,
-                            });
-                        }
-                        if contains_branch_psk {
-                            return Err(PskError::UsageConflict {
-                                first: ResumptionPskUsage::Reinit,
-                                second: ResumptionPskUsage::Branch,
-                            });
-                        }
-                        contains_reinit_psk = true;
-                    }
-                    ResumptionPskUsage::Branch => {
-                        if contains_branch_psk {
-                            return Err(PskError::UsageDuplicate {
-                                usage: ResumptionPskUsage::Branch,
-                            });
-                        }
-                        if contains_reinit_psk {
-                            return Err(PskError::UsageConflict {
-                                first: ResumptionPskUsage::Branch,
-                                second: ResumptionPskUsage::Reinit,
-                            });
-                        }
-                        contains_branch_psk = true;
+                    ResumptionPskUsage::Reinit | ResumptionPskUsage::Branch => {
+                        if let Some(previous_usage) = contained_resumption_usage {
+                            if previous_usage == resumption_psk.usage {
+                                return Err(PskError::UsageDuplicate {
+                                    usage: previous_usage,
+                                });
+                            } else {
+                                return Err(PskError::UsageConflict {
+                                    first: previous_usage,
+                                    second: resumption_psk.usage,
+                                });
+                            }
+                        } else {
+                            contained_resumption_usage = Some(resumption_psk.usage);
+                        };
                     }
                 },
                 Psk::External(_) => {}
                 #[cfg(feature = "extensions-draft")]
                 Psk::Application(_) => {}
             };
-
-            {
-                let expected_nonce_length = ciphersuite.hash_length();
-                let got_nonce_length = id.psk_nonce().len();
-
-                if expected_nonce_length != got_nonce_length {
-                    return Err(PskError::NonceLengthMismatch {
-                        expected: expected_nonce_length,
-                        got: got_nonce_length,
-                    });
-                }
-            }
         }
         Ok(())
     }
