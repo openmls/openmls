@@ -13,7 +13,7 @@ tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
 log = "0.4"
 pretty_env_logger = "0.5"
 clap = "4"
-base64 = "0.22"
+base64 = "0.23"
 parking_lot = "0.12"
 
 openmls = { path = "../../openmls", features = ["test-utils"] }
