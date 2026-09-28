@@ -368,22 +368,21 @@ impl PreSharedKeyId {
 
     // ----- Validation ----------------------------------------------------------------------------
 
-    pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<Self, PskError> {
-        // ValSem401
-        // https://validation.openmls.tech/#valn0803
-        {
-            let expected_nonce_length = ciphersuite.hash_length();
-            let got_nonce_length = self.psk_nonce().len();
+    /// Checks that the nonce is of length `KDF.Nh`
+    ///
+    /// ValSem401: The nonce of a PreSharedKeyID must have length KDF.Nh
+    /// https://validation.openmls.tech/#valn0803
+    pub(crate) fn validate_nonce(&self, ciphersuite: Ciphersuite) -> Result<(), PskError> {
+        let expected_nonce_length = ciphersuite.hash_length();
+        let got_nonce_length = self.psk_nonce().len();
 
-            if expected_nonce_length != got_nonce_length {
-                return Err(PskError::NonceLengthMismatch {
-                    expected: expected_nonce_length,
-                    got: got_nonce_length,
-                });
-            }
+        if expected_nonce_length != got_nonce_length {
+            return Err(PskError::NonceLengthMismatch {
+                expected: expected_nonce_length,
+                got: got_nonce_length,
+            });
         }
-
-        Ok(self)
+        Ok(())
     }
 
     pub(crate) fn validate_in_welcome(
