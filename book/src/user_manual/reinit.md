@@ -44,6 +44,8 @@ Commit the proposal:
 {{#include ../../../openmls/tests/book_code.rs:reinit_commit}}
 ```
 
+When commiting from the proposal queue, the application itself must make sure that the ReInit proposal is the only one in the commit. If it accepts other proposals, building the commit will throw an error. [RFC 9420 §12.2](https://www.rfc-editor.org/rfc/rfc9420.html#section-12.2-3.9) states that other proposals SHOULD be preferrred over ReInit. Applications that follow this advice must reject the ReInit proposal in `f` of `CommitBuilder::build` if there are other proposals.
+
 Every other member processes and merges the commit, which suspends their view of
 the group as well:
 
@@ -91,9 +93,10 @@ equivalence of members by checking exact equality of credentials.
 ```
 
 If the receiver does not yet know which old group a Welcome belongs to or whether it
-is a reinit at all, it can decrypt the Welcome once with `StagedWelcome::process_psk_welcome`,
+is a reinit at all, it can decrypt the Welcome once with `StagedWelcome::process_resuming_welcome`,
 read the reinit PSK's old group id and epoch with `required_resumption_secret()`, select the
-matching `ReInitInfo`, and finish with `PendingPskWelcome::build_from_reinit`.
+matching `ReInitInfo`, and finish with `PendingResumingWelcome::build_from_reinit`.
+If it turns out not to be a reinit welcome, continue with `PendingResumingWelcome::build`.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:pending_welcome}}

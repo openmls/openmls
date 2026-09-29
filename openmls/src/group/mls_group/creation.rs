@@ -193,7 +193,7 @@ impl ProcessedWelcome {
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        resumption_info: Option<&ResumptionInfo>,
+        resumption_info: Option<ResumptionInfo>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let (resumption_psk_store, key_material, group_secrets) =
             decrypt_group_secrets(provider, mls_group_config, &welcome)?;
@@ -542,7 +542,7 @@ impl StagedWelcome {
     ///
     /// If the receiver does not yet know which parent epoch the branch was taken
     /// from (its own view of the parent group may have advanced), use
-    /// [`StagedWelcome::process_psk_welcome`] to read the parent reference
+    /// [`StagedWelcome::process_resuming_welcome`] to read the parent reference
     /// from the `Welcome` first and then pick the matching `branch_info`. That
     /// path decrypts the `Welcome` only once. This one-shot method is a
     /// convenience for callers that already know the parent epoch; it also
@@ -555,7 +555,7 @@ impl StagedWelcome {
         welcome: Welcome,
         branch_info: BranchInfo,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
-        Self::process_psk_welcome(provider, mls_group_config, welcome)?
+        Self::process_resuming_welcome(provider, mls_group_config, welcome)?
             .build_from_branch(provider, branch_info)
     }
 
@@ -588,7 +588,7 @@ impl StagedWelcome {
     /// credential equality for equivalent identifiers.
     ///
     /// If the receiver does not yet know which predecessor group the reinit was taken
-    /// from, use [`StagedWelcome::process_psk_welcome`] to read the psk_id
+    /// from, use [`StagedWelcome::process_resuming_welcome`] to read the psk_id
     /// from the `Welcome` first and then pick the matching `reinit_info`.
     /// This one-shot method is a convenience for callers that already know the
     /// predecessor.
@@ -600,29 +600,29 @@ impl StagedWelcome {
         welcome: Welcome,
         reinit_info: ReInitInfo,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
-        Self::process_psk_welcome(provider, mls_group_config, welcome)?
+        Self::process_resuming_welcome(provider, mls_group_config, welcome)?
             .build_from_reinit(provider, reinit_info)
     }
 
     /// Decrypt a `Welcome`'s group secrets so its branch or reinit reference can be
     /// inspected before selecting the matching [`BranchInfo`] or [`ReInitInfo`].
     ///
-    /// Call [`PendingPskWelcome::required_resumption_secret`] to read the parent
+    /// Call [`PendingResumingWelcome::required_resumption_secret`] to read the parent
     /// or predecessor `(group_id, epoch)` the group derives from (RFC 9420 §8.4),
     /// select the [`BranchInfo`] or [`ReInitInfo`] for that source, then finish
-    /// with [`PendingPskWelcome::build_from_branch`] or [`PendingPskWelcome::build_from_reinit`].
+    /// with [`PendingResumingWelcome::build_from_branch`] or [`PendingResumingWelcome::build_from_reinit`].
     ///
-    /// If [`PendingPskWelcome::required_resumption_secret`] returns [`None`] the [`Welcome`]
-    /// is not a branch or reinit welcome and must be completed with [`PendingPskWelcome::build`].
-    pub fn process_psk_welcome<Provider: OpenMlsProvider>(
+    /// If [`PendingResumingWelcome::required_resumption_secret`] returns [`None`] the [`Welcome`]
+    /// is not a branch or reinit welcome and must be completed with [`PendingResumingWelcome::build`].
+    pub fn process_resuming_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-    ) -> Result<PendingPskWelcome, WelcomeError<Provider::StorageError>> {
+    ) -> Result<PendingResumingWelcome, WelcomeError<Provider::StorageError>> {
         let (resumption_psk_store, key_material, group_secrets) =
             decrypt_group_secrets(provider, mls_group_config, &welcome)?;
 
-        Ok(PendingPskWelcome {
+        Ok(PendingResumingWelcome {
             mls_group_config: mls_group_config.clone(),
             ciphersuite: welcome.ciphersuite(),
             welcome,
@@ -878,10 +878,10 @@ impl StagedWelcome {
 /// This lets a receiver read which parent group and epoch the group branches from before
 /// committing to a [`BranchInfo`], or which old group's resumption psk to inject for reinit.
 /// The decrypted state is carried here and reused when finishing the join.
-/// Create it with [`StagedWelcome::process_psk_welcome`], read the PSK
+/// Create it with [`StagedWelcome::process_resuming_welcome`], read the PSK
 /// reference with [`Self::required_resumption_secret`], then finish with
 /// [`Self::build_from_branch`], [`Self::build_from_reinit`], or [`Self::build`].
-pub struct PendingPskWelcome {
+pub struct PendingResumingWelcome {
     mls_group_config: MlsGroupJoinConfig,
     ciphersuite: Ciphersuite,
     welcome: Welcome,
@@ -890,7 +890,7 @@ pub struct PendingPskWelcome {
     group_secrets: GroupSecrets,
 }
 
-impl PendingPskWelcome {
+impl PendingResumingWelcome {
     /// The PSK pointing to the parent group and epoch for branch or old group and final epoch for reinit, if any.
     ///
     /// The returned [`ResumptionPsk`] has a `usage` of either [`Reinit`](ResumptionPskUsage::Reinit) or [`Branch`](ResumptionPskUsage::Branch)
@@ -950,7 +950,7 @@ impl PendingPskWelcome {
             self.key_material,
             self.group_secrets,
             &self.welcome,
-            Some(&ResumptionInfo::ReInit(&reinit_info)),
+            Some(ResumptionInfo::ReInit(&reinit_info)),
         )?;
 
         Ok(JoinBuilder::new(provider, processed_welcome).with_reinit_info(reinit_info))
@@ -975,7 +975,7 @@ impl PendingPskWelcome {
             self.key_material,
             self.group_secrets,
             &self.welcome,
-            Some(&ResumptionInfo::Branch(&branch_info)),
+            Some(ResumptionInfo::Branch(&branch_info)),
         )?;
 
         Ok(JoinBuilder::new(provider, processed_welcome).with_branch_info(branch_info))
@@ -990,7 +990,7 @@ pub(crate) enum ResumptionInfo<'a> {
 /// Decrypt a `Welcome`'s `GroupSecrets`.
 ///
 /// This is the first half of welcome processing, shared between the regular
-/// join and the subgroup-branch peek (see [`PendingPskWelcome`]). It consumes
+/// join and the subgroup-branch peek (see [`PendingResumingWelcome`]). It consumes
 /// the matching (non-last-resort) key package from storage via
 /// [`keys_for_welcome`] and decrypts the encrypted group secrets addressed to
 /// it. A virtual client's KeyPackage and retained virtual-client material are
@@ -1071,7 +1071,7 @@ fn finish_processed_welcome<Provider: OpenMlsProvider>(
     key_material: WelcomeKeyMaterial,
     group_secrets: GroupSecrets,
     welcome: &Welcome,
-    resumption_info: Option<&ResumptionInfo>,
+    resumption_info: Option<ResumptionInfo>,
 ) -> Result<ProcessedWelcome, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
     if let Some(resumption_info) = resumption_info {
         // For subgroup branching and reinit, inject the parent group's resumption PSK at

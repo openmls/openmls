@@ -989,8 +989,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         group
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
-        // #valn0309
-        // #valn0901
+        // https://validation.openmls.tech/#valn0309
+        // https://validation.openmls.tech/#valn0901
         group
             .public_group
             .validate_reinit_proposals(&proposal_queue)?;

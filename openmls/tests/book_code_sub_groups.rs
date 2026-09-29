@@ -129,12 +129,12 @@ fn book_example_sub_group_branching() {
     let bob_branch_window = [(bob_branch_info.epoch(), bob_branch_info)];
 
     // ANCHOR: receiver_peek_branch
-    // Bob decrypts the branch welcome once with `process_psk_welcome`, then
+    // Bob decrypts the branch welcome once with `process_resuming_welcome`, then
     // reads which parent group and epoch it derives from. This lets him pick the
     // matching `BranchInfo` from his window even if his view of the parent group
     // has advanced (see the sliding-window note above), without decrypting the
     // welcome twice.
-    let pending = StagedWelcome::process_psk_welcome(
+    let pending = StagedWelcome::process_resuming_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome,

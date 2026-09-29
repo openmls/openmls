@@ -2231,7 +2231,7 @@ fn reinit_group() {
 /// This test walks through a group reinitialization (ReInit) variant:
 ///  - Alice and Bob form a group
 ///  - Alice proposes and commits a ReInit
-///  - Both suspend the old group and create/join the successor group, using the `PendingPskWelcome` route.
+///  - Both suspend the old group and create/join the successor group, using the `PendingResumingWelcome` route.
 #[openmls_test]
 fn reinit_group_by_reference_pending_welcome() {
     let alice_provider = &Provider::default();
@@ -2409,7 +2409,8 @@ fn reinit_group_by_reference_pending_welcome() {
         .build();
 
     let pending_welcome =
-        StagedWelcome::process_psk_welcome(bob_provider, &join_config, successor_welcome).unwrap();
+        StagedWelcome::process_resuming_welcome(bob_provider, &join_config, successor_welcome)
+            .unwrap();
 
     // Bob finds the matching predecessor info, e.g. in a database
     let required_info = pending_welcome

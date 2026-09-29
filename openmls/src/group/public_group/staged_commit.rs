@@ -286,7 +286,6 @@ impl PublicGroup {
 
         // https://validation.openmls.tech/#valn0901
         // Match positively on supported versions.
-        // TODO: Keep updated when new versions are supported.
         if !matches!(reinit.version(), ProtocolVersion::Mls10) {
             return Err(ProposalValidationError::ReInitUnsupportedVersion);
         }
