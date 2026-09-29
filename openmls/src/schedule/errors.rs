@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::{
     error::LibraryError,
+    group::GroupId,
     schedule::psk::{PreSharedKeyId, PskType, ResumptionPskUsage},
 };
 
@@ -70,6 +71,16 @@ pub enum PskError {
     /// PSK not allowed in this place.
     #[error("PSK not allowed in this place.")]
     NotAllowed,
+    /// Application resumption PSK for different group_id.
+    #[error(
+        "Application resumption PSK for different group_id `{got:?}`, expected `{expected:?}`."
+    )]
+    DifferentGroupId {
+        /// Group ID for which PSKs are being loaded
+        expected: GroupId,
+        /// Got Group ID in PreSharedKeyId
+        got: GroupId,
+    },
 }
 
 // === Crate ===
