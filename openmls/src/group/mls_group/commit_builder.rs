@@ -29,6 +29,7 @@ use crate::{
         NewSignerBundle, PreSharedKeyProposal,
     },
     schedule::{
+        errors::PskError,
         psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
         EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk, ResumptionPskSecret,
     },
@@ -350,7 +351,35 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// those PSKs are not allowed in regular proposals. Please use
     /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) or
     /// [`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit) instead.
-    pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
+    pub fn propose_psks(
+        mut self,
+        psk_ids: impl IntoIterator<Item = PreSharedKeyId>,
+    ) -> Result<Self, CreateCommitError> {
+        for psk_id in psk_ids {
+            if let Psk::Resumption(resumption_psk) = psk_id.psk() {
+                let usage = resumption_psk.usage();
+                if matches!(
+                    usage,
+                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit
+                ) {
+                    return Err(PskError::UsageMismatch {
+                        allowed: vec![ResumptionPskUsage::Application],
+                        got: usage,
+                    }
+                    .into());
+                }
+            }
+            self.stage
+                .own_proposals
+                .push(Proposal::psk(PreSharedKeyProposal::new(psk_id)));
+        }
+        Ok(self)
+    }
+
+    pub(crate) fn propose_psks_unchecked(
+        mut self,
+        psk_ids: impl IntoIterator<Item = PreSharedKeyId>,
+    ) -> Self {
         self.stage.own_proposals.extend(
             psk_ids
                 .into_iter()
@@ -393,7 +422,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             )),
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
-        self = self.propose_psks([psk_id]);
+        self = self.propose_psks_unchecked([psk_id]);
 
         // The branch PSK secret comes from a different group, so we clear this
         // group's resumption PSK store and inject it at the sentinel epoch 0,
@@ -439,7 +468,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             )),
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
-        self = self.propose_psks([psk_id]);
+        self = self.propose_psks_unchecked([psk_id]);
 
         // The reinit PSK secret comes from a different group, so we clear this
         // group's resumption PSK store and inject it at the sentinel epoch 0,
