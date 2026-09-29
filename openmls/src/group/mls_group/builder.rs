@@ -628,8 +628,6 @@ impl ReInitGroupBuilder {
         let group_builder = self
             .group_builder
             .ciphersuite(proposal.ciphersuite)
-            // As there is only one, the build ecosystem does not support setting the version yet.
-            // .version(proposal.version)
             .with_group_id(proposal.group_id)
             .with_group_context_extensions(proposal.extensions);
         let mut group = group_builder.build(provider, signer, credential_with_key)?;
