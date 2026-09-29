@@ -614,11 +614,6 @@ impl ProposalQueue {
                     // (enforced during commit validation), so keeping one is
                     // sufficient here.
                     //
-                    // TODO: (unimplemented SHOULD, allow application to set strategy):
-                    // > If the committer has received other proposals during the epoch,
-                    // > they SHOULD prefer them over the ReInit proposal, allowing the
-                    // > ReInit to be resent and applied in a subsequent epoch.
-                    //
                     //
                     // TODO: like the other arms here, this silently drops
                     // additional (here: duplicate ReInit) proposals rather than

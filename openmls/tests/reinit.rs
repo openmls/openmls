@@ -276,7 +276,7 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
         .unwrap();
 
     // === Bob joins the successor group from the reinit welcome ===
-    let reinit_info = bob_group
+    let bob_reinit_info = bob_group
         .reinit_info(reinit_proposal.clone())
         .expect("Bob's old group must be suspended");
 
@@ -288,7 +288,7 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
         bob_successor_provider,
         &successor_join_config,
         successor_welcome,
-        reinit_info,
+        bob_reinit_info,
     )
     .expect("Bob could not process the successor welcome")
     .with_ratchet_tree(alice_successor.export_ratchet_tree().into())

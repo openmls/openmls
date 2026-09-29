@@ -2320,7 +2320,7 @@ impl MlsClient for MlsClientImpl {
         // once to read that reference, then look up the cached `BranchInfo` for it
         // (populated by `create_branch`) instead of using `parent.group.branch_info()`.
         let pending_branch_welcome =
-            StagedWelcome::process_psk_welcome(&crypto_provider, &mls_group_config, welcome)
+            StagedWelcome::process_resuming_welcome(&crypto_provider, &mls_group_config, welcome)
                 .map_err(into_status)?;
         let resumption_psk = pending_branch_welcome
             .required_resumption_secret()

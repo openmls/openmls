@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 /// [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info) and pass it to
 /// the receiver API
 /// [`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit)
-/// (or [`PendingPskWelcome::build_from_reinit`](crate::group::PendingPskWelcome::build_from_reinit)).
+/// (or [`PendingResumingWelcome::build_from_reinit`](crate::group::PendingResumingWelcome::build_from_reinit)).
 ///
 /// This is an owned snapshot, so it does not borrow the old group and can
 /// outlive it.
