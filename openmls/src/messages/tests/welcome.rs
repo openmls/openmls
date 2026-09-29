@@ -99,7 +99,14 @@ fn test_welcome_context_mismatch() {
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(bob_provider.storage(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(
+            bob_provider.storage(),
+            &resumption_psk_store,
+            None,
+            None,
+            &[],
+        )
+        .unwrap();
 
         PskSecret::new(bob_provider.crypto(), ciphersuite, psks).unwrap()
     };

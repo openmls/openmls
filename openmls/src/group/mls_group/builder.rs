@@ -220,12 +220,18 @@ impl MlsGroupBuilder {
         let mut resumption_psk_store = ResumptionPskStore::new(32);
 
         // Prepare the PskSecret
-        let psk_secret = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)
-            .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
-            .map_err(|e| {
-                log::debug!("Unexpected PSK error: {e:?}");
-                LibraryError::custom("Unexpected PSK error")
-            })?;
+        let psk_secret = load_psks(
+            provider.storage(),
+            &resumption_psk_store,
+            Some(public_group_builder.group_context().group_id()),
+            None,
+            &self.psk_ids,
+        )
+        .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
+        .map_err(|e| {
+            log::debug!("Unexpected PSK error: {e:?}");
+            LibraryError::custom("Unexpected PSK error")
+        })?;
 
         let mut key_schedule =
             KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)?;
