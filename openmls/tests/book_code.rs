@@ -2108,7 +2108,7 @@ fn reinit_group() {
     // Alice commits a ReInit proposal by value to reinitialize the group as
     // a new group with a fresh group id (and, optionally, a new protocol version,
     // ciphersuite or extensions).
-    let new_group_id = GroupId::from_slice(b"reinitialized group");
+    let new_group_id = GroupId::random(alice_provider.rand());
     let reinit_proposal = ReInitProposal::new(
         new_group_id.clone(),
         ProtocolVersion::Mls10,
@@ -2294,7 +2294,7 @@ fn reinit_group_by_reference_pending_welcome() {
     // Alice proposes to reinitialize the group as a new group with a fresh
     // group id (and, optionally, a new protocol version, ciphersuite or
     // extensions).
-    let new_group_id = GroupId::from_slice(b"reinitialized group");
+    let new_group_id = GroupId::random(alice_provider.rand());
     let reinit_proposal = ReInitProposal::new(
         new_group_id.clone(),
         ProtocolVersion::Mls10,
