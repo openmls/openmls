@@ -100,7 +100,8 @@ pub(crate) struct LeafNodeConstraints {
     /// The leaf must support all of them.
     required_capabilities: Vec<RequiredCapabilitiesExtension>,
 
-    /// Group context extensions.
+    /// Extension types currently present in the group context.
+    /// The leaf must support all of them.
     group_context_extensions: HashSet<ExtensionType>,
 
     /// Credential types of the members.
