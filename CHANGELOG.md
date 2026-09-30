@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#XXXX](https://github.com/openmls/openmls/pull/XXXX): Commits now list their Update, Remove and SelfRemove proposals in ascending leaf order. Previously their order followed hash iteration order and varied between runs, even with a deterministic RNG.
 - [#2162](https://github.com/openmls/openmls/pull/2162): `Extensions::unknown()` now finds a GREASE extension that is present in the set, where it previously returned `None`.
 - [#2127](https://github.com/openmls/openmls/pull/2127): `MlsGroup` and `PublicGroup` message processing now accept `PreSharedKey` proposals from external senders. Previously they were rejected with `UnsupportedProposalType`.
 - [#2127](https://github.com/openmls/openmls/pull/2127): `Extension::extension_type()` now maps a GREASE-valued extension to `ExtensionType::Grease(_)` instead of `ExtensionType::Unknown(_)`, consistent with `ExtensionType::from(u16)`. GREASE is tolerated (like an unknown extension type) in leaf-node, key-package, group-info and group-context validation, without exempting it from the check that an extension be declared in `capabilities`. Previously a GREASE-valued extension was reported as `Unknown`, so this GREASE-aware validation did not recognize it and could reject peers that decorate leaf/key-package extensions with GREASE.
