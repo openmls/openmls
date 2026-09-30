@@ -4,7 +4,7 @@ Reinitialization (ReInit) replaces a group with a new *successor* group
 that carries over the same members but may use different parameters — a new
 group id, protocol version, ciphersuite, or group context extensions. This is
 the mechanism to use when, for example, a group needs to migrate to a stronger
-ciphersuite. See [RFC 9420 §11.2](https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization).
+ciphersuite. See [RFC 9420 §11.2].
 
 Reinitialization happens in two phases:
 
@@ -44,7 +44,12 @@ Commit the proposal:
 {{#include ../../../openmls/tests/book_code.rs:reinit_commit}}
 ```
 
-When commiting from the proposal queue, the application itself must make sure that the ReInit proposal is the only one in the commit. If it accepts other proposals, building the commit will throw an error. [RFC 9420 §12.2](https://www.rfc-editor.org/rfc/rfc9420.html#section-12.2-3.9) states that other proposals SHOULD be preferrred over ReInit. Applications that follow this advice must reject the ReInit proposal in `f` of `CommitBuilder::build` if there are other proposals.
+When commiting from the proposal queue, the application itself must make sure
+that the ReInit proposal is the only one in the commit. If it accepts other
+proposals, building the commit will throw an error. [RFC 9420 §12.2] states that
+other proposals SHOULD be preferrred over ReInit. Applications that follow this
+advice must reject the ReInit proposal in `f` of `CommitBuilder::build` if there
+are other proposals.
 
 Every other member processes and merges the commit, which suspends their view of
 the group as well:
@@ -101,3 +106,7 @@ If it turns out not to be a reinit welcome, continue with `PendingResumingWelcom
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:pending_welcome}}
 ```
+
+[RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
+
+[RFC 9420 §12.2]: https://www.rfc-editor.org/rfc/rfc9420.html#section-12.2-3.9
