@@ -916,12 +916,10 @@ impl PublicGroup {
     /// Compile the leaf node constraints for this group.
     /// This is built from the group context and every group member.
     pub(crate) fn leaf_node_constraints(&self) -> LeafNodeConstraints {
-        let mut constraints =
-            LeafNodeConstraints::from_group_context_extensions(self.group_context().extensions());
-        for (_, member) in self.treesync().full_leaves() {
-            constraints.add_member(member);
-        }
-        constraints
+        LeafNodeConstraints::new(
+            self.group_context().extensions(),
+            self.treesync().full_leaves().map(|(_, member)| member),
+        )
     }
 
     /// Validate a leaf node.

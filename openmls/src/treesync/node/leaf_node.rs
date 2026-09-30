@@ -120,8 +120,32 @@ impl LeafNodeConstraints {
     /// Constraints from a group's GroupContext extensions alone, e.g. for the
     /// creator of a group that has no other members yet.
     pub(crate) fn from_group_context_extensions(extensions: &Extensions<GroupContext>) -> Self {
-        let mut constraints = Self::default();
+        Self::new(extensions, [])
+    }
+
+    /// Constraints from a group's GroupContext extensions and its `members`.
+    pub(crate) fn new<'a>(
+        extensions: &Extensions<GroupContext>,
+        members: impl IntoIterator<Item = &'a LeafNode>,
+    ) -> Self {
+        let mut credentials_in_use = HashSet::new();
+        let mut credentials_supported_by_all = None;
+
+        for member in members {
+            credentials_in_use.insert(member.credential().credential_type());
+            let supported = member.capabilities().credentials();
+            credentials_supported_by_all
+                .get_or_insert_with(|| supported.iter().copied().collect::<HashSet<_>>())
+                .retain(|credential_type| supported.contains(credential_type));
+        }
+
+        let mut constraints = Self {
+            credentials_in_use,
+            credentials_supported_by_all: credentials_supported_by_all.unwrap_or_default(),
+            ..Self::default()
+        };
         constraints.add_group_context_extensions(extensions);
+
         constraints
     }
 
@@ -133,20 +157,6 @@ impl LeafNodeConstraints {
         }
         self.group_context_extensions
             .extend(extensions.iter().map(Extension::extension_type));
-    }
-
-    /// Add compatibility with the credential of `member`.
-    pub(crate) fn add_member(&mut self, member: &LeafNode) {
-        let supported = member.capabilities().credentials();
-        let is_first_member = self.credentials_in_use.is_empty();
-        if is_first_member {
-            self.credentials_supported_by_all = supported.iter().copied().collect();
-        } else {
-            self.credentials_supported_by_all
-                .retain(|credential_type| supported.contains(credential_type));
-        }
-        self.credentials_in_use
-            .insert(member.credential().credential_type());
     }
 
     /// Check `capabilities` against the constraints.
