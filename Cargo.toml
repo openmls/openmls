@@ -48,3 +48,6 @@ hpke-rs = { git = "https://github.com/celabshq/libcrux" }
 hpke-rs-crypto = { git = "https://github.com/celabshq/libcrux" }
 hpke-rs-libcrux = { git = "https://github.com/celabshq/libcrux" }
 hpke-rs-rust-crypto = { git = "https://github.com/celabshq/libcrux" }
+# libcrux-ecdsa's DER support (celabshq/libcrux#1585) is unreleased as well.
+# See openmls/openmls#2215.
+libcrux-ecdsa = { git = "https://github.com/celabshq/libcrux" }
