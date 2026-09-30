@@ -3156,20 +3156,18 @@ fn processing_own_application_message() {
     };
     assert!(alice_message.as_slice() == msg.into_bytes().as_slice());
 
-    // Processing the message again fails: the first pass consumed the
-    // retained secret.
-    let err = alice_group
+    // Processing the message again cannot decrypt it, since the first pass
+    // consumed the retained secret, so it surfaces as an own message.
+    let processed = alice_group
         .process_message(alice_provider, ciphertext.into_protocol_message().unwrap())
-        .expect_err("a consumed generation must not decrypt again");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("a consumed generation must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 
     // Alice sends another application message and confirms it. Its secret is
-    // deleted, so its echo no longer decrypts.
+    // deleted, so its echo no longer decrypts and surfaces as an own message.
     let alice_message = b"Hello, this is Alice again!";
     let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
@@ -3183,15 +3181,13 @@ fn processing_own_application_message() {
         )
         .unwrap();
 
-    let err = alice_group
+    let processed = alice_group
         .process_message(alice_provider, ciphertext.into_protocol_message().unwrap())
-        .expect_err("a confirmed generation must not decrypt");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("a confirmed generation must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 }
 
 /// Without an emulation binding, an own private message short-circuits to
@@ -3352,19 +3348,17 @@ fn confirm_targets_creation_epoch() {
     };
     assert_eq!(app.into_bytes().as_slice(), b"epoch N+1 message");
 
-    // msg1's secret was deleted, so its echo no longer decrypts.
-    let err = alice_group
+    // msg1's secret was deleted, so its echo surfaces as an own message.
+    let processed = alice_group
         .process_message(
             alice_provider,
             msg1.message.into_protocol_message().unwrap(),
         )
-        .expect_err("msg1's confirmed generation must not decrypt");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("msg1's confirmed generation must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 }
 
 /// Confirming a message whose creation epoch has aged out of the message
@@ -3608,16 +3602,14 @@ fn confirm_handshake_message_deletes_retained_secret() {
         .confirm_handshake_message(alice_provider.storage(), epoch, 1)
         .expect("confirm proposal B");
 
-    // Proposal B's secret was deleted, so its echo no longer decrypts.
-    let err = alice_group
+    // Proposal B's secret was deleted, so its echo surfaces as an own message.
+    let processed = alice_group
         .process_message(alice_provider, proposal_b.into_protocol_message().unwrap())
-        .expect_err("proposal B's confirmed generation must not decrypt");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("proposal B's confirmed generation must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 }
 
 #[openmls_test::openmls_test]
@@ -5463,7 +5455,7 @@ fn propose_unconfirmed_confirm_flow() {
     assert!(confirmation_a.generation_id.is_some());
 
     // Confirming deletes the retained handshake secret, so proposal A's own
-    // echo no longer decrypts.
+    // echo no longer decrypts and surfaces as an own message.
     alice_group
         .confirm_handshake_message(
             alice_provider.storage(),
@@ -5471,15 +5463,13 @@ fn propose_unconfirmed_confirm_flow() {
             confirmation_a.generation,
         )
         .expect("confirm proposal A");
-    let err = alice_group
+    let processed = alice_group
         .process_message(alice_provider, proposal_a.into_protocol_message().unwrap())
-        .expect_err("proposal A's confirmed generation must not decrypt");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("proposal A's confirmed generation must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 
     // A control proposal that is not confirmed retains its secret, so its echo
     // decrypts back to a ProposalMessage.

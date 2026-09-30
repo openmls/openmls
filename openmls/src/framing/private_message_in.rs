@@ -187,10 +187,25 @@ impl PrivateMessageIn {
                 sender_ratchet_configuration,
             )
             .map_err(|e| {
-                log::error!(
-                    "  Ciphertext generation out of bounds {}\n\t{e:?}",
-                    sender_data.generation
-                );
+                // With virtual clients, an own-leaf message whose secret was
+                // already spent is the echo of an own send. The caller
+                // surfaces it as an own private message, so it is not an
+                // error worth logging.
+                #[cfg(feature = "virtual-clients-draft")]
+                let own_echo = emulator_ctx.is_some() && e.is_spent_secret();
+                #[cfg(not(feature = "virtual-clients-draft"))]
+                let own_echo = false;
+                if own_echo {
+                    log::debug!(
+                        "  Own ciphertext generation {} already spent: {e:?}",
+                        sender_data.generation
+                    );
+                } else {
+                    log::error!(
+                        "  Ciphertext generation out of bounds {}\n\t{e:?}",
+                        sender_data.generation
+                    );
+                }
                 MessageDecryptionError::SecretTreeError(e)
             })?;
 

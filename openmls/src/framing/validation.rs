@@ -206,7 +206,24 @@ impl DecryptedMessage {
             #[cfg(feature = "virtual-clients-draft")]
             effective_emulator_ctx,
         );
+        #[cfg(not(feature = "virtual-clients-draft"))]
         let decrypted = decrypt_result?;
+        #[cfg(feature = "virtual-clients-draft")]
+        let decrypted = match decrypt_result {
+            Ok(decrypted) => decrypted,
+            // The secret of an own-leaf generation is only gone once this
+            // client confirmed its own send or already processed the message,
+            // so the message is an echo of something already handled.
+            Err(MessageDecryptionError::SecretTreeError(e))
+                if own_sender && e.is_spent_secret() =>
+            {
+                return Ok(InboundDecryptionResult::OwnPrivateMessage {
+                    epoch: ciphertext.epoch(),
+                    authenticated_data: ciphertext.aad().to_vec(),
+                });
+            }
+            Err(e) => return Err(e.into()),
+        };
         Self::from_verifiable_content(
             decrypted.verifiable,
             #[cfg(feature = "virtual-clients-draft")]

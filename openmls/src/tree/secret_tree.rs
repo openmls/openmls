@@ -50,6 +50,19 @@ pub enum SecretTreeError {
     CryptoError(#[from] CryptoError),
 }
 
+impl SecretTreeError {
+    /// Whether the error means the secret for the requested generation was
+    /// already consumed by a decryption or deleted by confirming an own send.
+    ///
+    /// [`Self::TooDistantInThePast`] is deliberately excluded: for an own-leaf
+    /// generation it can also mean that a sibling emulator client's message
+    /// fell out of the retention window before it was processed.
+    #[cfg(feature = "virtual-clients-draft")]
+    pub(crate) fn is_spent_secret(&self) -> bool {
+        matches!(self, Self::SecretReuseError)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum SecretType {
     HandshakeSecret,
