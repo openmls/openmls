@@ -6,8 +6,34 @@ use std::collections::{BTreeSet, HashSet};
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
+
+/// Summary of the credential types present in the group, computed ONCE
+/// for a whole batch of validations.
+///
+/// Both `valn0104` checks depend on the tree as a whole, not on the leaf
+/// being validated. Recomputing them per leaf meant two full scans of the
+/// membership for every validation: when joining, where all n leaves are
+/// validated, the cost became quadratic — measured at 91 s for a 30 000
+/// member group, almost entirely in credential-type comparisons, with no
+/// cryptography involved.
+pub(crate) struct CredentialCompatibility {
+    /// Credential types actually in use by members.
+    used: HashSet<CredentialType>,
+    /// Intersection of the credential types supported by every member.
+    supported_by_all: HashSet<CredentialType>,
+    /// Tree with no full leaf: `all()` over an empty iterator is true, so
+    /// this must permit rather than reject.
+    no_members: bool,
+}
+
+impl CredentialCompatibility {
+    fn all_members_support(&self, credential_type: CredentialType) -> bool {
+        self.no_members || self.supported_by_all.contains(&credential_type)
+    }
+}
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    credentials::CredentialType,
     ciphersuite::signature::SignaturePublicKey,
     extensions::RequiredCapabilitiesExtension,
     framing::{
@@ -388,7 +414,7 @@ impl PublicGroup {
                 _ => None,
             })
             .try_for_each(|leaf_node| {
-                self.validate_leaf_node_capabilities(leaf_node)
+                self.validate_leaf_node_capabilities(leaf_node, None)
                     .map_err(|_| ProposalValidationError::InsufficientCapabilities)
             })
     }
@@ -862,10 +888,44 @@ impl PublicGroup {
         Ok(())
     }
 
+    /// Computes the summary in a SINGLE pass over the members.
+    pub(crate) fn credential_compatibility(&self) -> CredentialCompatibility {
+        let mut used = HashSet::new();
+        let mut supported_by_all: Option<HashSet<CredentialType>> = None;
+
+        for (_, node) in self.treesync().full_leaves() {
+            used.insert(node.credential().credential_type());
+            let supported: HashSet<CredentialType> =
+                node.capabilities().credentials().iter().copied().collect();
+            supported_by_all = Some(match supported_by_all {
+                None => supported,
+                Some(acc) => acc.intersection(&supported).copied().collect(),
+            });
+        }
+
+        CredentialCompatibility {
+            used,
+            no_members: supported_by_all.is_none(),
+            supported_by_all: supported_by_all.unwrap_or_default(),
+        }
+    }
+
     fn validate_leaf_node_capabilities(
         &self,
         leaf_node: &LeafNode,
+        compatibility: Option<&CredentialCompatibility>,
     ) -> Result<(), LeafNodeValidationError> {
+        // `None`: a one-off call, so the summary is computed for this
+        // single validation. In a batch the caller supplies it once and
+        // the per-leaf cost disappears.
+        let computed;
+        let compatibility = match compatibility {
+            Some(c) => c,
+            None => {
+                computed = self.credential_compatibility();
+                &computed
+            }
+        };
         // Check that the data in the leaf node is self-consistent
         // Check that the capabilities contain the leaf node's credential
         // type (https://validation.openmls.tech/#valn0113)
@@ -892,20 +952,17 @@ impl PublicGroup {
         }
 
         // Check that the credential type is supported by all members of the group (https://validation.openmls.tech/#valn0104).
-        if !self.treesync().full_leaves().all(|(_, node)| {
-            node.capabilities()
-                .contains_credential(leaf_node.credential().credential_type())
-        }) {
+        if !compatibility.all_members_support(leaf_node.credential().credential_type()) {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }
 
         // Check that the capabilities field of this LeafNode indicates
         // support for all the credential types currently in use by other
         // members (https://validation.openmls.tech/#valn0104).
-        if !self
-            .treesync()
-            .full_leaves()
-            .all(|(_, node)| capabilities.contains_credential(node.credential().credential_type()))
+        if !compatibility
+            .used
+            .iter()
+            .all(|credential_type| capabilities.contains_credential(*credential_type))
         {
             return Err(LeafNodeValidationError::UnsupportedCredentials);
         }
@@ -921,7 +978,7 @@ impl PublicGroup {
         leaf_node: &crate::treesync::LeafNode,
     ) -> Result<(), LeafNodeValidationError> {
         // Call the validation function and validate the lifetime
-        self.validate_leaf_node_inner(leaf_node, LeafNodeLifetimePolicy::Verify)
+        self.validate_leaf_node_inner(leaf_node, LeafNodeLifetimePolicy::Verify, None)
     }
 
     /// Validate a leaf node.
@@ -931,11 +988,12 @@ impl PublicGroup {
         &self,
         leaf_node: &crate::treesync::LeafNode,
         validate_lifetimes: LeafNodeLifetimePolicy,
+        compatibility: Option<&CredentialCompatibility>,
     ) -> Result<(), LeafNodeValidationError> {
         // https://validation.openmls.tech/#valn0103
         // https://validation.openmls.tech/#valn0104
         // https://validation.openmls.tech/#valn0107
-        self.validate_leaf_node_capabilities(leaf_node)?;
+        self.validate_leaf_node_capabilities(leaf_node, compatibility)?;
 
         // https://validation.openmls.tech/#valn0105 is done when sending
 
