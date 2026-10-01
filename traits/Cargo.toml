@@ -15,6 +15,9 @@ path = "src/traits.rs"
 
 [features]
 default = []
+# The storage traits are async only with `async` and without `sync`.
+sync = []
+async = []
 test-utils = []
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 extensions-draft = []
@@ -25,3 +28,4 @@ targeted-messages-draft = []
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 tls_codec = { workspace = true }
+maybe-async = { workspace = true }

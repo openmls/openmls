@@ -88,6 +88,20 @@ value (in which case they are an `Entity`).
 {{#include ../../../traits/src/storage.rs:entity_trait}}
 ```
 
+#### Sync and async mode
+
+The storage traits come in a sync and an async flavor. The source shown on this
+page uses the async signatures, which return `impl Future<Output = ...> + Send`.
+In the default sync mode the same methods return the output type directly, and
+`MaybeSync` and `MaybeSend` place no bounds on the types.
+
+The async mode is enabled with the `async` feature of `openmls` or
+`openmls_traits`, as long as no crate in the build enables `sync`. In async mode
+the provider and the keys and entities must be `Sync`, and the error type must be
+`Send`. An implementation that supports both modes writes the methods as
+`async fn` and marks the `impl` block with
+`#[openmls_traits::maybe_async(AFIT)]`.
+
 An implementation of the storage trait should ensure that it can address and
 efficiently handle values.
 

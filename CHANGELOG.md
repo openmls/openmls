@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added an async mode for the storage API. With the `async` feature, every function that reads or writes storage is an `async fn`, for example `MlsGroup::new`, `MlsGroup::process_message`, `MlsGroup::merge_pending_commit`, `MlsGroup::load` and `KeyPackageBuilder::build`. The storage futures are `Send`. The sync mode stays the default and takes precedence when both `sync` and `async` are enabled. OpenMLS futures are not cancel-safe, see the crate docs.
 - [#2127](https://github.com/openmls/openmls/pull/2127): Added `ExternalProposal::new_pre_shared_key`, for injecting an external or resumption pre-shared key into a group's key schedule with from an external sender.
 - [#2127](https://github.com/openmls/openmls/pull/2127): Added `BranchGroupBuilder::propose_group_context_extensions` and `BranchGroupBuilder::force_self_update`, so a subgroup's branch commit can carry a group-context-extensions proposal or force a path, mirroring the options on `CommitBuilder`.
 - [#2127](https://github.com/openmls/openmls/pull/2127): Added `RatchetTreeIn::full_leaves`, an iterator over non-blank leaves paired with their real (uncompacted) `LeafNodeIndex`, for callers that need the actual tree position rather than the compacted index that `leaves()` produces after skipping blanks.

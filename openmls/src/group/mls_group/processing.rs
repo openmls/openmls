@@ -242,13 +242,16 @@ impl MlsGroup {
     /// # Errors:
     /// Returns an [`ProcessMessageError`] when the validation checks fail
     /// with the exact reason of the failure.
-    pub fn process_message<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn process_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
-        match self.unprotect_message(provider, message)? {
-            UnprotectedMessage::Unverified(m) => self.process_unverified_message(provider, *m),
+        match self.unprotect_message(provider, message).await? {
+            UnprotectedMessage::Unverified(m) => {
+                self.process_unverified_message(provider, *m).await
+            }
             // The content cannot be decrypted and the sender claim is unauthenticated,
             // so we surface OwnPrivateMessage and skip all further processing.
             UnprotectedMessage::OwnPrivateMessage {
@@ -286,7 +289,8 @@ impl MlsGroup {
 
     /// Parses and deprotects incoming messages from the DS. Checks for syntactic errors, but only
     /// performs limited semantic checks.
-    pub(crate) fn unprotect_message<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn unprotect_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
@@ -328,6 +332,7 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")]
         let derivation_state = if let ProtocolMessage::PrivateMessage(private_message) = &message {
             self.vc_derivation_state_at_epoch(provider.storage(), private_message.epoch())
+                .await
                 .map_err(|e| match e {
                     super::VcDerivationStateError::Storage(e) => {
                         ProcessMessageError::StorageError(e)
@@ -368,6 +373,7 @@ impl MlsGroup {
             provider
                 .storage()
                 .write_message_secrets(self.group_id(), &self.message_secrets_store)
+                .await
                 .map_err(ProcessMessageError::StorageError)?;
         }
 
@@ -395,12 +401,15 @@ impl MlsGroup {
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
-    pub fn store_pending_proposal<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn store_pending_proposal<Storage: StorageProvider>(
         &mut self,
         storage: &Storage,
         proposal: QueuedProposal,
     ) -> Result<(), Storage::Error> {
-        storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
+        storage
+            .queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)
+            .await?;
         // Store the proposal in in the internal ProposalStore
         self.proposal_store_mut().add(proposal);
 
@@ -430,7 +439,8 @@ impl MlsGroup {
     // FIXME: #1217
     #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
     #[allow(clippy::type_complexity)]
-    pub fn commit_to_pending_proposals<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn commit_to_pending_proposals<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         signer: &impl Signer,
@@ -446,9 +456,11 @@ impl MlsGroup {
             .commit_builder()
             // This forces committing to the proposals in the proposal store:
             .consume_proposal_store(true)
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?
+            .stage_commit(provider)
+            .await?
             .into_contents();
 
         Ok((
@@ -461,7 +473,8 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    pub fn merge_staged_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn merge_staged_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         staged_commit: StagedCommit,
@@ -473,6 +486,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_group_state(self.group_id(), &self.group_state)
+            .await
             .map_err(MergeCommitError::StorageError)?;
 
         // Update the per-epoch emulation bindings. Self-removal drops them,
@@ -485,6 +499,7 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")]
         if staged_commit.self_removed() {
             self.drop_all_vc_derivation_epoch_references(provider.storage())
+                .await
                 .map_err(|e| {
                     log::error!("vc: drop derivation epoch references on self-removal: {e:?}");
                     MergeCommitError::StorageError(e)
@@ -497,6 +512,7 @@ impl MlsGroup {
                 None => provider
                     .storage()
                     .vc_emulation_binding(self.group_id(), &self.epoch())
+                    .await
                     .map_err(MergeCommitError::StorageError)?
                     .map(VcEmulationBinding::into_epoch_id),
             };
@@ -512,6 +528,7 @@ impl MlsGroup {
                     epoch_id,
                     max_entries,
                 )
+                .await
                 .map_err(|e| {
                     log::error!("vc: persist emulation binding at merge failed: {e:?}");
                     MergeCommitError::StorageError(e)
@@ -521,6 +538,7 @@ impl MlsGroup {
                 provider
                     .storage()
                     .delete_unreferenced_vc_derivation_epoch_states::<EpochId>()
+                    .await
                     .map_err(|e| {
                         log::error!("vc: release unbound derivation epochs at merge: {e:?}");
                         MergeCommitError::StorageError(e)
@@ -529,7 +547,7 @@ impl MlsGroup {
         }
 
         // Merge staged commit
-        self.merge_commit(provider, staged_commit)?;
+        self.merge_commit(provider, staged_commit).await?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group_epoch_secrets().resumption_psk();
@@ -538,6 +556,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)
+            .await
             .map_err(MergeCommitError::StorageError)?;
 
         // Delete own KeyPackageBundles
@@ -545,10 +564,12 @@ impl MlsGroup {
         provider
             .storage()
             .delete_own_leaf_nodes(self.group_id())
+            .await
             .map_err(MergeCommitError::StorageError)?;
 
         // Delete a potential pending commit
         self.clear_pending_commit(provider.storage())
+            .await
             .map_err(MergeCommitError::StorageError)?;
 
         Ok(())
@@ -556,7 +577,8 @@ impl MlsGroup {
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    pub fn merge_pending_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn merge_pending_commit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
     ) -> Result<(), MergePendingCommitError<Provider::StorageError>> {
@@ -564,7 +586,8 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit(provider, (*pending_commit_state).into())?;
+                    self.merge_staged_commit(provider, (*pending_commit_state).into())
+                        .await?;
                 }
                 Ok(())
             }
@@ -605,7 +628,8 @@ impl MlsGroup {
     /// `OperationGenerationConsumed`. Operation secrets are consume-once,
     /// matching the semantics of regular PrivateMessage decryption.
     #[cfg(feature = "virtual-clients-draft")]
-    pub(super) fn load_vc_commit_material<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(super) async fn load_vc_commit_material<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         commit: &Commit,
@@ -632,6 +656,7 @@ impl MlsGroup {
         let storage = provider.storage();
         let state: VcDerivationEpochState = storage
             .vc_derivation_epoch_state(epoch_id)
+            .await
             .map_err(|e| {
                 log::error!("vc: load derivation epoch state failed: {e:?}");
                 VirtualClientsError::StorageError
@@ -639,6 +664,7 @@ impl MlsGroup {
             .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
         let mut operation_tree: OperationSecretTree = storage
             .vc_operation_tree(epoch_id)
+            .await
             .map_err(|e| {
                 log::error!("vc: load operation tree failed: {e:?}");
                 VirtualClientsError::StorageError
@@ -702,6 +728,7 @@ impl MlsGroup {
         // derived from the secret.
         storage
             .write_vc_operation_tree(epoch_id, &operation_tree)
+            .await
             .map_err(|e| {
                 log::error!("vc: persist advanced operation tree failed: {e:?}");
                 VirtualClientsError::StorageError
@@ -717,27 +744,31 @@ impl MlsGroup {
     }
 
     /// Helper function to read decryption keypairs.
-    pub(super) fn read_decryption_keypairs(
+    #[openmls_traits::maybe_async]
+    pub(super) async fn read_decryption_keypairs(
         &self,
         provider: &impl OpenMlsProvider,
         own_leaf_nodes: &[LeafNode],
     ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
         // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(provider.storage()).map_err(|e| {
-            log::error!("Error reading epoch keypairs: {e:?}");
-            StageCommitError::MissingDecryptionKey
-        })?;
+        let old_epoch_keypairs =
+            self.read_epoch_keypairs(provider.storage())
+                .await
+                .map_err(|e| {
+                    log::error!("Error reading epoch keypairs: {e:?}");
+                    StageCommitError::MissingDecryptionKey
+                })?;
 
         // If we are processing an update proposal that originally came from
         // us, the keypair corresponding to the leaf in the update is also a
         // potential decryption keypair.
-        let leaf_node_keypairs = own_leaf_nodes
-            .iter()
-            .map(|leaf_node| {
-                EncryptionKeyPair::read(provider, leaf_node.encryption_key())
-                    .ok_or(StageCommitError::MissingDecryptionKey)
-            })
-            .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
+        let mut leaf_node_keypairs = Vec::with_capacity(own_leaf_nodes.len());
+        for leaf_node in own_leaf_nodes {
+            let keypair = EncryptionKeyPair::read(provider, leaf_node.encryption_key())
+                .await
+                .ok_or(StageCommitError::MissingDecryptionKey)?;
+            leaf_node_keypairs.push(keypair);
+        }
 
         Ok((old_epoch_keypairs, leaf_node_keypairs))
     }
@@ -749,7 +780,8 @@ impl MlsGroup {
     /// The returned [`StagedCommit`] can be inspected and merged into the
     /// group's state using [`MlsGroup::merge_staged_commit()`].
     #[cfg(feature = "extensions-draft")]
-    pub fn stage_app_data_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn stage_app_data_commit<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         unresolved_commit: UnresolvedAppDataCommit,
@@ -759,8 +791,9 @@ impl MlsGroup {
         #[cfg(feature = "virtual-clients-draft")]
         let vc_commit_material = unresolved_commit.vc_commit_material;
 
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
+        let (old_epoch_keypairs, leaf_node_keypairs) = self
+            .read_decryption_keypairs(provider, &self.own_leaf_nodes)
+            .await?;
 
         self.stage_commit_with_app_data_updates(
             &content,
@@ -771,6 +804,7 @@ impl MlsGroup {
             #[cfg(feature = "virtual-clients-draft")]
             vc_commit_material,
         )
+        .await
     }
 
     /// Resolves a [`ProcessedMessage`] carrying an
@@ -788,15 +822,19 @@ impl MlsGroup {
     /// Returns an error if the message content is not an unresolved app data
     /// commit; the message is consumed either way.
     #[cfg(feature = "extensions-draft")]
-    pub fn resolve_app_data_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn resolve_app_data_commit<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         processed_message: ProcessedMessage,
         app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<ProcessedMessage, ResolveAppDataCommitError> {
-        processed_message.resolve_app_data_commit(|unresolved_commit| {
-            self.stage_app_data_commit(provider, unresolved_commit, app_data_dict_updates)
-        })
+        let (unresolved_commit, with_staged_commit) =
+            processed_message.split_unresolved_app_data_commit()?;
+        let staged_commit = self
+            .stage_app_data_commit(provider, unresolved_commit, app_data_dict_updates)
+            .await?;
+        Ok(with_staged_commit(staged_commit))
     }
 
     /// This processing function does most of the semantic verifications.
@@ -823,7 +861,8 @@ impl MlsGroup {
     ///  - ValSem204: Public keys from Path must be verified and match the
     ///    private keys from the direct path
     ///  - ValSem205
-    pub(crate) fn process_unverified_message<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn process_unverified_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
@@ -838,14 +877,16 @@ impl MlsGroup {
 
         #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match verified.content.sender() {
-            Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => self
-                .process_internal_authenticated_content(
+            Sender::Member(_) | Sender::NewMemberProposal | Sender::NewMemberCommit => {
+                self.process_internal_authenticated_content(
                     provider,
                     verified.content,
                     verified.credential,
                     #[cfg(feature = "virtual-clients-draft")]
                     verified.emulator_sender_leaf_index,
-                )?,
+                )
+                .await?
+            }
             Sender::External(_) => self.process_external_authenticated_content(
                 provider,
                 verified.content,
@@ -861,7 +902,8 @@ impl MlsGroup {
         Ok(processed)
     }
 
-    fn process_internal_authenticated_content<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    async fn process_internal_authenticated_content<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         content: AuthenticatedContent,
@@ -938,7 +980,7 @@ impl MlsGroup {
                 let (vc_commit_material, is_own_commit) = {
                     let vc_commit_material =
                         if is_sibling_vc_commit(commit, &sender, self.own_leaf_index()) {
-                            self.load_vc_commit_material(provider, commit)?
+                            self.load_vc_commit_material(provider, commit).await?
                         } else {
                             None
                         };
@@ -992,17 +1034,20 @@ impl MlsGroup {
                 }
 
                 // Since this is a commit, we need to load the private key material we need for decryption.
-                let (old_epoch_keypairs, leaf_node_keypairs) =
-                    self.read_decryption_keypairs(provider, &self.own_leaf_nodes)?;
+                let (old_epoch_keypairs, leaf_node_keypairs) = self
+                    .read_decryption_keypairs(provider, &self.own_leaf_nodes)
+                    .await?;
 
-                let staged_commit = self.stage_commit(
-                    &content,
-                    old_epoch_keypairs,
-                    leaf_node_keypairs,
-                    provider,
-                    #[cfg(feature = "virtual-clients-draft")]
-                    vc_commit_material,
-                )?;
+                let staged_commit = self
+                    .stage_commit(
+                        &content,
+                        old_epoch_keypairs,
+                        leaf_node_keypairs,
+                        provider,
+                        #[cfg(feature = "virtual-clients-draft")]
+                        vc_commit_material,
+                    )
+                    .await?;
 
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
             }

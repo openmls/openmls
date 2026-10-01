@@ -63,7 +63,8 @@ impl MlsGroup {
     /// Processes a received targeted message. Decrypts the message content and
     /// verifies the sender's signature. Returns the sender's leaf index and the
     /// decrypted application data.
-    pub fn process_targeted_message<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn process_targeted_message<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         message: &TargetedMessageIn,
@@ -81,6 +82,7 @@ impl MlsGroup {
 
         let epoch_keypairs = self
             .read_epoch_keypairs(provider.storage())
+            .await
             .map_err(ProcessTargetedMessageError::StorageError)?;
 
         let own_keypair = epoch_keypairs

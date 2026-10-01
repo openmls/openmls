@@ -1,0 +1,77 @@
+name: Build & test async mode
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      # The main test suite only runs in sync mode, so these checks keep the
+      # async build of every feature combination compiling.
+      - name: Clippy openmls in async mode
+        run: |
+          # Some test utilities only exist together with a draft feature, so we
+          # also check test-utils with every feature enabled. The drafts need
+          # their storage test dependencies to build with test-utils.
+          test_utils_all_features="test-utils,migration-import,0-8-1-storage-format"
+          test_utils_all_features+=",extensions-draft,extensions-draft-test-dependencies"
+          test_utils_all_features+=",virtual-clients-draft,virtual-clients-draft-test-dependencies"
+          test_utils_all_features+=",targeted-messages-draft,draft-ietf-mls-pq-ciphersuites"
+          for features in \
+            "" \
+            migration-import \
+            0-8-1-storage-format \
+            extensions-draft \
+            virtual-clients-draft \
+            targeted-messages-draft \
+            draft-ietf-mls-pq-ciphersuites \
+            test-utils \
+            "${test_utils_all_features}"; do
+            echo "::group::async ${features}"
+            cargo clippy -p openmls -F "async,${features}" -- -D warnings
+            echo "::endgroup::"
+          done
+      - name: Clippy dependent crates in async mode
+        run: |
+          cargo clippy -p openmls_basic_credential -p openmls_memory_storage \
+            -p openmls_rust_crypto -p openmls_libcrux_crypto \
+            -F openmls_traits/async -- -D warnings
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            openmls_async_tests -> target
+      - name: Clippy async end-to-end tests
+        run: |
+          cargo clippy --manifest-path openmls_async_tests/Cargo.toml --all-targets -- -D warnings
+      - name: Async end-to-end tests
+        run: |
+          cargo test --manifest-path openmls_async_tests/Cargo.toml

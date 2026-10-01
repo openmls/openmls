@@ -44,6 +44,9 @@ zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
 [features]
+# Select the sync (default) or async storage API. `sync` wins when both are set.
+sync = ["openmls_traits/sync"]
+async = ["openmls_traits/async"]
 # enable for compatibility with openmls=0.8.1
 0-8-1-storage-format = []
 # import a group (and the group-associated data it owns) exported from a previous

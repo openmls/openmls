@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- The provider implements the async storage API of `openmls_traits` and no longer blocks on the tokio runtime, so it no longer needs a multi-threaded runtime. It needs the async mode of `openmls_traits` and fails to compile with a message naming the problem in sync mode.
+- `SqliteStorageProvider::run_migrations` is now `async`.
+- Calls on one provider are serialized by an async mutex, so concurrent operations that share a provider wait for each other.
+- The `Codec` trait now requires `Send + Sync`.
+
 ## 0.3.0 (2026-08-25)
 
 ### Added

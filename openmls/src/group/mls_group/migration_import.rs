@@ -25,28 +25,45 @@ impl MlsGroup {
     /// encoding differs between versions (e.g. postcard → JSON), old-format entries
     /// live under different keys and are not changed; remove those with the
     /// older version's `MlsGroup::delete`.
-    pub(crate) fn store_for_migration<Storage: crate::storage::StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn store_for_migration<Storage: crate::storage::StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
-        self.public_group.store_for_migration(storage)?;
-        storage.write_group_epoch_secrets(self.group_id(), &self.group_epoch_secrets)?;
-        storage.write_own_leaf_index(self.group_id(), &self.own_leaf_index)?;
-        storage.write_message_secrets(self.group_id(), &self.message_secrets_store)?;
-        storage.write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)?;
-        storage.write_mls_join_config(self.group_id(), &self.mls_group_config)?;
+        self.public_group.store_for_migration(storage).await?;
+        storage
+            .write_group_epoch_secrets(self.group_id(), &self.group_epoch_secrets)
+            .await?;
+        storage
+            .write_own_leaf_index(self.group_id(), &self.own_leaf_index)
+            .await?;
+        storage
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .await?;
+        storage
+            .write_resumption_psk_store(self.group_id(), &self.resumption_psk_store)
+            .await?;
+        storage
+            .write_mls_join_config(self.group_id(), &self.mls_group_config)
+            .await?;
 
         // clear `own_leaf_nodes`, and rewrite one-by-one
-        storage.delete_own_leaf_nodes(self.group_id())?;
+        storage.delete_own_leaf_nodes(self.group_id()).await?;
         for leaf_node in self.own_leaf_nodes.iter() {
-            storage.append_own_leaf_node(self.group_id(), leaf_node)?;
+            storage
+                .append_own_leaf_node(self.group_id(), leaf_node)
+                .await?;
         }
 
-        storage.write_group_state(self.group_id(), &self.group_state)?;
+        storage
+            .write_group_state(self.group_id(), &self.group_state)
+            .await?;
         #[cfg(feature = "extensions-draft")]
         match &self.application_export_tree {
             Some(application_export_tree) => {
-                storage.write_application_export_tree(self.group_id(), application_export_tree)?;
+                storage
+                    .write_application_export_tree(self.group_id(), application_export_tree)
+                    .await?;
             }
             // No tree to write (migrating in from a version/config without
             // `extensions-draft`, or a migration whose source has none). Delete
@@ -54,7 +71,8 @@ impl MlsGroup {
             // rather than left pointing at a previously stored tree.
             None => {
                 storage
-                    .delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())?;
+                    .delete_application_export_tree::<_, ApplicationExportTree>(self.group_id())
+                    .await?;
             }
         }
 
@@ -72,24 +90,27 @@ impl GroupMigrationBundle {
     /// (own leaf nodes, proposal queue) are cleared before writing.
     ///
     /// Old-format entries under a different key encoding are not changed.
-    pub fn store<Storage: crate::storage::StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn store<Storage: crate::storage::StorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
         // Group state (config, tree, context, proposals, secrets, ...).
-        self.group.store_for_migration(storage)?;
+        self.group.store_for_migration(storage).await?;
 
         // The group's own encryption key pairs for the current epoch.
-        storage.write_encryption_epoch_key_pairs(
-            self.group.group_id(),
-            &self.group.epoch(),
-            self.group.own_leaf_index().u32(),
-            &self.epoch_encryption_key_pairs,
-        )?;
+        storage
+            .write_encryption_epoch_key_pairs(
+                self.group.group_id(),
+                &self.group.epoch(),
+                self.group.own_leaf_index().u32(),
+                &self.epoch_encryption_key_pairs,
+            )
+            .await?;
 
         // Encryption key pairs for pending (uncommitted) update leaf nodes.
         for key_pair in &self.update_encryption_key_pairs {
-            key_pair.write(storage)?;
+            key_pair.write(storage).await?;
         }
 
         Ok(())

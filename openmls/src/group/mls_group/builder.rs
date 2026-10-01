@@ -102,13 +102,15 @@ impl MlsGroupBuilder {
     }
 
     /// Build a new group as configured by this builder.
-    pub fn build<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
         self.build_internal(provider, signer, credential_with_key, None)
+            .await
     }
 
     /// Build a new group with the given group ID.
@@ -119,7 +121,8 @@ impl MlsGroupBuilder {
     ///
     /// If a group with the same ID already exists in storage and
     /// `replace_old_group` was not set, an error will be returned.
-    pub(super) fn build_internal<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(super) async fn build_internal<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -144,7 +147,8 @@ impl MlsGroupBuilder {
                 crate::components::vc_derivation_info::require_newest_vc_derivation_epoch(
                     provider.storage(),
                     emulation_group_id,
-                )?;
+                )
+                .await?;
             return build_vc_internal(
                 provider,
                 signer,
@@ -153,11 +157,13 @@ impl MlsGroupBuilder {
                 group_id,
                 self.replace_old_group,
                 epoch_id,
-            );
+            )
+            .await;
         }
 
         if !self.replace_old_group
             && MlsGroup::load(provider.storage(), &group_id)
+                .await
                 .map_err(NewGroupError::StorageError)?
                 .is_some()
         {
@@ -201,6 +207,7 @@ impl MlsGroupBuilder {
 
         // Prepare the PskSecret
         let psk_secret = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)
+            .await
             .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
             .map_err(|e| {
                 log::debug!("Unexpected PSK error: {e:?}");
@@ -266,7 +273,8 @@ impl MlsGroupBuilder {
                         .vc_derivation_epoch_retention_policy()
                         .clone(),
                 ),
-            )?;
+            )
+            .await?;
         }
 
         let mls_group = MlsGroup {
@@ -289,9 +297,11 @@ impl MlsGroupBuilder {
 
         mls_group
             .store(provider.storage())
+            .await
             .map_err(NewGroupError::StorageError)?;
         mls_group
             .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+            .await
             .map_err(NewGroupError::StorageError)?;
 
         Ok(mls_group)
@@ -487,7 +497,8 @@ impl BranchGroupBuilder {
     /// The commit is staged but **not** merged: merge it with
     /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
     /// only once the delivery service has confirmed it.
-    pub fn build_branch<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_branch<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -498,7 +509,9 @@ impl BranchGroupBuilder {
         let group_builder = self
             .group_builder
             .ciphersuite(self.branch_info.ciphersuite());
-        let mut group = group_builder.build(provider, signer, credential_with_key)?;
+        let mut group = group_builder
+            .build(provider, signer, credential_with_key)
+            .await?;
 
         let mut builder = group
             .commit_builder()
@@ -511,9 +524,11 @@ impl BranchGroupBuilder {
             builder = builder.force_self_update(true);
         }
         let bundle = builder
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         Ok((group, bundle))
     }
@@ -550,7 +565,8 @@ pub enum BranchError<StorageError> {
 /// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
 #[cfg(feature = "virtual-clients-draft")]
 #[allow(clippy::too_many_arguments)]
-fn build_vc_internal<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+async fn build_vc_internal<Provider: OpenMlsProvider>(
     provider: &Provider,
     signer: &impl Signer,
     credential_with_key: CredentialWithKey,
@@ -572,6 +588,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
 
     if !replace_old_group
         && MlsGroup::load(provider.storage(), &group_id)
+            .await
             .map_err(NewGroupError::StorageError)?
             .is_some()
     {
@@ -594,7 +611,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     // `key_package` generation (empty operation context, matching the KeyPackage
     // batch path), and persist the advanced tree right away. A retried creation
     // consumes a fresh generation.
-    let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
+    let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id).await?;
     let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
     let (generation, operation_secret) = operation_tree.next_operation_secret(
         provider.crypto(),
@@ -607,6 +624,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     provider
         .storage()
         .write_vc_operation_tree(&epoch_id, &operation_tree)
+        .await
         .map_err(NewGroupError::StorageError)?;
 
     // The creator batch consists of this single derivation and is closed
@@ -737,13 +755,16 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         epoch_id,
         max_entries,
     )
+    .await
     .map_err(NewGroupError::StorageError)?;
 
     mls_group
         .store(provider.storage())
+        .await
         .map_err(NewGroupError::StorageError)?;
     mls_group
         .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+        .await
         .map_err(NewGroupError::StorageError)?;
 
     Ok(mls_group)
