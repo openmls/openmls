@@ -284,6 +284,7 @@ impl Group {
     ) -> Result<Vec<u8>, JsError> {
         self.mls_group
             .export_secret(provider.as_ref().crypto(), label, context, key_length)
+            .map(|secret| secret.as_slice().to_vec())
             .map_err(|e| {
                 println!("export key error: {e}");
                 e.into()

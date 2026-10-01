@@ -376,7 +376,7 @@ fn derive_targeted_message_psk(
     crypto: &impl OpenMlsCrypto,
     ciphersuite: Ciphersuite,
     exporter_secret: &crate::schedule::ExporterSecret,
-) -> Result<Vec<u8>, LibraryError> {
+) -> Result<Secret, LibraryError> {
     exporter_secret
         .derive_exported_secret(
             ciphersuite,
@@ -394,7 +394,7 @@ fn derive_sender_auth_data_secret(
     ciphersuite: Ciphersuite,
     exporter_secret: &crate::schedule::ExporterSecret,
 ) -> Result<Secret, LibraryError> {
-    let secret_bytes = exporter_secret
+    exporter_secret
         .derive_exported_secret(
             ciphersuite,
             crypto,
@@ -402,8 +402,7 @@ fn derive_sender_auth_data_secret(
             SENDER_AUTH_DATA_SECRET_SUBLABEL.as_bytes(),
             ciphersuite.hash_length(),
         )
-        .map_err(LibraryError::unexpected_crypto_error)?;
-    Ok(Secret::from_slice(&secret_bytes))
+        .map_err(LibraryError::unexpected_crypto_error)
 }
 
 /// Derive sender auth data key and nonce from the ciphertext sample.
@@ -538,7 +537,7 @@ pub(crate) fn create_targeted_message(
             // The group state is bound through the PSK, so the context stays
             // empty.
             context: &[],
-            psk: &psk,
+            psk: psk.as_slice(),
             psk_id: &psk_id_bytes,
             ciphersuite: ctx.ciphersuite,
         },
@@ -778,7 +777,7 @@ pub(crate) fn process_targeted_message<StorageError>(
                 // The group state is bound through the PSK, so the context
                 // stays empty.
                 context: &[],
-                psk: &psk,
+                psk: psk.as_slice(),
                 psk_id: &psk_id_bytes,
                 ciphersuite: ctx.ciphersuite,
             },

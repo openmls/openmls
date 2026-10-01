@@ -378,6 +378,7 @@ impl Proposal {
             (Proposal::Remove(_), Proposal::Remove(_)) => true,
             // SelfRemoves have the highest priority.
             (_, Proposal::SelfRemove) => true,
+            (Proposal::SelfRemove, Proposal::Update(_) | Proposal::Remove(_)) => false,
             _ => {
                 debug_assert!(false);
                 false
@@ -518,16 +519,19 @@ pub struct PreSharedKeyProposal {
 }
 
 impl PreSharedKeyProposal {
-    /// Returns the [`PreSharedKeyId`] and consume this proposal.
-    pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
-        self.psk
-    }
-}
-
-impl PreSharedKeyProposal {
     /// Create a new PSK proposal
     pub fn new(psk: PreSharedKeyId) -> Self {
         Self { psk }
+    }
+
+    /// Returns a reference to the [`PreSharedKeyId`] in the proposal.
+    pub fn psk(&self) -> &PreSharedKeyId {
+        &self.psk
+    }
+
+    /// Returns the [`PreSharedKeyId`] and consume this proposal.
+    pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
+        self.psk
     }
 }
 

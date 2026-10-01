@@ -35,7 +35,9 @@ pub(crate) struct MessageSecretsStore {
     // Maximum size of the `past_epoch_trees` list.
     pub(crate) max_epochs: usize,
     // Past message secrets.
-    // NOTE: these are in order of addition (latest at end).
+    // NOTE: these are in order of addition (latest at end). Restored on
+    // deserialization, since `resize` used to persist them rotated.
+    #[serde(deserialize_with = "epoch_trees_oldest_first")]
     past_epoch_trees: VecDeque<EpochTree>,
     // The message secrets of the current epoch.
     message_secrets: MessageSecrets,
@@ -50,6 +52,16 @@ impl core::fmt::Debug for MessageSecretsStore {
             .field("message_secrets", &"***")
             .finish()
     }
+}
+
+/// Sorts the past epoch trees, which `resize` used to persist rotated.
+fn epoch_trees_oldest_first<'de, D>(deserializer: D) -> Result<VecDeque<EpochTree>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let mut trees = VecDeque::<EpochTree>::deserialize(deserializer)?;
+    trees.make_contiguous().sort_by_key(|tree| tree.epoch);
+    Ok(trees)
 }
 
 const VECDEQUE_MAX_CAPACITY: usize = isize::MAX as usize;
@@ -86,14 +98,10 @@ impl MessageSecretsStore {
         // max or the limit of the storage size
         let max_past_epochs = max_epochs(policy);
 
-        let old_size = self.max_epochs;
         self.max_epochs = max_past_epochs;
-        if old_size > max_past_epochs {
-            let num_epochs_out = old_size - max_past_epochs;
-            self.past_epoch_trees
-                .rotate_left(num_epochs_out.min(self.past_epoch_trees.len()));
-            self.past_epoch_trees.truncate(max_past_epochs);
-        }
+
+        let excess = self.past_epoch_trees.len().saturating_sub(max_past_epochs);
+        self.past_epoch_trees.drain(0..excess);
     }
 
     /// Set the `message_secrets` to a provided `MessageSecrets`, and return
@@ -338,5 +346,29 @@ impl MessageSecretsStore {
     /// Helper function for testing, to get the number of past epoch trees
     pub(crate) fn num_past_epoch_trees(&self) -> usize {
         self.past_epoch_trees.len()
+    }
+
+    #[cfg(test)]
+    /// Helper function for testing, to get the stored epochs in queue order
+    pub(crate) fn past_epochs(&self) -> Vec<u64> {
+        self.past_epoch_trees
+            .iter()
+            .map(|tree| tree.epoch)
+            .collect()
+    }
+
+    #[cfg(test)]
+    /// Helper function for testing, `resize` as it was before the fix
+    pub(crate) fn resize_as_before_the_fix(&mut self, policy: &PastEpochDeletionPolicy) {
+        let max_past_epochs = max_epochs(policy);
+
+        let old_size = self.max_epochs;
+        self.max_epochs = max_past_epochs;
+        if old_size > max_past_epochs {
+            let num_epochs_out = old_size - max_past_epochs;
+            self.past_epoch_trees
+                .rotate_left(num_epochs_out.min(self.past_epoch_trees.len()));
+            self.past_epoch_trees.truncate(max_past_epochs);
+        }
     }
 }

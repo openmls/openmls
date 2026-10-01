@@ -1,0 +1,30 @@
+name: mls-interop
+# GitHub Actions cache backend for each service's build, merged on top of
+# docker-compose.yml via `COMPOSE_FILE=docker-compose.yml:docker-compose.cache.yml`
+# (see .github/workflows/interop.yml). A plain `docker compose ...` without that
+# env var is unaffected, so local/manual use of docker-compose.yml is unchanged.
+services:
+  openmls:
+    build:
+      cache_from:
+        - type=gha,scope=interop-openmls
+      cache_to:
+        - type=gha,mode=max,scope=interop-openmls
+  mlspp:
+    build:
+      cache_from:
+        - type=gha,scope=interop-mlspp
+      cache_to:
+        - type=gha,mode=max,scope=interop-mlspp
+  mls-rs:
+    build:
+      cache_from:
+        - type=gha,scope=interop-mls-rs
+      cache_to:
+        - type=gha,mode=max,scope=interop-mls-rs
+  test-runner:
+    build:
+      cache_from:
+        - type=gha,scope=interop-test-runner
+      cache_to:
+        - type=gha,mode=max,scope=interop-test-runner

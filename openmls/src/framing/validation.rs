@@ -42,6 +42,7 @@ use crate::{
     group::{
         errors::StageCommitError,
         mls_group::{errors::ResolveAppDataCommitError, processing::UnresolvedAppDataCommit},
+        ExportedSecret, StagedCommitSafeExport,
     },
 };
 
@@ -157,8 +158,9 @@ impl DecryptedMessage {
         let (message_secrets, _old_leaves) = group
             .message_secrets_and_leaves(ciphertext.epoch())
             .map_err(MessageDecryptionError::SecretTreeError)?;
+        let own_index = message_secrets.own_index();
         let sender_data = ciphertext.sender_data(message_secrets, crypto, ciphersuite)?;
-        let own_sender = sender_data.leaf_index == group.own_leaf_index();
+        let own_sender = sender_data.leaf_index == own_index;
         // If we are the sender, the content cannot be decrypted and the
         // signature cannot be verified: the own sender ratchet only produces
         // encryption keys. Return early before touching any ratchet state so
@@ -554,7 +556,7 @@ impl ProcessedMessage {
         &mut self,
         crypto: &Crypto,
         component_id: ComponentId,
-    ) -> Result<Vec<u8>, ProcessedMessageSafeExportSecretError> {
+    ) -> Result<ExportedSecret<StagedCommitSafeExport>, ProcessedMessageSafeExportSecretError> {
         if let ProcessedMessageContent::StagedCommitMessage(ref mut staged_commit) =
             &mut self.content
         {

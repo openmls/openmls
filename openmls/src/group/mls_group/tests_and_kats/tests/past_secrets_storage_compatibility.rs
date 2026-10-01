@@ -127,9 +127,14 @@ impl OpenMlsProvider for Provider {
 
 impl Provider {
     fn new(conn: Connection) -> Self {
+        let mut storage = SqliteStorageProvider::new(conn);
+        storage
+            .run_migrations()
+            .expect("error running storage migrations");
+
         Self {
             crypto: CryptoProvider::default(),
-            storage: SqliteStorageProvider::new(conn),
+            storage,
         }
     }
 }

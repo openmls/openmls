@@ -76,3 +76,9 @@ thiserror = { version = "^2.0" }
 zeroize = "1"
 
 [dev-dependencies]
+
+# libcrux-ecdsa's DER support (celabshq/libcrux#1585) is unreleased; the
+# provider uses it, so this workspace needs the same git pin as the root
+# workspace. See openmls/openmls#2215.
+[patch.crates-io]
+libcrux-ecdsa = { git = "https://github.com/celabshq/libcrux" }
