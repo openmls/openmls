@@ -87,6 +87,10 @@ fn name(input: &serde_json::Value) -> String {
     }
 }
 
+// Some migration-only feature combinations intentionally instantiate neither
+// compatibility macro. Keep those valid builds warning-free without weakening
+// warnings for the test crate as a whole.
+#[allow(unused_macros)]
 macro_rules! generate_test_fn {
     ($test_name:ident,$before:ty,$after:ty,$test_cases:expr,$version:expr) => {
         #[test]
@@ -107,6 +111,7 @@ macro_rules! generate_test_fn {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! compat_tests {
     ($mod_name:ident, $before:tt, $after:tt, $version:expr) => {
         mod $mod_name {
