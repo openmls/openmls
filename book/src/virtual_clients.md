@@ -503,6 +503,11 @@ material. Eager derivation costs no forward secrecy: the derived private keys
 take the place of any retained operation secret and have to be kept until the
 KeyPackage is no longer live anyway.
 
+A joined Welcome deletes the retained material, except for a last-resort
+KeyPackage. `KeyPackageInfo` carries a `KeyPackageRetention` for this, because
+the LastResort extension is not visible to the sibling otherwise. The material of a
+last-resort KeyPackage stays, so the sibling can join further groups with it.
+
 ## What is not implemented yet
 
 The implementation tracks the draft but does not yet cover everything in it:

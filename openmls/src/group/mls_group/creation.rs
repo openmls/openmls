@@ -746,8 +746,9 @@ impl StagedWelcome {
         // A join through a virtual client's KeyPackage binds the joined epoch
         // to the KeyPackage's derivation epoch. The binding takes over the
         // epoch reference from the retained KeyPackage material, which
-        // `keys_for_welcome` left in storage for that purpose. (a bound group
-        // is required for the reuse-guard MUST).
+        // `keys_for_welcome` left in storage for that purpose (a bound group
+        // is required for the reuse-guard MUST). The material is deleted
+        // afterwards unless the KeyPackage is last resort.
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(material) = self.key_material.vc_welcome_material() {
             let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
@@ -759,10 +760,14 @@ impl StagedWelcome {
                 max_entries,
             )
             .map_err(WelcomeError::StorageError)?;
-            provider
-                .storage()
-                .delete_retained_key_package_material(&material.key_package_ref)
-                .map_err(WelcomeError::StorageError)?;
+            if !material.last_resort {
+                provider
+                    .storage()
+                    .delete_retained_key_package_material(&material.key_package_ref)
+                    .map_err(WelcomeError::StorageError)?;
+            } else {
+                log::debug!("vc: retained key package material is last resort, not deleting");
+            }
         }
 
         mls_group
@@ -1100,7 +1105,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         if let Some(material) =
             resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref)?
         {
-            // The retained material stays in storage for now.
+            // The retained material stays in storage until the group is created.
             return Ok((
                 resumption_psk_store,
                 WelcomeKeyMaterial::with_vc_welcome_material(material),
@@ -1160,6 +1165,7 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
         leaf_index: material.leaf_index,
         generation: material.generation,
         key_package_index: material.key_package_index,
+        last_resort: material.last_resort,
         init_private_key: init_key_pair.private,
         init_key: init_key_pair.public.into(),
         encryption_keypair,
