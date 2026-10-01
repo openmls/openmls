@@ -18,7 +18,7 @@ use crate::{
     credentials::Credential,
     error::LibraryError,
     extensions::Extensions,
-    framing::{mls_auth_content::AuthenticatedContent, *},
+    framing::{errors::MessageEncryptionError, mls_auth_content::AuthenticatedContent, *},
     group::{
         CreateGroupContextExtProposalError, DeletePastEpochSecretsError, Extension, ExtensionType,
         ExternalPubExtension, GroupContext, GroupEpoch, GroupId, MlsGroupJoinConfig,
@@ -1276,11 +1276,11 @@ impl MlsGroup {
     /// Converts PublicMessage to MlsMessage. Depending on whether handshake
     /// message should be encrypted, PublicMessage messages are encrypted to
     /// PrivateMessage first.
-    fn content_to_mls_message(
+    fn content_to_mls_message<Provider: OpenMlsProvider>(
         &mut self,
         mls_auth_content: AuthenticatedContent,
-        provider: &impl OpenMlsProvider,
-    ) -> Result<HandshakeFramingOutput, LibraryError> {
+        provider: &Provider,
+    ) -> Result<HandshakeFramingOutput, MessageEncryptionError<Provider::StorageError>> {
         let output = match self.configuration().wire_format_policy().outgoing() {
             OutgoingWireFormatPolicy::AlwaysPlaintext => {
                 let mut plaintext: PublicMessage = mls_auth_content.into();
@@ -1305,10 +1305,7 @@ impl MlsGroup {
                 // at framing time, before a commit is merged.
                 #[cfg(feature = "virtual-clients-draft")]
                 let epoch = self.epoch();
-                let encryption_output = self
-                    .encrypt(mls_auth_content, provider)
-                    // We can be sure the encryption will work because the plaintext was created by us
-                    .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
+                let encryption_output = self.encrypt(mls_auth_content, provider)?;
                 let message = MlsMessageOut::from_private_message(
                     encryption_output.private_message,
                     self.version(),
