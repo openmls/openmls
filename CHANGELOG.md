@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#2202](https://github.com/openmls/openmls/pull/2202): The secret export functions on `MlsGroup`, `StagedCommit`, `StagedWelcome`, `ProcessedWelcome` and `ProcessedMessage` now return `ExportedSecret<T>` instead of `Vec<u8>`. The new type zeroizes the secret on drop and is parameterized with a marker struct recording which function produced the secret. Use `as_slice()` to access the secret bytes.
 
+### Removed
+
+- Removed the `js-test` feature. It only enabled the `js` backend of `getrandom` 0.2, which no OpenMLS crate depends on anymore. The `js` feature is enough to run the tests on `wasm32-unknown-unknown`.
+
 ### Fixed
 
 - [#2162](https://github.com/openmls/openmls/pull/2162): `Extensions::unknown()` now finds a GREASE extension that is present in the set, where it previously returned `None`.
