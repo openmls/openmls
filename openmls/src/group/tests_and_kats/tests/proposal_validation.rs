@@ -1,6 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
+use crate::test_utils::minimal_capabilities_for;
 use std::slice::from_ref;
 
 use crate::{
@@ -2256,10 +2257,10 @@ fn valsem113() {
 
     let capabilities_with_support = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         None,
         Some(&[ProposalType::Custom(custom_proposal_type)]),
-        None,
+        Some(&[CredentialType::Basic]),
     );
 
     let mls_group_config = MlsGroupJoinConfig::default();
@@ -2283,6 +2284,8 @@ fn valsem113() {
 
         // Generate Bob's KeyPackage depending on the test mode
         let bob_key_package = if matches!(test_mode, TestMode::Unsupported) {
+            // Advertise everything except the proposal type under test, so the
+            // leaf is rejected for the proposal, not for its own ciphersuite.
             KeyPackageBuilder::new()
         } else {
             KeyPackageBuilder::new().leaf_node_capabilities(capabilities_with_support.clone())
@@ -2297,7 +2300,8 @@ fn valsem113() {
 
         // Create a group with the defined capabilities
         let mut alice_group = if matches!(test_mode, TestMode::Unsupported) {
-            MlsGroup::builder()
+            // Advertise everything except the proposal type under test.
+            MlsGroup::builder().with_capabilities(minimal_capabilities_for(ciphersuite).build())
         } else {
             MlsGroup::builder().with_capabilities(capabilities_with_support.clone())
         }
@@ -2410,6 +2414,7 @@ fn validate_key_package_for_add() {
     let capabilities = |ciphersuite, extension_types: Vec<ExtensionType>| {
         Capabilities::builder()
             .ciphersuites(vec![ciphersuite])
+            .credentials(vec![CredentialType::Basic])
             .extensions(extension_types)
             .build()
     };

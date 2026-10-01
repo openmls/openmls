@@ -185,10 +185,10 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
         .ciphersuite(ciphersuite)
         .with_capabilities(Capabilities::new(
             None,
-            None,
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xf042)]),
             None,
-            None,
+            Some(&[CredentialType::Basic]),
         ))
         .build(&alice_provider, &alice_signer, alice_cwk)
         .expect("error creating group using builder");
@@ -211,10 +211,10 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
     let bob_kpb = KeyPackageBuilder::new()
         .leaf_node_capabilities(Capabilities::new(
             None,
-            None,
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xf042)]),
             None,
-            None,
+            Some(&[CredentialType::Basic]),
         ))
         .build(ciphersuite, &bob_provider, &bob_signer, bob_cwk.clone())
         .unwrap();
@@ -292,10 +292,10 @@ fn helper_generate_kat<Provider: OpenMlsProvider + Default>(
     let charlie_kpb = KeyPackageBuilder::new()
         .leaf_node_capabilities(Capabilities::new(
             None,
-            None,
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::Unknown(0xf042)]),
             None,
-            None,
+            Some(&[CredentialType::Basic]),
         ))
         .build(
             ciphersuite,

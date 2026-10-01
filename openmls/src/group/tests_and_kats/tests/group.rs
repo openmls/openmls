@@ -1,11 +1,16 @@
 use crate::{
     framing::*,
-    group::{mls_group::tests_and_kats::utils::setup_alice_group, *},
+    group::{errors::NewGroupError, mls_group::tests_and_kats::utils::setup_alice_group, *},
     *,
 };
+use credentials::CredentialType;
 use mls_group::tests_and_kats::utils::{setup_alice_bob, setup_alice_bob_group, setup_client};
 use prelude::KeyPackageBundle;
-use treesync::{node::leaf_node::Capabilities, LeafNodeParameters};
+use treesync::{
+    errors::LeafNodeValidationError,
+    node::leaf_node::{Capabilities, LeafNodeBuildError},
+    LeafNodeParameters,
+};
 
 #[openmls_test::openmls_test]
 fn create_commit_optional_path() {
@@ -130,7 +135,19 @@ fn basic_group_setup() {
 /// [valn0107]: https://validation.openmls.tech/#valn0107
 #[openmls_test::openmls_test]
 fn wrong_group_create_config() {
-    MlsGroupCreateConfig::builder()
+    let provider = &Provider::default();
+
+    // Capabilities cover the ciphersuite and credential but declare no
+    // extensions, so the rejection can only come from the extension check.
+    let (credential_with_key, _, signer, _) = setup_client("Alice", ciphersuite, provider);
+    let err = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_capabilities(
+            Capabilities::builder()
+                .ciphersuites(vec![ciphersuite])
+                .credentials(vec![CredentialType::Basic])
+                .build(),
+        )
         .with_leaf_node_extensions(
             Extensions::single(Extension::Unknown(
                 0xff00,
@@ -138,11 +155,24 @@ fn wrong_group_create_config() {
             ))
             .expect("failed to create single-element extensions list"),
         )
+        .unwrap()
+        .build(provider, &signer, credential_with_key)
         .expect_err("leaf node extension is not in leaf node capabilities, should have failed");
+    assert!(matches!(
+        err,
+        NewGroupError::LeafNodeBuild(LeafNodeBuildError::Validation(
+            LeafNodeValidationError::ExtensionsNotInCapabilities
+        ))
+    ));
 
-    MlsGroupCreateConfig::builder()
-        .capabilities(
+    // Capabilities support 0xff00, but the leaf extension is 0xff01.
+    let (credential_with_key, _, signer, _) = setup_client("Bob", ciphersuite, provider);
+    let err = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_capabilities(
             Capabilities::builder()
+                .ciphersuites(vec![ciphersuite])
+                .credentials(vec![CredentialType::Basic])
                 .extensions(vec![ExtensionType::Unknown(0xff00)])
                 .build(),
         )
@@ -153,11 +183,24 @@ fn wrong_group_create_config() {
             ))
             .unwrap(),
         )
+        .unwrap()
+        .build(provider, &signer, credential_with_key)
         .expect_err("leaf node extension is not in leaf node capabilities, should have failed");
+    assert!(matches!(
+        err,
+        NewGroupError::LeafNodeBuild(LeafNodeBuildError::Validation(
+            LeafNodeValidationError::ExtensionsNotInCapabilities
+        ))
+    ));
 
-    MlsGroupCreateConfig::builder()
-        .capabilities(
+    // Capabilities support 0xff00, and so does the leaf extension: succeeds.
+    let (credential_with_key, _, signer, _) = setup_client("Charlie", ciphersuite, provider);
+    MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_capabilities(
             Capabilities::builder()
+                .ciphersuites(vec![ciphersuite])
+                .credentials(vec![CredentialType::Basic])
                 .extensions(vec![ExtensionType::Unknown(0xff00)])
                 .build(),
         )
@@ -168,8 +211,9 @@ fn wrong_group_create_config() {
             ))
             .expect("failed to create single-element extensions list"),
         )
-        .expect("leaf node extension is in leaf node capabilities, should have succeeded")
-        .build();
+        .unwrap()
+        .build(provider, &signer, credential_with_key)
+        .expect("leaf node extension is in leaf node capabilities, should have succeeded");
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a

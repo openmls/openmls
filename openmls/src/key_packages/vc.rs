@@ -24,6 +24,7 @@ use crate::{
         errors::KeyPackageNewError, KeyPackage, KeyPackageBuilder, KeyPackageBundle,
         KeyPackageLeafNodeParams,
     },
+    treesync::node::leaf_node::resolve_capabilities,
 };
 
 /// A batch of virtual-client KeyPackages a sibling can reproduce.
@@ -267,10 +268,15 @@ impl VcKeyPackageBatchBuilder {
         )
         .map_err(KeyPackageNewError::LibraryError)?;
 
+        let (capabilities, capabilities_policy) = resolve_capabilities(
+            builder.leaf_node_capabilities.clone(),
+            builder.capabilities_policy,
+        );
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: builder.key_package_lifetime.unwrap_or_default(),
-            capabilities: builder.leaf_node_capabilities.unwrap_or_default(),
+            capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         };
         let (key_package, encryption_key_pair) = KeyPackage::new_from_vc_keys(
             ciphersuite,
