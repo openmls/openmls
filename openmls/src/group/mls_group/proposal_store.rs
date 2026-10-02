@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::collections::{btree_map, hash_map::Entry, BTreeMap, HashMap, HashSet};
 
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::Ciphersuite;
@@ -550,18 +550,21 @@ impl ProposalQueue {
         let mut contains_own_updates = false;
         let mut contains_external_init = false;
 
-        let mut member_specific_proposals: HashMap<LeafNodeIndex, QueuedProposal> = HashMap::new();
+        // Use a BTreeMap so member-specific proposals are listed in ascending
+        // leaf order rather than in hash iteration order.
+        let mut member_specific_proposals: BTreeMap<LeafNodeIndex, QueuedProposal> =
+            BTreeMap::new();
         let mut register_member_specific_proposal =
             |member: LeafNodeIndex, proposal: QueuedProposal| {
                 // Only replace if the existing proposal is an Update.
                 match member_specific_proposals.entry(member) {
                     // Insert if no entry exists for this sender.
-                    Entry::Vacant(vacant_entry) => {
+                    btree_map::Entry::Vacant(vacant_entry) => {
                         vacant_entry.insert(proposal);
                     }
                     // Replace the existing proposal if the new proposal has
                     // priority.
-                    Entry::Occupied(mut occupied_entry)
+                    btree_map::Entry::Occupied(mut occupied_entry)
                         if occupied_entry
                             .get()
                             .proposal()
@@ -570,7 +573,7 @@ impl ProposalQueue {
                         occupied_entry.insert(proposal);
                     }
                     // Otherwise ignore the new proposal.
-                    Entry::Occupied(_) => {}
+                    btree_map::Entry::Occupied(_) => {}
                 }
             };
 
