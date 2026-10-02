@@ -6,6 +6,7 @@ use aes_gcm::{
 };
 use chacha20poly1305::ChaCha20Poly1305;
 use ed25519_dalek::Signer;
+use getrandom::SysRng;
 use hkdf::Hkdf;
 use hpke::Hpke;
 use hpke_rs_crypto::types as hpke_types;
@@ -22,9 +23,9 @@ use openmls_traits::{
 };
 use p256::{
     ecdsa::{signature::Verifier, Signature, SigningKey, VerifyingKey},
-    EncodedPoint,
+    elliptic_curve::Generate as _,
 };
-use rand_core::{RngCore as _, SeedableRng as _};
+use rand_core::{SeedableRng as _, TryRng as _, UnwrapErr};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use tls_codec::SecretVLBytes;
 
@@ -47,7 +48,8 @@ impl Clone for RustCrypto {
 impl Default for RustCrypto {
     fn default() -> Self {
         Self {
-            rng: RwLock::new(rand_chacha::ChaCha20Rng::from_entropy()),
+            // `Default` cannot return an error, so a failing system RNG panics here.
+            rng: RwLock::new(rand_chacha::ChaCha20Rng::from_rng(&mut UnwrapErr(SysRng))),
         }
     }
 }
@@ -217,22 +219,25 @@ impl OpenMlsCrypto for RustCrypto {
             AeadType::Aes128Gcm => {
                 let aes =
                     Aes128Gcm::new_from_slice(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.encrypt(nonce.into(), Payload { msg: data, aad })
+                let nonce = nonce.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                aes.encrypt(nonce, Payload { msg: data, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::CryptoLibraryError)
             }
             AeadType::Aes256Gcm => {
                 let aes =
                     Aes256Gcm::new_from_slice(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.encrypt(nonce.into(), Payload { msg: data, aad })
+                let nonce = nonce.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                aes.encrypt(nonce, Payload { msg: data, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::CryptoLibraryError)
             }
             AeadType::ChaCha20Poly1305 => {
                 let chacha_poly = ChaCha20Poly1305::new_from_slice(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let nonce = nonce.try_into().map_err(|_| CryptoError::InvalidLength)?;
                 chacha_poly
-                    .encrypt(nonce.into(), Payload { msg: data, aad })
+                    .encrypt(nonce, Payload { msg: data, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::CryptoLibraryError)
             }
@@ -251,22 +256,25 @@ impl OpenMlsCrypto for RustCrypto {
             AeadType::Aes128Gcm => {
                 let aes =
                     Aes128Gcm::new_from_slice(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.decrypt(nonce.into(), Payload { msg: ct_tag, aad })
+                let nonce = nonce.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                aes.decrypt(nonce, Payload { msg: ct_tag, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
             AeadType::Aes256Gcm => {
                 let aes =
                     Aes256Gcm::new_from_slice(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.decrypt(nonce.into(), Payload { msg: ct_tag, aad })
+                let nonce = nonce.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                aes.decrypt(nonce, Payload { msg: ct_tag, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
             AeadType::ChaCha20Poly1305 => {
                 let chacha_poly = ChaCha20Poly1305::new_from_slice(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let nonce = nonce.try_into().map_err(|_| CryptoError::InvalidLength)?;
                 chacha_poly
-                    .decrypt(nonce.into(), Payload { msg: ct_tag, aad })
+                    .decrypt(nonce, Payload { msg: ct_tag, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
@@ -283,9 +291,8 @@ impl OpenMlsCrypto for RustCrypto {
                     .rng
                     .write()
                     .map_err(|_| CryptoError::InsufficientRandomness)?;
-                let k = SigningKey::random(&mut *rng);
-                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
-                #[allow(deprecated)]
+                let k = SigningKey::generate_from_rng(&mut *rng);
+                let pk = k.verifying_key().to_sec1_point(false).as_bytes().into();
                 Ok((k.to_bytes().as_slice().into(), pk))
             }
             SignatureScheme::ED25519 => {
@@ -302,22 +309,19 @@ impl OpenMlsCrypto for RustCrypto {
                     .rng
                     .write()
                     .map_err(|_| CryptoError::InsufficientRandomness)?;
-                let k = p384::ecdsa::SigningKey::random(&mut *rng);
-                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
+                let k = p384::ecdsa::SigningKey::generate_from_rng(&mut *rng);
+                let pk = k.verifying_key().to_sec1_point(false).as_bytes().into();
                 Ok((k.to_bytes().as_slice().into(), pk))
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 => {
-                use crate::rand_shim::RandCore0_10;
                 use ml_dsa::{Generate, Keypair};
                 let sk = {
                     let mut rng = self
                         .rng
                         .write()
                         .map_err(|_| CryptoError::InsufficientRandomness)?;
-                    ml_dsa::SigningKey::<ml_dsa::MlDsa44>::generate_from_rng(&mut RandCore0_10(
-                        &mut *rng,
-                    ))
+                    ml_dsa::SigningKey::<ml_dsa::MlDsa44>::generate_from_rng(&mut *rng)
                 };
                 let pk = sk.verifying_key().encode().to_vec();
                 let sk = sk.to_seed().to_vec();
@@ -325,16 +329,13 @@ impl OpenMlsCrypto for RustCrypto {
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA65 => {
-                use crate::rand_shim::RandCore0_10;
                 use ml_dsa::{Generate, Keypair};
                 let sk = {
                     let mut rng = self
                         .rng
                         .write()
                         .map_err(|_| CryptoError::InsufficientRandomness)?;
-                    ml_dsa::SigningKey::<ml_dsa::MlDsa65>::generate_from_rng(&mut RandCore0_10(
-                        &mut *rng,
-                    ))
+                    ml_dsa::SigningKey::<ml_dsa::MlDsa65>::generate_from_rng(&mut *rng)
                 };
                 let pk = sk.verifying_key().encode().to_vec();
                 let sk = sk.to_seed().to_vec();
@@ -342,16 +343,13 @@ impl OpenMlsCrypto for RustCrypto {
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA87 => {
-                use crate::rand_shim::RandCore0_10;
                 use ml_dsa::{Generate, Keypair};
                 let sk = {
                     let mut rng = self
                         .rng
                         .write()
                         .map_err(|_| CryptoError::InsufficientRandomness)?;
-                    ml_dsa::SigningKey::<ml_dsa::MlDsa87>::generate_from_rng(&mut RandCore0_10(
-                        &mut *rng,
-                    ))
+                    ml_dsa::SigningKey::<ml_dsa::MlDsa87>::generate_from_rng(&mut *rng)
                 };
                 let pk = sk.verifying_key().encode().to_vec();
                 let sk = sk.to_seed().to_vec();
@@ -370,10 +368,8 @@ impl OpenMlsCrypto for RustCrypto {
     ) -> Result<(), openmls_traits::types::CryptoError> {
         match alg {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let k = VerifyingKey::from_encoded_point(
-                    &EncodedPoint::from_bytes(pk).map_err(|_| CryptoError::CryptoLibraryError)?,
-                )
-                .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let k = VerifyingKey::from_sec1_bytes(pk)
+                    .map_err(|_| CryptoError::CryptoLibraryError)?;
                 k.verify(
                     data,
                     &Signature::from_der(signature).map_err(|_| CryptoError::InvalidSignature)?,
@@ -392,11 +388,8 @@ impl OpenMlsCrypto for RustCrypto {
                     .map_err(|_| CryptoError::InvalidSignature)
             }
             SignatureScheme::ECDSA_SECP384R1_SHA384 => {
-                let k = p384::ecdsa::VerifyingKey::from_encoded_point(
-                    &p384::EncodedPoint::from_bytes(pk)
-                        .map_err(|_| CryptoError::CryptoLibraryError)?,
-                )
-                .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let k = p384::ecdsa::VerifyingKey::from_sec1_bytes(pk)
+                    .map_err(|_| CryptoError::CryptoLibraryError)?;
                 k.verify(
                     data,
                     &p384::ecdsa::Signature::from_der(signature)
@@ -458,13 +451,14 @@ impl OpenMlsCrypto for RustCrypto {
     ) -> Result<Vec<u8>, openmls_traits::types::CryptoError> {
         match alg {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let k = SigningKey::from_bytes(key.into())
-                    .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let key = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let k = SigningKey::from_bytes(key).map_err(|_| CryptoError::CryptoLibraryError)?;
                 let signature: Signature = k.sign(data);
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ECDSA_SECP384R1_SHA384 => {
-                let k = p384::ecdsa::SigningKey::from_bytes(key.into())
+                let key = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+                let k = p384::ecdsa::SigningKey::from_bytes(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
                 let signature: p384::ecdsa::Signature = k.sign(data);
                 Ok(signature.to_der().to_bytes().into())
@@ -728,6 +722,53 @@ mod tests {
                 crypto.supports(ciphersuite).is_ok(),
                 "{ciphersuite:?} is advertised by supported_ciphersuites() but rejected by supports()"
             );
+        }
+    }
+
+    #[test]
+    fn aead_rejects_wrong_nonce_length() {
+        let crypto = RustCrypto::default();
+        for alg in [
+            AeadType::Aes128Gcm,
+            AeadType::Aes256Gcm,
+            AeadType::ChaCha20Poly1305,
+        ] {
+            let key = vec![0u8; alg.key_size()];
+            for nonce in [
+                vec![0u8; alg.nonce_size() - 1],
+                vec![0u8; alg.nonce_size() + 1],
+            ] {
+                assert_eq!(
+                    crypto.aead_encrypt(alg, &key, b"data", &nonce, b"aad"),
+                    Err(CryptoError::InvalidLength),
+                    "{alg:?} encrypt with a {}-byte nonce",
+                    nonce.len()
+                );
+                assert_eq!(
+                    crypto.aead_decrypt(alg, &key, &[0u8; 32], &nonce, b"aad"),
+                    Err(CryptoError::InvalidLength),
+                    "{alg:?} decrypt with a {}-byte nonce",
+                    nonce.len()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn sign_rejects_wrong_ecdsa_key_length() {
+        let crypto = RustCrypto::default();
+        for (scheme, key_length) in [
+            (SignatureScheme::ECDSA_SECP256R1_SHA256, 32),
+            (SignatureScheme::ECDSA_SECP384R1_SHA384, 48),
+        ] {
+            for key in [vec![1u8; key_length - 1], vec![1u8; key_length + 1]] {
+                assert_eq!(
+                    crypto.sign(scheme, b"data", &key),
+                    Err(CryptoError::InvalidLength),
+                    "{scheme:?} with a {}-byte key",
+                    key.len()
+                );
+            }
         }
     }
 }
