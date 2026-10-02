@@ -696,9 +696,13 @@ pub mod store {
                 self.resumption_psk.push(item);
                 self.cursor += 1;
             } else {
-                self.cursor += 1;
+                // Normalize before indexing, then advance: indexing with a
+                // not-yet-normalized cursor evicts the wrong (too-new) entry
+                // for the first `len - 1` overflow calls after the store
+                // first fills up. See issue #2227.
                 self.cursor %= self.resumption_psk.len();
                 self.resumption_psk[self.cursor] = item;
+                self.cursor += 1;
             }
         }
 
@@ -716,6 +720,63 @@ pub mod store {
     impl ResumptionPskStore {
         pub(crate) fn cursor(&self) -> usize {
             self.cursor
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::ciphersuite::Secret;
+
+        fn secret_for(epoch: u64) -> ResumptionPskSecret {
+            ResumptionPskSecret {
+                secret: Secret::from_slice(&epoch.to_be_bytes()),
+            }
+        }
+
+        // Regression test for #2227: for a store of capacity N, the first
+        // N-1 overflow calls each evicted the wrong (too-new) entry while
+        // the true-oldest entry survived; only the N-th overflow call
+        // evicted the true oldest, after which rotation happened to be
+        // correct. Verify strict oldest-first eviction from the very first
+        // overflow, for a range of capacities.
+        #[test]
+        fn overflow_evicts_oldest_first_from_the_start() {
+            for capacity in 1..=5 {
+                let mut store = ResumptionPskStore::new(capacity);
+
+                // Fill to capacity with epochs 0..capacity.
+                for epoch in 0..capacity as u64 {
+                    store.add(epoch.into(), secret_for(epoch));
+                }
+
+                // Each subsequent overflow must evict exactly the oldest
+                // still-held entry and nothing else.
+                for k in 0..capacity as u64 {
+                    let new_epoch = capacity as u64 + k;
+                    let oldest_epoch = k;
+
+                    store.add(new_epoch.into(), secret_for(new_epoch));
+
+                    assert!(
+                        store.get(oldest_epoch.into()).is_none(),
+                        "capacity {capacity}: oldest entry (epoch {oldest_epoch}) should have been evicted after adding epoch {new_epoch}"
+                    );
+                    assert!(
+                        store.get(new_epoch.into()).is_some(),
+                        "capacity {capacity}: newly added entry (epoch {new_epoch}) should be present"
+                    );
+                    // Every entry strictly newer than the one just evicted,
+                    // and older than the one just inserted, must still be
+                    // present -- i.e. this overflow evicted only the oldest.
+                    for still_held in (oldest_epoch + 1)..new_epoch {
+                        assert!(
+                            store.get(still_held.into()).is_some(),
+                            "capacity {capacity}: epoch {still_held} should still be present after adding epoch {new_epoch}"
+                        );
+                    }
+                }
+            }
         }
     }
 }
