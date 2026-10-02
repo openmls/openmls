@@ -610,7 +610,7 @@ pub struct RetainedKeyPackageMaterial {
     pub key_package_seed_secret: KeyPackageSeedSecret,
     /// The KeyPackage's extensions, as listed in the upload. Records stored
     /// before uploads carried extensions read back with only a last resort
-    /// extension, see [`last_resort_extensions`].
+    /// extension.
     #[serde(default = "last_resort_extensions")]
     pub key_package_extensions: Extensions<KeyPackage>,
 }
