@@ -822,7 +822,7 @@ pub trait StorageProvider<const VERSION: u16> {
     /// given KeyPackage reference. Called from [`Self::delete_key_package`] so
     /// the material is removed together with the KeyPackage it describes, and
     /// by the library once a Welcome join has bound the joined group to the
-    /// material's derivation epoch.
+    /// material's derivation epoch, unless the KeyPackage is last resort.
     #[cfg(feature = "virtual-clients-draft")]
     fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<VERSION>>(
         &self,

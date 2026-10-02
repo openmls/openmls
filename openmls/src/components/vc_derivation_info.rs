@@ -518,6 +518,7 @@ impl EpochId {
 ///   opaque key_package_ref<V>;
 ///   CipherSuite cipher_suite;
 ///   uint32 key_package_index;
+///   KeyPackageRetention retention;
 /// } KeyPackageInfo
 /// ```
 ///
@@ -525,7 +526,9 @@ impl EpochId {
 /// KeyPackage built by [`KeyPackageBuilder::build_vc_batch`]. `key_package_index`
 /// is the KeyPackage's position within the `key_package` operation batch: one
 /// operation secret covers the whole batch and each KeyPackage's seed is
-/// derived from it under this index.
+/// derived from it under this index. `retention` states whether the
+/// KeyPackage carries the LastResort extension, which a sibling cannot see
+/// otherwise.
 ///
 /// [`HashReference`]: crate::ciphersuite::hash_ref::HashReference
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
@@ -537,6 +540,44 @@ pub struct KeyPackageInfo {
     pub cipher_suite: Ciphersuite,
     /// Position of this KeyPackage within the operation batch.
     pub key_package_index: u32,
+    /// Whether the KeyPackage is single use or last resort.
+    pub retention: KeyPackageRetention,
+}
+
+/// Whether a virtual client's KeyPackage carries the LastResort extension:
+///
+/// ```text
+/// enum {
+///   single_use(0),
+///   last_resort(1),
+///   (255)
+/// } KeyPackageRetention;
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserializeBytes)]
+#[repr(u8)]
+pub enum KeyPackageRetention {
+    /// The KeyPackage is used for a single join.
+    SingleUse = 0,
+    /// The KeyPackage carries the LastResort extension and may be used for
+    /// several joins.
+    LastResort = 1,
+}
+
+impl KeyPackageRetention {
+    /// Whether the KeyPackage is last resort.
+    pub fn is_last_resort(self) -> bool {
+        self == Self::LastResort
+    }
+}
+
+impl From<bool> for KeyPackageRetention {
+    fn from(last_resort: bool) -> Self {
+        if last_resort {
+            Self::LastResort
+        } else {
+            Self::SingleUse
+        }
+    }
 }
 
 /// Wire struct a virtual client uploads to a sibling so the sibling learns
@@ -585,6 +626,9 @@ pub struct KeyPackageUpload {
 /// can hold more KeyPackages than that tolerance, and Welcomes can arrive in
 /// any order, yet every seed remains available because the single batch
 /// generation is consumed once and each seed is stored alongside its index.
+///
+/// The material is deleted when a Welcome is processed, unless the KeyPackage
+/// is last resort, in which case it stays for further joins.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RetainedKeyPackageMaterial {
     /// Derivation epoch the KeyPackage belongs to.
@@ -601,6 +645,9 @@ pub struct RetainedKeyPackageMaterial {
     /// Per-KeyPackage seed secret from which the init and leaf-encryption keys
     /// are derived at Welcome time.
     pub key_package_seed_secret: KeyPackageSeedSecret,
+    /// Whether the KeyPackage is last resort (kept after a Welcome).
+    #[serde(default)]
+    pub last_resort: bool,
 }
 
 /// Reject a batch whose [`KeyPackageInfo`] entries are not all distinct.
@@ -735,6 +782,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
             key_package_ciphersuite: info.cipher_suite,
             key_package_index: info.key_package_index,
             key_package_seed_secret,
+            last_resort: info.retention.is_last_resort(),
         };
         materials.push((info.key_package_ref.clone(), material));
     }
@@ -771,6 +819,9 @@ pub(crate) struct VcWelcomeMaterial {
     pub(crate) generation: u32,
     /// Position of this KeyPackage within the batch.
     pub(crate) key_package_index: u32,
+    /// Whether the KeyPackage is last resort, so its retained material is kept
+    /// after the join.
+    pub(crate) last_resort: bool,
     /// Init private key derived from the seed, used to decrypt the encrypted
     /// group secrets.
     pub(crate) init_private_key: openmls_traits::types::HpkePrivateKey,
@@ -2095,11 +2146,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                retention: KeyPackageRetention::SingleUse,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
+                retention: KeyPackageRetention::SingleUse,
             },
         ];
 
@@ -2142,11 +2195,13 @@ mod tests {
                     key_package_ref: ref_a.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    retention: KeyPackageRetention::SingleUse,
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
+                    retention: KeyPackageRetention::SingleUse,
                 },
             ],
         };
@@ -2195,6 +2250,7 @@ mod tests {
                 key_package_ref: kp_ref.clone(),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                retention: KeyPackageRetention::SingleUse,
             }],
         };
         process_vc_key_package_upload(&provider, &upload).expect("process upload");
@@ -2236,6 +2292,34 @@ mod tests {
             .derive_epoch_id(provider.crypto(), CIPHERSUITE)
             .expect("derive epoch id");
         (key, epoch_id)
+    }
+
+    #[test]
+    fn key_package_upload_roundtrip_carries_last_resort() {
+        let upload = KeyPackageUpload {
+            epoch_id: EpochId::new(b"epoch".to_vec()),
+            leaf_index: LeafNodeIndex::new(2),
+            generation: 4,
+            key_package_info: [false, true]
+                .into_iter()
+                .zip(0..)
+                .map(|(last_resort, key_package_index)| KeyPackageInfo {
+                    key_package_ref: KeyPackageRef::from_slice(b"kp-ref"),
+                    cipher_suite: CIPHERSUITE,
+                    key_package_index,
+                    retention: last_resort.into(),
+                })
+                .collect(),
+        };
+        let bytes = upload.tls_serialize_detached().expect("serialize");
+        // The flag is the last octet of the last entry.
+        assert_eq!(bytes.last(), Some(&1));
+        let decoded = KeyPackageUpload::tls_deserialize_exact_bytes(&bytes).expect("deserialize");
+        assert_eq!(decoded, upload);
+
+        let mut invalid = bytes;
+        *invalid.last_mut().unwrap() = 2;
+        assert!(KeyPackageUpload::tls_deserialize_exact_bytes(&invalid).is_err());
     }
 
     /// Round-trip both `DerivationInfoTbe` variants through `encrypt` and
@@ -2625,11 +2709,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
+                retention: KeyPackageRetention::SingleUse,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
+                retention: KeyPackageRetention::SingleUse,
             },
         ];
         let err = validate_key_package_infos(&infos).expect_err("duplicate index must be rejected");
@@ -2644,11 +2730,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                retention: KeyPackageRetention::SingleUse,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
+                retention: KeyPackageRetention::SingleUse,
             },
         ];
         let err = validate_key_package_infos(&infos).expect_err("duplicate ref must be rejected");
@@ -2663,11 +2751,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                retention: KeyPackageRetention::SingleUse,
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
+                retention: KeyPackageRetention::SingleUse,
             },
         ];
         validate_key_package_infos(&infos).expect("distinct infos must pass");
@@ -2693,11 +2783,13 @@ mod tests {
                     key_package_ref: ref_a.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    retention: KeyPackageRetention::SingleUse,
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    retention: KeyPackageRetention::SingleUse,
                 },
             ],
         };
@@ -2714,11 +2806,13 @@ mod tests {
                     key_package_ref: ref_a.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    retention: KeyPackageRetention::SingleUse,
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
+                    retention: KeyPackageRetention::SingleUse,
                 },
             ],
         };

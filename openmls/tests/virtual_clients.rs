@@ -2827,6 +2827,104 @@ fn welcome_join_keeps_epoch_referenced_until_bound() {
     );
 }
 
+#[openmls_test]
+fn last_resort_retained_material_serves_repeated_joins() {
+    use openmls::components::vc_derivation_info::{
+        assemble_vc_key_package_upload, process_vc_key_package_upload, RetainedKeyPackageMaterial,
+    };
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let (mut emulator_a, emulator_a_signer) =
+        make_emulator_group(ciphersuite, &alice_a_provider, b"AliceEmulatorA", true);
+    let (_e_commit, _emulator_b, _emulator_b_signer) = add_emulator_client(
+        ciphersuite,
+        &mut emulator_a,
+        &alice_a_provider,
+        &emulator_a_signer,
+        &alice_b_provider,
+        b"AliceEmulatorB",
+    );
+
+    let mut batch = KeyPackage::builder()
+        .mark_as_last_resort()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions())
+        .build_vc_batch(
+            ciphersuite,
+            &alice_a_provider,
+            &vc_signer,
+            vc_credential.clone(),
+            emulator_a.group_id(),
+            1,
+        )
+        .expect("alice_a build_vc_batch");
+    let generation = batch.generation;
+    let batch_epoch_id = batch.epoch_id.clone();
+    let (bundle, kp_info) = batch.key_packages.remove(0);
+    assert!(kp_info.retention.is_last_resort());
+    let upload = assemble_vc_key_package_upload(
+        alice_a_provider.storage(),
+        batch_epoch_id,
+        generation,
+        vec![kp_info],
+    )
+    .expect("assemble upload");
+    process_vc_key_package_upload(&alice_b_provider, &upload).expect("alice_b process upload");
+    let key_package = bundle.key_package().clone();
+    let key_package_ref = key_package
+        .hash_ref(alice_b_provider.crypto())
+        .expect("key package ref");
+    let material_present = || -> bool {
+        alice_b_provider
+            .storage()
+            .retained_key_package_material::<_, RetainedKeyPackageMaterial>(&key_package_ref)
+            .expect("read retained material")
+            .is_some()
+    };
+    assert!(material_present());
+
+    for label in [b"BobOne".as_slice(), b"BobTwo".as_slice()] {
+        let bob_provider = Provider::default();
+        let (bob_credential, bob_signer) =
+            new_credential(&bob_provider, label, ciphersuite.signature_algorithm());
+        let bob_group_config = MlsGroupCreateConfig::builder()
+            .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .ciphersuite(ciphersuite)
+            .use_ratchet_tree_extension(true)
+            .build();
+        let mut bob_main = MlsGroup::new(
+            &bob_provider,
+            &bob_signer,
+            &bob_group_config,
+            bob_credential,
+        )
+        .expect("bob create higher-level group");
+        let (_commit, welcome, _gi) = bob_main
+            .add_members(&bob_provider, &bob_signer, &[key_package.clone()])
+            .expect("bob add virtual client");
+        bob_main
+            .merge_pending_commit(&bob_provider)
+            .expect("bob merge add");
+        let ratchet_tree = bob_main.export_ratchet_tree();
+
+        StagedWelcome::new_from_welcome(
+            &alice_b_provider,
+            &vc_join_config(),
+            welcome.into_welcome().expect("welcome present"),
+            Some(ratchet_tree.into()),
+        )
+        .and_then(|staged| staged.into_group(&alice_b_provider))
+        .expect("alice_b join higher-level group");
+        assert!(
+            material_present(),
+            "a last resort key package keeps its retained material"
+        );
+    }
+}
+
 /// Regression test for the batch-model switch. A virtual client builds one
 /// batch of KeyPackages larger than the operation tree's
 /// `OUT_OF_ORDER_TOLERANCE` (32), so the old per-KeyPackage-generation model
@@ -2898,6 +2996,7 @@ fn vc_batch_key_packages_join_in_any_order() {
                 key_package_ref: info.key_package_ref.clone(),
                 cipher_suite: info.cipher_suite,
                 key_package_index: info.key_package_index,
+                retention: info.retention,
             },
         )
         .collect::<Vec<_>>();

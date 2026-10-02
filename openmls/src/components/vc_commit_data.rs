@@ -168,7 +168,7 @@ mod tests {
     use crate::{
         binary_tree::LeafNodeIndex,
         ciphersuite::hash_ref::KeyPackageRef,
-        components::vc_derivation_info::{EpochId, KeyPackageInfo},
+        components::vc_derivation_info::{EpochId, KeyPackageInfo, KeyPackageRetention},
     };
 
     const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -187,11 +187,13 @@ mod tests {
                     key_package_ref: KeyPackageRef::from_slice(b"first key package ref"),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    retention: KeyPackageRetention::SingleUse,
                 },
                 KeyPackageInfo {
                     key_package_ref: KeyPackageRef::from_slice(b"second key package ref"),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
+                    retention: KeyPackageRetention::SingleUse,
                 },
             ],
         }
