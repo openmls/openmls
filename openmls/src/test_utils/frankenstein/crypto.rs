@@ -293,6 +293,8 @@ impl FrankenGroupSecrets {
             storage,
             // No resumption keys for now
             &ResumptionPskStore::new(0),
+            None,
+            None,
             psk_ids.as_slice(),
         )?;
         let psk_secret = PskSecret::new(crypto, ciphersuite, psks)?;

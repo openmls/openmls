@@ -36,7 +36,14 @@ fn test_psks() {
     let _psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
+        let psks = load_psks(
+            provider.storage(),
+            &resumption_psk_store,
+            None,
+            None,
+            &psk_ids,
+        )
+        .unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
@@ -93,7 +100,14 @@ fn test_application_psks() {
 
     let resumption_psk_store = ResumptionPskStore::new(1024);
 
-    let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
+    let psks = load_psks(
+        provider.storage(),
+        &resumption_psk_store,
+        None,
+        None,
+        &psk_ids,
+    )
+    .unwrap();
     PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap();
 
     // Loading an application PSK that is not in storage fails.
@@ -107,6 +121,8 @@ fn test_application_psks() {
         load_psks(
             provider.storage(),
             &resumption_psk_store,
+            None,
+            None,
             std::slice::from_ref(&unknown_psk_id),
         )
         .unwrap_err(),
