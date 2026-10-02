@@ -12,6 +12,7 @@ pub use super::mls_group::errors::*;
 use super::public_group::errors::CreationFromExternalError;
 use crate::{
     ciphersuite::signable::SignatureError,
+    credentials::Credential,
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::MessageDecryptionError,
@@ -137,6 +138,25 @@ pub enum WelcomeError<StorageError> {
     /// match the provided parent group information (RFC 9420 §11.3).
     #[error("The subgroup's branch PSK does not reference the provided parent group/epoch.")]
     SubgroupParentMismatch,
+    /// The successor group's parameters (group id, protocol version, ciphersuite
+    /// or extensions) do not match the ReInit proposal (RFC 9420 §11.2).
+    #[error("The successor group's parameters do not match the ReInit proposal.")]
+    ReInitParameterMismatch,
+    /// The successor group is not at epoch 1, as required for reinitialization
+    /// (RFC 9420 §11.2).
+    #[error("The successor group is not at epoch 1.")]
+    ReInitEpochInvalid,
+    /// A member of the successor group does not match any member of the old
+    /// group (RFC 9420 §11.2).
+    #[error("A member of the successor group does not match any member of the old group.")]
+    ReInitLeafMismatch,
+    /// The successor group is missing members of the old group (RFC 9420 §11.2).
+    #[error("The successor group is missing members {0:?} of the old group.")]
+    ReInitLeavesMissing(Vec<Credential>),
+    /// The old group or epoch referenced by the reinit PSK does not
+    /// match the provided predecessor reinit group information (RFC 9420 §11.2).
+    #[error("The group's reinit PSK does not reference the provided predecessor group/epoch.")]
+    ReInitPredecessorMismatch,
 }
 
 /// External Commit error
@@ -683,6 +703,17 @@ pub enum ProposalValidationError {
     /// Regular Commits may not contain ExternalInit proposals, but one was found
     #[error("Found ExternalInit proposal in regular commit")]
     ExternalInitProposalInRegularCommit,
+    /// A Commit that references a ReInit proposal must contain no other
+    /// proposals, but at least one other proposal was found (RFC 9420 §12.2).
+    #[error("Found a ReInit proposal alongside other proposals in a commit")]
+    ReInitProposalNotAlone,
+    /// A ReInit proposal's protocol version is lower than the current group's
+    /// (RFC 9420 §12.1.5).
+    #[error("ReInit proposal downgrades the protocol version")]
+    ReInitDowngrade,
+    /// A ReInit proposal contains an unsupported protocol version.
+    #[error("ReInit proposal contains an unsupported protocol version")]
+    ReInitUnsupportedVersion,
 }
 
 /// External Commit validaton error

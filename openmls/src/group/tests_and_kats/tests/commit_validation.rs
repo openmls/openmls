@@ -23,6 +23,7 @@ use crate::{
         errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
         LeafNodeParameters,
     },
+    versions::ProtocolVersion,
 };
 
 struct CommitValidationTestSetup {
@@ -368,18 +369,27 @@ fn test_valsem201() {
         ))
     };
 
+    let reinit_proposal = || {
+        queued(Proposal::re_init(ReInitProposal::new(
+            alice_group.group_id().clone(),
+            ProtocolVersion::Mls10,
+            ciphersuite,
+            Extensions::empty(),
+        )))
+    };
+
     // ExternalInit Proposal cannot be used alone and has to be in an external commit which
     // always contains a path anyway
     // TODO: #916 when/if AppAck proposal are implemented (path not required)
-    // TODO: #751 when ReInit proposal validation are implemented (path not required). Currently one
-    // cannot distinguish when the commit has a single ReInit proposal from the commit without proposals
-    // in [MlsGroup::apply_proposals()]
+    // A single ReInit proposal does not require a path (and must be the sole
+    // proposal in the commit, see `validate_reinit_proposals`).
     let cases = vec![
         (vec![add_proposal()], false),
         (vec![psk_proposal()], false),
         (vec![update_proposal.clone()], true),
         (vec![remove_proposal()], true),
         (vec![gce_proposal()], true),
+        (vec![reinit_proposal()], false),
         // !path_required + !path_required = !path_required
         (vec![add_proposal(), psk_proposal()], false),
         // path_required + !path_required = path_required

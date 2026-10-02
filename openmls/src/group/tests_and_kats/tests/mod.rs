@@ -17,6 +17,7 @@ mod external_commit_validation;
 mod external_group_context_extensions_proposal;
 mod external_join_add_proposal;
 mod external_psk_proposal;
+mod external_reinit_proposal;
 mod external_remove_proposal;
 mod framing;
 mod framing_validation;
