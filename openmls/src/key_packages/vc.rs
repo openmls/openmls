@@ -283,6 +283,7 @@ impl VcKeyPackageBatchBuilder {
         )?;
 
         let key_package_ref = key_package.hash_ref(crypto)?;
+        let extensions = key_package.extensions().clone();
         let full_kp = KeyPackageBundle {
             key_package,
             private_init_key: init_key_pair.private,
@@ -295,6 +296,7 @@ impl VcKeyPackageBatchBuilder {
                 key_package_ref,
                 cipher_suite: ciphersuite,
                 key_package_index,
+                extensions,
             },
         ))
     }

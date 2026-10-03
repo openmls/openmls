@@ -2581,6 +2581,7 @@ struct RetainedMaterialWelcome {
     vc_signer: SignatureKeyPair,
     epoch_id: EpochId,
     key_package_ref: openmls::prelude::KeyPackageRef,
+    key_package: KeyPackage,
     welcome: openmls::messages::Welcome,
     ratchet_tree: openmls::treesync::RatchetTree,
 }
@@ -2588,12 +2589,14 @@ struct RetainedMaterialWelcome {
 /// alice_a publishes a KeyPackage and alice_b retains its material. alice_b
 /// then deletes its emulation group, so the retained material becomes the
 /// epoch's only reference. Bob adds the virtual client through the published
-/// KeyPackage and the returned Welcome is addressed to it.
+/// KeyPackage and the returned Welcome is addressed to it. With `last_resort`
+/// set, the KeyPackage carries a last resort extension.
 fn retained_material_welcome<P: OpenMlsProvider>(
     ciphersuite: openmls_traits::types::Ciphersuite,
     alice_a_provider: &P,
     alice_b_provider: &P,
     bob_provider: &P,
+    last_resort: bool,
 ) -> RetainedMaterialWelcome {
     use openmls::components::vc_derivation_info::{
         assemble_vc_key_package_upload, process_vc_key_package_upload,
@@ -2613,7 +2616,11 @@ fn retained_material_welcome<P: OpenMlsProvider>(
     );
     let epoch_id = newest_epoch(&emulator_b, alice_b_provider);
 
-    let mut batch = KeyPackage::builder()
+    let mut key_package_builder = KeyPackage::builder();
+    if last_resort {
+        key_package_builder = key_package_builder.mark_as_last_resort();
+    }
+    let mut batch = key_package_builder
         .leaf_node_capabilities(vc_capabilities())
         .leaf_node_extensions(vc_leaf_extensions())
         .build_vc_batch(
@@ -2655,33 +2662,44 @@ fn retained_material_welcome<P: OpenMlsProvider>(
         "the retained material must keep the epoch state alive"
     );
 
-    let (bob_credential, bob_signer) =
-        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
-    let bob_group_config = MlsGroupCreateConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true)
-        .build();
-    let mut bob_main = MlsGroup::new(bob_provider, &bob_signer, &bob_group_config, bob_credential)
-        .expect("bob create higher-level group");
-    let (_commit, welcome, _gi) = bob_main
-        .add_members(
-            bob_provider,
-            &bob_signer,
-            &[vc_key_package_bundle.key_package().clone()],
-        )
-        .expect("bob add virtual client");
-    bob_main
-        .merge_pending_commit(bob_provider)
-        .expect("bob merge add");
+    let key_package = vc_key_package_bundle.key_package().clone();
+    let (welcome, ratchet_tree) =
+        welcome_for_key_package(ciphersuite, bob_provider, b"Bob", &key_package);
 
     RetainedMaterialWelcome {
         vc_signer,
         epoch_id,
         key_package_ref,
-        welcome: welcome.into_welcome().expect("welcome present"),
-        ratchet_tree: bob_main.export_ratchet_tree(),
+        key_package,
+        welcome,
+        ratchet_tree,
     }
+}
+
+/// A new member `label` on `provider` creates a higher-level group and adds
+/// `key_package` to it. Returns the Welcome and the group's ratchet tree.
+fn welcome_for_key_package<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    provider: &P,
+    label: &[u8],
+    key_package: &KeyPackage,
+) -> (openmls::messages::Welcome, openmls::treesync::RatchetTree) {
+    let (credential, signer) = new_credential(provider, label, ciphersuite.signature_algorithm());
+    let group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut group = MlsGroup::new(provider, &signer, &group_config, credential)
+        .expect("create higher-level group");
+    let (_commit, welcome, _gi) = group
+        .add_members(provider, &signer, std::slice::from_ref(key_package))
+        .expect("add virtual client");
+    group.merge_pending_commit(provider).expect("merge add");
+    (
+        welcome.into_welcome().expect("welcome present"),
+        group.export_ratchet_tree(),
+    )
 }
 
 #[openmls_test]
@@ -2700,6 +2718,7 @@ fn welcome_join_takes_over_epoch_reference_from_retained_material() {
         &alice_a_provider,
         &alice_b_provider,
         &bob_provider,
+        false,
     );
 
     // The join consumes the material and binds the joined group to the epoch,
@@ -2757,11 +2776,13 @@ fn welcome_join_keeps_epoch_referenced_until_bound() {
         key_package_ref,
         welcome,
         ratchet_tree,
+        ..
     } = retained_material_welcome(
         ciphersuite,
         &alice_a_provider,
         &alice_b_provider,
         &bob_provider,
+        false,
     );
     let storage = alice_b_provider.storage();
     let retained_material = |key_package_ref| -> Option<RetainedKeyPackageMaterial> {
@@ -2825,6 +2846,68 @@ fn welcome_join_keeps_epoch_referenced_until_bound() {
         unconfirmed.generation_id.is_some(),
         "a group joined through a virtual client's KeyPackage must be bound"
     );
+}
+
+#[openmls_test]
+fn welcome_join_keeps_retained_material_of_last_resort_key_package() {
+    use openmls::components::vc_derivation_info::RetainedKeyPackageMaterial;
+
+    let alice_a_provider = Provider::default();
+    let alice_b_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let charlie_provider = Provider::default();
+    let RetainedMaterialWelcome {
+        key_package_ref,
+        key_package,
+        welcome,
+        ratchet_tree,
+        ..
+    } = retained_material_welcome(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &bob_provider,
+        true,
+    );
+    let retained_material = || -> Option<RetainedKeyPackageMaterial> {
+        alice_b_provider
+            .storage()
+            .retained_key_package_material(&key_package_ref)
+            .expect("read retained material")
+    };
+
+    let material = retained_material().expect("the upload must retain material");
+    assert_eq!(
+        &material.key_package_extensions,
+        key_package.extensions(),
+        "the retained material must carry the KeyPackage's extensions"
+    );
+
+    StagedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &vc_join_config(),
+        welcome,
+        Some(ratchet_tree.into()),
+    )
+    .expect("alice_b stage first welcome")
+    .into_group(&alice_b_provider)
+    .expect("alice_b join first higher-level group");
+    assert!(
+        retained_material().is_some(),
+        "joining through a last resort KeyPackage must keep the retained material"
+    );
+
+    let (welcome, ratchet_tree) =
+        welcome_for_key_package(ciphersuite, &charlie_provider, b"Charlie", &key_package);
+    StagedWelcome::new_from_welcome(
+        &alice_b_provider,
+        &vc_join_config(),
+        welcome,
+        Some(ratchet_tree.into()),
+    )
+    .expect("alice_b stage second welcome")
+    .into_group(&alice_b_provider)
+    .expect("alice_b join second higher-level group");
 }
 
 /// Regression test for the batch-model switch. A virtual client builds one
@@ -2898,6 +2981,7 @@ fn vc_batch_key_packages_join_in_any_order() {
                 key_package_ref: info.key_package_ref.clone(),
                 cipher_suite: info.cipher_suite,
                 key_package_index: info.key_package_index,
+                extensions: info.extensions.clone(),
             },
         )
         .collect::<Vec<_>>();
