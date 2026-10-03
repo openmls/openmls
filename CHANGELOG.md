@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- [#2213](https://github.com/openmls/openmls/pull/2213): Commit and self-update-proposal creation now reject a signer whose signature scheme does not match the group's ciphersuite with `InvalidSignerCiphersuite`; previously only a `NewSignerBundle`'s signer was checked.
+
 ### Added
 
 - [#2127](https://github.com/openmls/openmls/pull/2127): Added `ExternalProposal::new_pre_shared_key`, for injecting an external or resumption pre-shared key into a group's key schedule with from an external sender.

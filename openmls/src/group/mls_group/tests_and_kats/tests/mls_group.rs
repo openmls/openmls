@@ -3973,6 +3973,64 @@ fn commit_with_new_signer_mismatched_ciphersuite() {
     assert_eq!(err, CreateCommitError::InvalidSignerCiphersuite);
 }
 
+// A commit signed with a signer whose signature scheme does not match the
+// group's ciphersuite is rejected with `InvalidSignerCiphersuite`, without a
+// `NewSignerBundle` involved.
+#[openmls_test::openmls_test]
+fn commit_with_mismatched_signer_ciphersuite() {
+    use openmls_traits::types::SignatureScheme;
+
+    let provider = &Provider::default();
+    let (credential_with_key, _key_package, signer, _signature_key) =
+        setup_client("Alice", ciphersuite, provider);
+    let mut group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(provider, &signer, credential_with_key)
+        .unwrap();
+
+    let group_scheme = ciphersuite.signature_algorithm();
+    let mismatched_scheme = if group_scheme == SignatureScheme::ED25519 {
+        SignatureScheme::ECDSA_SECP256R1_SHA256
+    } else {
+        SignatureScheme::ED25519
+    };
+    let mismatched_signer = SignatureKeyPair::new(mismatched_scheme).unwrap();
+
+    let err = group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(
+            provider.rand(),
+            provider.crypto(),
+            &mismatched_signer,
+            |_| true,
+        )
+        .unwrap_err();
+    assert_eq!(err, CreateCommitError::InvalidSignerCiphersuite);
+
+    // The same check guards the commit-creating `MlsGroup` APIs, e.g.
+    // `update_group_context_extensions`.
+    #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
+    {
+        let err = group
+            .update_group_context_extensions(provider, Extensions::default(), &mismatched_signer)
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            CreateGroupContextExtProposalError::CreateCommitError(
+                CreateCommitError::InvalidSignerCiphersuite
+            )
+        ));
+    }
+
+    // And the self-update proposal path.
+    let err = group
+        .propose_self_update(provider, &mismatched_signer, LeafNodeParameters::default())
+        .unwrap_err();
+    assert_eq!(err, ProposeSelfUpdateError::InvalidSignerCiphersuite);
+}
+
 // A member commit whose `leaf_node_parameters` pin a credential that differs
 // from the new signer's credential is rejected with
 // `InvalidLeafNodeParameters`.

@@ -820,6 +820,15 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let marks_new_vc_derivation_epoch = staged_vc_commit_data(group)?
             .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
         let ciphersuite = group.ciphersuite();
+
+        // The signer signs the commit's framed content (and, without a new
+        // signer, the UpdatePath leaf), so its scheme must match the group's
+        // ciphersuite. Checked before any proposal is staged or an operation
+        // generation is burned.
+        if ciphersuite.signature_algorithm() != old_signer.signature_scheme() {
+            return Err(CreateCommitError::InvalidSignerCiphersuite);
+        }
+
         let own_leaf_index = group.own_leaf_index();
         let (sender, is_external_commit) = match cur_stage.external_commit_info {
             None => (Sender::build_member(own_leaf_index), false),
