@@ -1,6 +1,7 @@
 use openmls_traits::storage::*;
 use serde::Serialize;
 use std::{collections::HashMap, sync::RwLock};
+use zeroize::{Zeroize, Zeroizing};
 
 #[cfg(feature = "test-utils")]
 use std::io::Write as _;
@@ -74,7 +75,7 @@ impl MemoryStorage {
             let k = read_bytes(r, k_len)?;
             let v = read_bytes(r, v_len)?;
 
-            map.insert(k, v);
+            insert_zeroizing(&mut map, k, v);
             count -= 1;
         }
 
@@ -100,7 +101,7 @@ impl MemoryStorage {
         log::debug!("  write key: {}", hex::encode(&storage_key));
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
-        values.insert(storage_key, value.to_vec());
+        insert_zeroizing(&mut values, storage_key, value);
         Ok(())
     }
 
@@ -120,13 +121,19 @@ impl MemoryStorage {
         // fetch value from db, falling back to an empty list if doens't exist
         let list_bytes = values.entry(storage_key).or_insert_with(|| b"[]".to_vec());
 
-        // parse old value and push new data
-        let mut list: Vec<Vec<u8>> = serde_json::from_slice(list_bytes)?;
-        list.push(value);
+        // Keep the caller-provided value protected before parsing the old
+        // serialization: parsing can fail and return early.
+        let value = Zeroizing::new(value);
 
-        // write back, reusing the old buffer
-        list_bytes.clear();
-        serde_json::to_writer(list_bytes, &list)?;
+        // Parse the old value and push new data.
+        let mut list = Zeroizing::new(serde_json::from_slice::<Vec<Vec<u8>>>(list_bytes)?);
+        list.push(value.as_slice().to_vec());
+
+        // Wipe the previous serialization before reusing its allocation. The
+        // decoded entries and the caller-provided value are held by
+        // `Zeroizing`, so they are also cleared when this function returns.
+        zeroize_bytes(list_bytes);
+        serde_json::to_writer(list_bytes, &*list)?;
 
         Ok(())
     }
@@ -147,15 +154,26 @@ impl MemoryStorage {
         // fetch value from db, falling back to an empty list if doens't exist
         let list_bytes = values.entry(storage_key).or_insert_with(|| b"[]".to_vec());
 
-        // parse old value, find value to delete and remove it from list
-        let mut list: Vec<Vec<u8>> = serde_json::from_slice(list_bytes)?;
-        if let Some(pos) = list.iter().position(|stored_item| stored_item == &value) {
-            list.remove(pos);
+        // Keep the caller-provided value protected before parsing the old
+        // serialization: parsing can fail and return early.
+        let value = Zeroizing::new(value);
+
+        // Parse the old value, find the value to delete, and remove it from
+        // the list.
+        let mut list = Zeroizing::new(serde_json::from_slice::<Vec<Vec<u8>>>(list_bytes)?);
+        if let Some(pos) = list
+            .iter()
+            .position(|stored_item| stored_item.as_slice() == value.as_slice())
+        {
+            let mut removed = list.remove(pos);
+            removed.zeroize();
         }
 
-        // write back, reusing the old buffer
-        list_bytes.clear();
-        serde_json::to_writer(list_bytes, &list)?;
+        // Wipe the previous serialization before reusing its allocation. The
+        // decoded entries and the caller-provided value are held by
+        // `Zeroizing`, so they are also cleared when this function returns.
+        zeroize_bytes(list_bytes);
+        serde_json::to_writer(list_bytes, &*list)?;
 
         Ok(())
     }
@@ -231,9 +249,186 @@ impl MemoryStorage {
         log::debug!("  delete key: {}", hex::encode(&storage_key));
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
-        values.remove(&storage_key);
+        remove_zeroizing(&mut values, &storage_key);
 
         Ok(())
+    }
+}
+
+impl Drop for MemoryStorage {
+    fn drop(&mut self) {
+        // A poisoned lock still owns the same data. Recovering it here is safe
+        // and ensures secrets are not skipped during best-effort destruction.
+        let values = match self.values.get_mut() {
+            Ok(values) => values,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        zeroize_all(values);
+    }
+}
+
+/// Wipe an owned byte buffer while retaining no readable length.
+fn zeroize_bytes(bytes: &mut Vec<u8>) {
+    #[cfg(test)]
+    ZEROIZED_BYTE_COUNT.with(|count| count.set(count.get().saturating_add(bytes.len())));
+    bytes.zeroize();
+}
+
+/// Wipe an owned string that represents encoded sensitive storage data.
+#[cfg(feature = "persistence")]
+fn zeroize_string(value: &mut String) {
+    #[cfg(test)]
+    ZEROIZED_BYTE_COUNT.with(|count| count.set(count.get().saturating_add(value.len())));
+    value.zeroize();
+}
+
+/// Insert a row, wiping both halves of any row replaced at the same key.
+fn insert_zeroizing(values: &mut HashMap<Vec<u8>, Vec<u8>>, key: Vec<u8>, value: Vec<u8>) {
+    if let Some((mut previous_key, mut previous_value)) = values.remove_entry(&key) {
+        zeroize_bytes(&mut previous_key);
+        zeroize_bytes(&mut previous_value);
+    }
+    values.insert(key, value);
+}
+
+/// Remove a row only after wiping its owned key and value allocations.
+fn remove_zeroizing(values: &mut HashMap<Vec<u8>, Vec<u8>>, key: &[u8]) {
+    if let Some((mut stored_key, mut stored_value)) = values.remove_entry(key) {
+        zeroize_bytes(&mut stored_key);
+        zeroize_bytes(&mut stored_value);
+    }
+}
+
+/// Retain selected rows without allowing rejected keys or values to be
+/// released with their previous bytes intact.
+fn retain_zeroizing(
+    values: &mut HashMap<Vec<u8>, Vec<u8>>,
+    mut keep: impl FnMut(&[u8], &[u8]) -> bool,
+) {
+    let mut retained = HashMap::with_capacity(values.len());
+    for (mut key, mut value) in values.drain() {
+        if keep(&key, &value) {
+            retained.insert(key, value);
+        } else {
+            zeroize_bytes(&mut key);
+            zeroize_bytes(&mut value);
+        }
+    }
+    *values = retained;
+}
+
+/// Wipe every row before the map releases its allocations.
+fn zeroize_all(values: &mut HashMap<Vec<u8>, Vec<u8>>) {
+    for (mut key, mut value) in values.drain() {
+        zeroize_bytes(&mut key);
+        zeroize_bytes(&mut value);
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    static ZEROIZED_BYTE_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+fn reset_zeroized_byte_count() {
+    ZEROIZED_BYTE_COUNT.with(|count| count.set(0));
+}
+
+#[cfg(test)]
+fn zeroized_byte_count() -> usize {
+    ZEROIZED_BYTE_COUNT.with(std::cell::Cell::get)
+}
+
+#[cfg(test)]
+mod zeroization_tests {
+    use super::*;
+
+    #[test]
+    fn mutation_helpers_wipe_every_removed_key_and_value() {
+        reset_zeroized_byte_count();
+        let mut values = HashMap::new();
+
+        insert_zeroizing(&mut values, b"key".to_vec(), b"old".to_vec());
+        insert_zeroizing(&mut values, b"key".to_vec(), b"new".to_vec());
+        assert_eq!(zeroized_byte_count(), 6);
+
+        remove_zeroizing(&mut values, b"key");
+        assert_eq!(zeroized_byte_count(), 12);
+
+        insert_zeroizing(&mut values, b"keep".to_vec(), b"one".to_vec());
+        insert_zeroizing(&mut values, b"drop".to_vec(), b"two".to_vec());
+        retain_zeroizing(&mut values, |key, _| key == b"keep");
+        assert_eq!(zeroized_byte_count(), 19);
+
+        zeroize_all(&mut values);
+        assert_eq!(zeroized_byte_count(), 26);
+        assert!(values.is_empty());
+    }
+
+    #[test]
+    fn storage_operations_wipe_replaced_removed_and_rewritten_rows() {
+        reset_zeroized_byte_count();
+        let storage = MemoryStorage::default();
+
+        storage
+            .write::<CURRENT_VERSION>(b"row", b"key", b"old".to_vec())
+            .unwrap();
+        storage
+            .write::<CURRENT_VERSION>(b"row", b"key", b"new".to_vec())
+            .unwrap();
+        let after_replacement = zeroized_byte_count();
+        assert!(after_replacement > 0);
+
+        storage.delete::<CURRENT_VERSION>(b"row", b"key").unwrap();
+        assert!(zeroized_byte_count() > after_replacement);
+
+        storage
+            .append::<CURRENT_VERSION>(b"list", b"key", b"first".to_vec())
+            .unwrap();
+        let after_first_append = zeroized_byte_count();
+        storage
+            .append::<CURRENT_VERSION>(b"list", b"key", b"second".to_vec())
+            .unwrap();
+        assert!(zeroized_byte_count() > after_first_append);
+
+        let after_second_append = zeroized_byte_count();
+        storage
+            .remove_item::<CURRENT_VERSION>(b"list", b"key", b"first".to_vec())
+            .unwrap();
+        assert!(zeroized_byte_count() > after_second_append);
+    }
+
+    #[test]
+    fn list_operations_return_errors_for_invalid_serialization() {
+        let storage = MemoryStorage::default();
+        let storage_key = build_key_from_vec::<CURRENT_VERSION>(b"list", b"key".to_vec());
+        storage
+            .values
+            .write()
+            .unwrap()
+            .insert(storage_key, b"invalid JSON".to_vec());
+
+        assert_eq!(
+            storage.append::<CURRENT_VERSION>(b"list", b"key", b"value".to_vec()),
+            Err(MemoryStorageError::SerializationError)
+        );
+        assert_eq!(
+            storage.remove_item::<CURRENT_VERSION>(b"list", b"key", b"value".to_vec()),
+            Err(MemoryStorageError::SerializationError)
+        );
+    }
+
+    #[test]
+    fn dropping_storage_wipes_remaining_rows() {
+        reset_zeroized_byte_count();
+        {
+            let storage = MemoryStorage::default();
+            storage
+                .write::<CURRENT_VERSION>(b"row", b"key", b"value".to_vec())
+                .unwrap();
+        }
+        assert!(zeroized_byte_count() > 0);
     }
 }
 
@@ -344,7 +539,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let key = build_key::<CURRENT_VERSION, &GroupId>(INTERIM_TRANSCRIPT_HASH_LABEL, group_id);
         let value = serde_json::to_vec(&interim_transcript_hash).unwrap();
 
-        values.insert(key, value);
+        insert_zeroizing(&mut values, key, value);
         Ok(())
     }
 
@@ -360,7 +555,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let key = build_key::<CURRENT_VERSION, &GroupId>(GROUP_CONTEXT_LABEL, group_id);
         let value = serde_json::to_vec(&group_context).unwrap();
 
-        values.insert(key, value);
+        insert_zeroizing(&mut values, key, value);
         Ok(())
     }
 
@@ -376,7 +571,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let key = build_key::<CURRENT_VERSION, &GroupId>(CONFIRMATION_TAG_LABEL, group_id);
         let value = serde_json::to_vec(&confirmation_tag).unwrap();
 
-        values.insert(key, value);
+        insert_zeroizing(&mut values, key, value);
         Ok(())
     }
 
@@ -393,7 +588,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             build_key::<CURRENT_VERSION, &SignaturePublicKey>(SIGNATURE_KEY_PAIR_LABEL, public_key);
         let value = serde_json::to_vec(&signature_key_pair).unwrap();
 
-        values.insert(key, value);
+        insert_zeroizing(&mut values, key, value);
         Ok(())
     }
 
@@ -881,12 +1076,12 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             // Delete all proposals.
             let key = serde_json::to_vec(&(group_id, proposal_ref))?;
             let storage_key = build_key_from_vec::<CURRENT_VERSION>(QUEUED_PROPOSAL_LABEL, key);
-            values.remove(&storage_key);
+            remove_zeroizing(&mut values, &storage_key);
         }
 
         // Delete the proposal refs from the store.
         let key = build_key::<CURRENT_VERSION, &GroupId>(PROPOSAL_QUEUE_REFS_LABEL, group_id);
-        values.remove(&key);
+        remove_zeroizing(&mut values, &key);
 
         Ok(())
     }
@@ -1123,14 +1318,20 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             if referenced {
                 continue;
             }
-            values.remove(&build_key_from_vec::<CURRENT_VERSION>(
-                VC_DERIVATION_EPOCH_STATE_LABEL,
-                serialized_epoch_id.clone(),
-            ));
-            values.remove(&build_key_from_vec::<CURRENT_VERSION>(
-                VC_OPERATION_TREE_LABEL,
-                serialized_epoch_id.clone(),
-            ));
+            remove_zeroizing(
+                &mut values,
+                &build_key_from_vec::<CURRENT_VERSION>(
+                    VC_DERIVATION_EPOCH_STATE_LABEL,
+                    serialized_epoch_id.clone(),
+                ),
+            );
+            remove_zeroizing(
+                &mut values,
+                &build_key_from_vec::<CURRENT_VERSION>(
+                    VC_OPERATION_TREE_LABEL,
+                    serialized_epoch_id.clone(),
+                ),
+            );
             deleted.push(serde_json::from_slice(&serialized_epoch_id)?);
         }
         Ok(deleted)
@@ -1159,7 +1360,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             &serde_json::to_vec(binding)?,
         )?;
         let mut values = self.values.write().unwrap();
-        values.insert(key, value);
+        insert_zeroizing(&mut values, key, value);
         Ok(())
     }
 
@@ -1225,7 +1426,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
                 &serialized_group_id,
                 &serde_json::to_vec(group_epoch)?,
             );
-            values.remove(&key);
+            remove_zeroizing(&mut values, &key);
         }
         Ok(())
     }
@@ -1238,7 +1439,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let mut prefix = VC_EMULATION_BINDING_LABEL.to_vec();
         prefix.extend_from_slice(&serde_json::to_vec(group_id)?);
         let mut values = self.values.write().unwrap();
-        values.retain(|key, _| !key.starts_with(&prefix));
+        retain_zeroizing(&mut values, |key, _| !key.starts_with(&prefix));
         Ok(())
     }
 
@@ -1261,7 +1462,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         );
         let value = epoch_tagged_value(&serialized_epoch_id, &serde_json::to_vec(entry)?)?;
         let mut values = self.values.write().unwrap();
-        values.insert(key, value);
+        insert_zeroizing(&mut values, key, value);
         Ok(())
     }
 
@@ -1304,7 +1505,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
                 &serialized_group_id,
                 &serde_json::to_vec(epoch_id)?,
             );
-            values.remove(&key);
+            remove_zeroizing(&mut values, &key);
         }
         Ok(())
     }
@@ -1317,7 +1518,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         let mut prefix = VC_DERIVATION_EPOCH_LOG_ENTRY_LABEL.to_vec();
         prefix.extend_from_slice(&serde_json::to_vec(group_id)?);
         let mut values = self.values.write().unwrap();
-        values.retain(|key, _| !key.starts_with(&prefix));
+        retain_zeroizing(&mut values, |key, _| !key.starts_with(&prefix));
         Ok(())
     }
 
@@ -1374,19 +1575,19 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
             VC_OPERATION_TREE_LABEL,
             serialized_epoch_id.clone(),
         );
-        values.insert(tree_key, serde_json::to_vec(operation_tree)?);
+        insert_zeroizing(&mut values, tree_key, serde_json::to_vec(operation_tree)?);
         for (hash_ref, record) in materials {
             let serialized_ref = serde_json::to_vec(hash_ref)?;
             let material_key = build_key_from_vec::<CURRENT_VERSION>(
                 RETAINED_KEY_PACKAGE_MATERIAL_LABEL,
                 serialized_ref.clone(),
             );
-            values.insert(material_key, serde_json::to_vec(record)?);
+            insert_zeroizing(&mut values, material_key, serde_json::to_vec(record)?);
             let epoch_tag_key = build_key_from_vec::<CURRENT_VERSION>(
                 RETAINED_KEY_PACKAGE_EPOCH_LABEL,
                 serialized_ref,
             );
-            values.insert(epoch_tag_key, serialized_epoch_id.clone());
+            insert_zeroizing(&mut values, epoch_tag_key, serialized_epoch_id.clone());
         }
         Ok(())
     }
