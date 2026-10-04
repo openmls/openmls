@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [#XXXX](https://github.com/openmls/openmls/pull/XXXX): Updated `rusqlite` to 0.40 and `refinery` to 0.10. This is a breaking change, since `rusqlite::Connection` is re-exported.
+- [#2256](https://github.com/openmls/openmls/pull/2256): Updated `rusqlite` to 0.40 and `refinery` to 0.10. This is a breaking change, since `rusqlite::Connection` is re-exported.
 
 ## 0.3.0 (2026-08-25)
 
