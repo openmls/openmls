@@ -186,13 +186,7 @@ impl PrivateMessageIn {
                 sender_data.generation,
                 sender_ratchet_configuration,
             )
-            .map_err(|e| {
-                log::error!(
-                    "  Ciphertext generation out of bounds {}\n\t{e:?}",
-                    sender_data.generation
-                );
-                MessageDecryptionError::SecretTreeError(e)
-            })?;
+            .map_err(MessageDecryptionError::SecretTreeError)?;
 
         // Reuse-guard inversion. Uses the pre-XOR ratchet nonce as the
         // `key_schedule_nonce` input to `ExpandWithLabel`.

@@ -32,6 +32,11 @@ pub(crate) struct DualUseRatchet {
     #[serde(with = "vector_converter")]
     past_secrets: BTreeMap<Generation, DualUsePastSecret>,
     ratchet_head: RatchetSecret,
+    /// Every generation pruned from the receive window so far lies below this
+    /// bound. A missing generation at or above it was removed by confirming an
+    /// own send. Below it we cannot tell the two cases apart.
+    #[serde(default)]
+    pruned_below: Generation,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -77,10 +82,14 @@ impl From<RatchetSecret> for DualUseRatchet {
     /// a fresh [`DualUseRatchet`] with no past secrets. This is used to
     /// upgrade own ratchets deserialized from state written by a build
     /// without the feature.
+    ///
+    /// An `EncryptionRatchet` only ever encrypts, so every generation below
+    /// its head was an own send and none was pruned.
     fn from(ratchet_head: RatchetSecret) -> Self {
         Self {
             past_secrets: BTreeMap::new(),
             ratchet_head,
+            pruned_below: 0,
         }
     }
 }
@@ -90,6 +99,7 @@ impl DualUseRatchet {
         Self {
             past_secrets: BTreeMap::new(),
             ratchet_head: RatchetSecret::initial_ratchet_secret(secret),
+            pruned_below: 0,
         }
     }
 
@@ -197,16 +207,11 @@ impl DualUseRatchet {
     }
 
     fn error_for_missing_past_secret(&self, generation: Generation) -> SecretTreeError {
-        if self
-            .past_secrets
-            .iter()
-            .find(|(_, entry)| entry.is_retained_for_decryption())
-            .is_some_and(|(oldest_generation, _)| generation < *oldest_generation)
-        {
+        if generation < self.pruned_below {
             log::error!("  Generation is too far in the past (not in the window).");
             SecretTreeError::TooDistantInThePast
         } else {
-            SecretTreeError::SecretReuseError
+            SecretTreeError::OwnMessageConfirmed
         }
     }
 
@@ -229,6 +234,7 @@ impl DualUseRatchet {
 
         for generation in generations_to_prune {
             self.past_secrets.remove(&generation);
+            self.pruned_below = self.pruned_below.max(generation + 1);
         }
     }
 }

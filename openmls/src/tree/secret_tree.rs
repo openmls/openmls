@@ -33,6 +33,10 @@ pub enum SecretTreeError {
     /// The requested secret was deleted to preserve forward secrecy.
     #[error("The requested secret was deleted to preserve forward secrecy.")]
     SecretReuseError,
+    /// The requested secret belonged to an own message that was already confirmed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("The requested secret belonged to an own message that was already confirmed.")]
+    OwnMessageConfirmed,
     /// Cannot create decryption secrets from own sender ratchet or encryption secrets from the sender ratchets of other members.
     #[error("Cannot create decryption secrets from own sender ratchet or encryption secrets from the sender ratchets of other members.")]
     RatchetTypeError,

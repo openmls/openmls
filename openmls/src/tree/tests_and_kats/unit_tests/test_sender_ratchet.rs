@@ -160,7 +160,7 @@ fn sender_ratchet_generation_overflow() {
 
 // Encrypting caches the secret in the past-secrets window, then `confirm`
 // (i.e. `delete_secret_for_generation`) drops it, and a later attempt to
-// decrypt that generation fails as `SecretReuseError`.
+// decrypt that generation fails as `OwnMessageConfirmed`.
 #[cfg(feature = "virtual-clients-draft")]
 #[openmls_test::openmls_test]
 fn dual_use_encrypt_confirm_drops_secret() {
@@ -182,7 +182,7 @@ fn dual_use_encrypt_confirm_drops_secret() {
     let err = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), generation, configuration)
         .expect_err("Confirmed secret should be unavailable.");
-    assert_eq!(err, SecretTreeError::SecretReuseError);
+    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
 }
 
 // Without confirming, the local sender can decrypt their own message (the
@@ -250,7 +250,7 @@ fn dual_use_delete_secret_edge_cases() {
     let err = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), gen0, configuration)
         .expect_err("Deleted secret should be unavailable.");
-    assert_eq!(err, SecretTreeError::SecretReuseError);
+    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
 }
 
 // Encrypting more than `out_of_order_tolerance` messages without confirming or
@@ -431,4 +431,152 @@ fn dual_use_local_sends_do_not_advance_receive_window() {
             configuration,
         )
         .expect("Local sends should not prune the receive window.");
+}
+
+// Without out-of-order tolerance every receive-window entry is pruned right
+// away. A generation that was pruned before it was decrypted must fail as too
+// old, not as a reused secret, since nothing was ever decrypted there.
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn dual_use_zero_tolerance_pruned_generation_is_too_distant() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::new(0, 1000);
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet = DualUseRatchet::new(secret);
+
+    let _decrypted = ratchet
+        .secret_for_decryption(ciphersuite, provider.crypto(), 1, configuration)
+        .expect("Expected decryption secret.");
+
+    let err = ratchet
+        .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
+        .expect_err("A pruned generation should be unavailable.");
+    assert_eq!(err, SecretTreeError::TooDistantInThePast);
+}
+
+// Decrypting a later generation leaves a receive-window entry newer than an
+// own confirmed send. The confirmed generation was never pruned, so it is
+// still recognized as a confirmed own message.
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn dual_use_confirmed_generation_older_than_receive_window_is_own_message_confirmed() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet = DualUseRatchet::new(secret);
+
+    let (confirmed_generation, _) = ratchet
+        .secret_for_encryption(ciphersuite, provider.crypto())
+        .expect("Expected encryption secret.");
+    ratchet.delete_secret_for_generation(confirmed_generation);
+
+    let received_generation = ratchet.generation();
+    let _decrypted = ratchet
+        .secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            received_generation,
+            configuration,
+        )
+        .expect("Expected decryption secret.");
+
+    let err = ratchet
+        .secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            confirmed_generation,
+            configuration,
+        )
+        .expect_err("Confirmed secret should be unavailable.");
+    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+fn round_trip(ratchet: &DualUseRatchet) -> DualUseRatchet {
+    let persisted = serde_json::to_value(ratchet).expect("Expected serializable ratchet.");
+    serde_json::from_value(persisted).expect("Expected deserializable ratchet.")
+}
+
+// Serializes the ratchet as a version without the prune bound would have.
+#[cfg(feature = "virtual-clients-draft")]
+fn round_trip_without_prune_bound(ratchet: &DualUseRatchet) -> DualUseRatchet {
+    let mut persisted = serde_json::to_value(ratchet).expect("Expected serializable ratchet.");
+    persisted
+        .as_object_mut()
+        .expect("Expected the ratchet to serialize as an object.")
+        .remove("pruned_below")
+        .expect("Expected the prune bound to be serialized.");
+    serde_json::from_value(persisted).expect("Expected deserializable ratchet.")
+}
+
+// The prune bound is persisted with the ratchet. Without it a pruned
+// generation would pass as a confirmed own send after a restart.
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn dual_use_persisted_prune_bound_is_kept() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::new(0, 1000);
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet = DualUseRatchet::new(secret);
+
+    let _decrypted = ratchet
+        .secret_for_decryption(ciphersuite, provider.crypto(), 1, configuration)
+        .expect("Expected decryption secret.");
+
+    let mut restored = round_trip(&ratchet);
+    let err = restored
+        .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
+        .expect_err("A pruned generation should be unavailable.");
+    assert_eq!(err, SecretTreeError::TooDistantInThePast);
+}
+
+// A ratchet persisted before the prune bound existed starts with an empty
+// bound, so a generation pruned before the upgrade passes as a confirmed own
+// send. The next pruning raises the bound past it and the generation is
+// reported as too old again.
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn dual_use_state_without_prune_bound_heals_on_next_pruning() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::new(0, 1000);
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet = DualUseRatchet::new(secret);
+
+    let _decrypted = ratchet
+        .secret_for_decryption(ciphersuite, provider.crypto(), 1, configuration)
+        .expect("Expected decryption secret.");
+
+    let mut restored = round_trip_without_prune_bound(&ratchet);
+    let err = restored
+        .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
+        .expect_err("A pruned generation should be unavailable.");
+    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
+
+    let _decrypted = restored
+        .secret_for_decryption(ciphersuite, provider.crypto(), 2, configuration)
+        .expect("Expected decryption secret.");
+    let err = restored
+        .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
+        .expect_err("A pruned generation should be unavailable.");
+    assert_eq!(err, SecretTreeError::TooDistantInThePast);
+}
+
+// An own ratchet promoted from an encryption ratchet only ever encrypted, so a
+// generation below its head was an own send and is reported as confirmed.
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn dual_use_promoted_ratchet_treats_past_generation_as_own_send() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet_head = RatchetSecret::initial_ratchet_secret(secret);
+    let _ = ratchet_head
+        .ratchet_forward(provider.crypto(), ciphersuite)
+        .expect("Expected ratchet to advance.");
+    let mut ratchet = DualUseRatchet::from(ratchet_head);
+
+    let err = ratchet
+        .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
+        .expect_err("A pre-promotion generation should be unavailable.");
+    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
 }
