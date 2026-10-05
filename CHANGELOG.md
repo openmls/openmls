@@ -19,9 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [#2202](https://github.com/openmls/openmls/pull/2202): The secret export functions on `MlsGroup`, `StagedCommit`, `StagedWelcome`, `ProcessedWelcome` and `ProcessedMessage` now return `ExportedSecret<T>` instead of `Vec<u8>`. The new type zeroizes the secret on drop and is parameterized with a marker struct recording which function produced the secret. Use `as_slice()` to access the secret bytes.
+- Raised MSRV to Rust 1.94.
+
+### Removed
+
+- Removed the `js-test` feature. It only enabled the `js` backend of `getrandom` 0.2, which no OpenMLS crate depends on anymore. The `js` feature is enough to run the tests on `wasm32-unknown-unknown`.
 
 ### Fixed
 
+- [#2162](https://github.com/openmls/openmls/pull/2162): `Extensions::unknown()` now finds a GREASE extension that is present in the set, where it previously returned `None`.
 - [#2127](https://github.com/openmls/openmls/pull/2127): `MlsGroup` and `PublicGroup` message processing now accept `PreSharedKey` proposals from external senders. Previously they were rejected with `UnsupportedProposalType`.
 - [#2127](https://github.com/openmls/openmls/pull/2127): `Extension::extension_type()` now maps a GREASE-valued extension to `ExtensionType::Grease(_)` instead of `ExtensionType::Unknown(_)`, consistent with `ExtensionType::from(u16)`. GREASE is tolerated (like an unknown extension type) in leaf-node, key-package, group-info and group-context validation, without exempting it from the check that an extension be declared in `capabilities`. Previously a GREASE-valued extension was reported as `Unknown`, so this GREASE-aware validation did not recognize it and could reject peers that decorate leaf/key-package extensions with GREASE.
 - [#2197](https://github.com/openmls/openmls/pull/2197): Reducing a group's `PastEpochDeletionPolicy` at runtime now keeps the most recent past epochs. `MessageSecretsStore::resize` rotated the store by the difference between the old and new limits, which only matches the number of entries to drop while the store is full. Below that the rotation overshot, so the surviving epochs were a wrapped window rather than the newest ones, and the store was left out of order, which made the next commit evict the wrong epoch as well. Coming from `KeepAll` the store is never full, so that transition was always affected. Stores that a previous version persisted in the rotated order are put back in order when they are read, which also repairs `MlsGroup::delete_past_epoch_secrets`: its duration and timestamp variants drain a prefix of the store and relied on the same ordering, so on a rotated store they removed epochs that were still inside the retention window.
