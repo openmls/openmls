@@ -2827,6 +2827,263 @@ fn welcome_join_keeps_epoch_referenced_until_bound() {
     );
 }
 
+/// A Welcome addressed to a KeyPackage that alice_a built for its virtual
+/// client.
+struct OwnKeyPackageWelcome {
+    vc_signer: SignatureKeyPair,
+    epoch_id: EpochId,
+    key_package_ref: openmls::prelude::KeyPackageRef,
+    welcome: openmls::messages::Welcome,
+    ratchet_tree: openmls::treesync::RatchetTree,
+}
+
+/// alice_a builds a KeyPackage for its virtual client and then deletes its
+/// emulation group, so the KeyPackage becomes the only reference to the
+/// derivation epoch it was built from. Bob adds the virtual client through the
+/// KeyPackage and the returned Welcome is addressed to it.
+fn own_key_package_welcome<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_a_provider: &P,
+    bob_provider: &P,
+    last_resort: bool,
+) -> OwnKeyPackageWelcome {
+    let (vc_credential, vc_signer) = new_credential(
+        alice_a_provider,
+        b"Alice (VC)",
+        ciphersuite.signature_algorithm(),
+    );
+    let (mut emulator_a, _emulator_a_signer) =
+        make_emulator_group(ciphersuite, alice_a_provider, b"AliceEmulatorA", true);
+    let epoch_id = newest_epoch(&emulator_a, alice_a_provider);
+
+    let builder = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions());
+    let builder = if last_resort {
+        builder.mark_as_last_resort()
+    } else {
+        builder
+    };
+    let mut batch = builder
+        .build_vc_batch(
+            ciphersuite,
+            alice_a_provider,
+            &vc_signer,
+            vc_credential,
+            emulator_a.group_id(),
+            1,
+        )
+        .expect("alice_a build_vc_batch");
+    let (vc_key_package_bundle, kp_info) = batch.key_packages.remove(0);
+
+    emulator_a
+        .delete(alice_a_provider.storage())
+        .expect("alice_a delete emulation group");
+    assert!(
+        epoch_state_exists(alice_a_provider, &epoch_id),
+        "the KeyPackage must keep the epoch state alive"
+    );
+
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut bob_main = MlsGroup::new(bob_provider, &bob_signer, &bob_group_config, bob_credential)
+        .expect("bob create higher-level group");
+    let (_commit, welcome, _gi) = bob_main
+        .add_members(
+            bob_provider,
+            &bob_signer,
+            &[vc_key_package_bundle.key_package().clone()],
+        )
+        .expect("bob add virtual client");
+    bob_main
+        .merge_pending_commit(bob_provider)
+        .expect("bob merge add");
+
+    OwnKeyPackageWelcome {
+        vc_signer,
+        epoch_id,
+        key_package_ref: kp_info.key_package_ref,
+        welcome: welcome.into_welcome().expect("welcome present"),
+        ratchet_tree: bob_main.export_ratchet_tree(),
+    }
+}
+
+fn stored_key_package<P: OpenMlsProvider>(
+    provider: &P,
+    key_package_ref: &openmls::prelude::KeyPackageRef,
+) -> Option<openmls::prelude::KeyPackageBundle> {
+    provider
+        .storage()
+        .key_package(key_package_ref)
+        .expect("read key package")
+}
+
+fn stored_retained_material<P: OpenMlsProvider>(
+    provider: &P,
+    key_package_ref: &openmls::prelude::KeyPackageRef,
+) -> Option<openmls::components::vc_derivation_info::RetainedKeyPackageMaterial> {
+    provider
+        .storage()
+        .retained_key_package_material(key_package_ref)
+        .expect("read retained material")
+}
+
+fn sweep_unreferenced_epochs<P: OpenMlsProvider>(provider: &P) -> Vec<EpochId> {
+    provider
+        .storage()
+        .delete_unreferenced_vc_derivation_epoch_states()
+        .expect("sweep unreferenced epochs")
+}
+
+#[openmls_test]
+fn welcome_join_through_own_key_package_after_epoch_release() {
+    let alice_a_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let OwnKeyPackageWelcome {
+        vc_signer,
+        epoch_id,
+        key_package_ref,
+        welcome,
+        ratchet_tree,
+    } = own_key_package_welcome(ciphersuite, &alice_a_provider, &bob_provider, false);
+
+    let mut alice_a_main = StagedWelcome::new_from_welcome(
+        &alice_a_provider,
+        &vc_join_config(),
+        welcome,
+        Some(ratchet_tree.into()),
+    )
+    .expect("alice_a stage welcome")
+    .into_group(&alice_a_provider)
+    .expect("alice_a join higher-level group");
+
+    assert!(
+        stored_key_package(&alice_a_provider, &key_package_ref).is_none(),
+        "joining must consume the KeyPackage"
+    );
+    assert!(
+        stored_retained_material(&alice_a_provider, &key_package_ref).is_none(),
+        "joining must consume the KeyPackage's retained material"
+    );
+    assert!(
+        epoch_state_exists(&alice_a_provider, &epoch_id),
+        "the joined group's binding must keep the epoch state alive"
+    );
+    let unconfirmed = alice_a_main
+        .create_unconfirmed_message(&alice_a_provider, &vc_signer, b"bound send")
+        .expect("alice_a create unconfirmed message");
+    assert!(
+        unconfirmed.generation_id.is_some(),
+        "a group joined through a virtual client's KeyPackage must be bound"
+    );
+
+    alice_a_main
+        .delete(alice_a_provider.storage())
+        .expect("alice_a delete higher-level group");
+    assert!(
+        !epoch_state_exists(&alice_a_provider, &epoch_id),
+        "deleting the last group bound to the epoch must release its key material"
+    );
+}
+
+#[openmls_test]
+fn welcome_join_through_own_key_package_keeps_epoch_referenced_until_bound() {
+    let alice_a_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let OwnKeyPackageWelcome {
+        epoch_id,
+        key_package_ref,
+        welcome,
+        ratchet_tree,
+        ..
+    } = own_key_package_welcome(ciphersuite, &alice_a_provider, &bob_provider, false);
+
+    let processed = openmls::group::ProcessedWelcome::new_from_welcome(
+        &alice_a_provider,
+        &vc_join_config(),
+        welcome,
+    )
+    .expect("alice_a process welcome");
+    assert!(
+        stored_key_package(&alice_a_provider, &key_package_ref).is_some(),
+        "processing the Welcome must leave the KeyPackage in place"
+    );
+    assert!(
+        sweep_unreferenced_epochs(&alice_a_provider).is_empty(),
+        "a sweep after processing must not release the epoch"
+    );
+
+    let staged = processed
+        .into_staged_welcome(&alice_a_provider, Some(ratchet_tree.into()))
+        .expect("alice_a stage welcome");
+    assert!(
+        sweep_unreferenced_epochs(&alice_a_provider).is_empty(),
+        "a sweep after staging must not release the epoch"
+    );
+
+    staged
+        .into_group(&alice_a_provider)
+        .expect("alice_a join higher-level group");
+    assert!(
+        stored_key_package(&alice_a_provider, &key_package_ref).is_none(),
+        "joining must consume the KeyPackage"
+    );
+    assert!(
+        sweep_unreferenced_epochs(&alice_a_provider).is_empty(),
+        "the joined group's binding must reference the epoch"
+    );
+    assert!(epoch_state_exists(&alice_a_provider, &epoch_id));
+}
+
+#[openmls_test]
+fn welcome_join_through_own_last_resort_key_package_keeps_it() {
+    let alice_a_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let OwnKeyPackageWelcome {
+        epoch_id,
+        key_package_ref,
+        welcome,
+        ratchet_tree,
+        ..
+    } = own_key_package_welcome(ciphersuite, &alice_a_provider, &bob_provider, true);
+
+    let mut alice_a_main = StagedWelcome::new_from_welcome(
+        &alice_a_provider,
+        &vc_join_config(),
+        welcome,
+        Some(ratchet_tree.into()),
+    )
+    .expect("alice_a stage welcome")
+    .into_group(&alice_a_provider)
+    .expect("alice_a join higher-level group");
+    assert!(
+        stored_key_package(&alice_a_provider, &key_package_ref).is_some(),
+        "a last resort KeyPackage must survive the join"
+    );
+    assert!(
+        stored_retained_material(&alice_a_provider, &key_package_ref).is_some(),
+        "a last resort KeyPackage must keep its retained material"
+    );
+
+    // The KeyPackage can still be used to join, so it keeps the epoch alive
+    // without the joined group.
+    alice_a_main
+        .delete(alice_a_provider.storage())
+        .expect("alice_a delete higher-level group");
+    assert!(epoch_state_exists(&alice_a_provider, &epoch_id));
+
+    alice_a_provider
+        .storage()
+        .delete_key_package(&key_package_ref)
+        .expect("alice_a delete key package");
+    assert_eq!(sweep_unreferenced_epochs(&alice_a_provider), vec![epoch_id]);
+}
+
 /// Regression test for the batch-model switch. A virtual client builds one
 /// batch of KeyPackages larger than the operation tree's
 /// `OUT_OF_ORDER_TOLERANCE` (32), so the old per-KeyPackage-generation model
