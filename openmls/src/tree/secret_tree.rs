@@ -72,6 +72,27 @@ impl From<&PublicMessage> for SecretType {
     }
 }
 
+/// Outcome of looking up a decryption secret in the [`SecretTree`].
+#[cfg_attr(test, derive(Debug, PartialEq))]
+pub(crate) enum DecryptionSecret {
+    Available(RatchetKeyMaterial),
+    /// The generation belongs to a message we created and confirmed earlier, so
+    /// its secret was deleted.
+    #[cfg(feature = "virtual-clients-draft")]
+    OwnMessageConfirmed,
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl DecryptionSecret {
+    pub(crate) fn available(self) -> Option<RatchetKeyMaterial> {
+        match self {
+            Self::Available(ratchet_key_material) => Some(ratchet_key_material),
+            #[cfg(feature = "virtual-clients-draft")]
+            Self::OwnMessageConfirmed => None,
+        }
+    }
+}
+
 pub(crate) fn derive_child_secrets(
     parent_secret: &Secret,
     crypto: &impl OpenMlsCrypto,
@@ -332,8 +353,9 @@ impl SecretTree {
         self.set_node(index.into(), None)
     }
 
-    /// Return RatchetSecrets for a given index and generation. This should be
-    /// called when decrypting an PrivateMessage received from another member.
+    /// Return the [`DecryptionSecret`] for a given index and generation. This
+    /// should be called when decrypting an PrivateMessage received from another
+    /// member.
     /// Returns an error if index or generation are out of bound.
     pub(crate) fn secret_for_decryption(
         &mut self,
@@ -343,7 +365,7 @@ impl SecretTree {
         secret_type: SecretType,
         generation: u32,
         configuration: &SenderRatchetConfiguration,
-    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
+    ) -> Result<DecryptionSecret, SecretTreeError> {
         log::debug!(
             "Generating {secret_type:?} decryption secret for {index:?} in generation {generation} with {ciphersuite}",
         );
@@ -363,7 +385,9 @@ impl SecretTree {
             }
             SenderRatchet::DecryptionRatchet(dec_ratchet) => {
                 log::trace!("   getting secret for decryption");
-                dec_ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration)
+                dec_ratchet
+                    .secret_for_decryption(ciphersuite, crypto, generation, configuration)
+                    .map(DecryptionSecret::Available)
             }
             #[cfg(feature = "virtual-clients-draft")]
             SenderRatchet::DualUse(dual_ratchet) => {
