@@ -415,6 +415,19 @@ impl PublicGroup {
         &self,
         key_package: &KeyPackage,
     ) -> Result<(), ProposalValidationError> {
+        self.validate_key_package_for_add_with_lifetime_policy(
+            key_package,
+            LeafNodeLifetimePolicy::Verify,
+        )
+    }
+
+    /// Like [`Self::validate_key_package_for_add`], but checks the lifetime of
+    /// the leaf node under `lifetime_policy`.
+    pub fn validate_key_package_for_add_with_lifetime_policy(
+        &self,
+        key_package: &KeyPackage,
+        lifetime_policy: LeafNodeLifetimePolicy,
+    ) -> Result<(), ProposalValidationError> {
         // ValSem105: Check if ciphersuite and version of the group are correct:
         // https://validation.openmls.tech/#valn0201
         if key_package.ciphersuite() != self.ciphersuite()
@@ -437,7 +450,7 @@ impl PublicGroup {
         }
 
         // https://validation.openmls.tech/#valn0202
-        self.validate_leaf_node(key_package.leaf_node())?;
+        self.validate_leaf_node(key_package.leaf_node(), lifetime_policy)?;
 
         Ok(())
     }
@@ -447,13 +460,17 @@ impl PublicGroup {
     pub(crate) fn validate_add_proposals(
         &self,
         proposal_queue: &ProposalQueue,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<(), ProposalValidationError> {
         let add_proposals = proposal_queue.add_proposals();
 
         // We do the key package validation checks here inline
         // https://validation.openmls.tech/#valn0501
         for add_proposal in add_proposals {
-            self.validate_key_package_for_add(add_proposal.add_proposal().key_package())?;
+            self.validate_key_package_for_add_with_lifetime_policy(
+                add_proposal.add_proposal().key_package(),
+                lifetime_policy,
+            )?;
         }
         Ok(())
     }
@@ -535,7 +552,11 @@ impl PublicGroup {
             }
 
             // https://validation.openmls.tech/#valn0601
-            self.validate_leaf_node(update_proposal.update_proposal().leaf_node())?;
+            // The leaf node of an Update carries no lifetime.
+            self.validate_leaf_node(
+                update_proposal.update_proposal().leaf_node(),
+                LeafNodeLifetimePolicy::Verify,
+            )?;
 
             // Check that the leaf node in the update proposal supports all group context extensions
             // https://validation.openmls.tech/#valn0602
@@ -913,24 +934,11 @@ impl PublicGroup {
         Ok(())
     }
 
-    /// Validate a leaf node.
-    ///
-    /// This always validates the lifetime.
+    /// Validate a leaf node, checking its lifetime under `lifetime_policy`.
     pub(crate) fn validate_leaf_node(
         &self,
         leaf_node: &crate::treesync::LeafNode,
-    ) -> Result<(), LeafNodeValidationError> {
-        // Call the validation function and validate the lifetime
-        self.validate_leaf_node_inner(leaf_node, LeafNodeLifetimePolicy::Verify)
-    }
-
-    /// Validate a leaf node.
-    ///
-    /// This may skip checking the lifetime when validating a ratchet tree.
-    pub(crate) fn validate_leaf_node_inner(
-        &self,
-        leaf_node: &crate::treesync::LeafNode,
-        validate_lifetimes: LeafNodeLifetimePolicy,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<(), LeafNodeValidationError> {
         // https://validation.openmls.tech/#valn0103
         // https://validation.openmls.tech/#valn0104
@@ -954,11 +962,9 @@ impl PublicGroup {
         //
         // Some KATs use key packages that are expired by now. In order to run these tests, we
         // provide a way to turn off this check.
-        if matches!(validate_lifetimes, LeafNodeLifetimePolicy::Verify)
-            && !crate::skip_validation::is_disabled::leaf_node_lifetime()
-        {
+        if !crate::skip_validation::is_disabled::leaf_node_lifetime() {
             if let Some(lifetime) = leaf_node.life_time() {
-                lifetime.validate()?;
+                lifetime.validate_with_policy(lifetime_policy)?;
             }
         }
 

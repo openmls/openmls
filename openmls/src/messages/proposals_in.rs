@@ -7,7 +7,7 @@ use crate::{
     credentials::CredentialWithKey,
     extensions::{AnyObject, Extensions},
     framing::SenderContext,
-    group::errors::ValidationError,
+    group::{errors::ValidationError, LeafNodeLifetimePolicy},
     key_packages::*,
     prelude::InvalidExtensionError,
     treesync::node::leaf_node::{LeafNodeIn, TreePosition, VerifiableLeafNode},
@@ -104,12 +104,14 @@ impl ProposalIn {
         ciphersuite: Ciphersuite,
         sender_context: Option<SenderContext>,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<Proposal, ValidationError> {
         Ok(match self {
             ProposalIn::Add(add) => Proposal::Add(Box::new(add.validate(
                 crypto,
                 protocol_version,
                 ciphersuite,
+                lifetime_policy,
             )?)),
             ProposalIn::Update(update) => {
                 let sender_context =
@@ -173,11 +175,16 @@ impl AddProposalIn {
         crypto: &impl OpenMlsCrypto,
         protocol_version: ProtocolVersion,
         ciphersuite: Ciphersuite,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<AddProposal, ValidationError> {
         if self.key_package.unverified_ciphersuite() != ciphersuite {
             return Err(ValidationError::InvalidAddProposalCiphersuite);
         }
-        let key_package = self.key_package.validate(crypto, protocol_version)?;
+        let key_package = self.key_package.validate_with_lifetime_policy(
+            crypto,
+            protocol_version,
+            lifetime_policy,
+        )?;
         Ok(AddProposal { key_package })
     }
 }
@@ -271,11 +278,18 @@ impl ProposalOrRefIn {
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<ProposalOrRef, ValidationError> {
         Ok(match self {
-            ProposalOrRefIn::Proposal(proposal_in) => ProposalOrRef::Proposal(Box::new(
-                proposal_in.validate(crypto, ciphersuite, None, protocol_version)?,
-            )),
+            ProposalOrRefIn::Proposal(proposal_in) => {
+                ProposalOrRef::Proposal(Box::new(proposal_in.validate(
+                    crypto,
+                    ciphersuite,
+                    None,
+                    protocol_version,
+                    lifetime_policy,
+                )?))
+            }
             ProposalOrRefIn::Reference(reference) => ProposalOrRef::Reference(reference),
         })
     }

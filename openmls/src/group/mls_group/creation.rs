@@ -1620,7 +1620,13 @@ impl VcExternalCommitJoinBuilder {
             return Err(Error::NotAnExternalCommit);
         };
         let verified = unverified
-            .verify(group.ciphersuite(), provider.crypto(), group.version())
+            .verify(
+                group.ciphersuite(),
+                provider.crypto(),
+                group.version(),
+                // An external commit carries no Add proposals.
+                LeafNodeLifetimePolicy::Verify,
+            )
             .map_err(ProcessMessageError::from)?;
         if !matches!(verified.content.sender(), Sender::NewMemberCommit) {
             return Err(Error::NotAnExternalCommit);
@@ -1811,6 +1817,8 @@ impl StagedVcExternalCommitJoin {
             vec![],
             app_data_updates,
             provider,
+            // An external commit carries no Add proposals.
+            LeafNodeLifetimePolicy::Verify,
             Some(material),
         )?;
         group.merge_staged_commit(provider, staged)?;
@@ -1823,18 +1831,23 @@ impl StagedVcExternalCommitJoin {
     }
 }
 
-/// Verify or skip the validation of leaf node lifetimes in the ratchet tree
-/// when joining a group.
+/// How the lifetime of a leaf node is checked.
+///
+/// Only leaf nodes from key packages carry a lifetime: the key package in an
+/// Add proposal, and a leaf node in the ratchet tree that has not been
+/// replaced by an Update or a commit path since its member was added.
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LeafNodeLifetimePolicy {
-    /// Verify the lifetime of leaf nodes in the ratchet tree.
-    ///
-    /// **NOTE:** Only leaf nodes that have never been updated have a lifetime.
+    /// Check the lifetime against the current time.
     #[default]
     Verify,
 
-    /// Skip the verification of the lifeimte in leaf nodes in the ratchet tree.
+    /// Do not check the lifetime.
     Skip,
+
+    /// Check the lifetime against the given time, in seconds since the Unix
+    /// epoch, instead of the current time.
+    VerifyAt(u64),
 }
 
 /// Builder for joining a group.
@@ -1903,6 +1916,14 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     /// By default they are validated.
     pub fn skip_lifetime_validation(mut self) -> Self {
         self.validate_lifetimes = LeafNodeLifetimePolicy::Skip;
+        self
+    }
+
+    /// Sets how the lifetimes of leaf nodes in the ratchet tree are checked.
+    /// [`Self::skip_lifetime_validation`] is the same as passing
+    /// [`LeafNodeLifetimePolicy::Skip`].
+    pub fn leaf_node_lifetime_policy(mut self, lifetime_policy: LeafNodeLifetimePolicy) -> Self {
+        self.validate_lifetimes = lifetime_policy;
         self
     }
 

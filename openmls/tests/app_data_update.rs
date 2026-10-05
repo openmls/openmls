@@ -953,3 +953,108 @@ fn test_public_group_resolve_app_data_commit() {
         .merge_commit(observer_provider.storage(), *staged_commit)
         .unwrap();
 }
+
+/// A commit covering AppDataUpdate proposals is staged in a second step. The
+/// lifetime policy passed when the commit is processed also applies when it
+/// is staged.
+#[openmls_test]
+fn test_app_data_commit_keeps_lifetime_policy() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+    let observer_provider = Provider::default();
+
+    let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
+
+    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
+
+    let public_group = build_public_group(alice, &alice_party.provider, &observer_provider);
+
+    // Charlie's key package has expired. Alice commits the Add at a time it
+    // was still valid.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let charlie_pre_group = charlie_party
+        .pre_group_builder(ciphersuite)
+        .with_leaf_node_capabilities(Capabilities::new(
+            None,
+            None,
+            Some(&[ExtensionType::AppDataDictionary]),
+            Some(&[ProposalType::AppDataUpdate]),
+            None,
+        ))
+        .with_lifetime(Lifetime::init(now - 2000, now - 1000))
+        .build();
+    let mut stage = alice
+        .group
+        .commit_builder()
+        .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
+            AppDataUpdateProposal::update(16, b"value"),
+        ))])
+        .propose_adds([charlie_pre_group.key_package_bundle.key_package().clone()])
+        .leaf_node_lifetime_policy(LeafNodeLifetimePolicy::VerifyAt(now - 1500))
+        .load_psks(alice_party.provider.storage())
+        .unwrap();
+    let mut updater = stage.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(16, b"value".to_vec().into()));
+    stage.with_app_data_dictionary_updates(updater.changes());
+    let (commit_message, _, _) = stage
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_party.provider)
+        .unwrap()
+        .into_contents();
+
+    let err = public_group
+        .process_message(
+            observer_provider.crypto(),
+            to_protocol_message(commit_message.clone()),
+        )
+        .expect_err("Charlie's key package has expired");
+    assert!(matches!(
+        err,
+        PublicProcessMessageError::ValidationError(ValidationError::KeyPackageVerifyError(
+            KeyPackageVerifyError::LifetimeError(_)
+        ))
+    ));
+
+    let processed_message = bob
+        .group
+        .process_message_with_lifetime_policy(
+            &bob_party.provider,
+            to_protocol_message(commit_message.clone()),
+            LeafNodeLifetimePolicy::Skip,
+        )
+        .unwrap();
+    let unresolved_commit = expect_unresolved_app_data_commit(processed_message);
+    let mut updater = bob.group.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(16, b"value".to_vec().into()));
+    bob.group
+        .stage_app_data_commit(&bob_party.provider, *unresolved_commit, updater.changes())
+        .expect("the policy of the processing call applies");
+
+    let processed_message = public_group
+        .process_message_with_lifetime_policy(
+            observer_provider.crypto(),
+            to_protocol_message(commit_message),
+            LeafNodeLifetimePolicy::Skip,
+        )
+        .unwrap();
+    let unresolved_commit = expect_unresolved_app_data_commit(processed_message);
+    let mut updater = public_group.app_data_dictionary_updater();
+    updater.set(ComponentData::from_parts(16, b"value".to_vec().into()));
+    public_group
+        .stage_app_data_commit(
+            observer_provider.crypto(),
+            *unresolved_commit,
+            updater.changes(),
+        )
+        .expect("the policy of the processing call applies");
+}

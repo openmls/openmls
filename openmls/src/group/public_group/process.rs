@@ -15,7 +15,7 @@ use crate::{
     },
     group::{
         errors::ValidationError, past_secrets::MessageSecretsStore, proposal_store::QueuedProposal,
-        PublicProcessMessageError,
+        LeafNodeLifetimePolicy, PublicProcessMessageError,
     },
     messages::proposals::Proposal,
 };
@@ -172,6 +172,31 @@ impl PublicGroup {
         crypto: &impl OpenMlsCrypto,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, PublicProcessMessageError> {
+        self.process_message_with_lifetime_policy(crypto, message, LeafNodeLifetimePolicy::Verify)
+    }
+
+    /// Like [`Self::process_message`], but checks the lifetimes of the key
+    /// packages in Add proposals under `lifetime_policy`.
+    /// [`Self::process_message`] uses [`LeafNodeLifetimePolicy::Verify`].
+    ///
+    /// The policy is not stored on the group. An older commit can, for
+    /// example, be processed with [`LeafNodeLifetimePolicy::Skip`] if the key
+    /// package it adds has expired in the meantime. An Add proposal committed
+    /// by reference is checked again when the commit is processed, under the
+    /// policy of that call.
+    ///
+    #[cfg_attr(
+        feature = "extensions-draft",
+        doc = "If the call returns a [`ProcessedMessageContent::UnresolvedAppDataCommit`],\n\
+        [`PublicGroup::stage_app_data_commit()`] checks the commit under the same\n\
+        policy.\n"
+    )]
+    pub fn process_message_with_lifetime_policy(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        message: impl Into<ProtocolMessage>,
+        lifetime_policy: LeafNodeLifetimePolicy,
+    ) -> Result<ProcessedMessage, PublicProcessMessageError> {
         let protocol_message = message.into();
         // Checks the following semantic validation:
         //  - ValSem002
@@ -198,7 +223,7 @@ impl PublicGroup {
         let unverified_message = self
             .parse_message(decrypted_message, None)
             .map_err(PublicProcessMessageError::from)?;
-        self.process_unverified_message(crypto, unverified_message)
+        self.process_unverified_message(crypto, unverified_message, lifetime_policy)
     }
 
     #[cfg(feature = "extensions-draft")]
@@ -220,10 +245,12 @@ impl PublicGroup {
         unresolved_commit: UnresolvedAppDataCommit,
         app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<StagedCommit, StageCommitError> {
+        let lifetime_policy = unresolved_commit.lifetime_policy();
         self.stage_commit_with_app_data_updates(
             &unresolved_commit.into_content(),
             crypto,
             app_data_dict_updates,
+            lifetime_policy,
         )
     }
 
@@ -285,20 +312,30 @@ impl PublicGroup {
         &self,
         crypto: &impl OpenMlsCrypto,
         unverified_message: UnverifiedMessage,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<ProcessedMessage, PublicProcessMessageError> {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         //  - https://validation.openmls.tech/#valn1203
-        let verified = unverified_message.verify(self.ciphersuite(), crypto, self.version())?;
+        let verified = unverified_message.verify(
+            self.ciphersuite(),
+            crypto,
+            self.version(),
+            lifetime_policy,
+        )?;
         let content = verified.content;
         let credential = verified.credential;
 
         #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match content.sender() {
-            Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => {
-                self.process_internal_authenticated_content(crypto, content, credential)?
-            }
+            Sender::Member(_) | Sender::NewMemberCommit | Sender::NewMemberProposal => self
+                .process_internal_authenticated_content(
+                    crypto,
+                    content,
+                    credential,
+                    lifetime_policy,
+                )?,
             Sender::External(_) => {
                 self.process_external_authenticated_content(crypto, content, credential)?
             }
@@ -317,6 +354,7 @@ impl PublicGroup {
         crypto: &impl OpenMlsCrypto,
         content: AuthenticatedContent,
         credential: Credential,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<ProcessedMessage, PublicProcessMessageError> {
         let sender = content.sender().clone();
         let authenticated_data = content.authenticated_data().to_owned();
@@ -351,8 +389,11 @@ impl PublicGroup {
                     let app_data_update_proposals =
                         committed_app_data_update_proposals(commit, &self.proposal_store);
                     if !app_data_update_proposals.is_empty() {
-                        let unresolved_commit =
-                            UnresolvedAppDataCommit::new(content, app_data_update_proposals);
+                        let unresolved_commit = UnresolvedAppDataCommit::new(
+                            content,
+                            app_data_update_proposals,
+                            lifetime_policy,
+                        );
                         return Ok(ProcessedMessage::new(
                             self.group_id().clone(),
                             self.group_context().epoch(),
@@ -370,7 +411,7 @@ impl PublicGroup {
                 #[cfg(not(feature = "extensions-draft"))]
                 let _ = commit;
 
-                let staged_commit = self.stage_commit(&content, crypto)?;
+                let staged_commit = self.stage_commit(&content, crypto, lifetime_policy)?;
                 ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
             }
         };

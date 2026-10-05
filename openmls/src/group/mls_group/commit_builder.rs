@@ -16,8 +16,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, ExternalPubExtension, GroupContext,
-        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
-        WireFormatPolicy,
+        LeafNodeLifetimePolicy, ProposalQueue, ProposalQueueError, QueuedProposal,
+        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -125,6 +125,9 @@ pub struct Initial {
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
+
+    /// How the lifetimes of the key packages in Add proposals are checked.
+    lifetime_policy: LeafNodeLifetimePolicy,
 }
 
 impl Default for Initial {
@@ -135,6 +138,7 @@ impl Default for Initial {
             leaf_node_parameters: LeafNodeParameters::default(),
             own_proposals: vec![],
             external_commit_info: None,
+            lifetime_policy: LeafNodeLifetimePolicy::Verify,
         }
     }
 }
@@ -153,6 +157,9 @@ pub struct LoadedPsks {
 
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
+
+    /// How the lifetimes of the key packages in Add proposals are checked.
+    lifetime_policy: LeafNodeLifetimePolicy,
 
     #[cfg(feature = "extensions-draft")]
     app_data_dictionary_updates: Option<AppDataUpdates>,
@@ -446,6 +453,17 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         self
     }
 
+    /// Sets how the lifetimes of the key packages in Add proposals are checked
+    /// when the commit is built. The default is [`LeafNodeLifetimePolicy::Verify`].
+    ///
+    /// RFC 9420, Section 7.3, requires a client to check the lifetime of the
+    /// leaf nodes it sends. [`LeafNodeLifetimePolicy::VerifyAt`] is meant for
+    /// applications that use their own clock.
+    pub fn leaf_node_lifetime_policy(mut self, lifetime_policy: LeafNodeLifetimePolicy) -> Self {
+        self.stage.lifetime_policy = lifetime_policy;
+        self
+    }
+
     /// Opt this commit into the virtual-clients-draft sender flow.
     ///
     /// The commit uses the newest derivation epoch of the emulation group named
@@ -683,6 +701,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         consume_proposal_store: stage.consume_proposal_store,
                         group_info_config,
                         external_commit_info: stage.external_commit_info,
+                        lifetime_policy: stage.lifetime_policy,
                         #[cfg(feature = "extensions-draft")]
                         app_data_dictionary_updates: None,
                     },
@@ -801,6 +820,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             use_ratchet_tree_extension,
             other_extensions,
         } = cur_stage.group_info_config;
+        let lifetime_policy = cur_stage.lifetime_policy;
 
         // Stage the marker before any proposal validation or path computation,
         // so a misconfigured group is rejected before an operation generation is
@@ -926,7 +946,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             path_leaf_signature_key,
         )?;
         // ValSem105
-        group.public_group.validate_add_proposals(&proposal_queue)?;
+        group
+            .public_group
+            .validate_add_proposals(&proposal_queue, lifetime_policy)?;
         // ValSem106
         // ValSem109
         group.public_group.validate_capabilities(&proposal_queue)?;

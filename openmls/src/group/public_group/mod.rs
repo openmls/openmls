@@ -132,12 +132,40 @@ impl PublicGroup {
     where
         StorageProvider: PublicStorageProvider<Error = StorageError>,
     {
+        Self::from_external_with_lifetime_policy(
+            crypto,
+            storage,
+            ratchet_tree,
+            verifiable_group_info,
+            proposal_store,
+            LeafNodeLifetimePolicy::Verify,
+        )
+    }
+
+    /// Like [`Self::from_external`], but checks the lifetimes of the leaf nodes
+    /// in the ratchet tree under `lifetime_policy`.
+    ///
+    /// A leaf node keeps the lifetime of its key package until its member
+    /// sends an Update or a commit with a path, so the ratchet tree can contain
+    /// expired leaf nodes. RFC 9420, Section 7.3, recommends the check for
+    /// received leaf nodes but does not require it.
+    pub fn from_external_with_lifetime_policy<StorageProvider, StorageError>(
+        crypto: &impl OpenMlsCrypto,
+        storage: &StorageProvider,
+        ratchet_tree: RatchetTreeIn,
+        verifiable_group_info: VerifiableGroupInfo,
+        proposal_store: ProposalStore,
+        lifetime_policy: LeafNodeLifetimePolicy,
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError<StorageError>>
+    where
+        StorageProvider: PublicStorageProvider<Error = StorageError>,
+    {
         let (public_group, group_info) = PublicGroup::from_ratchet_tree(
             crypto,
             ratchet_tree,
             verifiable_group_info,
             proposal_store,
-            LeafNodeLifetimePolicy::Verify,
+            lifetime_policy,
         )?;
 
         public_group
@@ -305,7 +333,7 @@ impl PublicGroup {
             .treesync
             .full_leaves()
             .try_for_each(|(_, leaf_node)| {
-                public_group.validate_leaf_node_inner(leaf_node, validate_lifetimes)
+                public_group.validate_leaf_node(leaf_node, validate_lifetimes)
             })?;
 
         Ok((public_group, group_info))

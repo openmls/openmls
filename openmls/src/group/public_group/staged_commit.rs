@@ -50,6 +50,7 @@ impl PublicGroup {
         &self,
         mls_content: &'a AuthenticatedContent,
         crypto: &impl OpenMlsCrypto,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<(&'a Commit, ProposalQueue, LeafNodeIndex), StageCommitError> {
         let ciphersuite = self.ciphersuite();
 
@@ -146,7 +147,8 @@ impl PublicGroup {
 
         // https://validation.openmls.tech/#valn1207
         if let Some(update_path) = &commit.path {
-            self.validate_leaf_node(update_path.leaf_node())?;
+            // The leaf node of a Commit carries no lifetime.
+            self.validate_leaf_node(update_path.leaf_node(), LeafNodeLifetimePolicy::Verify)?;
 
             // The capabilities of the leaf node in the path MUST support all
             // group context extensions.
@@ -181,7 +183,7 @@ impl PublicGroup {
                 .map(|path| path.leaf_node().signature_key()),
         )?;
         // ValSem105
-        self.validate_add_proposals(&proposal_queue)?;
+        self.validate_add_proposals(&proposal_queue, lifetime_policy)?;
         // ValSem106
         // ValSem109
         self.validate_capabilities(&proposal_queue)?;
@@ -298,8 +300,10 @@ impl PublicGroup {
         &self,
         mls_content: &AuthenticatedContent,
         crypto: &impl OpenMlsCrypto,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
+        let (commit, proposal_queue, sender_index) =
+            self.validate_commit(mls_content, crypto, lifetime_policy)?;
 
         let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, crypto)?;
         let staged_state = PublicStagedCommitState {
@@ -323,8 +327,10 @@ impl PublicGroup {
         mls_content: &AuthenticatedContent,
         crypto: &impl OpenMlsCrypto,
         app_data_dict_updates: Option<AppDataUpdates>,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (commit, proposal_queue, sender_index) = self.validate_commit(mls_content, crypto)?;
+        let (commit, proposal_queue, sender_index) =
+            self.validate_commit(mls_content, crypto, lifetime_policy)?;
 
         let staged_diff = self.stage_diff_with_app_data_updates(
             mls_content,

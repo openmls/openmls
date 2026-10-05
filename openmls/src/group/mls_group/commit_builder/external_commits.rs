@@ -153,6 +153,14 @@ impl ExternalCommitBuilder {
         self
     }
 
+    /// Sets how the lifetimes of leaf nodes in the ratchet tree are checked.
+    /// [`Self::skip_lifetime_validation`] is the same as passing
+    /// [`LeafNodeLifetimePolicy::Skip`].
+    pub fn leaf_node_lifetime_policy(mut self, lifetime_policy: LeafNodeLifetimePolicy) -> Self {
+        self.validate_lifetimes = lifetime_policy;
+        self
+    }
+
     /// Build the [`MlsGroup`] from the provided [`VerifiableGroupInfo`] and
     /// [`CredentialWithKey`].
     ///
@@ -265,6 +273,8 @@ impl ExternalCommitBuilder {
                 ciphersuite,
                 provider.crypto(),
                 ProtocolVersion::default(),
+                // The policy of the builder applies to the ratchet tree only.
+                LeafNodeLifetimePolicy::Verify,
             )?;
             let queued_proposal = QueuedProposal::from_authenticated_content(
                 ciphersuite,
