@@ -637,13 +637,14 @@ the retained virtual clients KeyPackage material for every reference in
 <p>A sibling calls this once when it processes a <code>KeyPackageUpload</code>: the
 upload consumes one operation generation in the tree and produces one
 <a href="traits::RetainedKeyPackageMaterial"><code>RetainedKeyPackageMaterial</code></a> per
-KeyPackage. These writes belong together: the tree must never be
-persisted as advanced without the materials it produced. Providers do
-not open their own transaction, so an application using a transactional
-provider (such as SQLite) should call this within a transaction to get
-atomicity and rollback on error. The in-memory provider applies the
-writes while holding its write lock. Each material is keyed by its
-<a href="traits::HashReference"><code>HashReference</code></a>
+KeyPackage. The uploader calls it once when it finalizes the batch, for
+the generation the batch consumed. These writes belong together: the
+tree must never be persisted as advanced without the materials it
+produced. Providers do not open their own transaction, so an
+application using a transactional provider (such as SQLite) should call
+this within a transaction to get atomicity and rollback on error. The
+in-memory provider applies the writes while holding its write lock.
+Each material is keyed by its <a href="traits::HashReference"><code>HashReference</code></a>
 and tagged with <code>epoch_id</code> so the sweep
 (<a href="trait.StorageProviderTrait.html#tymethod.delete_unreferenced_vc_derivation_epoch_states" title="method openmls::test_utils::StorageProviderTrait::delete_unreferenced_vc_derivation_epoch_states"><code>Self::delete_unreferenced_vc_derivation_epoch_states</code></a>) can find it.
 A subsequent write for the same reference replaces the stored material.</p>
