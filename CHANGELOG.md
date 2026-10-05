@@ -15,17 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2184](https://github.com/openmls/openmls/pull/2184): Added `PreSharedKeyProposal::psk`, a getter for the `PreSharedKeyId` of a `PreSharedKey` proposal.
 - [#2167](https://github.com/openmls/openmls/pull/2167): Added `PublicGroup::validate_key_package_for_add`, which checks whether a single `KeyPackage` is eligible to be added to the group without building a commit. Applications adding several members at once can use it to filter out candidates that a commit would reject, and to report which candidate was rejected and why. Uniqueness of the signature, init and encryption keys is not covered, since it can only be decided for a full set of proposals.
 - [#2206](https://github.com/openmls/openmls/pull/2206): Added `KeyPackageVerifyError::UnsupportedCiphersuite`, returned by `KeyPackageIn::validate` when the crypto provider does not support the key package's ciphersuite. Previously the check was missing on this path, and such a key package was reported as `InvalidLeafNodeSignature` even though its signature is valid.
-- Added `LeafNodeLifetimePolicy::VerifyAt`, which checks the lifetime of a leaf node against a time the caller passes, in seconds since the Unix epoch, instead of the system clock.
-- Added `MlsGroup::process_message_with_lifetime_policy` and `PublicGroup::process_message_with_lifetime_policy`. They work like `process_message`, but check the lifetimes of the key packages in Add proposals under the given `LeafNodeLifetimePolicy`. The policy is not stored on the group. If the call returns an `UnresolvedAppDataCommit`, the policy also applies when it is staged.
-- Added `PublicGroup::from_external_with_lifetime_policy`, which checks the lifetimes of the leaf nodes in the ratchet tree under the given `LeafNodeLifetimePolicy`.
-- Added `leaf_node_lifetime_policy` to `CommitBuilder`, `BranchGroupBuilder`, `JoinBuilder` and `ExternalCommitBuilder`. On the first two it applies to the key packages of the new members when the commit is built, on the other two to the leaf nodes in the ratchet tree.
-- Added `KeyPackageIn::validate_with_lifetime_policy` and `PublicGroup::validate_key_package_for_add_with_lifetime_policy`. They work like `validate` and `validate_key_package_for_add`, but check the lifetime under the given `LeafNodeLifetimePolicy`.
+- [#2257](https://github.com/openmls/openmls/pull/2257): Added `LeafNodeLifetimePolicy::VerifyAt`, which checks the lifetime of a leaf node against a time the caller passes, in seconds since the Unix epoch, instead of the system clock.
+- [#2257](https://github.com/openmls/openmls/pull/2257): Added `MlsGroup::process_message_with_lifetime_policy` and `PublicGroup::process_message_with_lifetime_policy`. They work like `process_message`, but check the lifetimes of the key packages in Add proposals under the given `LeafNodeLifetimePolicy`. The policy is not stored on the group. If the call returns an `UnresolvedAppDataCommit`, the policy also applies when it is staged.
+- [#2257](https://github.com/openmls/openmls/pull/2257): Added `PublicGroup::from_external_with_lifetime_policy`, which checks the lifetimes of the leaf nodes in the ratchet tree under the given `LeafNodeLifetimePolicy`.
+- [#2257](https://github.com/openmls/openmls/pull/2257): Added `leaf_node_lifetime_policy` to `CommitBuilder`, `BranchGroupBuilder`, `JoinBuilder` and `ExternalCommitBuilder`. On the first two it applies to the key packages of the new members when the commit is built, on the other two to the leaf nodes in the ratchet tree.
+- [#2257](https://github.com/openmls/openmls/pull/2257): Added `KeyPackageIn::validate_with_lifetime_policy` and `PublicGroup::validate_key_package_for_add_with_lifetime_policy`. They work like `validate` and `validate_key_package_for_add`, but check the lifetime under the given `LeafNodeLifetimePolicy`.
 
 ### Changed
 
 - [#2202](https://github.com/openmls/openmls/pull/2202): The secret export functions on `MlsGroup`, `StagedCommit`, `StagedWelcome`, `ProcessedWelcome` and `ProcessedMessage` now return `ExportedSecret<T>` instead of `Vec<u8>`. The new type zeroizes the secret on drop and is parameterized with a marker struct recording which function produced the secret. Use `as_slice()` to access the secret bytes.
 - Raised MSRV to Rust 1.94.
-- `LeafNodeLifetimePolicy` has the new variant `VerifyAt`, so an exhaustive `match` on it needs another arm.
+- [#2257](https://github.com/openmls/openmls/pull/2257): `LeafNodeLifetimePolicy` has the new variant `VerifyAt`, so an exhaustive `match` on it needs another arm.
 
 ### Removed
 
