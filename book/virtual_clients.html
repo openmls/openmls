@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a7e9edab.js";
+            window.path_to_searchindex_js = "searchindex-9b12ae4d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-81492934.js"></script>
@@ -484,6 +484,15 @@ picks a value congruent to its emulation leaf index modulo the emulation group
 size, and encrypts it with a small-space PRP keyed from <code>reuse_guard_secret</code>.</p>
 <p>Once the Delivery Service accepts the message, drop the retained key:</p>
 <pre><code class="language-rust no_run noplayground">main_group.confirm_application_message(provider.storage(), unconfirmed.epoch, unconfirmed.generation)?;</code></pre>
+<p>When the Delivery Service fans the confirmed message back, <code>process_message</code>
+returns <code>ProcessedMessageContent::OwnPrivateMessage</code>, so it can be skipped. Only
+a confirmed generation is reported this way. A second delivery of an own-leaf
+message whose generation was already used for a decryption attempt fails with
+<code>SecretTreeError::SecretReuseError</code>, like a duplicate from any other member,
+because that attempt may not have succeeded. An own-leaf message older than the
+oldest generation pruned from the receive window fails with
+<code>SecretTreeError::TooDistantInThePast</code>, because it may be a sibling’s message
+that was never processed.</p>
 <p>If the Delivery Service reports a collision, the sibling won that generation.
 Process the winning message through <code>process_message</code>, which has a carve-out for
 messages arriving from the receiver’s own leaf. Decrypting the winner consumes
