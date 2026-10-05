@@ -20,6 +20,7 @@ libcrux-hmac-drbg = { version = "0.0.2", features = ["rand"] }
 libcrux-traits = { version = "0.0.9" }
 libcrux-ecdsa = { version = "0.0.9", features = ["rand"] }
 libcrux-ml-dsa = { version = "0.0.11", optional = true }
+libcrux-sha3 = { version = "0.0.11", optional = true }
 
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
@@ -49,6 +50,13 @@ draft-ietf-mls-pq-ciphersuites = [
     "hpke-rs-libcrux/draft-ietf-hpke-pq",
     "openmls_rust_crypto/draft-ietf-mls-pq-ciphersuites",
 ]
+# Derive HPKE key pairs for the legacy X-Wing ciphersuite
+# `MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519` (0x004D) the way
+# openmls_libcrux_crypto 0.4.0 (openmls 0.9.0) did (unlabeled `SHAKE256(ikm, 32)`)
+# instead of draft-ietf-hpke-pq's `SHAKE256.LabeledDerive`. Only needed to
+# interoperate with existing 0.4.0 groups on that ciphersuite; all other
+# ciphersuites are unaffected.
+legacy-pq-key-derivation = ["draft-ietf-mls-pq-ciphersuites", "dep:libcrux-sha3"]
 virtual-clients-draft = [
     "extensions-draft",
     "openmls_traits/virtual-clients-draft",

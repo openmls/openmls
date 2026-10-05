@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#2170](https://github.com/openmls/openmls/pull/2170): ML-DSA-44/65/87 signatures via `libcrux-ml-dsa`, and pure ML-KEM KEMs via `hpke-rs-libcrux`'s `draft-ietf-hpke-pq`, so the ML-DSA ciphersuites from `draft-ietf-mls-pq-ciphersuites` are now supported by the libcrux provider (behind the `draft-ietf-mls-pq-ciphersuites` feature flag). Key and signature encodings match the RustCrypto provider.
 
+- [#XXXX](https://github.com/openmls/openmls/pull/XXXX): The libcrux provider now also advertises `MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519`, `MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519`, `MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519` and `MLS_128_MLKEM768_AES256GCM_SHA384_P256` from `draft-ietf-mls-pq-ciphersuites` in `supported_ciphersuites()` (all already accepted by `supports()`).
+- [#XXXX](https://github.com/openmls/openmls/pull/XXXX): New `legacy-pq-key-derivation` feature flag: derives HPKE key pairs for the legacy `MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519` (0x004D) ciphersuite the way 0.4.0 did, to interoperate with existing groups on that ciphersuite. See below.
+
+### Changed
+
+- [#XXXX](https://github.com/openmls/openmls/pull/XXXX): HPKE key derivation (`derive_hpke_keypair`) for the ML-KEM and X-Wing KEMs now follows `draft-ietf-hpke-pq` (`SHAKE256.LabeledDerive(ikm, "DeriveKeyPair", "", Nsk)`) instead of the unlabeled `SHAKE256(ikm, Nsk)`, and ML-KEM private keys are now the 64-byte seed instead of the expanded decapsulation key. This is a breaking change for groups created with 0.4.0 on PQ ciphersuites:
+  - `MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519` (0x004D): keys derived from path secrets no longer match those of 0.4.0 peers, so mixed-version groups fail on commits with an update path. Stored keys keep working. Enable `legacy-pq-key-derivation` to keep the 0.4.0 derivation for this ciphersuite (all other ciphersuites are unaffected), and migrate such groups (e.g. via ReInit) to a `draft-ietf-mls-pq-ciphersuites` ciphersuite.
+  - `MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519` (0xF042) is the provisional code point of the draft's TBD6 and uses the new derivation. Groups created with 0.4.0 on it cannot be carried over: the derivation differs and stored ML-KEM private keys are in the old expanded format.
+
 ## 0.4.0 (2026-08-25)
 
 ### Added
