@@ -31,7 +31,10 @@ use crate::{
     error::LibraryError,
     extensions::ExternalSendersExtension,
     group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
-    tree::sender_ratchet::SenderRatchetConfiguration,
+    tree::{
+        secret_tree::{DecryptionSecret, SecretType},
+        sender_ratchet::SenderRatchetConfiguration,
+    },
     versions::ProtocolVersion,
 };
 
@@ -171,8 +174,9 @@ impl DecryptedMessage {
         // decryptable when there is an emulator context for this epoch: a
         // sibling emulator client shares the leaf, and the dual-use ratchet
         // retains the secrets of unconfirmed own sends. In that case we still
-        // attempt decryption below, and only its failure surfaces the message
-        // as an own private message.
+        // look up the secret below. The message only surfaces as an own
+        // private message when the lookup finds that this client confirmed
+        // the send.
         //
         // Without an emulator context the group does not use virtual clients
         // (which is the case for the emulation group) so an own message is
@@ -197,34 +201,37 @@ impl DecryptedMessage {
             .message_secrets_for_epoch_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let generation = sender_data.generation;
-        let decrypt_result = ciphertext.to_verifiable_content(
+        let decryption_secret = message_secrets.secret_tree_mut().secret_for_decryption(
             ciphersuite,
             crypto,
-            message_secrets,
             sender_data.leaf_index,
+            SecretType::from(&ciphertext.content_type()),
+            generation,
             sender_ratchet_configuration,
-            sender_data,
-            #[cfg(feature = "virtual-clients-draft")]
-            effective_emulator_ctx,
         );
-        let decrypted = match decrypt_result {
-            Ok(decrypted) => decrypted,
+        let ratchet_key_material = match decryption_secret {
+            Ok(DecryptionSecret::Available(ratchet_key_material)) => ratchet_key_material,
             #[cfg(feature = "virtual-clients-draft")]
-            Err(MessageDecryptionError::SecretTreeError(SecretTreeError::OwnMessageConfirmed))
-                if own_sender =>
-            {
+            Ok(DecryptionSecret::OwnMessageConfirmed) => {
                 log::debug!("  Own generation {generation} was already confirmed.");
                 return Ok(InboundDecryptionResult::OwnPrivateMessage {
                     epoch: ciphertext.epoch(),
                     authenticated_data: ciphertext.aad().to_vec(),
                 });
             }
-            Err(MessageDecryptionError::SecretTreeError(e)) => {
+            Err(e) => {
                 log::error!("  Ciphertext generation out of bounds {generation}\n\t{e:?}");
                 return Err(MessageDecryptionError::SecretTreeError(e).into());
             }
-            Err(e) => return Err(e.into()),
         };
+        let decrypted = ciphertext.to_verifiable_content(
+            crypto,
+            message_secrets,
+            ratchet_key_material,
+            sender_data,
+            #[cfg(feature = "virtual-clients-draft")]
+            effective_emulator_ctx,
+        )?;
         Self::from_verifiable_content(
             decrypted.verifiable,
             #[cfg(feature = "virtual-clients-draft")]

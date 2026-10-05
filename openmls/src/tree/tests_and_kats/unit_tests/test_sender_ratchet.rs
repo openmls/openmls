@@ -1,5 +1,5 @@
 #[cfg(feature = "virtual-clients-draft")]
-use crate::tree::dual_use_ratchet::DualUseRatchet;
+use crate::tree::{dual_use_ratchet::DualUseRatchet, secret_tree::DecryptionSecret};
 use crate::{
     ciphersuite::Secret, test_utils::*, tree::secret_tree::SecretTreeError, tree::sender_ratchet::*,
 };
@@ -160,7 +160,7 @@ fn sender_ratchet_generation_overflow() {
 
 // Encrypting caches the secret in the past-secrets window, then `confirm`
 // (i.e. `delete_secret_for_generation`) drops it, and a later attempt to
-// decrypt that generation fails as `OwnMessageConfirmed`.
+// decrypt that generation reports `OwnMessageConfirmed`.
 #[cfg(feature = "virtual-clients-draft")]
 #[openmls_test::openmls_test]
 fn dual_use_encrypt_confirm_drops_secret() {
@@ -178,11 +178,12 @@ fn dual_use_encrypt_confirm_drops_secret() {
     // Confirm the message, dropping the cached encryption secret.
     ratchet.delete_secret_for_generation(generation);
 
-    // Decrypting at the same generation now fails since the entry was removed.
-    let err = ratchet
+    // Decrypting at the same generation now reports a confirmed own send
+    // since the entry was removed.
+    let decryption_secret = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), generation, configuration)
-        .expect_err("Confirmed secret should be unavailable.");
-    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
+        .expect("Expected a lookup result.");
+    assert_eq!(decryption_secret, DecryptionSecret::OwnMessageConfirmed);
 }
 
 // Without confirming, the local sender can decrypt their own message (the
@@ -203,7 +204,9 @@ fn dual_use_encrypt_then_decrypt_own() {
     // First decryption succeeds — the secret was cached when we encrypted.
     let _decrypted = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), generation, configuration)
-        .expect("Expected to decrypt own message.");
+        .expect("Expected to decrypt own message.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 
     // Second decryption at the same generation fails.
     let err = ratchet
@@ -246,11 +249,11 @@ fn dual_use_delete_secret_edge_cases() {
     ratchet.delete_secret_for_generation(gen0);
     ratchet.delete_secret_for_generation(gen0);
 
-    // Decrypting that generation now fails.
-    let err = ratchet
+    // Decrypting that generation now reports a confirmed own send.
+    let decryption_secret = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), gen0, configuration)
-        .expect_err("Deleted secret should be unavailable.");
-    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
+        .expect("Expected a lookup result.");
+    assert_eq!(decryption_secret, DecryptionSecret::OwnMessageConfirmed);
 }
 
 // Encrypting more than `out_of_order_tolerance` messages without confirming or
@@ -289,7 +292,9 @@ fn dual_use_decrypts_past_out_of_order_tolerance() {
             first_generation,
             configuration,
         )
-        .expect("Old encryption secret should still be retrievable for own decryption.");
+        .expect("Old encryption secret should still be retrievable for own decryption.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 }
 
 // Confirming later messages must not advance the receive-side retention
@@ -323,7 +328,9 @@ fn dual_use_confirming_later_messages_keeps_old_unconfirmed_secret() {
             first_generation,
             configuration,
         )
-        .expect("Old unconfirmed secret should still be retrievable for own decryption.");
+        .expect("Old unconfirmed secret should still be retrievable for own decryption.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 }
 
 // Successful decryption is what advances the receive-side window. Secrets
@@ -345,7 +352,9 @@ fn dual_use_decryption_moves_receive_window() {
             target_generation,
             configuration,
         )
-        .expect("Expected decryption secret.");
+        .expect("Expected decryption secret.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 
     let too_old_generation = target_generation - configuration.out_of_order_tolerance();
     let err = ratchet
@@ -366,7 +375,9 @@ fn dual_use_decryption_moves_receive_window() {
             retained_generation,
             configuration,
         )
-        .expect("Expected retained out-of-order secret.");
+        .expect("Expected retained out-of-order secret.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 }
 
 // Local sends must not occupy slots in the receive-side retention window. Only
@@ -391,7 +402,9 @@ fn dual_use_local_sends_do_not_advance_receive_window() {
             first_received_generation,
             configuration,
         )
-        .expect("Expected first decryption secret.");
+        .expect("Expected first decryption secret.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 
     for _ in 0..configuration.out_of_order_tolerance() {
         let (generation, _) = ratchet
@@ -408,7 +421,9 @@ fn dual_use_local_sends_do_not_advance_receive_window() {
             later_received_generation,
             configuration,
         )
-        .expect("Expected later decryption secret.");
+        .expect("Expected later decryption secret.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 
     let pruned_by_later_decryption =
         first_received_generation.saturating_sub(configuration.out_of_order_tolerance()) + 1;
@@ -430,7 +445,9 @@ fn dual_use_local_sends_do_not_advance_receive_window() {
             retained_across_local_sends,
             configuration,
         )
-        .expect("Local sends should not prune the receive window.");
+        .expect("Local sends should not prune the receive window.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 }
 
 // Without out-of-order tolerance every receive-window entry is pruned right
@@ -446,7 +463,9 @@ fn dual_use_zero_tolerance_pruned_generation_is_too_distant() {
 
     let _decrypted = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), 1, configuration)
-        .expect("Expected decryption secret.");
+        .expect("Expected decryption secret.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 
     let err = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
@@ -478,17 +497,19 @@ fn dual_use_confirmed_generation_older_than_receive_window_is_own_message_confir
             received_generation,
             configuration,
         )
-        .expect("Expected decryption secret.");
+        .expect("Expected decryption secret.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 
-    let err = ratchet
+    let decryption_secret = ratchet
         .secret_for_decryption(
             ciphersuite,
             provider.crypto(),
             confirmed_generation,
             configuration,
         )
-        .expect_err("Confirmed secret should be unavailable.");
-    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
+        .expect("Expected a lookup result.");
+    assert_eq!(decryption_secret, DecryptionSecret::OwnMessageConfirmed);
 }
 
 #[cfg(feature = "virtual-clients-draft")]
@@ -521,7 +542,9 @@ fn dual_use_persisted_prune_bound_is_kept() {
 
     let _decrypted = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), 1, configuration)
-        .expect("Expected decryption secret.");
+        .expect("Expected decryption secret.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 
     let mut restored = round_trip(&ratchet);
     let err = restored
@@ -544,17 +567,21 @@ fn dual_use_state_without_prune_bound_heals_on_next_pruning() {
 
     let _decrypted = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), 1, configuration)
-        .expect("Expected decryption secret.");
+        .expect("Expected decryption secret.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
 
     let mut restored = round_trip_without_prune_bound(&ratchet);
-    let err = restored
+    let decryption_secret = restored
         .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
-        .expect_err("A pruned generation should be unavailable.");
-    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
+        .expect("Expected a lookup result.");
+    assert_eq!(decryption_secret, DecryptionSecret::OwnMessageConfirmed);
 
     let _decrypted = restored
         .secret_for_decryption(ciphersuite, provider.crypto(), 2, configuration)
-        .expect("Expected decryption secret.");
+        .expect("Expected decryption secret.")
+        .available()
+        .expect("Expected key material, not a confirmed own send.");
     let err = restored
         .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
         .expect_err("A pruned generation should be unavailable.");
@@ -575,8 +602,8 @@ fn dual_use_promoted_ratchet_treats_past_generation_as_own_send() {
         .expect("Expected ratchet to advance.");
     let mut ratchet = DualUseRatchet::from(ratchet_head);
 
-    let err = ratchet
+    let decryption_secret = ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
-        .expect_err("A pre-promotion generation should be unavailable.");
-    assert_eq!(err, SecretTreeError::OwnMessageConfirmed);
+        .expect("Expected a lookup result.");
+    assert_eq!(decryption_secret, DecryptionSecret::OwnMessageConfirmed);
 }

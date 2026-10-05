@@ -11,7 +11,7 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 
 use crate::ciphersuite::Secret;
-use crate::tree::secret_tree::SecretTreeError;
+use crate::tree::secret_tree::{DecryptionSecret, SecretTreeError};
 use crate::tree::sender_ratchet::{
     Generation, RatchetKeyMaterial, RatchetSecret, SenderRatchetConfiguration,
 };
@@ -156,15 +156,18 @@ impl DualUseRatchet {
     ///
     /// The receive-side retention window is computed only from generations
     /// retained for decryption because encryption also advances the derivation
-    /// head. Local sends don't enter this window. Unconfirmed encryption secrets
-    /// are retained even if they fall outside the receive window.
+    /// head. Local sends don't enter this window. Unconfirmed encryption
+    /// secrets are retained even if they fall outside the receive window.
+    ///
+    /// A generation used in own messages that was already confirmed previously
+    /// returns [`DecryptionSecret::OwnMessageConfirmed`].
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         generation: Generation,
         configuration: &SenderRatchetConfiguration,
-    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
+    ) -> Result<DecryptionSecret, SecretTreeError> {
         log::debug!("secret_for_decryption");
         let head_generation = self.ratchet_head.generation();
         if head_generation < u32::MAX - configuration.maximum_forward_distance()
@@ -197,22 +200,24 @@ impl DualUseRatchet {
             ratchet_secrets
         } else {
             let Some(entry) = self.past_secrets.get_mut(&generation) else {
-                return Err(self.error_for_missing_past_secret(generation));
+                return self.missing_past_secret(generation);
             };
             entry.take_for_decryption()?
         };
 
         self.prune_past_secrets(configuration);
-        Ok(ratchet_secrets)
+        Ok(DecryptionSecret::Available(ratchet_secrets))
     }
 
-    fn error_for_missing_past_secret(&self, generation: Generation) -> SecretTreeError {
+    fn missing_past_secret(
+        &self,
+        generation: Generation,
+    ) -> Result<DecryptionSecret, SecretTreeError> {
         if generation < self.pruned_below {
             log::error!("  Generation is too far in the past (not in the window).");
-            SecretTreeError::TooDistantInThePast
-        } else {
-            SecretTreeError::OwnMessageConfirmed
+            return Err(SecretTreeError::TooDistantInThePast);
         }
+        Ok(DecryptionSecret::OwnMessageConfirmed)
     }
 
     fn prune_past_secrets(&mut self, configuration: &SenderRatchetConfiguration) {
