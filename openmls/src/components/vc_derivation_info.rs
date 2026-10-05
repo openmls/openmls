@@ -585,6 +585,14 @@ pub struct KeyPackageUpload {
 /// can hold more KeyPackages than that tolerance, and Welcomes can arrive in
 /// any order, yet every seed remains available because the single batch
 /// generation is consumed once and each seed is stored alongside its index.
+///
+/// The uploader stores the same material when it finalizes the batch, next to
+/// its KeyPackages. It joins through the KeyPackage itself, so for the uploader
+/// the material only keeps the derivation epoch alive, as it does for the
+/// sibling (see
+/// [`StorageProvider::delete_unreferenced_vc_derivation_epoch_states`]).
+///
+/// [`StorageProvider::delete_unreferenced_vc_derivation_epoch_states`]: openmls_traits::storage::StorageProvider::delete_unreferenced_vc_derivation_epoch_states
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RetainedKeyPackageMaterial {
     /// Derivation epoch the KeyPackage belongs to.
