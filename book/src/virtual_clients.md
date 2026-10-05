@@ -405,6 +405,16 @@ Once the Delivery Service accepts the message, drop the retained key:
 main_group.confirm_application_message(provider.storage(), unconfirmed.epoch, unconfirmed.generation)?;
 ```
 
+When the Delivery Service fans the confirmed message back, `process_message`
+returns `ProcessedMessageContent::OwnPrivateMessage`, so it can be skipped. Only
+a confirmed generation is reported this way. A second delivery of an own-leaf
+message whose generation was already used for a decryption attempt fails with
+`SecretTreeError::SecretReuseError`, like a duplicate from any other member,
+because that attempt may not have succeeded. An own-leaf message older than the
+oldest generation pruned from the receive window fails with
+`SecretTreeError::TooDistantInThePast`, because it may be a sibling's message
+that was never processed.
+
 If the Delivery Service reports a collision, the sibling won that generation.
 Process the winning message through `process_message`, which has a carve-out for
 messages arriving from the receiver's own leaf. Decrypting the winner consumes

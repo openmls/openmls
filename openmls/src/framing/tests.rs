@@ -17,7 +17,10 @@ use crate::{
     schedule::psk::PskSecret,
     storage::OpenMlsProvider,
     test_utils::frankenstein::*,
-    tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
+    tree::{
+        secret_tree::{SecretTree, SecretType},
+        sender_ratchet::SenderRatchetConfiguration,
+    },
 };
 
 /// This tests serializing/deserializing PublicMessage
@@ -205,13 +208,24 @@ fn wire_format_checks() {
     let sender_data = ciphertext
         .sender_data(&message_secrets, provider.crypto(), ciphersuite)
         .expect("Could not decrypt sender data.");
-    let verifiable_plaintext = ciphertext
-        .to_verifiable_content(
+    let ratchet_key_material = message_secrets
+        .secret_tree_mut()
+        .secret_for_decryption(
             ciphersuite,
             provider.crypto(),
-            &mut message_secrets,
             sender_index,
+            SecretType::from(&ciphertext.content_type()),
+            sender_data.generation,
             configuration,
+        )
+        .expect("Could not get decryption secret.")
+        .available()
+        .expect("Expected key material of another member.");
+    let verifiable_plaintext = ciphertext
+        .to_verifiable_content(
+            provider.crypto(),
+            &message_secrets,
+            ratchet_key_material,
             sender_data,
             #[cfg(feature = "virtual-clients-draft")]
             None,
@@ -254,13 +268,24 @@ fn wire_format_checks() {
     let sender_data = ciphertext
         .sender_data(&message_secrets, provider.crypto(), ciphersuite)
         .expect("Could not decrypt sender data.");
-    let verifiable_plaintext = ciphertext
-        .to_verifiable_content(
+    let ratchet_key_material = message_secrets
+        .secret_tree_mut()
+        .secret_for_decryption(
             ciphersuite,
             provider.crypto(),
-            &mut message_secrets,
             sender_index,
+            SecretType::from(&ciphertext.content_type()),
+            sender_data.generation,
             configuration,
+        )
+        .expect("Could not get decryption secret.")
+        .available()
+        .expect("Expected key material of another member.");
+    let verifiable_plaintext = ciphertext
+        .to_verifiable_content(
+            provider.crypto(),
+            &message_secrets,
+            ratchet_key_material,
             sender_data,
             #[cfg(feature = "virtual-clients-draft")]
             None,
