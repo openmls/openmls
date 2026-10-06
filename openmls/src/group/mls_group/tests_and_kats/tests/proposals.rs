@@ -295,12 +295,19 @@ fn required_extension_key_package_mismatch() {
     let required_capabilities =
         RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
+    let alice_capabilities = Capabilities::builder()
+        .extensions(vec![ExtensionType::Unknown(0xff00)])
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .build();
+
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(
             Extensions::single(Extension::RequiredCapabilities(required_capabilities))
                 .expect("failed to create single-element extensions list"),
         )
+        .with_capabilities(alice_capabilities)
         .build(alice_provider, &alice_signer, alice_credential)
         .expect("Error creating MlsGroup.");
 
@@ -529,7 +536,7 @@ fn self_remove_proposals() {
         Some(&[ciphersuite]),
         None,
         Some(&[ProposalType::SelfRemove]),
-        None,
+        Some(&[CredentialType::Basic]),
     );
 
     // Generate KeyPackages

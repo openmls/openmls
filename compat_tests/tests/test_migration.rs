@@ -777,8 +777,13 @@ fn test_migration_pending_app_ephemeral_commit_impl<T: StorageMigrationTarget>()
 
         // Members must support the AppEphemeral proposal type for the commit to
         // validate.
-        let capabilities =
-            Capabilities::new(None, None, None, Some(&[ProposalType::AppEphemeral]), None);
+        let capabilities = Capabilities::new(
+            None,
+            Some(&[ciphersuite]),
+            None,
+            Some(&[ProposalType::AppEphemeral]),
+            Some(&[CredentialType::Basic]),
+        );
         let config = MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .capabilities(capabilities.clone())

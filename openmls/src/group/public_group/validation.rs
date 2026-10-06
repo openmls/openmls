@@ -28,7 +28,7 @@ use crate::{
     },
     prelude::LibraryError,
     schedule::{errors::PskError, psk::ResumptionPskUsage, Psk},
-    treesync::{errors::LeafNodeValidationError, LeafNode},
+    treesync::{errors::LeafNodeValidationError, node::leaf_node::LeafNodeConstraints, LeafNode},
 };
 
 #[cfg(feature = "extensions-draft")]
@@ -911,6 +911,15 @@ impl PublicGroup {
         }
 
         Ok(())
+    }
+
+    /// Compile the leaf node constraints for this group.
+    /// This is built from the group context and every group member.
+    pub(crate) fn leaf_node_constraints(&self) -> LeafNodeConstraints {
+        LeafNodeConstraints::new(
+            self.group_context().extensions(),
+            self.treesync().full_leaves().map(|(_, member)| member),
+        )
     }
 
     /// Validate a leaf node.

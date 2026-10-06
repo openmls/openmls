@@ -34,7 +34,8 @@ use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::{
         leaf_node::{
-            Capabilities, NewLeafNodeParams, TreeInfoTbs, TreePosition, VerifiableLeafNode,
+            Capabilities, LeafNodeConstraints, NewLeafNodeParams, TreeInfoTbs, TreePosition,
+            VerifiableLeafNode,
         },
         NodeIn,
     },
@@ -82,8 +83,8 @@ pub use node::encryption_keys::EncryptionKey;
 // Public re-exports
 pub use node::{
     leaf_node::{
-        LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeSource,
-        LeafNodeUpdateError,
+        CapabilitiesPolicy, LeafNode, LeafNodeBuildError, LeafNodeParameters,
+        LeafNodeParametersBuilder, LeafNodeSource, LeafNodeUpdateError,
     },
     parent_node::ParentNode,
     Node,
@@ -440,6 +441,7 @@ impl TreeSync {
     ///
     /// Returns the resulting [`TreeSync`] instance, as well as the
     /// corresponding [`CommitSecret`].
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
@@ -448,7 +450,9 @@ impl TreeSync {
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions<LeafNode>,
-    ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
+        constraints: LeafNodeConstraints,
+        capabilities_policy: CapabilitiesPolicy,
+    ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LeafNodeBuildError> {
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
             credential_with_key,
@@ -457,6 +461,8 @@ impl TreeSync {
             capabilities,
             extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            constraints,
+            capabilities_policy,
         };
         let (leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)?;
 
@@ -501,7 +507,9 @@ impl TreeSync {
         capabilities: Capabilities,
         leaf_extensions: Extensions<LeafNode>,
         encryption_key_pair: EncryptionKeyPair,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        constraints: LeafNodeConstraints,
+        capabilities_policy: CapabilitiesPolicy,
+    ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
             credential_with_key,
@@ -511,6 +519,8 @@ impl TreeSync {
             capabilities,
             extensions: leaf_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            constraints,
+            capabilities_policy,
         };
         let (leaf, encryption_key_pair) = LeafNode::new_with_encryption_key_pair(
             signer,

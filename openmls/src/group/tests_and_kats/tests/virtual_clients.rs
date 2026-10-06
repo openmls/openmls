@@ -13,7 +13,7 @@ use crate::{
             VC_COMPONENT_ID,
         },
     },
-    credentials::test_utils::new_credential,
+    credentials::{test_utils::new_credential, CredentialType},
     extensions::{
         AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
     },
@@ -40,9 +40,12 @@ const EMULATION_CIPHERSUITE: Ciphersuite =
 /// test.
 const GROUP_CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
-/// `Capabilities` declaring `AppDataDictionary` support.
-fn vc_capabilities() -> Capabilities {
+/// `Capabilities` declaring `AppDataDictionary` support, for a leaf built at
+/// `ciphersuite`.
+fn vc_capabilities(ciphersuite: Ciphersuite) -> Capabilities {
     Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![crate::credentials::CredentialType::Basic])
         .extensions(vec![ExtensionType::AppDataDictionary])
         .build()
 }
@@ -68,7 +71,7 @@ fn vc_config_builder(ciphersuite: Ciphersuite) -> MlsGroupCreateConfigBuilder {
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(ciphersuite))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
 }
@@ -148,8 +151,16 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
         b"Bob",
         GROUP_CIPHERSUITE.signature_algorithm(),
     );
+    let capabilities = Capabilities::new(
+        None,
+        Some(&[GROUP_CIPHERSUITE]),
+        None,
+        None,
+        Some(&[CredentialType::Basic]),
+    );
     let bob_key_package = KeyPackage::builder()
         .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(capabilities)
         .build(GROUP_CIPHERSUITE, bob_provider, &bob_signer, bob_credential)
         .expect("bob KP build")
         .key_package()
@@ -295,7 +306,7 @@ fn vc_group_creation_leaf_key_imports_into_group_ciphersuite() {
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(GROUP_CIPHERSUITE)
         .use_ratchet_tree_extension(true)
-        .with_capabilities(vc_capabilities())
+        .with_capabilities(vc_capabilities(GROUP_CIPHERSUITE))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .vc_emulation(emulator_group.group_id())
@@ -343,7 +354,7 @@ fn safe_aad_group_pair<P: OpenMlsProvider>(
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(GROUP_CIPHERSUITE)
         .use_ratchet_tree_extension(true)
-        .capabilities(vc_capabilities())
+        .capabilities(vc_capabilities(GROUP_CIPHERSUITE))
         .with_leaf_node_extensions(vc_leaf_extensions())
         .expect("attach leaf-node extensions")
         .with_group_context_extensions(safe_aad_group_context_extensions())
@@ -363,7 +374,7 @@ fn safe_aad_group_pair<P: OpenMlsProvider>(
         GROUP_CIPHERSUITE.signature_algorithm(),
     );
     let bob_key_package = KeyPackage::builder()
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(GROUP_CIPHERSUITE))
         .build(GROUP_CIPHERSUITE, bob_provider, &bob_signer, bob_credential)
         .expect("bob KP build");
     let (_commit, welcome, _group_info) = alice_group

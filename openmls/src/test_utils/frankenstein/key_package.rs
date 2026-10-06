@@ -161,6 +161,7 @@ fn test_franken_key_package() {
     };
 
     let kp = KeyPackage::builder()
+        .leaf_node_capabilities(crate::test_utils::minimal_capabilities_for(config).build())
         .build(config, provider, &signer, credential_with_key)
         .unwrap();
 
