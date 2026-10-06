@@ -26,7 +26,8 @@ use openmls::{
     prelude::{
         test_utils::new_credential, ApplyAppDataUpdateError, Capabilities, CredentialType,
         LeafNode, LeafNodeParameters, ProcessMessageError, ProcessedMessageContent,
-        ProposalOrRefType, ProposalType, ProtocolMessage, SenderRatchetConfiguration, ValidationError,
+        ProposalOrRefType, ProposalType, ProtocolMessage, SenderRatchetConfiguration,
+        ValidationError,
     },
 };
 use openmls_basic_credential::SignatureKeyPair;
