@@ -20,7 +20,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     framing::SenderContext,
-    group::{errors::ValidationError, WelcomeError, WelcomeKeyMaterial},
+    group::{errors::ValidationError, LeafNodeLifetimePolicy, WelcomeError, WelcomeKeyMaterial},
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     storage::OpenMlsProvider,
     treesync::{
@@ -277,11 +277,12 @@ impl CommitIn {
         crypto: &impl OpenMlsCrypto,
         sender_context: SenderContext,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<Commit, ValidationError> {
         let proposals = self
             .proposals
             .into_iter()
-            .map(|p| p.validate(crypto, ciphersuite, protocol_version))
+            .map(|p| p.validate(crypto, ciphersuite, protocol_version, lifetime_policy))
             .collect::<Result<Vec<_>, _>>()?;
 
         let path = if let Some(path) = self.path {

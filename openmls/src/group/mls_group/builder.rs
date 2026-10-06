@@ -11,8 +11,8 @@ use crate::{
     group::{
         config::PastEpochDeletionPolicy, past_secrets::MessageSecretsStore,
         public_group::errors::PublicGroupBuildError, BranchInfo, CommitBuilderStageError,
-        CommitMessageBundle, CreateCommitError, GroupContext, GroupId, MlsGroup,
-        MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
+        CommitMessageBundle, CreateCommitError, GroupContext, GroupId, LeafNodeLifetimePolicy,
+        MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
         PublicGroup, WireFormatPolicy,
     },
     key_packages::{KeyPackage, Lifetime},
@@ -98,6 +98,7 @@ impl MlsGroupBuilder {
             branch_info,
             extensions: None,
             force_self_update: false,
+            lifetime_policy: LeafNodeLifetimePolicy::Verify,
         }
     }
 
@@ -454,6 +455,7 @@ pub struct BranchGroupBuilder {
     branch_info: BranchInfo,
     extensions: Option<Extensions<GroupContext>>,
     force_self_update: bool,
+    lifetime_policy: LeafNodeLifetimePolicy,
 }
 
 impl BranchGroupBuilder {
@@ -472,6 +474,14 @@ impl BranchGroupBuilder {
     /// [`CommitBuilder::force_self_update`](crate::group::CommitBuilder::force_self_update).
     pub fn force_self_update(mut self, force_self_update: bool) -> Self {
         self.force_self_update = force_self_update;
+        self
+    }
+
+    /// Sets how the lifetimes of the key packages of the new members are
+    /// checked. See
+    /// [`CommitBuilder::leaf_node_lifetime_policy`](crate::group::CommitBuilder::leaf_node_lifetime_policy).
+    pub fn leaf_node_lifetime_policy(mut self, lifetime_policy: LeafNodeLifetimePolicy) -> Self {
+        self.lifetime_policy = lifetime_policy;
         self
     }
 
@@ -503,7 +513,8 @@ impl BranchGroupBuilder {
         let mut builder = group
             .commit_builder()
             .branch(provider.rand(), &self.branch_info)?
-            .propose_adds(new_members);
+            .propose_adds(new_members)
+            .leaf_node_lifetime_policy(self.lifetime_policy);
         if let Some(extensions) = self.extensions {
             builder = builder.propose_group_context_extensions(extensions)?;
         }

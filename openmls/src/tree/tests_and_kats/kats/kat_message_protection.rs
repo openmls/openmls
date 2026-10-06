@@ -373,7 +373,12 @@ pub fn run_test_vector(
                 .parse_message(decrypted_message, group.message_secrets_store())
                 .unwrap();
             let processed_message: AuthenticatedContent = processed_unverified_message
-                .verify(ciphersuite, provider.crypto(), ProtocolVersion::Mls10)
+                .verify(
+                    ciphersuite,
+                    provider.crypto(),
+                    ProtocolVersion::Mls10,
+                    crate::group::LeafNodeLifetimePolicy::Verify,
+                )
                 .unwrap()
                 .content;
             match processed_message.content().to_owned() {

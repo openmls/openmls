@@ -15,7 +15,7 @@ use openmls_traits::signatures::Signer;
 use crate::messages::group_info::GroupInfo;
 use crate::{
     framing::mls_content::FramedContentBody,
-    group::{errors::MergeCommitError, StageCommitError, ValidationError},
+    group::{errors::MergeCommitError, LeafNodeLifetimePolicy, StageCommitError, ValidationError},
     storage::OpenMlsProvider,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
@@ -167,6 +167,9 @@ pub struct UnresolvedAppDataCommit {
     /// by reference already resolved from the proposal store, sorted by
     /// component id.
     proposals: Vec<AppDataUpdateProposal>,
+    /// The lifetime policy the commit was processed with, which also applies
+    /// when it is staged.
+    lifetime_policy: LeafNodeLifetimePolicy,
     #[cfg(feature = "virtual-clients-draft")]
     vc_commit_material: Option<crate::components::vc_derivation_info::VcCommitMaterial>,
 }
@@ -179,13 +182,20 @@ impl UnresolvedAppDataCommit {
     pub(crate) fn new(
         content: AuthenticatedContent,
         proposals: Vec<AppDataUpdateProposal>,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Self {
         Self {
             content,
             proposals,
+            lifetime_policy,
             #[cfg(feature = "virtual-clients-draft")]
             vc_commit_material: None,
         }
+    }
+
+    /// The lifetime policy the commit was processed with.
+    pub(crate) fn lifetime_policy(&self) -> LeafNodeLifetimePolicy {
+        self.lifetime_policy
     }
 
     /// Consumes the commit and returns the verified [`AuthenticatedContent`],
@@ -247,8 +257,35 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
+        self.process_message_with_lifetime_policy(provider, message, LeafNodeLifetimePolicy::Verify)
+    }
+
+    /// Like [`Self::process_message`], but checks the lifetimes of the key
+    /// packages in Add proposals under `lifetime_policy`.
+    /// [`Self::process_message`] uses [`LeafNodeLifetimePolicy::Verify`].
+    ///
+    /// The policy is not stored on the group. A member that was offline can,
+    /// for example, process an older commit with
+    /// [`LeafNodeLifetimePolicy::Skip`] if the key package it adds has expired
+    /// in the meantime. An Add proposal committed by reference is checked
+    /// again when the commit is processed, under the policy of that call.
+    ///
+    #[cfg_attr(
+        feature = "extensions-draft",
+        doc = "If the call returns a [`ProcessedMessageContent::UnresolvedAppDataCommit`],\n\
+        [`MlsGroup::stage_app_data_commit()`] checks the commit under the same\n\
+        policy.\n"
+    )]
+    pub fn process_message_with_lifetime_policy<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        message: impl Into<ProtocolMessage>,
+        lifetime_policy: LeafNodeLifetimePolicy,
+    ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         match self.unprotect_message(provider, message)? {
-            UnprotectedMessage::Unverified(m) => self.process_unverified_message(provider, *m),
+            UnprotectedMessage::Unverified(m) => {
+                self.process_unverified_message(provider, *m, lifetime_policy)
+            }
             // The content cannot be decrypted and the sender claim is unauthenticated,
             // so we surface OwnPrivateMessage and skip all further processing.
             UnprotectedMessage::OwnPrivateMessage {
@@ -756,6 +793,7 @@ impl MlsGroup {
         app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<StagedCommit, StageCommitError> {
         let content = unresolved_commit.content;
+        let lifetime_policy = unresolved_commit.lifetime_policy;
         #[cfg(feature = "virtual-clients-draft")]
         let vc_commit_material = unresolved_commit.vc_commit_material;
 
@@ -768,6 +806,7 @@ impl MlsGroup {
             leaf_node_keypairs,
             app_data_dict_updates,
             provider,
+            lifetime_policy,
             #[cfg(feature = "virtual-clients-draft")]
             vc_commit_material,
         )
@@ -827,14 +866,19 @@ impl MlsGroup {
         &self,
         provider: &Provider,
         unverified_message: UnverifiedMessage,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         // Checks the following semantic validation:
         //  - ValSem010
         //  - ValSem246 (as part of ValSem010)
         //  - https://validation.openmls.tech/#valn1302
         //  - https://validation.openmls.tech/#valn1304
-        let verified =
-            unverified_message.verify(self.ciphersuite(), provider.crypto(), self.version())?;
+        let verified = unverified_message.verify(
+            self.ciphersuite(),
+            provider.crypto(),
+            self.version(),
+            lifetime_policy,
+        )?;
 
         #[cfg_attr(not(feature = "extensions-draft"), allow(unused_mut))]
         let mut processed = match verified.content.sender() {
@@ -843,6 +887,7 @@ impl MlsGroup {
                     provider,
                     verified.content,
                     verified.credential,
+                    lifetime_policy,
                     #[cfg(feature = "virtual-clients-draft")]
                     verified.emulator_sender_leaf_index,
                 )?,
@@ -866,6 +911,7 @@ impl MlsGroup {
         provider: &Provider,
         content: AuthenticatedContent,
         credential: Credential,
+        lifetime_policy: LeafNodeLifetimePolicy,
         #[cfg(feature = "virtual-clients-draft")] emulator_sender_leaf_index: Option<LeafNodeIndex>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
         let sender = content.sender().clone();
@@ -973,6 +1019,7 @@ impl MlsGroup {
                         let unresolved_commit = UnresolvedAppDataCommit {
                             content,
                             proposals: app_data_update_proposals,
+                            lifetime_policy,
                             #[cfg(feature = "virtual-clients-draft")]
                             vc_commit_material,
                         };
@@ -1000,6 +1047,7 @@ impl MlsGroup {
                     old_epoch_keypairs,
                     leaf_node_keypairs,
                     provider,
+                    lifetime_policy,
                     #[cfg(feature = "virtual-clients-draft")]
                     vc_commit_material,
                 )?;

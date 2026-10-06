@@ -20,7 +20,7 @@ use super::{
     PskSecret, QueuedProposal, StagedCommitExport,
 };
 use crate::group::diff::PublicGroupDiff;
-use crate::group::GroupEpoch;
+use crate::group::{GroupEpoch, LeafNodeLifetimePolicy};
 use crate::messages::ConfirmationTag;
 use crate::prelude::{Commit, LeafNodeIndex};
 #[cfg(feature = "extensions-draft")]
@@ -247,13 +247,14 @@ impl MlsGroup {
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
+        lifetime_policy: LeafNodeLifetimePolicy,
         #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
             crate::components::vc_derivation_info::VcCommitMaterial,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (commit, proposal_queue, sender_index) = self
-            .public_group
-            .validate_commit(mls_content, provider.crypto())?;
+        let (commit, proposal_queue, sender_index) =
+            self.public_group
+                .validate_commit(mls_content, provider.crypto(), lifetime_policy)?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -293,13 +294,14 @@ impl MlsGroup {
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         app_data_dict_updates: Option<AppDataUpdates>,
         provider: &impl OpenMlsProvider,
+        lifetime_policy: LeafNodeLifetimePolicy,
         #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
             crate::components::vc_derivation_info::VcCommitMaterial,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (commit, proposal_queue, sender_index) = self
-            .public_group
-            .validate_commit(mls_content, provider.crypto())?;
+        let (commit, proposal_queue, sender_index) =
+            self.public_group
+                .validate_commit(mls_content, provider.crypto(), lifetime_policy)?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.

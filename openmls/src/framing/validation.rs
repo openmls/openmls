@@ -30,7 +30,9 @@ use crate::{
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::ExternalSendersExtension,
-    group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
+    group::{
+        errors::ValidationError, mls_group::staged_commit::StagedCommit, LeafNodeLifetimePolicy,
+    },
     tree::{
         secret_tree::{DecryptionSecret, SecretType},
         sender_ratchet::SenderRatchetConfiguration,
@@ -394,6 +396,7 @@ impl UnverifiedMessage {
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<VerifiedMessage, ValidationError> {
         let content: AuthenticatedContentIn = self
             .verifiable_content
@@ -401,8 +404,13 @@ impl UnverifiedMessage {
             .map_err(|_| ValidationError::InvalidSignature)?;
         // https://validation.openmls.tech/#valn1302
         // https://validation.openmls.tech/#valn1304
-        let content =
-            content.validate(ciphersuite, crypto, self.sender_context, protocol_version)?;
+        let content = content.validate(
+            ciphersuite,
+            crypto,
+            self.sender_context,
+            protocol_version,
+            lifetime_policy,
+        )?;
         Ok(VerifiedMessage {
             content,
             credential: self.credential,

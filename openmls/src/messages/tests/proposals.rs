@@ -69,7 +69,12 @@ fn add_proposal_checks_ciphersuite_before_signature() {
     let add: Box<AddProposalIn> = AddProposal::from(key_package).into();
 
     let err = add
-        .validate(provider.crypto(), ProtocolVersion::Mls10, group_ciphersuite)
+        .validate(
+            provider.crypto(),
+            ProtocolVersion::Mls10,
+            group_ciphersuite,
+            crate::group::LeafNodeLifetimePolicy::Verify,
+        )
         .unwrap_err();
     assert_eq!(err, ValidationError::InvalidAddProposalCiphersuite);
 }
