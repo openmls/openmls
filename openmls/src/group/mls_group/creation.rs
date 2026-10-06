@@ -36,6 +36,7 @@ use crate::{
         RetainedKeyPackageMaterial, VcDerivationEpochParams, VcDerivationEpochState,
         VcWelcomeMaterial, VirtualClientOperationType, VirtualClientsError,
     },
+    extensions::ExtensionType,
     framing::{mls_auth_content::AuthenticatedContent, ProtocolMessage, SafeAad, Sender},
     group::{
         config::PastEpochDeletionPolicy,
@@ -748,7 +749,9 @@ impl StagedWelcome {
         // to the KeyPackage's derivation epoch. The binding takes over the
         // epoch reference from the retained KeyPackage material, which
         // `keys_for_welcome` left in storage for that purpose. (a bound group
-        // is required for the reuse-guard MUST).
+        // is required for the reuse-guard MUST). The material of a last resort
+        // KeyPackage is kept, mirroring how `keys_for_welcome` keeps a last
+        // resort KeyPackage bundle.
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(material) = self.key_material.vc_welcome_material() {
             let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
@@ -760,10 +763,12 @@ impl StagedWelcome {
                 max_entries,
             )
             .map_err(WelcomeError::StorageError)?;
-            provider
-                .storage()
-                .delete_retained_key_package_material(&material.key_package_ref)
-                .map_err(WelcomeError::StorageError)?;
+            if !material.last_resort {
+                provider
+                    .storage()
+                    .delete_retained_key_package_material(&material.key_package_ref)
+                    .map_err(WelcomeError::StorageError)?;
+            }
         }
 
         // A virtual client's own KeyPackage comes with retained material too.
@@ -1209,6 +1214,9 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
         init_private_key: init_key_pair.private,
         init_key: init_key_pair.public.into(),
         encryption_keypair,
+        last_resort: material
+            .key_package_extensions
+            .contains(ExtensionType::LastResort),
     }))
 }
 
