@@ -26,7 +26,7 @@ use openmls::{
     prelude::{
         test_utils::new_credential, ApplyAppDataUpdateError, Capabilities, LeafNode,
         LeafNodeParameters, ProcessMessageError, ProcessedMessageContent, ProposalOrRefType,
-        ProposalType, ProtocolMessage, ValidationError,
+        ProposalType, ProtocolMessage, SenderRatchetConfiguration, ValidationError,
     },
 };
 use openmls_basic_credential::SignatureKeyPair;
@@ -2910,6 +2910,263 @@ fn welcome_join_keeps_retained_material_of_last_resort_key_package() {
     .expect("alice_b join second higher-level group");
 }
 
+/// A Welcome addressed to a KeyPackage that alice_a built for its virtual
+/// client.
+struct OwnKeyPackageWelcome {
+    vc_signer: SignatureKeyPair,
+    epoch_id: EpochId,
+    key_package_ref: openmls::prelude::KeyPackageRef,
+    welcome: openmls::messages::Welcome,
+    ratchet_tree: openmls::treesync::RatchetTree,
+}
+
+/// alice_a builds a KeyPackage for its virtual client and then deletes its
+/// emulation group, so the KeyPackage becomes the only reference to the
+/// derivation epoch it was built from. Bob adds the virtual client through the
+/// KeyPackage and the returned Welcome is addressed to it.
+fn own_key_package_welcome<P: OpenMlsProvider>(
+    ciphersuite: openmls_traits::types::Ciphersuite,
+    alice_a_provider: &P,
+    bob_provider: &P,
+    last_resort: bool,
+) -> OwnKeyPackageWelcome {
+    let (vc_credential, vc_signer) = new_credential(
+        alice_a_provider,
+        b"Alice (VC)",
+        ciphersuite.signature_algorithm(),
+    );
+    let (mut emulator_a, _emulator_a_signer) =
+        make_emulator_group(ciphersuite, alice_a_provider, b"AliceEmulatorA", true);
+    let epoch_id = newest_epoch(&emulator_a, alice_a_provider);
+
+    let builder = KeyPackage::builder()
+        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_extensions(vc_leaf_extensions());
+    let builder = if last_resort {
+        builder.mark_as_last_resort()
+    } else {
+        builder
+    };
+    let mut batch = builder
+        .build_vc_batch(
+            ciphersuite,
+            alice_a_provider,
+            &vc_signer,
+            vc_credential,
+            emulator_a.group_id(),
+            1,
+        )
+        .expect("alice_a build_vc_batch");
+    let (vc_key_package_bundle, kp_info) = batch.key_packages.remove(0);
+
+    emulator_a
+        .delete(alice_a_provider.storage())
+        .expect("alice_a delete emulation group");
+    assert!(
+        epoch_state_exists(alice_a_provider, &epoch_id),
+        "the KeyPackage must keep the epoch state alive"
+    );
+
+    let (bob_credential, bob_signer) =
+        new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
+    let bob_group_config = MlsGroupCreateConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mut bob_main = MlsGroup::new(bob_provider, &bob_signer, &bob_group_config, bob_credential)
+        .expect("bob create higher-level group");
+    let (_commit, welcome, _gi) = bob_main
+        .add_members(
+            bob_provider,
+            &bob_signer,
+            &[vc_key_package_bundle.key_package().clone()],
+        )
+        .expect("bob add virtual client");
+    bob_main
+        .merge_pending_commit(bob_provider)
+        .expect("bob merge add");
+
+    OwnKeyPackageWelcome {
+        vc_signer,
+        epoch_id,
+        key_package_ref: kp_info.key_package_ref,
+        welcome: welcome.into_welcome().expect("welcome present"),
+        ratchet_tree: bob_main.export_ratchet_tree(),
+    }
+}
+
+fn stored_key_package<P: OpenMlsProvider>(
+    provider: &P,
+    key_package_ref: &openmls::prelude::KeyPackageRef,
+) -> Option<openmls::prelude::KeyPackageBundle> {
+    provider
+        .storage()
+        .key_package(key_package_ref)
+        .expect("read key package")
+}
+
+fn stored_retained_material<P: OpenMlsProvider>(
+    provider: &P,
+    key_package_ref: &openmls::prelude::KeyPackageRef,
+) -> Option<openmls::components::vc_derivation_info::RetainedKeyPackageMaterial> {
+    provider
+        .storage()
+        .retained_key_package_material(key_package_ref)
+        .expect("read retained material")
+}
+
+fn sweep_unreferenced_epochs<P: OpenMlsProvider>(provider: &P) -> Vec<EpochId> {
+    provider
+        .storage()
+        .delete_unreferenced_vc_derivation_epoch_states()
+        .expect("sweep unreferenced epochs")
+}
+
+#[openmls_test]
+fn welcome_join_through_own_key_package_after_epoch_release() {
+    let alice_a_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let OwnKeyPackageWelcome {
+        vc_signer,
+        epoch_id,
+        key_package_ref,
+        welcome,
+        ratchet_tree,
+    } = own_key_package_welcome(ciphersuite, &alice_a_provider, &bob_provider, false);
+
+    let mut alice_a_main = StagedWelcome::new_from_welcome(
+        &alice_a_provider,
+        &vc_join_config(),
+        welcome,
+        Some(ratchet_tree.into()),
+    )
+    .expect("alice_a stage welcome")
+    .into_group(&alice_a_provider)
+    .expect("alice_a join higher-level group");
+
+    assert!(
+        stored_key_package(&alice_a_provider, &key_package_ref).is_none(),
+        "joining must consume the KeyPackage"
+    );
+    assert!(
+        stored_retained_material(&alice_a_provider, &key_package_ref).is_none(),
+        "joining must consume the KeyPackage's retained material"
+    );
+    assert!(
+        epoch_state_exists(&alice_a_provider, &epoch_id),
+        "the joined group's binding must keep the epoch state alive"
+    );
+    let unconfirmed = alice_a_main
+        .create_unconfirmed_message(&alice_a_provider, &vc_signer, b"bound send")
+        .expect("alice_a create unconfirmed message");
+    assert!(
+        unconfirmed.generation_id.is_some(),
+        "a group joined through a virtual client's KeyPackage must be bound"
+    );
+
+    alice_a_main
+        .delete(alice_a_provider.storage())
+        .expect("alice_a delete higher-level group");
+    assert!(
+        !epoch_state_exists(&alice_a_provider, &epoch_id),
+        "deleting the last group bound to the epoch must release its key material"
+    );
+}
+
+#[openmls_test]
+fn welcome_join_through_own_key_package_keeps_epoch_referenced_until_bound() {
+    let alice_a_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let OwnKeyPackageWelcome {
+        epoch_id,
+        key_package_ref,
+        welcome,
+        ratchet_tree,
+        ..
+    } = own_key_package_welcome(ciphersuite, &alice_a_provider, &bob_provider, false);
+
+    let processed = openmls::group::ProcessedWelcome::new_from_welcome(
+        &alice_a_provider,
+        &vc_join_config(),
+        welcome,
+    )
+    .expect("alice_a process welcome");
+    assert!(
+        stored_key_package(&alice_a_provider, &key_package_ref).is_some(),
+        "processing the Welcome must leave the KeyPackage in place"
+    );
+    assert!(
+        sweep_unreferenced_epochs(&alice_a_provider).is_empty(),
+        "a sweep after processing must not release the epoch"
+    );
+
+    let staged = processed
+        .into_staged_welcome(&alice_a_provider, Some(ratchet_tree.into()))
+        .expect("alice_a stage welcome");
+    assert!(
+        sweep_unreferenced_epochs(&alice_a_provider).is_empty(),
+        "a sweep after staging must not release the epoch"
+    );
+
+    staged
+        .into_group(&alice_a_provider)
+        .expect("alice_a join higher-level group");
+    assert!(
+        stored_key_package(&alice_a_provider, &key_package_ref).is_none(),
+        "joining must consume the KeyPackage"
+    );
+    assert!(
+        sweep_unreferenced_epochs(&alice_a_provider).is_empty(),
+        "the joined group's binding must reference the epoch"
+    );
+    assert!(epoch_state_exists(&alice_a_provider, &epoch_id));
+}
+
+#[openmls_test]
+fn welcome_join_through_own_last_resort_key_package_keeps_it() {
+    let alice_a_provider = Provider::default();
+    let bob_provider = Provider::default();
+    let OwnKeyPackageWelcome {
+        epoch_id,
+        key_package_ref,
+        welcome,
+        ratchet_tree,
+        ..
+    } = own_key_package_welcome(ciphersuite, &alice_a_provider, &bob_provider, true);
+
+    let mut alice_a_main = StagedWelcome::new_from_welcome(
+        &alice_a_provider,
+        &vc_join_config(),
+        welcome,
+        Some(ratchet_tree.into()),
+    )
+    .expect("alice_a stage welcome")
+    .into_group(&alice_a_provider)
+    .expect("alice_a join higher-level group");
+    assert!(
+        stored_key_package(&alice_a_provider, &key_package_ref).is_some(),
+        "a last resort KeyPackage must survive the join"
+    );
+    assert!(
+        stored_retained_material(&alice_a_provider, &key_package_ref).is_some(),
+        "a last resort KeyPackage must keep its retained material"
+    );
+
+    // The KeyPackage can still be used to join, so it keeps the epoch alive
+    // without the joined group.
+    alice_a_main
+        .delete(alice_a_provider.storage())
+        .expect("alice_a delete higher-level group");
+    assert!(epoch_state_exists(&alice_a_provider, &epoch_id));
+
+    alice_a_provider
+        .storage()
+        .delete_key_package(&key_package_ref)
+        .expect("alice_a delete key package");
+    assert_eq!(sweep_unreferenced_epochs(&alice_a_provider), vec![epoch_id]);
+}
+
 /// Regression test for the batch-model switch. A virtual client builds one
 /// batch of KeyPackages larger than the operation tree's
 /// `OUT_OF_ORDER_TOLERANCE` (32), so the old per-KeyPackage-generation model
@@ -3253,7 +3510,7 @@ fn processing_own_application_message() {
     };
 
     // Alice sends another application message and confirms it. Its secret is
-    // deleted, so its echo no longer decrypts.
+    // deleted, so its echo no longer decrypts and surfaces as an own message.
     let alice_message = b"Hello, this is Alice again!";
     let unconfirmed = alice_group
         .create_unconfirmed_message(alice_provider, &alice_signer, alice_message)
@@ -3267,15 +3524,13 @@ fn processing_own_application_message() {
         )
         .unwrap();
 
-    let err = alice_group
+    let processed = alice_group
         .process_message(alice_provider, ciphertext.into_protocol_message().unwrap())
-        .expect_err("a confirmed generation must not decrypt");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("a confirmed generation must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 }
 
 /// Without an emulation binding, an own private message short-circuits to
@@ -3436,19 +3691,17 @@ fn confirm_targets_creation_epoch() {
     };
     assert_eq!(app.into_bytes().as_slice(), b"epoch N+1 message");
 
-    // msg1's secret was deleted, so its echo no longer decrypts.
-    let err = alice_group
+    // msg1's secret was deleted, so its echo surfaces as an own message.
+    let processed = alice_group
         .process_message(
             alice_provider,
             msg1.message.into_protocol_message().unwrap(),
         )
-        .expect_err("msg1's confirmed generation must not decrypt");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("msg1's confirmed generation must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 }
 
 /// Confirming a message whose creation epoch has aged out of the message
@@ -3692,16 +3945,14 @@ fn confirm_handshake_message_deletes_retained_secret() {
         .confirm_handshake_message(alice_provider.storage(), epoch, 1)
         .expect("confirm proposal B");
 
-    // Proposal B's secret was deleted, so its echo no longer decrypts.
-    let err = alice_group
+    // Proposal B's secret was deleted, so its echo surfaces as an own message.
+    let processed = alice_group
         .process_message(alice_provider, proposal_b.into_protocol_message().unwrap())
-        .expect_err("proposal B's confirmed generation must not decrypt");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("proposal B's confirmed generation must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 }
 
 #[openmls_test::openmls_test]
@@ -3868,6 +4119,230 @@ fn reuse_guard_recovers_emulator_leaf_index() {
         }
         _ => panic!("expected application message"),
     }
+}
+
+/// Two emulator clients of one virtual client that share a leaf in a
+/// higher-level group. alice_b joins the higher-level group with
+/// `alice_b_join_config`.
+struct VcSiblingPair {
+    alice_a_provider: OpenMlsRustCrypto,
+    alice_b_provider: OpenMlsRustCrypto,
+    vc_signer: SignatureKeyPair,
+    alice_a_main: MlsGroup,
+    alice_b_main: MlsGroup,
+}
+
+fn vc_sibling_pair(alice_b_join_config: MlsGroupJoinConfig) -> VcSiblingPair {
+    let ciphersuite =
+        openmls_traits::types::Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let alice_a_provider = OpenMlsRustCrypto::default();
+    let alice_b_provider = OpenMlsRustCrypto::default();
+    let (vc_signer, vc_credential) =
+        shared_vc_identity(ciphersuite, &alice_a_provider, &alice_b_provider);
+    let mut alice_a_main = new_vc_main_group(
+        ciphersuite,
+        &alice_a_provider,
+        &vc_signer,
+        vc_credential.clone(),
+    );
+    let (siblings, resync_commit) = join_sibling_emulator(
+        ciphersuite,
+        &alice_a_provider,
+        &alice_b_provider,
+        &vc_signer,
+        vc_credential,
+        &alice_a_main,
+        alice_b_join_config,
+    );
+    process_and_merge_commit(&mut alice_a_main, &alice_a_provider, resync_commit);
+    VcSiblingPair {
+        alice_a_provider,
+        alice_b_provider,
+        vc_signer,
+        alice_a_main,
+        alice_b_main: siblings.alice_b_main,
+    }
+}
+
+fn expect_application_message(processed: openmls::prelude::ProcessedMessage, expected: &[u8]) {
+    let content = processed.into_content();
+    let ProcessedMessageContent::ApplicationMessage(msg) = content else {
+        panic!("expected an application message, got {content:?}");
+    };
+    assert_eq!(msg.into_bytes().as_slice(), expected);
+}
+
+/// The echo of a confirmed own send surfaces as an own message even when a
+/// sibling's message at a later generation was decrypted first.
+#[test]
+fn confirmed_own_echo_after_newer_sibling_message_is_own_message() {
+    let VcSiblingPair {
+        alice_a_provider,
+        alice_b_provider,
+        vc_signer,
+        mut alice_a_main,
+        mut alice_b_main,
+    } = vc_sibling_pair(vc_join_config());
+
+    let unconfirmed = alice_a_main
+        .create_unconfirmed_message(&alice_a_provider, &vc_signer, b"from alice_a")
+        .expect("alice_a creates a message");
+    alice_a_main
+        .confirm_application_message(
+            alice_a_provider.storage(),
+            unconfirmed.epoch,
+            unconfirmed.generation,
+        )
+        .expect("alice_a confirms the message");
+    let echo = unconfirmed.message.into_protocol_message().unwrap();
+
+    // alice_b processes alice_a's message and answers at the next generation.
+    let processed = alice_b_main
+        .process_message(&alice_b_provider, echo.clone())
+        .expect("alice_b processes alice_a's message");
+    expect_application_message(processed, b"from alice_a");
+    let answer = alice_b_main
+        .create_message(&alice_b_provider, &vc_signer, b"from alice_b")
+        .expect("alice_b creates a message");
+
+    // alice_a decrypts the answer before the echo of its own message arrives.
+    let processed = alice_a_main
+        .process_message(&alice_a_provider, answer.into_protocol_message().unwrap())
+        .expect("alice_a processes alice_b's message");
+    expect_application_message(processed, b"from alice_b");
+
+    let processed = alice_a_main
+        .process_message(&alice_a_provider, echo)
+        .expect("the echo of a confirmed send must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
+}
+
+/// A sibling's message that fell out of the receive window before it was
+/// processed fails as too old. It must not pass as an own message, since the
+/// receiver never saw its content.
+#[test]
+fn unprocessed_sibling_message_outside_receive_window_fails() {
+    let no_out_of_order_tolerance = MlsGroupJoinConfig::builder()
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .sender_ratchet_configuration(SenderRatchetConfiguration::new(0, 1000))
+        .build();
+    let VcSiblingPair {
+        alice_a_provider,
+        alice_b_provider,
+        vc_signer,
+        mut alice_a_main,
+        mut alice_b_main,
+    } = vc_sibling_pair(no_out_of_order_tolerance);
+
+    let first = alice_a_main
+        .create_message(&alice_a_provider, &vc_signer, b"first")
+        .expect("alice_a creates the first message");
+    let second = alice_a_main
+        .create_message(&alice_a_provider, &vc_signer, b"second")
+        .expect("alice_a creates the second message");
+
+    // alice_b receives the messages out of order.
+    let processed = alice_b_main
+        .process_message(&alice_b_provider, second.into_protocol_message().unwrap())
+        .expect("alice_b processes the second message");
+    expect_application_message(processed, b"second");
+
+    let err = alice_b_main
+        .process_message(&alice_b_provider, first.into_protocol_message().unwrap())
+        .expect_err("a pruned sibling generation must not decrypt");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::TooDistantInThePast),
+    )) = err
+    else {
+        panic!("expected a too distant in the past error, got {err:?}");
+    };
+}
+
+/// A second delivery of a sibling's message fails as a reused secret, like a
+/// duplicate from any other member.
+#[test]
+fn repeated_sibling_message_is_secret_reuse() {
+    let VcSiblingPair {
+        alice_a_provider,
+        alice_b_provider,
+        vc_signer,
+        mut alice_a_main,
+        mut alice_b_main,
+    } = vc_sibling_pair(vc_join_config());
+
+    let message = alice_a_main
+        .create_message(&alice_a_provider, &vc_signer, b"from alice_a")
+        .expect("alice_a creates a message")
+        .into_protocol_message()
+        .unwrap();
+
+    let processed = alice_b_main
+        .process_message(&alice_b_provider, message.clone())
+        .expect("alice_b processes alice_a's message");
+    expect_application_message(processed, b"from alice_a");
+
+    let err = alice_b_main
+        .process_message(&alice_b_provider, message)
+        .expect_err("a repeated sibling message must not decrypt again");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
+    )) = err
+    else {
+        panic!("expected a secret reuse error, got {err:?}");
+    };
+}
+
+/// A corrupted copy of a sibling's message consumes the generation's secret
+/// before the AEAD check fails. The intact original then fails as a reused
+/// secret. It must not pass as an own message, since nothing was processed.
+#[test]
+fn corrupted_copy_of_sibling_message_does_not_mask_original() {
+    use openmls::prelude::MlsMessageIn;
+    use tls_codec::Deserialize as _;
+    let VcSiblingPair {
+        alice_a_provider,
+        alice_b_provider,
+        vc_signer,
+        mut alice_a_main,
+        mut alice_b_main,
+    } = vc_sibling_pair(vc_join_config());
+
+    let original = alice_a_main
+        .create_message(&alice_a_provider, &vc_signer, b"from alice_a")
+        .expect("alice_a creates a message");
+    // Flipping the last ciphertext byte breaks the AEAD tag but leaves the
+    // sender data intact, so the receiver still resolves leaf and generation.
+    let mut bytes = original.tls_serialize_detached().unwrap();
+    let last = bytes.len() - 1;
+    bytes[last] ^= 0x01;
+    let corrupted = MlsMessageIn::tls_deserialize_exact(&bytes)
+        .unwrap()
+        .try_into_protocol_message()
+        .unwrap();
+
+    let err = alice_b_main
+        .process_message(&alice_b_provider, corrupted)
+        .expect_err("a corrupted copy must not decrypt");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::AeadError,
+    )) = err
+    else {
+        panic!("expected an AEAD error, got {err:?}");
+    };
+
+    let err = alice_b_main
+        .process_message(&alice_b_provider, original.into_protocol_message().unwrap())
+        .expect_err("the original must not pass as an own message");
+    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
+    )) = err
+    else {
+        panic!("expected a secret reuse error, got {err:?}");
+    };
 }
 
 /// A group with no emulation binding returns `None` from
@@ -5547,7 +6022,7 @@ fn propose_unconfirmed_confirm_flow() {
     assert!(confirmation_a.generation_id.is_some());
 
     // Confirming deletes the retained handshake secret, so proposal A's own
-    // echo no longer decrypts.
+    // echo no longer decrypts and surfaces as an own message.
     alice_group
         .confirm_handshake_message(
             alice_provider.storage(),
@@ -5555,15 +6030,13 @@ fn propose_unconfirmed_confirm_flow() {
             confirmation_a.generation,
         )
         .expect("confirm proposal A");
-    let err = alice_group
+    let processed = alice_group
         .process_message(alice_provider, proposal_a.into_protocol_message().unwrap())
-        .expect_err("proposal A's confirmed generation must not decrypt");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("proposal A's confirmed generation must surface as an own message");
+    assert!(matches!(
+        processed.into_content(),
+        ProcessedMessageContent::OwnPrivateMessage
+    ));
 
     // A control proposal that is not confirmed retains its secret, so its echo
     // decrypts back to a ProposalMessage.

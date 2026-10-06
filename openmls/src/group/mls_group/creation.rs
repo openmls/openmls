@@ -473,6 +473,7 @@ impl StagedWelcome {
     /// can be found.
     /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
     /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
+    /// A virtual client's key material is only consumed by [`Self::into_group`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
     pub fn new_from_welcome<Provider: OpenMlsProvider>(
@@ -770,6 +771,25 @@ impl StagedWelcome {
             }
         }
 
+        // A virtual client's own KeyPackage comes with retained material too.
+        // The binding written for the joined leaf took over its epoch
+        // reference, so the KeyPackage is consumed now.
+        #[cfg(feature = "virtual-clients-draft")]
+        if let Some(key_package_bundle) = self.key_material.key_package_bundle() {
+            if !key_package_bundle.key_package().last_resort()
+                && join_consumes_key_package(key_package_bundle)?
+            {
+                provider
+                    .storage()
+                    .delete_key_package(
+                        &key_package_bundle
+                            .key_package()
+                            .hash_ref(provider.crypto())?,
+                    )
+                    .map_err(WelcomeError::StorageError)?;
+            }
+        }
+
         mls_group
             .store(provider.storage())
             .map_err(WelcomeError::StorageError)?;
@@ -879,10 +899,11 @@ impl PendingBranchWelcome {
 /// join and the subgroup-branch peek (see [`PendingBranchWelcome`]). It consumes
 /// the matching (non-last-resort) key package from storage via
 /// [`keys_for_welcome`] and decrypts the encrypted group secrets addressed to
-/// it. Retained virtual-client material is read but not consumed, see
-/// [`keys_for_welcome`]. The branch resumption PSK secret is not injected
-/// here: injection and the parent-reference check happen in
-/// [`finish_processed_welcome`], so this step is identical on both paths.
+/// it. A virtual client's KeyPackage and retained virtual-client material are
+/// read but not consumed, see [`keys_for_welcome`]. The branch resumption PSK
+/// secret is not injected here: injection and the parent-reference check
+/// happen in [`finish_processed_welcome`], so this step is identical on both
+/// paths.
 fn decrypt_group_secrets<Provider: OpenMlsProvider>(
     provider: &Provider,
     mls_group_config: &MlsGroupJoinConfig,
@@ -1085,15 +1106,15 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
             .map_err(WelcomeError::StorageError)?
         {
             let key_package_bundle: KeyPackageBundle = key_package_bundle;
-            if !key_package_bundle.key_package().last_resort() {
+            if key_package_bundle.key_package().last_resort() {
+                log::debug!("Key package has last resort extension, not deleting");
+            } else if !join_consumes_key_package(&key_package_bundle)? {
                 provider
                     .storage()
                     .delete_key_package(
                         &key_package_bundle.key_package.hash_ref(provider.crypto())?,
                     )
                     .map_err(WelcomeError::StorageError)?;
-            } else {
-                log::debug!("Key package has last resort extension, not deleting");
             }
             return Ok((
                 resumption_psk_store,
@@ -1114,6 +1135,31 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
     }
 
     Err(WelcomeError::NoMatchingKeyPackage)
+}
+
+/// Returns whether [`StagedWelcome::into_group`] rather than
+/// [`keys_for_welcome`] deletes the (non-last-resort) `key_package_bundle`.
+///
+/// That is the case for a virtual client's KeyPackage. Deleting it also deletes
+/// its retained material, which keeps the derivation epoch alive that the join
+/// binds the group to. Like a sibling's retained material, it has to stay until
+/// the group is bound.
+fn join_consumes_key_package<StorageError>(
+    key_package_bundle: &KeyPackageBundle,
+) -> Result<bool, WelcomeError<StorageError>> {
+    #[cfg(feature = "virtual-clients-draft")]
+    {
+        Ok(key_package_bundle
+            .key_package()
+            .leaf_node()
+            .vc_derivation_info()?
+            .is_some())
+    }
+    #[cfg(not(feature = "virtual-clients-draft"))]
+    {
+        let _ = key_package_bundle;
+        Ok(false)
+    }
 }
 
 /// Try to derive virtual-client welcome material for `hash_ref`. Returns
