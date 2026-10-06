@@ -369,9 +369,9 @@ async fn msg_recv(
     log::debug!("Getting messages for client {id:?}");
 
     let mut out: Vec<MlsMessageIn> = Vec::new();
-    let mut welcomes: Vec<MlsMessageIn> = client.welcome_queue.drain(..).collect();
+    let mut welcomes: Vec<MlsMessageIn> = std::mem::take(&mut client.welcome_queue);
     out.append(&mut welcomes);
-    let mut msgs: Vec<MlsMessageIn> = client.msgs.drain(..).collect();
+    let mut msgs: Vec<MlsMessageIn> = std::mem::take(&mut client.msgs);
     out.append(&mut msgs);
 
     match TlsSliceU16(&out).tls_serialize_detached() {
