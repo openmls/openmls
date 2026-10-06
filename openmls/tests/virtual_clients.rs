@@ -2953,7 +2953,7 @@ fn own_key_package_welcome<P: OpenMlsProvider>(
     let epoch_id = newest_epoch(&emulator_a, alice_a_provider);
 
     let builder = KeyPackage::builder()
-        .leaf_node_capabilities(vc_capabilities())
+        .leaf_node_capabilities(vc_capabilities(ciphersuite))
         .leaf_node_extensions(vc_leaf_extensions());
     let builder = if last_resort {
         builder.mark_as_last_resort()
