@@ -14,7 +14,7 @@ readme = "README.md"
 openmls_traits = { workspace = true }
 openmls_memory_storage = { workspace = true }
 
-hpke = { version = "0.7", package = "hpke-rs", default-features = false, features = [
+hpke = { version = "0.8", package = "hpke-rs", default-features = false, features = [
   "hazmat",
   "serialization",
 ] }
@@ -30,8 +30,8 @@ p256 = { version = "0.14" }
 p384 = { version = "0.14" }
 hkdf = { version = "0.13" }
 rand_chacha = { version = "0.10" }
-hpke-rs-crypto = { version = "0.7" }
-hpke-rs-rust-crypto = { version = "0.7" }
+hpke-rs-crypto = { version = "0.8" }
+hpke-rs-rust-crypto = { version = "0.8" }
 tls_codec = { workspace = true }
 ml-dsa = { version = "0.1.0", optional = true }
 thiserror = { workspace = true }

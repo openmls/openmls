@@ -144,7 +144,8 @@ impl OpenMlsCrypto for CryptoProvider {
         message: &[u8],
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hash_alg(hash_type);
-        let out = libcrux_hmac::hmac(alg, key, message, None);
+        let mut out = vec![0u8; libcrux_hmac::tag_size(alg)];
+        libcrux_hmac::hmac(alg, key, message, &mut out);
         Ok(out.into())
     }
 
