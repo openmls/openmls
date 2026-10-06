@@ -581,11 +581,11 @@ pub struct KeyPackageUpload {
 
 /// Per-`KeyPackageRef` material a sibling retains when it processes a
 /// [`KeyPackageUpload`]. It captures what the Welcome path needs to later
-/// rederive the KeyPackage's init and leaf-encryption keys without touching
-/// the operation tree: the per-KeyPackage seed secret, plus the derivation
-/// epoch, leaf index, generation, and batch index used to validate the leaf
-/// found in the ratchet tree. It also keeps the KeyPackage's extensions, whose
-/// semantics apply when a Welcome for the KeyPackage is processed.
+/// rederive the KeyPackage's init and leaf-encryption keys without touching the
+/// operation tree: the per-KeyPackage seed secret, plus the derivation epoch,
+/// leaf index, generation, and batch index used to validate the leaf found in
+/// the ratchet tree. The sibling also keeps the KeyPackage's extensions, s.t.
+/// it can apply the corresponding semantics when processing a Welcome.
 ///
 /// The seed is pinned here at upload-processing time so the Welcome path stays
 /// independent of the operation tree's bounded out-of-order tolerance: a batch
@@ -615,10 +615,8 @@ pub struct RetainedKeyPackageMaterial {
     pub key_package_extensions: Extensions<KeyPackage>,
 }
 
-/// Extensions assumed for retained material stored before uploads carried
-/// extensions. Assuming last resort keeps that material after a join, so a
-/// KeyPackage that was in fact last resort can still be used to join further
-/// groups.
+/// Outputs an extension vector that is empty except for a last-resort
+/// extension.
 fn last_resort_extensions() -> Extensions<KeyPackage> {
     Extensions::single(Extension::LastResort(LastResortExtension::default()))
         .expect("LastResort extensions are allowed in key packages")
@@ -801,9 +799,7 @@ pub(crate) struct VcWelcomeMaterial {
     /// Leaf encryption keypair derived from the seed, used as the joiner's
     /// leaf keypair.
     pub(crate) encryption_keypair: EncryptionKeyPair,
-    /// Whether the KeyPackage carries a last resort extension. The retained
-    /// material of a last resort KeyPackage outlives the join, so the
-    /// KeyPackage can be used to join further groups.
+    /// Whether the KeyPackage carries a last resort extension.
     pub(crate) last_resort: bool,
 }
 
@@ -2210,8 +2206,6 @@ mod tests {
         assert_eq!(material_b.key_package_ciphersuite, CIPHERSUITE);
     }
 
-    /// A record stored without `key_package_extensions` deserializes as last
-    /// resort.
     #[test]
     fn retained_material_without_extensions_deserializes_as_last_resort() {
         let provider = OpenMlsRustCrypto::default();
