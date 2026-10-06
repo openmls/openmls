@@ -244,13 +244,14 @@ pub trait StorageProvider<const VERSION: u16> {
     /// A sibling calls this once when it processes a `KeyPackageUpload`: the
     /// upload consumes one operation generation in the tree and produces one
     /// [`RetainedKeyPackageMaterial`](traits::RetainedKeyPackageMaterial) per
-    /// KeyPackage. These writes belong together: the tree must never be
-    /// persisted as advanced without the materials it produced. Providers do
-    /// not open their own transaction, so an application using a transactional
-    /// provider (such as SQLite) should call this within a transaction to get
-    /// atomicity and rollback on error. The in-memory provider applies the
-    /// writes while holding its write lock. Each material is keyed by its
-    /// [`HashReference`](traits::HashReference)
+    /// KeyPackage. The uploader calls it once when it finalizes the batch, for
+    /// the generation the batch consumed. These writes belong together: the
+    /// tree must never be persisted as advanced without the materials it
+    /// produced. Providers do not open their own transaction, so an
+    /// application using a transactional provider (such as SQLite) should call
+    /// this within a transaction to get atomicity and rollback on error. The
+    /// in-memory provider applies the writes while holding its write lock.
+    /// Each material is keyed by its [`HashReference`](traits::HashReference)
     /// and tagged with `epoch_id` so the sweep
     /// ([`Self::delete_unreferenced_vc_derivation_epoch_states`]) can find it.
     /// A subsequent write for the same reference replaces the stored material.

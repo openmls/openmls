@@ -17,9 +17,12 @@ use openmls_traits::{
     types::{CryptoError, SignatureScheme},
 };
 
-use p256::ecdsa::{signature::Signer as P256Signer, Signature, SigningKey};
-
-use rand_core::OsRng;
+use getrandom::SysRng;
+use p256::{
+    ecdsa::{signature::Signer as P256Signer, Signature, SigningKey},
+    elliptic_curve::Generate as _,
+};
+use rand_core::UnwrapErr;
 use serde::{Deserialize, Serialize};
 use tls_codec::{SecretVLBytes, TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 use zeroize::Zeroize;
@@ -73,13 +76,22 @@ impl Signer for SignatureKeyPair {
     fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, SignerError> {
         match self.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let k = SigningKey::from_bytes(self.private.as_slice().into())
+                let private = self
+                    .private
+                    .as_slice()
+                    .try_into()
                     .map_err(|_| SignerError::SigningError)?;
+                let k = SigningKey::from_bytes(private).map_err(|_| SignerError::SigningError)?;
                 let signature: Signature = k.sign(payload);
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ECDSA_SECP384R1_SHA384 => {
-                let k = p384::ecdsa::SigningKey::from_bytes(self.private.as_slice().into())
+                let private = self
+                    .private
+                    .as_slice()
+                    .try_into()
+                    .map_err(|_| SignerError::SigningError)?;
+                let k = p384::ecdsa::SigningKey::from_bytes(private)
                     .map_err(|_| SignerError::SigningError)?;
                 let signature: p384::ecdsa::Signature = k.sign(payload);
                 Ok(signature.to_der().to_bytes().into())
@@ -175,21 +187,20 @@ impl SignatureKeyPair {
     pub fn new(signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
         let (private, public) = match signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let k = SigningKey::random(&mut OsRng);
-                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
-                #[allow(deprecated)]
+                let k = SigningKey::generate_from_rng(&mut UnwrapErr(SysRng));
+                let pk = k.verifying_key().to_sec1_point(false).as_bytes().into();
                 let mut key_bytes = k.to_bytes();
                 let private: SecretVLBytes = key_bytes.as_slice().into();
                 key_bytes.zeroize();
                 (private, pk)
             }
             SignatureScheme::ECDSA_SECP384R1_SHA384 => {
-                let k = p384::ecdsa::SigningKey::random(&mut OsRng);
-                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
+                let k = p384::ecdsa::SigningKey::generate_from_rng(&mut UnwrapErr(SysRng));
+                let pk = k.verifying_key().to_sec1_point(false).as_bytes().into();
                 (k.to_bytes().as_slice().into(), pk)
             }
             SignatureScheme::ED25519 => {
-                let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
+                let sk = ed25519_dalek::SigningKey::generate(&mut UnwrapErr(SysRng));
                 let pk = sk.verifying_key().to_bytes().into();
                 // Use as_bytes() to avoid an unzeroed stack copy from to_bytes().
                 // sk itself implements ZeroizeOnDrop.
@@ -351,6 +362,24 @@ impl storage::traits::SignatureKeyPair<CURRENT_VERSION> for SignatureKeyPair {}
 mod tests {
     use super::*;
     use tls_codec::{DeserializeBytes as TlsDeserializeBytesTrait, Serialize as TlsSerializeTrait};
+
+    #[test]
+    fn sign_rejects_wrong_ecdsa_key_length() {
+        for (scheme, key_length) in [
+            (SignatureScheme::ECDSA_SECP256R1_SHA256, 32),
+            (SignatureScheme::ECDSA_SECP384R1_SHA384, 48),
+        ] {
+            for private in [vec![1u8; key_length - 1], vec![1u8; key_length + 1]] {
+                let private_length = private.len();
+                let key_pair = SignatureKeyPair::from_raw(scheme, private, vec![]);
+                assert_eq!(
+                    key_pair.sign(b"payload"),
+                    Err(SignerError::SigningError),
+                    "{scheme:?} with a {private_length}-byte key"
+                );
+            }
+        }
+    }
 
     #[test]
     fn test_serde_roundtrip() {

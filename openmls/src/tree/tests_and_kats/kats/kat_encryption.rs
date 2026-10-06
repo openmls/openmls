@@ -392,7 +392,9 @@ pub fn generate_test_vector(
                     generation,
                     &SenderRatchetConfiguration::default(),
                 )
-                .expect("Error getting decryption secret");
+                .expect("Error getting decryption secret")
+                .available()
+                .expect("Expected key material of another member");
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
@@ -415,7 +417,9 @@ pub fn generate_test_vector(
                     generation,
                     &SenderRatchetConfiguration::default(),
                 )
-                .expect("Error getting decryption secret");
+                .expect("Error getting decryption secret")
+                .available()
+                .expect("Expected key material of another member");
             let handshake_key_string = bytes_to_hex(handshake_secret_key.as_slice());
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
@@ -567,7 +571,9 @@ pub fn run_test_vector(
                     generation,
                     &SenderRatchetConfiguration::default(),
                 )
-                .expect("Error getting decryption secret");
+                .expect("Error getting decryption secret")
+                .available()
+                .expect("Expected key material of another member");
             log::debug!(
                 "  Secret tree after deriving application keys for leaf {leaf_index:?} in generation {generation:?}"
             );
@@ -606,9 +612,7 @@ pub fn run_test_vector(
                     hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
                 );
 
-            // We have to take the fresh_secret_tree here because the secret_for_decryption
-            // above ratcheted the tree forward.
-            let mut message_secrets = MessageSecrets::new(
+            let message_secrets = MessageSecrets::new(
                 sender_data_secret.clone(),
                 MembershipKey::random(ciphersuite, provider.rand()), // we don't care about this value
                 ConfirmationKey::random(ciphersuite, provider.rand()), // we don't care about this value
@@ -629,11 +633,9 @@ pub fn run_test_vector(
                 .expect("Unable to get sender data");
             let mls_plaintext_application: AuthenticatedContentIn = mls_ciphertext_application
                 .to_verifiable_content(
-                    ciphersuite,
                     provider.crypto(),
-                    &mut message_secrets,
-                    leaf_index,
-                    &SenderRatchetConfiguration::default(),
+                    &message_secrets,
+                    (application_secret_key, application_secret_nonce),
                     sender_data,
                     #[cfg(feature = "virtual-clients-draft")]
                     None,
@@ -654,11 +656,6 @@ pub fn run_test_vector(
                 return Err(EncTestVectorError::DecryptedApplicationMessageMismatch);
             }
 
-            // Swap secret tree back
-            let _ = group
-                .message_secrets_test_mut()
-                .replace_secret_tree(fresh_secret_tree.clone());
-
             // Check handshake keys
             let (handshake_secret_key, handshake_secret_nonce) = fresh_secret_tree
                 .clone()
@@ -670,7 +667,9 @@ pub fn run_test_vector(
                     generation,
                     &SenderRatchetConfiguration::default(),
                 )
-                .expect("Error getting decryption secret");
+                .expect("Error getting decryption secret")
+                .available()
+                .expect("Expected key material of another member");
             if hex_to_bytes(&handshake.key) != handshake_secret_key.as_slice() {
                 if cfg!(test) {
                     panic!("Handshake secret key mismatch");
@@ -693,11 +692,6 @@ pub fn run_test_vector(
                     hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
                 );
 
-            // Swap secret tree
-            let _ = group
-                .message_secrets_test_mut()
-                .replace_secret_tree(fresh_secret_tree.clone());
-
             // Decrypt and check message
             let sender_data = mls_ciphertext_handshake
                 .sender_data(
@@ -708,11 +702,9 @@ pub fn run_test_vector(
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(
-                    ciphersuite,
                     provider.crypto(),
                     group.message_secrets_test_mut(),
-                    leaf_index,
-                    &SenderRatchetConfiguration::default(),
+                    (handshake_secret_key, handshake_secret_nonce),
                     sender_data,
                     #[cfg(feature = "virtual-clients-draft")]
                     None,
@@ -735,11 +727,6 @@ pub fn run_test_vector(
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
             }
 
-            // Swap secret tree back
-            let _ = group
-                .message_secrets_test_mut()
-                .replace_secret_tree(fresh_secret_tree.clone());
-
             // Check handshake keys
             let (handshake_secret_key, handshake_secret_nonce) = fresh_secret_tree
                 .clone()
@@ -751,7 +738,9 @@ pub fn run_test_vector(
                     generation,
                     &SenderRatchetConfiguration::default(),
                 )
-                .expect("Error getting decryption secret");
+                .expect("Error getting decryption secret")
+                .available()
+                .expect("Expected key material of another member");
             if hex_to_bytes(&handshake.key) != handshake_secret_key.as_slice() {
                 return Err(EncTestVectorError::HandshakeSecretKeyMismatch);
             }
@@ -771,11 +760,6 @@ pub fn run_test_vector(
             *group.message_secrets_test_mut().sender_data_secret_mut() =
                 SenderDataSecret::from_slice(&hex_to_bytes(&test_vector.sender_data_secret));
 
-            // Swap secret tree
-            let _ = group
-                .message_secrets_test_mut()
-                .replace_secret_tree(fresh_secret_tree.clone());
-
             // Decrypt and check message
             let sender_data = mls_ciphertext_handshake
                 .sender_data(
@@ -786,11 +770,9 @@ pub fn run_test_vector(
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake: AuthenticatedContentIn = mls_ciphertext_handshake
                 .to_verifiable_content(
-                    ciphersuite,
                     provider.crypto(),
                     group.message_secrets_test_mut(),
-                    leaf_index,
-                    &SenderRatchetConfiguration::default(),
+                    (handshake_secret_key, handshake_secret_nonce),
                     sender_data,
                     #[cfg(feature = "virtual-clients-draft")]
                     None,
@@ -810,11 +792,6 @@ pub fn run_test_vector(
             if expected_plaintext.content() != mls_plaintext_handshake.content() {
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
             }
-
-            // Swap secret tree back
-            let _ = group
-                .message_secrets_test_mut()
-                .replace_secret_tree(fresh_secret_tree.clone());
         }
         log::trace!("Finished test vector for leaf {leaf_index:?}");
     }
