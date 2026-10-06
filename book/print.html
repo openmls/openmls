@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9b12ae4d.js";
+            window.path_to_searchindex_js = "searchindex-bed6ebf3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-81492934.js"></script>
@@ -311,6 +311,17 @@ OpenMLS provides a <a href="https://github.com/openmls/openmls/tree/main/basic_c
 <li><code>extensions: Vec&lt;Extensions&gt;</code>: A list of extensions supported by the client.</li>
 </ul>
 <p>The client must specify at least one ciphersuite per KeyPackage and it must not advertise ciphersuites it does not support.</p>
+<p>If no capabilities are set, OpenMLS derives them from the key package itself:
+the ciphersuite it is built with, its credential type, and the extension types
+present in its leaf node.
+That is the minimum a leaf node has to advertise.</p>
+<p>Setting capabilities explicitly, via <code>KeyPackage::builder().leaf_node_capabilities(..)</code>,
+is how a client advertises support for ciphersuites, extensions, proposal types
+and credential types beyond that.
+If the list does not cover the extensions the key package itself uses, building
+it fails rather than producing a key package other clients would reject.
+Pass <code>CapabilitiesPolicy::Widen</code> to <code>KeyPackage::builder().capabilities_policy(..)</code>
+to have the missing capabilities added instead.</p>
 <p>The client should advertise all extensions it supports. See the documentation of extensions for more details.</p>
 <p>A <code>KeyPackageBundle</code> can be generated through the <code>KeyPackage::builder()</code>:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -386,12 +397,28 @@ provider.storage().delete_key_package(
 </thead>
 <tbody>
 <tr><td><code>group_context_extensions</code></td><td><code>Extensions</code></td><td>Optional group-level extensions, e.g. <code>RequiredCapabilitiesExtension</code>.</td></tr>
-<tr><td><code>capabilities</code> .</td><td><code>Capabilities</code></td><td>Lists the capabilities of the group’s creator.</td></tr>
+<tr><td><code>capabilities</code> .</td><td><code>Capabilities</code></td><td>Lists the capabilities of the group’s creator. Optional; see below.</td></tr>
 <tr><td><code>leaf_extensions</code> .</td><td><code>Extensions</code></td><td>Extensions to be included in the group creator’s leaf</td></tr>
 </tbody>
 </table>
 </div>
 <p>Both ways of group configurations can be specified by using the struct’s builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.</p>
+<p>If <code>capabilities</code> is left unset, the creator’s leaf node advertises what it
+actually uses: the group’s ciphersuite, the creator’s credential type, and the
+extension types in <code>leaf_extensions</code>.
+Set it to advertise more than that, for example further ciphersuites or the
+proposal types the client implements.
+Explicit capabilities are taken as provided, so group creation fails if they do
+not cover what the creator’s own leaf uses, what the group’s
+<code>RequiredCapabilitiesExtension</code> demands, or the group’s non-default
+<code>group_context_extensions</code>.
+The latter two apply even if <code>capabilities</code> is left unset: the creator is a
+member of the group and must support them.
+<code>MlsGroupCreateConfigBuilder::capabilities_policy</code> overrides this:
+<code>CapabilitiesPolicy::Widen</code> adds the capabilities the leaf itself needs instead
+of rejecting.
+Note that widening never claims support for the group’s required extension,
+proposal or credential types.</p>
 <p>Example join configuration:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupJoinConfig::builder()
         .padding_size(100)
@@ -419,7 +446,7 @@ provider.storage().delete_key_package(
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
+            Some(&amp;[ciphersuite]),
             Some(&amp;[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
             Some(&amp;[CredentialType::Basic]),
@@ -633,7 +660,14 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .into_verifiable_group_info()
         .expect("Could not get group info");</code></pre>
 <p>External commits can be created using a builder pattern via <code>MlsGroup::external_commit_builder()</code>. The <code>ExternalCommitBuilder</code> provides more options than <code>join_by_external</code> in that it allows the inclusion of SelfRemove or PSK proposals. After its first stage, the <code>ExternalCommitBuilder</code> turns into a regular <code>CommitBuilder</code>. As external commits come with a few restrictions relative to regular commits, not all <code>CommitBuilder</code> capabilities are exposed for external commits. Also, instead of <code>stage_commit</code> this <code>CommitBuilder</code> requires a call to <code>finalize</code> before it returns the new <code>MlsGroup</code>, as well as a <code>CommitMessageBundle</code> containing the external commit, as well as a potential <code>GroupInfo</code>.</p>
-<pre><code class="language-rust no_run noplayground">    let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+<pre><code class="language-rust no_run noplayground">    // The joining member's leaf node capabilities. These are optional: left
+    // unset, the leaf advertises the group's ciphersuite, the member's own
+    // credential type and its leaf extensions. Set them to advertise more.
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_capabilities(capabilities.clone())
+        .build();
+
+    let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
         .with_ratchet_tree(tree_option.into())
         .with_config(join_group_config.clone())
         .with_aad(AAD.to_vec())
@@ -973,14 +1007,14 @@ Even though the member updates its own leaf node only in this operation, the Com
 <pre><code class="language-rust no_run noplayground">    // Define a custom proposal type
     let custom_proposal_type = 0xFFFF;
 
-    // Define capabilities supporting the custom proposal type
-    let capabilities = Capabilities::new(
-        None,
-        None,
-        None,
-        Some(&amp;[ProposalType::Custom(custom_proposal_type)]),
-        None,
-    );
+    // Define capabilities supporting the custom proposal type.
+    // Note that setting capabilities explicitly means they must also cover what
+    // the leaf itself uses: its ciphersuite and its credential type.
+    let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .proposals(vec![ProposalType::Custom(custom_proposal_type)])
+        .build();
 
     // Generate KeyPackage that signals support for the custom proposal type
     let bob_key_package = KeyPackageBuilder::new()
@@ -1834,14 +1868,14 @@ fn setup_group_with_app_data_support&lt;'a, Provider: OpenMlsProvider&gt;(
     ciphersuite: Ciphersuite,
 ) -&gt; GroupState&lt;'a, Provider&gt; {
     // Define capabilities that include AppDataDictionary extension
-    // and AppDataUpdate proposal support
-    let capabilities = Capabilities::new(
-        None, // protocol versions (default)
-        None, // ciphersuites (default)
-        Some(&amp;[ExtensionType::AppDataDictionary]),
-        Some(&amp;[ProposalType::AppDataUpdate]),
-        None, // credentials (default)
-    );
+    // and AppDataUpdate proposal support. Capabilities set explicitly must also
+    // cover what the leaf itself uses: its ciphersuite and credential type.
+    let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .extensions(vec![ExtensionType::AppDataDictionary])
+        .proposals(vec![ProposalType::AppDataUpdate])
+        .build();
 
     // The group context must require these capabilities so that
     // all members are guaranteed to support them
@@ -2128,7 +2162,10 @@ the new state and resumes staging with <code>stage_app_data_commit</code>:</p>
 </span><span class="boring">fn main() {
 </span>use openmls::prelude::*;
 
+// Setting capabilities explicitly means they must also cover what the leaf
+// itself uses: its ciphersuite and its credential type.
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![ciphersuite])
     .proposals(vec![
         ProposalType::Add,
         ProposalType::Update,
@@ -2181,14 +2218,20 @@ let provider = OpenMlsRustCrypto::default();
 
 // Using CapabilitiesBuilder
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![ciphersuite])
+    .credentials(vec![CredentialType::Basic])
     .with_grease(provider.rand())
     .build();
 
 // Or on an existing Capabilities instance
-let capabilities = Capabilities::default()
-    .with_grease(provider.rand());
+let capabilities = some_capabilities.with_grease(provider.rand());
 <span class="boring">}</span></code></pre>
-<p>This will add one random GREASE value to each capability list (ciphersuites, extensions, proposals, and credentials) if no GREASE value is already present.</p>
+<p>This will add one random GREASE value to each capability list
+(ciphersuites, extensions, proposals, and credentials)
+if no GREASE value is already present.</p>
+<p>Note that <code>with_grease()</code> only adds GREASE values.
+It does not fill in the ciphersuite and credential type the leaf itself uses,
+so capabilities built this way still have to state them.</p>
 <h3 id="generating-individual-random-grease-values"><a class="header" href="#generating-individual-random-grease-values">Generating Individual Random GREASE Values</a></h3>
 <p>OpenMLS also provides a helper function to generate individual random GREASE values:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -2274,8 +2317,12 @@ let signature_keys = SignatureKeyPair::new(
     Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.signature_algorithm()
 ).unwrap();
 
-// Create capabilities with automatic random GREASE values
+// Create capabilities with automatic random GREASE values.
+// The ciphersuite and credential type the key package itself uses have to be
+// listed too, because explicit capabilities are taken at face value.
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519])
+    .credentials(vec![CredentialType::Basic])
     .with_grease(provider.rand())
     .build();
 
@@ -2314,6 +2361,7 @@ let signature_keys = SignatureKeyPair::new(
 
 // Create capabilities with specific GREASE values
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519])
     .proposals(vec![
         ProposalType::Add,
         ProposalType::Update,
@@ -3715,10 +3763,15 @@ use openmls::components::vc_derivation_info::VC_COMPONENT_ID;
 use openmls::extensions::{
     AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
 };
-use openmls::prelude::Capabilities;
+use openmls::prelude::{Capabilities, CredentialType};
 use tls_codec::Serialize as _;
 
+// Capabilities set explicitly are taken at face value, so the ciphersuite and
+// credential type the leaf itself uses have to be listed alongside the
+// extension type this feature needs.
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![ciphersuite])
+    .credentials(vec![CredentialType::Basic])
     .extensions(vec![ExtensionType::AppDataDictionary])
     .build();
 
@@ -3734,6 +3787,9 @@ let leaf_extensions = Extensions::from_vec(vec![Extension::AppDataDictionary(
 through <code>.capabilities(...)</code> and <code>.with_leaf_node_extensions(...)</code>, and to the
 <code>KeyPackage::builder()</code> through <code>.leaf_node_capabilities(...)</code> and
 <code>.leaf_node_extensions(...)</code>.</p>
+<p>Capabilities have to be set explicitly here: virtual clients need
+<code>AppDataDictionary</code> advertised, and leaving capabilities unset would only
+advertise what the leaf itself uses.</p>
 <h2 id="derivation-epochs"><a class="header" href="#derivation-epochs">Derivation epochs</a></h2>
 <p>An emulation group is an ordinary <code>MlsGroup</code>. Each emulator client maintains its
 own copy. What makes it an emulation group is a flag every emulator client has to

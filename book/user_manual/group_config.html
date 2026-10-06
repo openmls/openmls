@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9b12ae4d.js";
+            window.path_to_searchindex_js = "../searchindex-bed6ebf3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-81492934.js"></script>
@@ -200,12 +200,28 @@
 </thead>
 <tbody>
 <tr><td><code>group_context_extensions</code></td><td><code>Extensions</code></td><td>Optional group-level extensions, e.g. <code>RequiredCapabilitiesExtension</code>.</td></tr>
-<tr><td><code>capabilities</code> .</td><td><code>Capabilities</code></td><td>Lists the capabilities of the group’s creator.</td></tr>
+<tr><td><code>capabilities</code> .</td><td><code>Capabilities</code></td><td>Lists the capabilities of the group’s creator. Optional; see below.</td></tr>
 <tr><td><code>leaf_extensions</code> .</td><td><code>Extensions</code></td><td>Extensions to be included in the group creator’s leaf</td></tr>
 </tbody>
 </table>
 </div>
 <p>Both ways of group configurations can be specified by using the struct’s builder pattern, or choosing their default values. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.</p>
+<p>If <code>capabilities</code> is left unset, the creator’s leaf node advertises what it
+actually uses: the group’s ciphersuite, the creator’s credential type, and the
+extension types in <code>leaf_extensions</code>.
+Set it to advertise more than that, for example further ciphersuites or the
+proposal types the client implements.
+Explicit capabilities are taken as provided, so group creation fails if they do
+not cover what the creator’s own leaf uses, what the group’s
+<code>RequiredCapabilitiesExtension</code> demands, or the group’s non-default
+<code>group_context_extensions</code>.
+The latter two apply even if <code>capabilities</code> is left unset: the creator is a
+member of the group and must support them.
+<code>MlsGroupCreateConfigBuilder::capabilities_policy</code> overrides this:
+<code>CapabilitiesPolicy::Widen</code> adds the capabilities the leaf itself needs instead
+of rejecting.
+Note that widening never claims support for the group’s required extension,
+proposal or credential types.</p>
 <p>Example join configuration:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupJoinConfig::builder()
         .padding_size(100)
@@ -233,7 +249,7 @@
         // we need to specify the non-default extension here
         .capabilities(Capabilities::new(
             None, // Defaults to the group's protocol version
-            None, // Defaults to the group's ciphersuite
+            Some(&amp;[ciphersuite]),
             Some(&amp;[ExtensionType::Unknown(0xff00)]),
             None, // Defaults to all basic extension types
             Some(&amp;[CredentialType::Basic]),

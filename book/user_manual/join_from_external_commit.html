@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9b12ae4d.js";
+            window.path_to_searchindex_js = "../searchindex-bed6ebf3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-81492934.js"></script>
@@ -193,7 +193,14 @@ If the RatchetTree extension is not included in the <code>GroupInfo</code> as a 
         .into_verifiable_group_info()
         .expect("Could not get group info");</code></pre>
 <p>External commits can be created using a builder pattern via <code>MlsGroup::external_commit_builder()</code>. The <code>ExternalCommitBuilder</code> provides more options than <code>join_by_external</code> in that it allows the inclusion of SelfRemove or PSK proposals. After its first stage, the <code>ExternalCommitBuilder</code> turns into a regular <code>CommitBuilder</code>. As external commits come with a few restrictions relative to regular commits, not all <code>CommitBuilder</code> capabilities are exposed for external commits. Also, instead of <code>stage_commit</code> this <code>CommitBuilder</code> requires a call to <code>finalize</code> before it returns the new <code>MlsGroup</code>, as well as a <code>CommitMessageBundle</code> containing the external commit, as well as a potential <code>GroupInfo</code>.</p>
-<pre><code class="language-rust no_run noplayground">    let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
+<pre><code class="language-rust no_run noplayground">    // The joining member's leaf node capabilities. These are optional: left
+    // unset, the leaf advertises the group's ciphersuite, the member's own
+    // credential type and its leaf extensions. Set them to advertise more.
+    let leaf_node_parameters = LeafNodeParameters::builder()
+        .with_capabilities(capabilities.clone())
+        .build();
+
+    let (mut bob_group, commit_message_bundle) = MlsGroup::external_commit_builder()
         .with_ratchet_tree(tree_option.into())
         .with_config(join_group_config.clone())
         .with_aad(AAD.to_vec())

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9b12ae4d.js";
+            window.path_to_searchindex_js = "../searchindex-bed6ebf3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-81492934.js"></script>
@@ -181,14 +181,14 @@
 <pre><code class="language-rust no_run noplayground">    // Define a custom proposal type
     let custom_proposal_type = 0xFFFF;
 
-    // Define capabilities supporting the custom proposal type
-    let capabilities = Capabilities::new(
-        None,
-        None,
-        None,
-        Some(&amp;[ProposalType::Custom(custom_proposal_type)]),
-        None,
-    );
+    // Define capabilities supporting the custom proposal type.
+    // Note that setting capabilities explicitly means they must also cover what
+    // the leaf itself uses: its ciphersuite and its credential type.
+    let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .proposals(vec![ProposalType::Custom(custom_proposal_type)])
+        .build();
 
     // Generate KeyPackage that signals support for the custom proposal type
     let bob_key_package = KeyPackageBuilder::new()

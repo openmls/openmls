@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9b12ae4d.js";
+            window.path_to_searchindex_js = "searchindex-bed6ebf3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-81492934.js"></script>
@@ -235,10 +235,15 @@ use openmls::components::vc_derivation_info::VC_COMPONENT_ID;
 use openmls::extensions::{
     AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
 };
-use openmls::prelude::Capabilities;
+use openmls::prelude::{Capabilities, CredentialType};
 use tls_codec::Serialize as _;
 
+// Capabilities set explicitly are taken at face value, so the ciphersuite and
+// credential type the leaf itself uses have to be listed alongside the
+// extension type this feature needs.
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![ciphersuite])
+    .credentials(vec![CredentialType::Basic])
     .extensions(vec![ExtensionType::AppDataDictionary])
     .build();
 
@@ -254,6 +259,9 @@ let leaf_extensions = Extensions::from_vec(vec![Extension::AppDataDictionary(
 through <code>.capabilities(...)</code> and <code>.with_leaf_node_extensions(...)</code>, and to the
 <code>KeyPackage::builder()</code> through <code>.leaf_node_capabilities(...)</code> and
 <code>.leaf_node_extensions(...)</code>.</p>
+<p>Capabilities have to be set explicitly here: virtual clients need
+<code>AppDataDictionary</code> advertised, and leaving capabilities unset would only
+advertise what the leaf itself uses.</p>
 <h2 id="derivation-epochs"><a class="header" href="#derivation-epochs">Derivation epochs</a></h2>
 <p>An emulation group is an ordinary <code>MlsGroup</code>. Each emulator client maintains its
 own copy. What makes it an emulation group is a flag every emulator client has to

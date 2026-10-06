@@ -352,7 +352,7 @@
 <a href=#352 id=352 data-nosnippet>352</a>        leaf_index: LeafNodeIndex,
 <a href=#353 id=353 data-nosnippet>353</a>        leaf_node_params: UpdateLeafNodeParams,
 <a href=#354 id=354 data-nosnippet>354</a>        vc_override: <span class="prelude-ty">Option</span>&lt;OwnUpdatePathOverride&gt;,
-<a href=#355 id=355 data-nosnippet>355</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathResult, TreeSyncAddLeaf&gt; {
+<a href=#355 id=355 data-nosnippet>355</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathResult, ApplyOwnUpdatePathError&gt; {
 <a href=#356 id=356 data-nosnippet>356</a>        <span class="comment">// For External Commits, we temporarily add a placeholder leaf node to the tree, because it
 <a href=#357 id=357 data-nosnippet>357</a>        // might be required to make the tree grow to the right size. If we
 <a href=#358 id=358 data-nosnippet>358</a>        // don't do that, calculating the direct path might fail. It's important
@@ -380,8 +380,8 @@
 <a href=#380 id=380 data-nosnippet>380</a>        <span class="kw">let </span>parent_hash = <span class="self">self
 <a href=#381 id=381 data-nosnippet>381</a>            </span>.process_update_path(crypto, ciphersuite, leaf_index, path)
 <a href=#382 id=382 data-nosnippet>382</a>            .map_err(|e| <span class="kw">match </span>e {
-<a href=#383 id=383 data-nosnippet>383</a>                ApplyUpdatePathError::LibraryError(e) =&gt; TreeSyncAddLeaf::LibraryError(e),
-<a href=#384 id=384 data-nosnippet>384</a>                <span class="kw">_ </span>=&gt; TreeSyncAddLeaf::LibraryError(LibraryError::custom(
+<a href=#383 id=383 data-nosnippet>383</a>                ApplyUpdatePathError::LibraryError(e) =&gt; ApplyOwnUpdatePathError::LibraryError(e),
+<a href=#384 id=384 data-nosnippet>384</a>                <span class="kw">_ </span>=&gt; ApplyOwnUpdatePathError::LibraryError(LibraryError::custom(
 <a href=#385 id=385 data-nosnippet>385</a>                    <span class="string">"Unexpected error in process_update_path"</span>,
 <a href=#386 id=386 data-nosnippet>386</a>                )),
 <a href=#387 id=387 data-nosnippet>387</a>            })<span class="question-mark">?</span>;
