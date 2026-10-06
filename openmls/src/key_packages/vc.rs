@@ -210,6 +210,7 @@ impl VcKeyPackageBatchBuilder {
                 key_package_ciphersuite: info.cipher_suite,
                 key_package_index: info.key_package_index,
                 key_package_seed_secret,
+                key_package_extensions: info.extensions.clone(),
             };
             materials.push((info.key_package_ref.clone(), material));
         }
