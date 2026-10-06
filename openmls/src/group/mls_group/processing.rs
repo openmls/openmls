@@ -3,7 +3,7 @@
 use std::mem;
 
 use errors::{CommitToPendingProposalsError, MergePendingCommitError};
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 
 use crate::{
     framing::mls_content::FramedContentBody,

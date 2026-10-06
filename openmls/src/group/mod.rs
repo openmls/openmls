@@ -12,8 +12,6 @@ use openmls_traits::random::OpenMlsRand;
 
 #[cfg(test)]
 use crate::ciphersuite::*;
-#[cfg(test)]
-use crate::utils::*;
 
 // Crate
 pub(crate) mod errors;

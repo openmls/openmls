@@ -3,7 +3,7 @@
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
 use errors::EmptyInputError;
-use openmls_traits::{signatures::Signer, storage::StorageProvider as _};
+use openmls_traits::signatures::Signer;
 use proposal_store::QueuedRemoveProposal;
 
 use super::{

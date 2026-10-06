@@ -205,7 +205,7 @@ fn book_example_readd() {
     let (commit, welcome, _) = readd_messages.into_contents();
     let welcome = welcome.unwrap();
     let processed_welcome =
-        ProcessedWelcome::new_from_welcome(bob_provider, &mls_group_config, welcome).unwrap();
+        ProcessedWelcome::new_from_welcome(bob_provider, mls_group_config, welcome).unwrap();
     let bob_group = JoinBuilder::new(bob_provider, processed_welcome)
         .replace_old_group()
         .build()

@@ -43,7 +43,7 @@ use openmls_traits::{
 };
 
 use std::{collections::HashMap, sync::RwLock};
-use tls_codec::*;
+use tls_codec::{Deserialize as _, Serialize as _};
 
 pub mod client;
 pub mod errors;
