@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - v0.9
   pull_request:
   workflow_dispatch:
 

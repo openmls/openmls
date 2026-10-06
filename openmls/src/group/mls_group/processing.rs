@@ -7,9 +7,9 @@ use errors::CommitToPendingProposalsError;
 use errors::MergePendingCommitError;
 #[cfg(feature = "extensions-draft")]
 use errors::ResolveAppDataCommitError;
+use openmls_traits::crypto::OpenMlsCrypto;
 #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
 use openmls_traits::signatures::Signer;
-use openmls_traits::{crypto::OpenMlsCrypto, storage::StorageProvider as _};
 
 #[cfg(any(not(feature = "virtual-clients-draft"), feature = "test-utils", test))]
 use crate::messages::group_info::GroupInfo;
