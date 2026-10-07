@@ -558,14 +558,21 @@ impl Extensions<AnyObject> {
     }
 }
 
+mod private {
+    /// Used to seal other traits
+    pub trait Sealed {}
+}
+
 /// Can be implemented by a type to validate extensions.
-pub trait ExtensionValidator {
+pub trait ExtensionValidator: private::Sealed {
     /// The error returned by the validator
     type Error;
 
     /// Check if the extension is valid.
     fn validate_extension_type(ext: ExtensionType) -> Result<(), Self::Error>;
 }
+
+impl private::Sealed for AnyObject {}
 
 impl ExtensionValidator for AnyObject {
     type Error = Infallible;
@@ -598,6 +605,8 @@ where
     }
 }
 
+impl private::Sealed for GroupInfo {}
+
 // https://validation.openmls.tech/#valn1602
 impl ExtensionValidator for GroupInfo {
     type Error = ExtensionTypeNotValidInGroupInfoError;
@@ -615,6 +624,8 @@ impl ExtensionValidator for GroupInfo {
     }
 }
 
+impl private::Sealed for GroupContext {}
+
 // https://validation.openmls.tech/#valn1603
 impl ExtensionValidator for GroupContext {
     type Error = ExtensionTypeNotValidInGroupContextError;
@@ -630,6 +641,8 @@ impl ExtensionValidator for GroupContext {
     }
 }
 
+impl private::Sealed for KeyPackage {}
+
 // https://validation.openmls.tech/#valn1604
 impl ExtensionValidator for KeyPackage {
     type Error = ExtensionTypeNotValidInKeyPackageError;
@@ -644,6 +657,8 @@ impl ExtensionValidator for KeyPackage {
         }
     }
 }
+
+impl private::Sealed for LeafNode {}
 
 // https://validation.openmls.tech/#valn1601
 impl ExtensionValidator for LeafNode {

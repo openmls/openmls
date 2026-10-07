@@ -10,6 +10,18 @@ use crate::{
     prelude::ExtensionValidator,
 };
 
+/// The initial capacity of the HashSet used to aggregate which extension types are in use.
+/// We pre-allocate using with_capacity to avoid heap re-allocations. We could just use the number
+/// of extensions in the list, but that is a user-provided number, so the user could make us
+/// allocate a lot of memory. Therefore, we make this a fixed number.
+///
+/// On the number choice:
+/// - Most applications are unlikely to use many extension types in a single list (>10 or so)
+/// - The entries are small (2 bytes each), so overestimating is not very expensive.
+///   However, the allocation size doubles at 29 from ~100B to ~200B, and 28 extension types should
+///   be enough anyway.
+const EXTENSION_TYPE_SET_INITIAL_CAP: usize = 28;
+
 /// An [`Extension`] decoded in the context of `T`, i.e. its extension type
 /// was checked with `T::validate_extension_type` during deserialization.
 /// Only used as an intermediate when deserializing [`Extensions<T>`].
@@ -37,7 +49,7 @@ where
     type Error = InvalidExtensionError;
 
     fn try_from(candidate: Vec<ExtensionIn<T>>) -> Result<Self, Self::Error> {
-        let mut seen = HashSet::with_capacity(candidate.len());
+        let mut seen = HashSet::with_capacity(EXTENSION_TYPE_SET_INITIAL_CAP);
         for extension in candidate.iter() {
             if !seen.insert(extension.extension_type()) {
                 return Err(InvalidExtensionError::Duplicate);
