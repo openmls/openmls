@@ -982,10 +982,10 @@ fn test_app_data_commit_keeps_lifetime_policy() {
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(Capabilities::new(
             None,
-            None,
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::AppDataDictionary]),
             Some(&[ProposalType::AppDataUpdate]),
-            None,
+            Some(&[CredentialType::Basic]),
         ))
         .with_lifetime(Lifetime::init(now - 2000, now - 1000))
         .build();
