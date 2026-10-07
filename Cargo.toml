@@ -28,7 +28,7 @@ tls_codec = { version = "0.5", features = ["derive", "serde", "mls"] }
 serde = { version = "^1.0" }
 thiserror = { version = "^2.0" }
 
-openmls = { version = "0.9.0", path = "openmls" }
+openmls = { version = "0.9.1", path = "openmls" }
 
 openmls_traits = { version = "0.6.0", path = "traits" }
 openmls_test = { version = "0.3.0", path = "openmls_test" }

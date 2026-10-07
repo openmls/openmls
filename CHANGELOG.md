@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.9.1 (2026-10-07)
+
+### Fixed
+
+- [GHSA-gc79-23g3-8g52](https://github.com/openmls/openmls/security/advisories/GHSA-gc79-23g3-8g52): Unbounded recursion while decoding invalid nested extensions can abort the process
+- When checking whether an extension type is valid in the given context, always treat GREASE values like unknown extensions.
+
 ## 0.9.0 (2026-08-25)
 
 ### Added
