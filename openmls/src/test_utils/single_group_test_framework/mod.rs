@@ -13,6 +13,7 @@ use crate::{
     prelude::{commit_builder::*, *},
 };
 
+pub use crate::test_utils::minimal_capabilities_for;
 use crate::test_utils::storage_state::GroupStorageState;
 
 mod assertions;
@@ -139,7 +140,10 @@ impl<'a, Provider: OpenMlsProvider> PreGroupPartyStateBuilder<'a, Provider> {
         let mut builder = KeyPackage::builder()
             .leaf_node_extensions(self.leaf_node_extensions.unwrap_or_default())
             .key_package_extensions(self.key_package_extensions.unwrap_or_default())
-            .leaf_node_capabilities(self.leaf_node_capabilities.unwrap_or_default());
+            .leaf_node_capabilities(
+                self.leaf_node_capabilities
+                    .unwrap_or_else(|| minimal_capabilities_for(self.ciphersuite).build()),
+            );
 
         if let Some(lifetime) = self.lifetime {
             builder = builder.key_package_lifetime(lifetime);

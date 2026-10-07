@@ -55,7 +55,10 @@ You can include GREASE values in your KeyPackage capabilities to test interopera
 ```rust
 use openmls::prelude::*;
 
+// Setting capabilities explicitly means they must also cover what the leaf
+// itself uses: its ciphersuite and its credential type.
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![ciphersuite])
     .proposals(vec![
         ProposalType::Add,
         ProposalType::Update,
@@ -115,15 +118,22 @@ let provider = OpenMlsRustCrypto::default();
 
 // Using CapabilitiesBuilder
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![ciphersuite])
+    .credentials(vec![CredentialType::Basic])
     .with_grease(provider.rand())
     .build();
 
 // Or on an existing Capabilities instance
-let capabilities = Capabilities::default()
-    .with_grease(provider.rand());
+let capabilities = some_capabilities.with_grease(provider.rand());
 ```
 
-This will add one random GREASE value to each capability list (ciphersuites, extensions, proposals, and credentials) if no GREASE value is already present.
+This will add one random GREASE value to each capability list
+(ciphersuites, extensions, proposals, and credentials)
+if no GREASE value is already present.
+
+Note that `with_grease()` only adds GREASE values.
+It does not fill in the ciphersuite and credential type the leaf itself uses,
+so capabilities built this way still have to state them.
 
 ### Generating Individual Random GREASE Values
 
@@ -222,8 +232,12 @@ let signature_keys = SignatureKeyPair::new(
     Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.signature_algorithm()
 ).unwrap();
 
-// Create capabilities with automatic random GREASE values
+// Create capabilities with automatic random GREASE values.
+// The ciphersuite and credential type the key package itself uses have to be
+// listed too, because explicit capabilities are taken at face value.
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519])
+    .credentials(vec![CredentialType::Basic])
     .with_grease(provider.rand())
     .build();
 
@@ -264,6 +278,7 @@ let signature_keys = SignatureKeyPair::new(
 
 // Create capabilities with specific GREASE values
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519])
     .proposals(vec![
         ProposalType::Add,
         ProposalType::Update,

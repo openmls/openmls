@@ -490,9 +490,9 @@ pub enum CreateCommitError {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
-    /// See [`TreeSyncAddLeaf`] for more details.
+    /// See [`ApplyOwnUpdatePathError`] for more details.
     #[error(transparent)]
-    TreeSyncAddLeaf(#[from] TreeSyncAddLeaf),
+    ApplyOwnUpdatePath(#[from] ApplyOwnUpdatePathError),
     /// Invalid [`LeafNodeParameters`]. `[CredentialWithKey]` can't be set with new signer.
     #[error("Invalid LeafNodeParameters. CredentialWithKey can't be set with new signer.")]
     InvalidLeafNodeParameters,

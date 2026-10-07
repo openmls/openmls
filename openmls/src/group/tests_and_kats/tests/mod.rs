@@ -8,6 +8,7 @@ mod safe_aad;
 
 mod capabilities_check;
 mod commit_validation;
+mod creator_leaf_node_capabilities;
 mod encoding;
 mod external_add_proposal;
 mod external_commit;

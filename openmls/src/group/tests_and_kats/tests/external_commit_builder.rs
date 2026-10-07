@@ -6,14 +6,14 @@ use crate::{
     framing::{ProcessedMessageContent, ProtocolMessage},
     group::{
         errors::CreateCommitError,
-        tests_and_kats::utils::{generate_credential_with_key, CredentialWithKeyAndSigner},
+        tests_and_kats::utils::{
+            generate_credential_with_key, minimal_capabilities_for, CredentialWithKeyAndSigner,
+        },
         MlsGroup, MlsGroupJoinConfig, WireFormatPolicy, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::{PreSharedKeyProposal, ProposalType},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
-    treesync::node::leaf_node::{
-        Capabilities, LeafNodeIn, LeafNodeParameters, TreePosition, VerifiableLeafNode,
-    },
+    treesync::node::leaf_node::{LeafNodeIn, LeafNodeParameters, TreePosition, VerifiableLeafNode},
 };
 
 #[openmls_test]
@@ -52,7 +52,7 @@ fn external_commit_builder() {
     // Alice creates a group.
 
     // Make sure we support SelfRemoves
-    let capabilities = Capabilities::builder()
+    let capabilities = minimal_capabilities_for(ciphersuite)
         .proposals(vec![ProposalType::SelfRemove])
         .build();
 
@@ -193,6 +193,7 @@ fn external_commit_builder() {
             charlie_credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .add_psk_proposal(PreSharedKeyProposal::new(psk))
         .load_psks(charlie_provider.storage())
         .unwrap()
@@ -257,7 +258,7 @@ fn external_commit_after_self_remove() {
         bob_provider,
     );
 
-    let capabilities = Capabilities::builder()
+    let capabilities = minimal_capabilities_for(ciphersuite)
         .proposals(vec![ProposalType::SelfRemove])
         .build();
 

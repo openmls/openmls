@@ -14,12 +14,14 @@ fn setup<'a, Provider: OpenMlsProvider>(
     include_required_capabilities: bool,
 ) -> GroupState<'a, Provider> {
     // Required capabilities for leaf node
+    // Capabilities set explicitly are taken at face value, so they must also
+    // cover what the leaf itself uses: its ciphersuite and credential type.
     let capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         Some(&[ExtensionType::AppDataDictionary]),
         Some(&[ProposalType::AppDataUpdate]),
-        None,
+        Some(&[CredentialType::Basic]),
     );
 
     let required_capabilities_extension =
@@ -211,10 +213,10 @@ fn test_app_data_update_with_welcome() {
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(Capabilities::new(
             None,
-            None,
+            Some(&[ciphersuite]),
             Some(&[ExtensionType::AppDataDictionary]),
             Some(&[ProposalType::AppDataUpdate]),
-            None,
+            Some(&[CredentialType::Basic]),
         ))
         .build();
 

@@ -24,6 +24,7 @@ use crate::{
         errors::KeyPackageNewError, KeyPackage, KeyPackageBuilder, KeyPackageBundle,
         KeyPackageLeafNodeParams,
     },
+    treesync::node::leaf_node::resolve_capabilities,
 };
 
 /// A batch of virtual-client KeyPackages a sibling can reproduce.
@@ -210,6 +211,7 @@ impl VcKeyPackageBatchBuilder {
                 key_package_ciphersuite: info.cipher_suite,
                 key_package_index: info.key_package_index,
                 key_package_seed_secret,
+                key_package_extensions: info.extensions.clone(),
             };
             materials.push((info.key_package_ref.clone(), material));
         }
@@ -300,10 +302,15 @@ impl VcKeyPackageBatchBuilder {
         )
         .map_err(KeyPackageNewError::LibraryError)?;
 
+        let (capabilities, capabilities_policy) = resolve_capabilities(
+            builder.leaf_node_capabilities.clone(),
+            builder.capabilities_policy,
+        );
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: builder.key_package_lifetime.unwrap_or_default(),
-            capabilities: builder.leaf_node_capabilities.unwrap_or_default(),
+            capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         };
         let (key_package, encryption_key_pair) = KeyPackage::new_from_vc_keys(
             ciphersuite,
@@ -316,6 +323,7 @@ impl VcKeyPackageBatchBuilder {
         )?;
 
         let key_package_ref = key_package.hash_ref(crypto)?;
+        let extensions = key_package.extensions().clone();
         let full_kp = KeyPackageBundle {
             key_package,
             private_init_key: init_key_pair.private,
@@ -328,6 +336,7 @@ impl VcKeyPackageBatchBuilder {
                 key_package_ref,
                 cipher_suite: ciphersuite,
                 key_package_index,
+                extensions,
             },
         ))
     }
