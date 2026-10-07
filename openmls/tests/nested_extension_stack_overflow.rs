@@ -1,17 +1,17 @@
-//! Reproducer for the "nested MLS extensions cause a process-aborting stack
-//! overflow while decoding" advisory.
+//! Regression test for GHSA-gc79-23g3-8g52: nested MLS extensions must not
+//! drive unbounded decoder recursion.
 //!
-//! ## What the advisory claims
+//! ## The bug this guards against
 //!
-//! The extension decoder decodes an extension's *body* before checking whether
-//! that extension type is permitted in its enclosing context. A `ratchet_tree`
-//! extension is not allowed inside a leaf node's extension list, but its body is
-//! decoded (recursively) *before* the leaf-node restriction is applied by
-//! `Extensions::<LeafNode>::try_from`.
+//! The extension decoder used to decode an extension's *body* before checking
+//! whether that extension type is permitted in its enclosing context. A
+//! `ratchet_tree` extension is not allowed inside a leaf node's extension list,
+//! but its body was decoded (recursively) *before* the leaf-node restriction was
+//! applied by `Extensions::<LeafNode>::try_from`.
 //!
 //! Because a `ratchet_tree` extension body is a `RatchetTreeIn`, which contains
 //! leaf nodes, whose payload contains `Extensions<LeafNode>`, a `ratchet_tree`
-//! extension nested inside a leaf node's extensions forms an unbounded decode
+//! extension nested inside a leaf node's extensions formed an unbounded decode
 //! cycle:
 //!
 //! ```text
@@ -22,39 +22,40 @@
 //!         -> LeafNodePayload.extensions: Extensions<LeafNode>   (cycle)
 //! ```
 //!
-//! Each nesting level adds a stack frame during the *descent* of
-//! `Vec<Extension>::tls_deserialize`, before any `try_from` validation runs at
-//! any level. Sufficient nesting exhausts the thread stack and aborts the
+//! Each nesting level added a stack frame during the *descent* of
+//! `Vec<Extension>::tls_deserialize`, before any `try_from` validation ran at
+//! any level. Sufficient nesting exhausted the thread stack and aborted the
 //! process instead of returning `Err`.
 //!
-//! ## What this test demonstrates
+//! The fix validates the extension type against the enclosing context *before*
+//! decoding the body, so the cycle is cut at the first nesting level and the
+//! decoder's recursion depth no longer depends on the input.
+//!
+//! ## What this test checks
 //!
 //! 1. `builder_matches_frankenstein_wire_format` — the hand-built malicious
 //!    bytes are byte-for-byte identical to what the (validation-free)
 //!    Frankenstein serializers produce, so the crafted input really is a
 //!    well-formed nested `ratchet_tree`/leaf structure on the wire.
 //! 2. `shallow_nesting_returns_err_not_panic` — a shallow nested `ratchet_tree`
-//!    extension is *rejected with `Err`* by the real decoder (the context
-//!    validation fires once the body has been decoded). This is the behavior a
-//!    fix should preserve/extend to deep inputs.
+//!    extension is rejected with `Err`, because a `ratchet_tree` is not valid
+//!    inside a leaf node and the type check now runs before the body is read.
 //! 3. `valid_ratchet_tree_still_decodes` — a legitimate tree still decodes, so
-//!    the crafted prefix is not otherwise malformed.
-//! 4. `nested_ratchet_tree_aborts_the_decoder` — deep nesting fed to the real
-//!    `RatchetTreeIn::tls_deserialize` aborts the process with a stack overflow.
-//!    The decode runs in a child process (on a bounded-stack thread) so the
-//!    abort can be observed without terminating this test runner. On the
-//!    unpatched crate the child is killed by a signal; a fix that validates the
-//!    extension type before decoding its body would make the child return `Err`
-//!    and exit cleanly, failing this test (which is the intended signal that the
-//!    bug is fixed).
+//!    the fix did not simply reject everything.
+//! 4. `deeply_nested_ratchet_tree_does_not_overflow_the_stack` — the real
+//!    regression check. Deep nesting fed to `RatchetTreeIn::tls_deserialize`
+//!    must return `Err` promptly instead of recursing. The decode runs in a
+//!    child process on a deliberately small stack, so a reintroduced
+//!    body-before-type decode overflows that stack and is reported as the child
+//!    dying by signal rather than taking down this test runner.
 //!
 //! The advisory was recorded on Windows (abort status 0xC00000FD). On Unix the
 //! same defect manifests as the process being killed by a signal (the Rust
 //! runtime's stack-overflow guard aborts the process), which is what the child
-//! process below checks for. The core parser-descent logic is platform
+//! process below is inspected for. The core parser-descent logic is platform
 //! independent.
 
-// The child-process abort is observed via Unix signal semantics.
+// The child process is inspected via Unix signal semantics.
 #![cfg(unix)]
 
 use std::os::unix::process::ExitStatusExt;
@@ -191,7 +192,7 @@ fn build_nested_ratchet_tree(depth: usize) -> Vec<u8> {
     out.extend_from_slice(&base);
     // One trailing leaf `signature` byte (0x00) per wrapping level. All levels
     // share the same value, so ordering is irrelevant.
-    out.extend(std::iter::repeat(LEAF_SIGNATURE).take(depth));
+    out.extend(std::iter::repeat_n(LEAF_SIGNATURE, depth));
     out
 }
 
@@ -223,11 +224,11 @@ fn franken_leaf(extensions: Vec<FrankenExtension>) -> FrankenLeafNode {
 /// Same structure as `build_nested_ratchet_tree`, built with the Frankenstein
 /// serializers. Used only for the wire-format cross-check at small depths.
 fn build_nested_ratchet_tree_frankenstein(depth: usize) -> Vec<u8> {
-    let mut tree: Vec<Option<FrankenNode>> = vec![Some(FrankenNode::LeafNode(franken_leaf(vec![])))];
+    let mut tree: Vec<Option<FrankenNode>> =
+        vec![Some(FrankenNode::LeafNode(franken_leaf(vec![])))];
     for _ in 0..depth {
-        let extension = FrankenExtension::RatchetTree(FrankenRatchetTreeExtension {
-            ratchet_tree: tree,
-        });
+        let extension =
+            FrankenExtension::RatchetTree(FrankenRatchetTreeExtension { ratchet_tree: tree });
         tree = vec![Some(FrankenNode::LeafNode(franken_leaf(vec![extension])))];
     }
     tree.tls_serialize_detached().unwrap()
@@ -259,9 +260,9 @@ fn valid_ratchet_tree_still_decodes() {
 
 #[test]
 fn shallow_nesting_returns_err_not_panic() {
-    // A shallowly nested forbidden `ratchet_tree` extension is decoded (its body
-    // is decoded eagerly) and then rejected by the leaf-node context validation.
-    // The correct, non-crashing behavior is `Err`.
+    // A `ratchet_tree` extension is not permitted inside a leaf node, so the
+    // leaf-node context validation rejects it before its body is read. The
+    // correct, non-crashing behavior is `Err`.
     let bytes = build_nested_ratchet_tree(2);
     let decoded = RatchetTreeIn::tls_deserialize(&mut bytes.as_slice());
     assert!(
@@ -272,25 +273,29 @@ fn shallow_nesting_returns_err_not_panic() {
 }
 
 // -------------------------------------------------------------------------
-// The actual denial-of-service reproduction.
+// The denial-of-service regression check.
 //
 // The decode is run in a *child process* on a bounded-stack thread. On the
-// vulnerable crate the recursive descent overflows the stack and the Rust
-// runtime aborts the process (a signal on Unix). The parent asserts the child
-// was killed by a signal rather than exiting normally.
+// fixed crate the decode returns `Err` immediately and the child exits
+// normally; a regression would make the recursive descent overflow that stack,
+// and the Rust runtime would abort the child (a signal on Unix). Isolating the
+// decode in a child process means such a regression fails this test instead of
+// killing the test runner.
 // -------------------------------------------------------------------------
 
 const CHILD_ENV: &str = "OPENMLS_NESTED_EXT_REPRO_CHILD";
-/// Nesting depth. Far more than fits in the bounded child stack below, so the
-/// overflow happens during descent long before the whole payload is consumed.
+/// Nesting depth. Far more than fits in the bounded child stack below, so a
+/// regression overflows during descent long before the whole payload is
+/// consumed.
 const REPRO_DEPTH: usize = 100_000;
-/// Bounded stack for the decode thread in the child, so the overflow is fast and
-/// deterministic regardless of the platform's default stack size.
+/// Bounded stack for the decode thread in the child, so a regression shows up
+/// quickly and deterministically regardless of the platform's default stack
+/// size.
 const REPRO_CHILD_STACK: usize = 256 * 1024;
 
 #[test]
-fn nested_ratchet_tree_aborts_the_decoder() {
-    // Child branch: perform the real decode and, if it survives, exit cleanly.
+fn deeply_nested_ratchet_tree_does_not_overflow_the_stack() {
+    // Child branch: perform the real decode and report what it returned.
     if std::env::var(CHILD_ENV).is_ok() {
         run_decoder_child();
         return;
@@ -302,7 +307,7 @@ fn nested_ratchet_tree_aborts_the_decoder() {
     let output = Command::new(&exe)
         .args([
             "--exact",
-            "nested_ratchet_tree_aborts_the_decoder",
+            "deeply_nested_ratchet_tree_does_not_overflow_the_stack",
             "--nocapture",
         ])
         .env(CHILD_ENV, "1")
@@ -311,33 +316,36 @@ fn nested_ratchet_tree_aborts_the_decoder() {
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    // If the child reached the end of the decode without aborting, the bug is not
-    // reproducing (e.g. the crate is patched to validate before decoding).
+    // The decode must have run to completion. If this marker is missing the
+    // child died mid-decode, which is what a reintroduced unbounded recursion
+    // looks like.
     assert!(
-        !stderr.contains("CHILD_SURVIVED"),
-        "decoder returned instead of overflowing the stack; the vulnerability \
-         does not reproduce (is the crate patched?).\nchild stderr:\n{stderr}"
+        stderr.contains("CHILD_SURVIVED"),
+        "the decoder did not return; it most likely overflowed the stack on the \
+         nested input. Child stderr:\n{stderr}"
     );
 
-    // The child must have been terminated by a signal (stack-overflow abort),
-    // i.e. no normal exit code.
+    // ... and it must have rejected the input rather than accepting the nested
+    // `ratchet_tree`, which is not valid inside a leaf node.
     assert!(
-        output.status.code().is_none(),
-        "expected the child to be killed by a stack-overflow abort (no exit \
-         code), but it exited with status {:?}.\nchild stderr:\n{stderr}",
+        stderr.contains("CHILD_SURVIVED: decoder returned is_err=true"),
+        "the decoder accepted a nested ratchet_tree inside a leaf node. Child \
+         stderr:\n{stderr}"
+    );
+
+    // The child must have exited normally rather than being aborted by the
+    // runtime's stack-overflow guard.
+    assert!(
+        output.status.code().is_some(),
+        "expected the child to exit with a status code, but it was aborted \
+         without one; status was {:?}",
         output.status
     );
     assert!(
-        output.status.signal().is_some(),
-        "expected the child to be killed by a signal (stack overflow), status \
-         was {:?}.\nchild stderr:\n{stderr}",
+        output.status.signal().is_none(),
+        "expected the child to exit normally, but it was killed by a signal \
+         (stack-overflow abort); status was {:?}",
         output.status
-    );
-
-    eprintln!(
-        "child terminated by signal {:?} while decoding nested extensions \
-         (stack overflow reproduced)",
-        output.status.signal()
     );
 }
 
@@ -351,23 +359,30 @@ fn run_decoder_child() {
         .and_then(|s| s.parse().ok())
         .unwrap_or(REPRO_CHILD_STACK);
 
-    // Building the payload must not itself recurse; this returns fine.
+    // Building the payload must not itself recurse, so that a stack overflow
+    // here can only come from the decoder.
     let bytes = build_nested_ratchet_tree(depth);
     eprintln!("child built {} bytes at depth {depth}", bytes.len());
 
-    // Run the real decoder on a thread with a bounded stack. A stack overflow
-    // here aborts the whole process via the Rust runtime's guard-page handler.
+    // Run the real decoder on a thread with a bounded stack. If the decoder
+    // recurses per nesting level again, the overflow aborts this whole child
+    // process via the Rust runtime's guard-page handler and the parent sees no
+    // `CHILD_SURVIVED` marker.
     let handle = std::thread::Builder::new()
         .stack_size(stack)
         .name("nested-extension-decoder".into())
         .spawn(move || {
             let result = RatchetTreeIn::tls_deserialize(&mut bytes.as_slice());
-            // Only reached if the decoder did NOT overflow the stack.
-            eprintln!("CHILD_SURVIVED: decoder returned is_err={}", result.is_err());
+            // Only reached if the decoder returned instead of overflowing.
+            eprintln!(
+                "CHILD_SURVIVED: decoder returned is_err={}",
+                result.is_err()
+            );
         })
         .expect("failed to spawn decoder thread");
 
     let _ = handle.join();
     // Only reached if no overflow occurred.
+
     eprintln!("CHILD_COMPLETED_WITHOUT_ABORT");
 }
