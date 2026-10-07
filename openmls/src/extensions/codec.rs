@@ -13,6 +13,13 @@ use crate::extensions::AppDataDictionaryExtension;
 
 use super::last_resort::LastResortExtension;
 
+/// Known extension types must consume the bounded payload without silently dropping trailing bytes.
+pub(super) fn deserialize_extension_exact<T: Deserialize>(
+    extension_data: &[u8],
+) -> Result<T, tls_codec::Error> {
+    T::tls_deserialize_exact(extension_data)
+}
+
 fn vlbytes_len_len(length: usize) -> usize {
     if length < 0x40 {
         1

@@ -35,6 +35,7 @@ use serde::{Deserialize, Serialize};
 mod app_data_dict_extension;
 mod application_id_extension;
 mod codec;
+mod extension_in;
 mod external_pub_extension;
 mod external_sender_extension;
 mod last_resort;
@@ -63,8 +64,8 @@ use tls_codec::{
 };
 
 use crate::{
-    group::GroupContext, key_packages::KeyPackage, messages::group_info::GroupInfo,
-    treesync::LeafNode,
+    extensions::extension_in::ExtensionIn, group::GroupContext, key_packages::KeyPackage,
+    messages::group_info::GroupInfo, treesync::LeafNode,
 };
 
 #[cfg(test)]
@@ -145,26 +146,26 @@ impl ExtensionType {
     //  https://validation.openmls.tech/#valn1601
     pub(crate) fn is_valid_in_leaf_node(self) -> bool {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => false,
-            ExtensionType::Unknown(_) | ExtensionType::ApplicationId => true,
+            ExtensionType::Unknown(_) | ExtensionType::Grease(_) | ExtensionType::ApplicationId => {
+                true
+            }
             #[cfg(feature = "extensions-draft-08")]
             ExtensionType::AppDataDictionary => true,
         }
     }
     pub(crate) fn is_valid_in_group_info(self) -> Option<bool> {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => Some(false),
             ExtensionType::RatchetTree | ExtensionType::ExternalPub => Some(true),
-            ExtensionType::Unknown(_) => None,
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => None,
             #[cfg(feature = "extensions-draft-08")]
             ExtensionType::AppDataDictionary => Some(true),
         }
@@ -174,6 +175,10 @@ impl ExtensionType {
         match self {
             ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
+            // Here, we have to allow GREASE in parsing and processing.
+            // We are just not allowed to _send_ it here when creating messages, which this is not
+            // responsible for.
+            | ExtensionType::Grease(_)
             | ExtensionType::Unknown(_) => true,
             #[cfg(feature = "extensions-draft-08")]
             ExtensionType::AppDataDictionary => true,
@@ -351,7 +356,7 @@ where
     where
         Self: Sized,
     {
-        let candidate: Vec<Extension> = Vec::tls_deserialize(bytes)?;
+        let candidate: Vec<ExtensionIn<T>> = Vec::tls_deserialize(bytes)?;
         Extensions::<T>::try_from(candidate)
             .map_err(|_| Error::DecodingError("Found duplicate extensions".into()))
     }
@@ -478,15 +483,28 @@ pub trait ExtensionValidator {
     type Error;
 
     /// Check if the extension is valid.
-    fn validate_extension_type(ext: &Extension) -> Result<(), Self::Error>;
+    fn validate_extension_type(ext: &Extension) -> Result<(), Self::Error> {
+        #[allow(deprecated)]
+        Self::really_validate_extension_type(ext.extension_type())
+    }
+
+    /// Check if the extension type is valid in this context
+    #[allow(unused_variables)]
+    #[deprecated(since = "0.8.2", note = "only added as a hotfix. not present in 0.9.0")]
+    fn really_validate_extension_type(extension_type: ExtensionType) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    /// Tries to convert the error to a string.
+    #[allow(unused_variables)]
+    #[deprecated(since = "0.8.2", note = "only added as a hotfix. not present in 0.9.0")]
+    fn error_to_string(err: Self::Error) -> String {
+        "validation error".to_string()
+    }
 }
 
 impl ExtensionValidator for AnyObject {
     type Error = Infallible;
-
-    fn validate_extension_type(_ext: &Extension) -> Result<(), Infallible> {
-        Ok(())
-    }
 }
 
 impl<T: ExtensionValidator> TryFrom<Vec<Extension>> for Extensions<T>
@@ -521,16 +539,18 @@ where
 impl ExtensionValidator for GroupInfo {
     type Error = ExtensionTypeNotValidInGroupInfoError;
 
-    fn validate_extension_type(
-        ext: &Extension,
-    ) -> Result<(), ExtensionTypeNotValidInGroupInfoError> {
-        if ext.extension_type().is_valid_in_group_info() == Some(true)
-            || ext.extension_type().is_valid_in_group_info().is_none()
-        {
+    fn really_validate_extension_type(extension_type: ExtensionType) -> Result<(), Self::Error> {
+        let extension_type_supported = extension_type.is_valid_in_group_info() == Some(true)
+            || extension_type.is_valid_in_group_info().is_none();
+        if extension_type_supported {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInGroupInfoError(ext.extension_type()))
+            Err(ExtensionTypeNotValidInGroupInfoError(extension_type))
         }
+    }
+
+    fn error_to_string(err: Self::Error) -> String {
+        err.to_string()
     }
 }
 
@@ -538,16 +558,16 @@ impl ExtensionValidator for GroupInfo {
 impl ExtensionValidator for GroupContext {
     type Error = ExtensionTypeNotValidInGroupContextError;
 
-    fn validate_extension_type(
-        ext: &Extension,
-    ) -> Result<(), ExtensionTypeNotValidInGroupContextError> {
-        if ext.extension_type().is_valid_in_group_context() {
+    fn really_validate_extension_type(extension_type: ExtensionType) -> Result<(), Self::Error> {
+        if extension_type.is_valid_in_group_context() {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInGroupContextError(
-                ext.extension_type(),
-            ))
+            Err(ExtensionTypeNotValidInGroupContextError(extension_type))
         }
+    }
+
+    fn error_to_string(err: Self::Error) -> String {
+        err.to_string()
     }
 }
 
@@ -555,16 +575,21 @@ impl ExtensionValidator for GroupContext {
 impl ExtensionValidator for KeyPackage {
     type Error = ExtensionTypeNotValidInKeyPackageError;
 
-    fn validate_extension_type(
-        ext: &Extension,
+    fn really_validate_extension_type(
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInKeyPackageError> {
-        if ext.extension_type() == ExtensionType::LastResort
-            || matches!(ext.extension_type(), ExtensionType::Unknown(_))
-        {
+        if matches!(
+            extension_type,
+            ExtensionType::LastResort | ExtensionType::Unknown(_) | ExtensionType::Grease(_)
+        ) {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInKeyPackageError(ext.extension_type()))
+            Err(ExtensionTypeNotValidInKeyPackageError(extension_type))
         }
+    }
+
+    fn error_to_string(err: Self::Error) -> String {
+        err.to_string()
     }
 }
 
@@ -572,14 +597,18 @@ impl ExtensionValidator for KeyPackage {
 impl ExtensionValidator for LeafNode {
     type Error = ExtensionTypeNotValidInLeafNodeError;
 
-    fn validate_extension_type(
-        ext: &Extension,
+    fn really_validate_extension_type(
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInLeafNodeError> {
-        if ext.extension_type().is_valid_in_leaf_node() {
+        if extension_type.is_valid_in_leaf_node() {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInLeafNodeError(ext.extension_type()))
+            Err(ExtensionTypeNotValidInLeafNodeError(extension_type))
         }
+    }
+
+    fn error_to_string(err: Self::Error) -> String {
+        err.to_string()
     }
 }
 
