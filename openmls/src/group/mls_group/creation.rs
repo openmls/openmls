@@ -2129,7 +2129,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             // https://validation.openmls.tech/#valn1413 (parameters match the ReInit
             // proposal).
             if group_context.protocol_version() != reinit_proposal.version()
-                || group_info.ciphersuite() != reinit_proposal.ciphersuite()
+                || group_context.ciphersuite() != reinit_proposal.ciphersuite()
                 || group_context.group_id() != reinit_proposal.group_id()
                 || group_context.extensions() != reinit_proposal.extensions()
             {
@@ -2177,7 +2177,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
                         return Err(WelcomeError::ReInitLeafMismatch);
                     }
                 }
-                // The members must be for reinit identical.
+                // The members must be identical for reinit.
                 if !unseen_old_credentials.is_empty() {
                     return Err(WelcomeError::ReInitLeavesMissing(unseen_old_credentials));
                 }
