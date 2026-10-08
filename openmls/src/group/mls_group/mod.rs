@@ -79,6 +79,7 @@ pub use exporting::{
 #[cfg(feature = "extensions-draft")]
 pub use exporting::{GroupSafeExport, PendingSafeExport, StagedCommitSafeExport};
 pub use proposal::Propose;
+pub use reinit::ReInitInfo;
 
 use config::*;
 
@@ -94,6 +95,7 @@ pub(crate) mod past_secrets;
 pub(crate) mod processing;
 pub(crate) mod proposal;
 pub(crate) mod proposal_store;
+pub(crate) mod reinit;
 pub(crate) mod staged_commit;
 
 #[cfg(feature = "extensions-draft")]
