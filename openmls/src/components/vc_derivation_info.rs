@@ -20,11 +20,12 @@ use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::{hash_ref::KeyPackageRef, Secret},
     components::vc_operation_tree::OperationSecretTree,
+    extensions::{Extension, Extensions, LastResortExtension},
     group::{
         mls_group::errors::RegisterVcDerivationEpochError, GroupEpoch, GroupId,
         VcDerivationEpochRetentionPolicy,
     },
-    key_packages::InitKey,
+    key_packages::{InitKey, KeyPackage},
     messages::PathSecret,
     schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
     treesync::node::encryption_keys::EncryptionKeyPair,
@@ -518,6 +519,7 @@ impl EpochId {
 ///   opaque key_package_ref<V>;
 ///   CipherSuite cipher_suite;
 ///   uint32 key_package_index;
+///   Extension extensions<V>;
 /// } KeyPackageInfo
 /// ```
 ///
@@ -525,7 +527,9 @@ impl EpochId {
 /// KeyPackage built by [`KeyPackageBuilder::build_vc_batch`]. `key_package_index`
 /// is the KeyPackage's position within the `key_package` operation batch: one
 /// operation secret covers the whole batch and each KeyPackage's seed is
-/// derived from it under this index.
+/// derived from it under this index. `extensions` is the KeyPackage's complete
+/// extensions vector, so a sibling can apply their semantics (such as last
+/// resort) when it processes a Welcome for the KeyPackage.
 ///
 /// [`HashReference`]: crate::ciphersuite::hash_ref::HashReference
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
@@ -537,6 +541,8 @@ pub struct KeyPackageInfo {
     pub cipher_suite: Ciphersuite,
     /// Position of this KeyPackage within the operation batch.
     pub key_package_index: u32,
+    /// The KeyPackage's extensions, in their original order.
+    pub extensions: Extensions<KeyPackage>,
 }
 
 /// Wire struct a virtual client uploads to a sibling so the sibling learns
@@ -575,16 +581,25 @@ pub struct KeyPackageUpload {
 
 /// Per-`KeyPackageRef` material a sibling retains when it processes a
 /// [`KeyPackageUpload`]. It captures what the Welcome path needs to later
-/// rederive the KeyPackage's init and leaf-encryption keys without touching
-/// the operation tree: the per-KeyPackage seed secret, plus the derivation
-/// epoch, leaf index, generation, and batch index used to validate the leaf
-/// found in the ratchet tree.
+/// rederive the KeyPackage's init and leaf-encryption keys without touching the
+/// operation tree: the per-KeyPackage seed secret, plus the derivation epoch,
+/// leaf index, generation, and batch index used to validate the leaf found in
+/// the ratchet tree. The sibling also keeps the KeyPackage's extensions, s.t.
+/// it can apply the corresponding semantics when processing a Welcome.
 ///
 /// The seed is pinned here at upload-processing time so the Welcome path stays
 /// independent of the operation tree's bounded out-of-order tolerance: a batch
 /// can hold more KeyPackages than that tolerance, and Welcomes can arrive in
 /// any order, yet every seed remains available because the single batch
 /// generation is consumed once and each seed is stored alongside its index.
+///
+/// The uploader stores the same material when it finalizes the batch, next to
+/// its KeyPackages. It joins through the KeyPackage itself, so for the uploader
+/// the material only keeps the derivation epoch alive, as it does for the
+/// sibling (see
+/// [`StorageProvider::delete_unreferenced_vc_derivation_epoch_states`]).
+///
+/// [`StorageProvider::delete_unreferenced_vc_derivation_epoch_states`]: openmls_traits::storage::StorageProvider::delete_unreferenced_vc_derivation_epoch_states
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RetainedKeyPackageMaterial {
     /// Derivation epoch the KeyPackage belongs to.
@@ -601,6 +616,18 @@ pub struct RetainedKeyPackageMaterial {
     /// Per-KeyPackage seed secret from which the init and leaf-encryption keys
     /// are derived at Welcome time.
     pub key_package_seed_secret: KeyPackageSeedSecret,
+    /// The KeyPackage's extensions, as listed in the upload. Records stored
+    /// before uploads carried extensions read back with only a last resort
+    /// extension.
+    #[serde(default = "last_resort_extensions")]
+    pub key_package_extensions: Extensions<KeyPackage>,
+}
+
+/// Outputs an extension vector that is empty except for a last-resort
+/// extension.
+fn last_resort_extensions() -> Extensions<KeyPackage> {
+    Extensions::single(Extension::LastResort(LastResortExtension::default()))
+        .expect("LastResort extensions are allowed in key packages")
 }
 
 /// Reject a batch whose [`KeyPackageInfo`] entries are not all distinct.
@@ -735,6 +762,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
             key_package_ciphersuite: info.cipher_suite,
             key_package_index: info.key_package_index,
             key_package_seed_secret,
+            key_package_extensions: info.extensions.clone(),
         };
         materials.push((info.key_package_ref.clone(), material));
     }
@@ -779,6 +807,8 @@ pub(crate) struct VcWelcomeMaterial {
     /// Leaf encryption keypair derived from the seed, used as the joiner's
     /// leaf keypair.
     pub(crate) encryption_keypair: EncryptionKeyPair,
+    /// Whether the KeyPackage carries a last resort extension.
+    pub(crate) last_resort: bool,
 }
 
 /// One registration in an emulation group's log of derivation epochs, stored
@@ -2095,11 +2125,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                extensions: Extensions::empty(),
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
+                extensions: Extensions::empty(),
             },
         ];
 
@@ -2142,11 +2174,13 @@ mod tests {
                     key_package_ref: ref_a.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    extensions: Extensions::empty(),
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
+                    extensions: Extensions::empty(),
                 },
             ],
         };
@@ -2180,6 +2214,45 @@ mod tests {
         assert_eq!(material_b.key_package_ciphersuite, CIPHERSUITE);
     }
 
+    #[test]
+    fn retained_material_without_extensions_deserializes_as_last_resort() {
+        let provider = OpenMlsRustCrypto::default();
+        let leaf_index = LeafNodeIndex::new(0);
+        let epoch_id = register_epoch_state(&provider, leaf_index);
+        let key_package_ref = KeyPackageRef::from_slice(b"kp-ref");
+        let upload = KeyPackageUpload {
+            epoch_id,
+            leaf_index,
+            generation: 0,
+            key_package_info: vec![KeyPackageInfo {
+                key_package_ref: key_package_ref.clone(),
+                cipher_suite: CIPHERSUITE,
+                key_package_index: 0,
+                extensions: Extensions::empty(),
+            }],
+        };
+        process_vc_key_package_upload(&provider, &upload).expect("process upload");
+        let material: RetainedKeyPackageMaterial = <MemoryStorage as StorageProvider<
+            CURRENT_VERSION,
+        >>::retained_key_package_material(
+            provider.storage(), &key_package_ref
+        )
+        .expect("read material")
+        .expect("material present");
+
+        let mut record = serde_json::to_value(&material).expect("serialize material");
+        record
+            .as_object_mut()
+            .expect("material serializes as an object")
+            .remove("key_package_extensions")
+            .expect("record has the extensions field");
+        let material: RetainedKeyPackageMaterial =
+            serde_json::from_value(record).expect("deserialize record without extensions");
+
+        assert_eq!(material.key_package_extensions, last_resort_extensions());
+        assert_eq!(material.key_package_index, 0);
+    }
+
     /// `delete_key_package` removes the associated retained VC material.
     #[test]
     fn delete_key_package_removes_vc_record() {
@@ -2195,6 +2268,7 @@ mod tests {
                 key_package_ref: kp_ref.clone(),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                extensions: Extensions::empty(),
             }],
         };
         process_vc_key_package_upload(&provider, &upload).expect("process upload");
@@ -2625,11 +2699,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
+                extensions: Extensions::empty(),
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
+                extensions: Extensions::empty(),
             },
         ];
         let err = validate_key_package_infos(&infos).expect_err("duplicate index must be rejected");
@@ -2644,11 +2720,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                extensions: Extensions::empty(),
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
+                extensions: Extensions::empty(),
             },
         ];
         let err = validate_key_package_infos(&infos).expect_err("duplicate ref must be rejected");
@@ -2663,11 +2741,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                extensions: Extensions::empty(),
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
+                extensions: Extensions::empty(),
             },
         ];
         validate_key_package_infos(&infos).expect("distinct infos must pass");
@@ -2693,11 +2773,13 @@ mod tests {
                     key_package_ref: ref_a.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    extensions: Extensions::empty(),
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    extensions: Extensions::empty(),
                 },
             ],
         };
@@ -2714,11 +2796,13 @@ mod tests {
                     key_package_ref: ref_a.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    extensions: Extensions::empty(),
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
+                    extensions: Extensions::empty(),
                 },
             ],
         };
