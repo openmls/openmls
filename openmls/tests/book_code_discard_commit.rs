@@ -1,6 +1,5 @@
 use openmls::{
     prelude::*,
-    schedule::psk::*,
     test_utils::{single_group_test_framework::*, storage_state::GroupStorageState},
 };
 use openmls_basic_credential::SignatureKeyPair;
