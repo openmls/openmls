@@ -20,7 +20,7 @@
 <a href=#20 id=20 data-nosnippet>20</a>///
 <a href=#21 id=21 data-nosnippet>21</a>/// Export this from the parent group with
 <a href=#22 id=22 data-nosnippet>22</a>/// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info) and pass it to
-<a href=#23 id=23 data-nosnippet>23</a>/// the branch APIs: the sender uses
+<a href=#23 id=23 data-nosnippet>23</a>/// the subgroup branch APIs: the sender uses
 <a href=#24 id=24 data-nosnippet>24</a>/// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) and the
 <a href=#25 id=25 data-nosnippet>25</a>/// receiver uses
 <a href=#26 id=26 data-nosnippet>26</a>/// [`StagedWelcome::build_from_branch`](crate::group::StagedWelcome::build_from_branch).
@@ -70,7 +70,7 @@
 <a href=#70 id=70 data-nosnippet>70</a>
 <a href=#71 id=71 data-nosnippet>71</a>    <span class="doccomment">/// The credentials of the parent group's members, used by the receiver to
 <a href=#72 id=72 data-nosnippet>72</a>    /// check that every sub-group member is also a parent-group member.
-<a href=#73 id=73 data-nosnippet>73</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>member_credentials(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Credential] {
+<a href=#73 id=73 data-nosnippet>73</a>    </span><span class="kw">pub fn </span>member_credentials(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Credential] {
 <a href=#74 id=74 data-nosnippet>74</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.member_credentials
 <a href=#75 id=75 data-nosnippet>75</a>    }
 <a href=#76 id=76 data-nosnippet>76</a>}

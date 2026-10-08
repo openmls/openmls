@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-bed6ebf3.js";
+            window.path_to_searchindex_js = "../searchindex-c97894be.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-81492934.js"></script>
+        <script src="../toc-5c7e1a74.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -248,26 +248,35 @@ was taken and when its <code>Welcome</code> arrives, so the receiver first needs
 <code>BranchInfo</code>. The branch PSK that carries the parent group and epoch lives inside
 the <code>Welcome</code>’s encrypted <code>GroupSecrets</code>, so reading it requires decrypting the
 <code>Welcome</code>.</p>
-<p><code>StagedWelcome::process_branch_welcome</code> does exactly one decryption and returns a
-<code>PendingBranchWelcome</code>. Call <code>parent()</code> on it to read the parent <code>(group_id, epoch)</code> the branch was taken from (see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-pre-shared-keys">RFC 9420 §8.4</a>), select the <code>BranchInfo</code> for
-that parent epoch (e.g. from the sliding window above), then finish the join with
-<code>build_from_branch</code>, which reuses the already-decrypted state.</p>
+<p><code>StagedWelcome::process_resuming_welcome</code> does exactly one decryption and returns a
+<code>PendingResumingWelcome</code>. Call <code>required_resumption_secret()</code> on it to get the branch
+resumption PSK, which holds the parent <code>(group_id, epoch)</code> the branch was taken
+from (see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-pre-shared-keys">RFC 9420 §8.4</a>). Its <code>usage()</code> is <code>ResumptionPskUsage::Branch</code> for a
+branch welcome (a reinit welcome returns <code>ResumptionPskUsage::Reinit</code>, and a
+regular welcome returns <code>None</code>). Select the <code>BranchInfo</code> for that parent epoch
+(e.g. from the sliding window above), then finish the join with
+<code>build_from_branch</code>, which reuses the already-decrypted state.
+If it turns out not to be a sub-group branch welcome, continue with <code>PendingResumingWelcome::build</code>.</p>
 <p>In addition to the regular join processing, this injects the parent’s resumption
 PSK secret and enforces the <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching">RFC 9420 §11.3</a> receiver checks. <code>build_from_branch</code>
 verifies that the branch PSK in the <code>Welcome</code> references the same parent group and
 epoch as the <code>BranchInfo</code> you selected (before that secret is mixed into the key
 schedule); a <code>BranchInfo</code> from the wrong parent epoch fails with
 <code>WelcomeError::SubgroupParentMismatch</code>. The remaining checks run when <code>build</code> is
-called: the protocol version and ciphersuite must match the parent, the sub-group
-must be at epoch 1, and every sub-group member must also be a member of the parent
-group. The membership check is on by default and can be disabled with
-<code>.check_members(false)</code>.</p>
-<pre><code class="language-rust no_run noplayground">    // Bob decrypts the branch welcome once with `process_branch_welcome`, then
+called: the protocol version and ciphersuite must match the parent, and the sub-group
+must be at epoch 1.</p>
+<p>Every sub-group member must also be a member of the parent group.
+A simple membership check by equal credential is on by default and can be disabled with
+<code>JoinBuilder::check_members(false)</code>. In that case, the application <strong>must</strong> ensure that the new
+member credentials match old ones captured in <code>BranchInfo::member_credentials()</code>.
+This is the case when the application uses credentials that don’t allow checking
+equivalence of members by checking exact equality of credentials.</p>
+<pre><code class="language-rust no_run noplayground">    // Bob decrypts the branch welcome once with `process_resuming_welcome`, then
     // reads which parent group and epoch it derives from. This lets him pick the
     // matching `BranchInfo` from his window even if his view of the parent group
     // has advanced (see the sliding-window note above), without decrypting the
     // welcome twice.
-    let pending = StagedWelcome::process_branch_welcome(
+    let pending = StagedWelcome::process_resuming_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome,
@@ -275,9 +284,11 @@ group. The membership check is on by default and can be disabled with
     .expect("Error processing the branch welcome.");
 
     // The parent group and epoch the branch was taken from.
-    let (_parent_group_id, parent_epoch) = pending
-        .parent()
+    let required_secret = pending
+        .required_resumption_secret()
         .expect("This is a sub-group branch welcome.");
+    assert_eq!(required_secret.usage(), ResumptionPskUsage::Branch);
+    let parent_epoch = required_secret.psk_epoch();
 
     // Select the `BranchInfo` exported from that parent epoch.
     let bob_branch_info = bob_branch_window

@@ -1,1 +1,0 @@
-rd_("CeDH KEM x25519 | Chacha20Poly1305 | SHA2-256 | Ed2551900CnML-KEM768 + X25519 (XWing) | Chacha20Poly1305 | SHA2-384 | \xe2\x80\xa600")

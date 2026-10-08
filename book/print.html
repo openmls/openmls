@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-bed6ebf3.js";
+            window.path_to_searchindex_js = "searchindex-c97894be.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-81492934.js"></script>
+        <script src="toc-5c7e1a74.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -999,6 +999,241 @@ Even though the member updates its own leaf node only in this operation, the Com
 <li>wait for the commit to come through and process it (see also <a href="#getting-removed-from-a-group">Getting Removed</a>).</li>
 </ul>
 <p>For details on creating Remove Proposals, see <a href="#removing-members-from-a-group">Removing members from a group</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="reinitializing-a-group"><a class="header" href="#reinitializing-a-group">Reinitializing a group</a></h1>
+<p>Reinitialization (ReInit) replaces a group with a new <em>successor</em> group
+that carries over the same members but may use different parameters — a new
+group id, protocol version, ciphersuite, or group context extensions. This is
+the mechanism to use when, for example, a group needs to migrate to a stronger
+ciphersuite. See <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization">RFC 9420 §11.2</a>.</p>
+<p>Reinitialization happens in two phases:</p>
+<ol>
+<li>A member proposes a ReInit and someone commits it. A commit that references a
+ReInit proposal must contain no other proposals. Once the commit is merged,
+the old group is <strong>suspended</strong>: it becomes inactive and can no longer be used
+for regular operations. Its only remaining purpose is to seed the successor
+group exactly once.</li>
+<li>One member creates the successor group with the parameters from the ReInit
+proposal, adds all the other members, and mixes in a resumption PSK from the
+old group’s final epoch. The other members join the successor group from the
+resulting Welcome.</li>
+</ol>
+<h2 id="committing-a-reinit"><a class="header" href="#committing-a-reinit">Committing a ReInit</a></h2>
+<p>A commit containing a ReInit proposal cannot contain other proposals, and merging
+it suspends the old group. After this, <code>MlsGroup::is_active</code> returns <code>false</code> and
+further operations on the old group fail — the only remaining use of the old group
+is to seed the successor.</p>
+<p>Since the ReInit proposal must be committed alone, it is advisable to commit it
+directly by value:</p>
+<pre><code class="language-rust no_run noplayground">    // Alice commits a ReInit proposal by value to reinitialize the group as
+    // a new group with a fresh group id (and, optionally, a new protocol version,
+    // ciphersuite or extensions).
+    let new_group_id = GroupId::from_slice(b"reinitialized group");
+    let reinit_proposal = ReInitProposal::new(
+        new_group_id.clone(),
+        ProtocolVersion::Mls10,
+        ciphersuite,
+        Extensions::empty(),
+    );
+
+    // Alice commits the ReInit proposal. Merging it suspends the old group: it
+    // becomes inactive and can only be used to seed the successor group.
+    let bundle = alice_group
+        .commit_builder()
+        .add_proposal(Proposal::ReInit(Box::new(reinit_proposal.clone())))
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+    let commit_message = bundle.into_commit();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    assert!(!alice_group.is_active());
+
+    // Alice exports the ReInitInfo. It holds everything needed for the reinit, alice_group can be discarded.
+    let alice_reinit_info = alice_group.reinit_info(reinit_proposal.clone()).unwrap();
+    drop(alice_group);</code></pre>
+<p>Alternatively to commit-by-value, the ReInit can be proposed and committed separately:</p>
+<pre><code class="language-rust no_run noplayground">    // Alice proposes to reinitialize the group as a new group with a fresh
+    // group id (and, optionally, a new protocol version, ciphersuite or
+    // extensions).
+    let new_group_id = GroupId::from_slice(b"reinitialized group");
+    let reinit_proposal = ReInitProposal::new(
+        new_group_id.clone(),
+        ProtocolVersion::Mls10,
+        ciphersuite,
+        Extensions::empty(),
+    );
+    let (proposal_message, _proposal_ref) = alice_group
+        .propose_reinit(alice_provider, reinit_proposal.clone(), &amp;alice_signer)
+        .unwrap();</code></pre>
+<p>Commit the proposal:</p>
+<pre><code class="language-rust no_run noplayground">    // Alice commits the ReInit proposal. Merging it suspends the old group: it
+    // becomes inactive and can only be used to seed the successor group.
+    let bundle = alice_group
+        .commit_builder()
+        .consume_proposal_store(true)
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &amp;alice_signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+    let commit_message = bundle.into_commit();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    assert!(!alice_group.is_active());
+
+    let alice_reinit_info = alice_group.reinit_info(reinit_proposal.clone()).unwrap();
+    drop(alice_group);</code></pre>
+<p>When commiting from the proposal queue, the application itself must make sure
+that the ReInit proposal is the only one in the commit. If it accepts other
+proposals, building the commit will throw an error. <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-12.2-3.9">RFC 9420 §12.2</a> states that
+other proposals SHOULD be preferrred over ReInit. Applications that follow this
+advice must reject the ReInit proposal in <code>f</code> of <code>CommitBuilder::build</code> if there
+are other proposals.</p>
+<p>Every other member processes and merges the commit, which suspends their view of
+the group as well:</p>
+<pre><code class="language-rust no_run noplayground">
+    // Bob processes and merges the ReInit commit, suspending his group too.
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            commit_message.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+
+    let ProcessedMessageContent::StagedCommitMessage(staged) = processed.into_content() else {
+        panic!("expected a staged commit message")
+    };
+    // Bob extracts the reinit proposal
+    let bob_reinit_proposal = staged
+        .reinit_proposal()
+        .expect("staged commit contains no reinit proposal")
+        .clone();
+
+    bob_group
+        .merge_staged_commit(bob_provider, *staged)
+        .unwrap();
+    assert!(!bob_group.is_active());
+
+    // Bob extracts ReInitInfo. It holds everything needed for the reinit, bob_group can be discarded.
+    let bob_reinit_info = bob_group.reinit_info(bob_reinit_proposal).unwrap();
+    drop(bob_group);</code></pre>
+<h2 id="creating-the-successor-group"><a class="header" href="#creating-the-successor-group">Creating the successor group</a></h2>
+<p>All members export a <code>ReInitInfo</code> from their suspended old group
+with <a href="https://docs.rs/openmls/latest/openmls/group/struct.MlsGroup.html"><code>MlsGroup::reinit_info</code></a>,
+passing the ReInit proposal the suspending commit covered. <code>reinit_info</code> returns
+<code>None</code> if the group is still active. The <code>ReInitInfo</code> contains all details needed to complete the
+reinit, so the old group can be discarded. The info carries the old group’s
+resumption PSK secret and must be handled as sensitive key material.</p>
+<p>The committer or any ther member uses <a href="https://docs.rs/openmls/latest/openmls/group/struct.CommitBuilder.html"><code>CommitBuilder::reinit</code></a>
+to seed the new group with it. The application is responsible for
+seeding only a single successor from a suspended group:</p>
+<pre><code class="language-rust no_run noplayground">    // Alice creates the successor group with the ReInit parameters and welcomes
+    // Bob, mixing in the old group's resumption PSK via `reinit`.
+    // This also sets protocol version, ciphersuite, group_id, and group_context.extensions
+    // to the values of the ReInit proposal.
+    let bob_new_key_package = generate_key_package(
+        ciphersuite,
+        bob_credential_with_key,
+        Extensions::empty(),
+        bob_provider,
+        &amp;bob_signer,
+    );
+
+    let (mut alice_successor, bundle) = MlsGroup::builder()
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .reinit(alice_reinit_info)
+        .build_reinit(
+            alice_provider,
+            &amp;alice_signer,
+            alice_credential_with_key,
+            [bob_new_key_package.key_package().clone()],
+        )
+        .unwrap();
+
+    let successor_welcome = bundle.into_welcome().unwrap();
+    alice_successor
+        .merge_pending_commit(alice_provider)
+        .unwrap();</code></pre>
+<h2 id="joining-the-successor-group"><a class="header" href="#joining-the-successor-group">Joining the successor group</a></h2>
+<p>The other members then join the successor group from the Welcome with
+<a href="https://docs.rs/openmls/latest/openmls/group/struct.StagedWelcome.html"><code>StagedWelcome::build_from_reinit</code></a>.
+This injects the old group’s resumption PSK and verifies that the reinit PSK in
+the Welcome references the old group and its final epoch; otherwise it fails with
+<code>WelcomeError::ReInitPredecessorMismatch</code>. The remaining checks run when <code>build</code>
+is called on the returned <code>JoinBuilder</code>: the successor’s protocol version,
+ciphersuite, group id and extensions must match the ReInit proposal, the
+successor must be at epoch 1.</p>
+<p>New group’s members must be identical to the old group’s. A simple membership check by
+equal credential is on by default and can be disabled with
+<code>JoinBuilder::check_members(false)</code>. In that case, the application <strong>must</strong> ensure that the new
+member credentials match the old ones captured in <code>ReInitInfo::member_credentials()</code>.
+This is the case when the application uses credentials that don’t allow checking
+equivalence of members by checking exact equality of credentials.</p>
+<pre><code class="language-rust no_run noplayground">    // Bob joins the successor group from the reinit welcome, validating it
+    // against his suspended old group.
+    let join_config = MlsGroupJoinConfig::builder()
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build();
+    let bob_successor = StagedWelcome::build_from_reinit(
+        bob_provider,
+        &amp;join_config,
+        successor_welcome,
+        bob_reinit_info,
+    )
+    .unwrap()
+    .with_ratchet_tree(alice_successor.export_ratchet_tree().into())
+    .build()
+    .unwrap()
+    .into_group(bob_provider)
+    .unwrap();</code></pre>
+<p>If the receiver does not yet know which old group a Welcome belongs to or whether it
+is a reinit at all, it can decrypt the Welcome once with <code>StagedWelcome::process_resuming_welcome</code>,
+read the reinit PSK’s old group id and epoch with <code>required_resumption_secret()</code>, select the
+matching <code>ReInitInfo</code>, and finish with <code>PendingResumingWelcome::build_from_reinit</code>.
+If it turns out not to be a reinit welcome, continue with <code>PendingResumingWelcome::build</code>.</p>
+<pre><code class="language-rust no_run noplayground">    // Bob joins the successor group from the reinit welcome, validating it
+    // against his suspended old group.
+    let join_config = MlsGroupJoinConfig::builder()
+        .use_ratchet_tree_extension(true)
+        .number_of_resumption_psks(5)
+        .build();
+
+    let pending_welcome =
+        StagedWelcome::process_resuming_welcome(bob_provider, &amp;join_config, successor_welcome)
+            .unwrap();
+
+    // Bob finds the matching predecessor info, e.g. in a database
+    let required_info = pending_welcome
+        .required_resumption_secret()
+        .expect("not a reinit welcome");
+    assert_eq!(required_info.psk_group_id(), bob_reinit_info.old_group_id());
+    assert_eq!(required_info.psk_epoch(), bob_reinit_info.old_group_epoch());
+    assert_eq!(required_info.usage(), ResumptionPskUsage::Reinit);
+
+    // Bob finishes the Welcome
+    let bob_successor = pending_welcome
+        .build_from_reinit(bob_provider, bob_reinit_info)
+        .unwrap()
+        .with_ratchet_tree(alice_successor.export_ratchet_tree().into())
+        .build()
+        .unwrap()
+        .into_group(bob_provider)
+        .unwrap();</code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="custom-proposals"><a class="header" href="#custom-proposals">Custom proposals</a></h1>
 <p>OpenMLS allows the creation and use of application-defined proposals. To create such a proposal, the application needs to define a Proposal Type in such a way that its value doesn’t collide with any Proposal Types defined in Section 17.4. of RFC 9420. If the proposal is meant to be used only inside of a particular application, the value of the Proposal Type is recommended to be in the range between <code>0xF000</code> and <code>0xFFFF</code>, as that range is reserved for private use.</p>
@@ -2874,26 +3109,35 @@ was taken and when its <code>Welcome</code> arrives, so the receiver first needs
 <code>BranchInfo</code>. The branch PSK that carries the parent group and epoch lives inside
 the <code>Welcome</code>’s encrypted <code>GroupSecrets</code>, so reading it requires decrypting the
 <code>Welcome</code>.</p>
-<p><code>StagedWelcome::process_branch_welcome</code> does exactly one decryption and returns a
-<code>PendingBranchWelcome</code>. Call <code>parent()</code> on it to read the parent <code>(group_id, epoch)</code> the branch was taken from (see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-pre-shared-keys">RFC 9420 §8.4</a>), select the <code>BranchInfo</code> for
-that parent epoch (e.g. from the sliding window above), then finish the join with
-<code>build_from_branch</code>, which reuses the already-decrypted state.</p>
+<p><code>StagedWelcome::process_resuming_welcome</code> does exactly one decryption and returns a
+<code>PendingResumingWelcome</code>. Call <code>required_resumption_secret()</code> on it to get the branch
+resumption PSK, which holds the parent <code>(group_id, epoch)</code> the branch was taken
+from (see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-pre-shared-keys">RFC 9420 §8.4</a>). Its <code>usage()</code> is <code>ResumptionPskUsage::Branch</code> for a
+branch welcome (a reinit welcome returns <code>ResumptionPskUsage::Reinit</code>, and a
+regular welcome returns <code>None</code>). Select the <code>BranchInfo</code> for that parent epoch
+(e.g. from the sliding window above), then finish the join with
+<code>build_from_branch</code>, which reuses the already-decrypted state.
+If it turns out not to be a sub-group branch welcome, continue with <code>PendingResumingWelcome::build</code>.</p>
 <p>In addition to the regular join processing, this injects the parent’s resumption
 PSK secret and enforces the <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching">RFC 9420 §11.3</a> receiver checks. <code>build_from_branch</code>
 verifies that the branch PSK in the <code>Welcome</code> references the same parent group and
 epoch as the <code>BranchInfo</code> you selected (before that secret is mixed into the key
 schedule); a <code>BranchInfo</code> from the wrong parent epoch fails with
 <code>WelcomeError::SubgroupParentMismatch</code>. The remaining checks run when <code>build</code> is
-called: the protocol version and ciphersuite must match the parent, the sub-group
-must be at epoch 1, and every sub-group member must also be a member of the parent
-group. The membership check is on by default and can be disabled with
-<code>.check_members(false)</code>.</p>
-<pre><code class="language-rust no_run noplayground">    // Bob decrypts the branch welcome once with `process_branch_welcome`, then
+called: the protocol version and ciphersuite must match the parent, and the sub-group
+must be at epoch 1.</p>
+<p>Every sub-group member must also be a member of the parent group.
+A simple membership check by equal credential is on by default and can be disabled with
+<code>JoinBuilder::check_members(false)</code>. In that case, the application <strong>must</strong> ensure that the new
+member credentials match old ones captured in <code>BranchInfo::member_credentials()</code>.
+This is the case when the application uses credentials that don’t allow checking
+equivalence of members by checking exact equality of credentials.</p>
+<pre><code class="language-rust no_run noplayground">    // Bob decrypts the branch welcome once with `process_resuming_welcome`, then
     // reads which parent group and epoch it derives from. This lets him pick the
     // matching `BranchInfo` from his window even if his view of the parent group
     // has advanced (see the sliding-window note above), without decrypting the
     // welcome twice.
-    let pending = StagedWelcome::process_branch_welcome(
+    let pending = StagedWelcome::process_resuming_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome,
@@ -2901,9 +3145,11 @@ group. The membership check is on by default and can be disabled with
     .expect("Error processing the branch welcome.");
 
     // The parent group and epoch the branch was taken from.
-    let (_parent_group_id, parent_epoch) = pending
-        .parent()
+    let required_secret = pending
+        .required_resumption_secret()
         .expect("This is a sub-group branch welcome.");
+    assert_eq!(required_secret.usage(), ResumptionPskUsage::Branch);
+    let parent_epoch = required_secret.psk_epoch();
 
     // Select the `BranchInfo` exported from that parent epoch.
     let bob_branch_info = bob_branch_window
