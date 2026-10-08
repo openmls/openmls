@@ -36,6 +36,7 @@ use serde::{Deserialize, Serialize};
 mod app_data_dict_extension;
 mod application_id_extension;
 mod codec;
+mod extension_in;
 mod external_pub_extension;
 mod external_sender_extension;
 mod last_resort;
@@ -64,8 +65,8 @@ use tls_codec::{
 };
 
 use crate::{
-    group::GroupContext, key_packages::KeyPackage, messages::group_info::GroupInfo,
-    treesync::LeafNode,
+    extensions::extension_in::ExtensionIn, group::GroupContext, key_packages::KeyPackage,
+    messages::group_info::GroupInfo, treesync::LeafNode,
 };
 
 #[cfg(test)]
@@ -414,7 +415,7 @@ impl<T> TlsSerializeTrait for Extensions<T> {
     }
 }
 
-impl<T: ExtensionValidator> TlsDeserializeTrait for Extensions<T>
+impl<T: ExtensionValidator<Error: ToString>> TlsDeserializeTrait for Extensions<T>
 where
     InvalidExtensionError: From<T::Error>,
 {
@@ -422,13 +423,13 @@ where
     where
         Self: Sized,
     {
-        let candidate: Vec<Extension> = Vec::tls_deserialize(bytes)?;
+        let candidate: Vec<ExtensionIn<T>> = Vec::tls_deserialize(bytes)?;
         Extensions::<T>::try_from(candidate)
             .map_err(|_| Error::DecodingError("Found duplicate extensions".into()))
     }
 }
 
-impl<T: ExtensionValidator> DeserializeBytes for Extensions<T>
+impl<T: ExtensionValidator<Error: ToString>> DeserializeBytes for Extensions<T>
 where
     InvalidExtensionError: From<T::Error>,
 {
@@ -488,7 +489,7 @@ where
 {
     /// Create an extension list with a single extension.
     pub fn single(extension: Extension) -> Result<Self, InvalidExtensionError> {
-        T::validate_extension_type(&extension)?;
+        T::validate_extension_type(extension.extension_type())?;
         Ok(Self {
             unique: vec![extension],
             _object: PhantomData,
@@ -508,7 +509,7 @@ where
         extensions: impl Iterator<Item = &'a Extension>,
     ) -> Result<(), InvalidExtensionError> {
         for ext in extensions {
-            T::validate_extension_type(ext)?;
+            T::validate_extension_type(ext.extension_type())?;
         }
         Ok(())
     }
@@ -518,7 +519,7 @@ where
     /// Returns an error when there already is an extension with the same
     /// extension type.
     pub fn add(&mut self, extension: Extension) -> Result<(), InvalidExtensionError> {
-        T::validate_extension_type(&extension)?;
+        T::validate_extension_type(extension.extension_type())?;
         if self.contains(extension.extension_type()) {
             return Err(InvalidExtensionError::Duplicate);
         }
@@ -535,7 +536,7 @@ where
         &mut self,
         extension: Extension,
     ) -> Result<Option<Extension>, InvalidExtensionError> {
-        T::validate_extension_type(&extension)?;
+        T::validate_extension_type(extension.extension_type())?;
         let replaced = self.remove(extension.extension_type());
         self.unique.push(extension);
         Ok(replaced)
@@ -557,19 +558,26 @@ impl Extensions<AnyObject> {
     }
 }
 
+mod private {
+    /// Used to seal other traits
+    pub trait Sealed {}
+}
+
 /// Can be implemented by a type to validate extensions.
-pub trait ExtensionValidator {
+pub trait ExtensionValidator: private::Sealed {
     /// The error returned by the validator
     type Error;
 
     /// Check if the extension is valid.
-    fn validate_extension_type(ext: &Extension) -> Result<(), Self::Error>;
+    fn validate_extension_type(ext: ExtensionType) -> Result<(), Self::Error>;
 }
+
+impl private::Sealed for AnyObject {}
 
 impl ExtensionValidator for AnyObject {
     type Error = Infallible;
 
-    fn validate_extension_type(_ext: &Extension) -> Result<(), Infallible> {
+    fn validate_extension_type(_ext: ExtensionType) -> Result<(), Infallible> {
         Ok(())
     }
 }
@@ -583,7 +591,7 @@ where
     fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
         let mut seen = HashSet::with_capacity(candidate.len());
         for extension in candidate.iter() {
-            T::validate_extension_type(extension)?;
+            T::validate_extension_type(extension.extension_type())?;
 
             if !seen.insert(extension.extension_type()) {
                 return Err(InvalidExtensionError::Duplicate);
@@ -597,66 +605,72 @@ where
     }
 }
 
+impl private::Sealed for GroupInfo {}
+
 // https://validation.openmls.tech/#valn1602
 impl ExtensionValidator for GroupInfo {
     type Error = ExtensionTypeNotValidInGroupInfoError;
 
     fn validate_extension_type(
-        ext: &Extension,
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInGroupInfoError> {
-        if ext.extension_type().is_valid_in_group_info() == Some(true)
-            || ext.extension_type().is_valid_in_group_info().is_none()
+        if extension_type.is_valid_in_group_info() == Some(true)
+            || extension_type.is_valid_in_group_info().is_none()
         {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInGroupInfoError(ext.extension_type()))
+            Err(ExtensionTypeNotValidInGroupInfoError(extension_type))
         }
     }
 }
+
+impl private::Sealed for GroupContext {}
 
 // https://validation.openmls.tech/#valn1603
 impl ExtensionValidator for GroupContext {
     type Error = ExtensionTypeNotValidInGroupContextError;
 
     fn validate_extension_type(
-        ext: &Extension,
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInGroupContextError> {
-        if ext.extension_type().is_valid_in_group_context() {
+        if extension_type.is_valid_in_group_context() {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInGroupContextError(
-                ext.extension_type(),
-            ))
+            Err(ExtensionTypeNotValidInGroupContextError(extension_type))
         }
     }
 }
+
+impl private::Sealed for KeyPackage {}
 
 // https://validation.openmls.tech/#valn1604
 impl ExtensionValidator for KeyPackage {
     type Error = ExtensionTypeNotValidInKeyPackageError;
 
     fn validate_extension_type(
-        ext: &Extension,
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInKeyPackageError> {
-        if ext.extension_type().is_valid_in_key_package() {
+        if extension_type.is_valid_in_key_package() {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInKeyPackageError(ext.extension_type()))
+            Err(ExtensionTypeNotValidInKeyPackageError(extension_type))
         }
     }
 }
+
+impl private::Sealed for LeafNode {}
 
 // https://validation.openmls.tech/#valn1601
 impl ExtensionValidator for LeafNode {
     type Error = ExtensionTypeNotValidInLeafNodeError;
 
     fn validate_extension_type(
-        ext: &Extension,
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInLeafNodeError> {
-        if ext.extension_type().is_valid_in_leaf_node() {
+        if extension_type.is_valid_in_leaf_node() {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInLeafNodeError(ext.extension_type()))
+            Err(ExtensionTypeNotValidInLeafNodeError(extension_type))
         }
     }
 }
@@ -861,6 +875,7 @@ macro_rules! impl_from_extensions_validator {
                 value
                     .unique
                     .iter()
+                    .map(Extension::extension_type)
                     .try_for_each(<$validator as ExtensionValidator>::validate_extension_type)?;
 
                 Ok(Extensions {
