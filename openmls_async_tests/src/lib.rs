@@ -7,7 +7,12 @@
 //! runtime.
 //!
 //! The `test_utils` tests run the test frameworks of the `test-utils` feature
-//! in async mode.
+//! in async mode. The `send_checks` module checks at compile time that the
+//! reinit and subgroup branch futures are `Send`.
+
+#[cfg(test)]
+#[expect(dead_code, reason = "the checks only need to compile")]
+mod send_checks;
 
 #[cfg(test)]
 mod test_utils;

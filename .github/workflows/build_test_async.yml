@@ -36,6 +36,7 @@ jobs:
           test_utils_all_features+=",extensions-draft,extensions-draft-test-dependencies"
           test_utils_all_features+=",virtual-clients-draft,virtual-clients-draft-test-dependencies"
           test_utils_all_features+=",targeted-messages-draft,draft-ietf-mls-pq-ciphersuites"
+          test_utils_all_features+=",fork-resolution"
           for features in \
             "" \
             migration-import \
@@ -44,6 +45,7 @@ jobs:
             virtual-clients-draft \
             targeted-messages-draft \
             draft-ietf-mls-pq-ciphersuites \
+            fork-resolution \
             test-utils \
             "${test_utils_all_features}"; do
             echo "::group::async ${features}"
