@@ -14,15 +14,16 @@ use super::Sender;
 #[cfg(feature = "extensions-draft")]
 use super::StagedCommitSafeExport;
 use super::{
-    super::errors::*, load_psks, Credential, ExportedSecret, Extension, GroupContext,
-    GroupEpochSecrets, GroupId, JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets,
-    MlsGroup, MlsGroupState, OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue,
-    PskSecret, QueuedProposal, ReInitProposal, StagedCommitExport,
+    super::errors::*, Credential, ExportedSecret, Extension, GroupContext, GroupEpochSecrets,
+    GroupId, JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup,
+    MlsGroupState, OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue, PskSecret,
+    QueuedProposal, ReInitProposal, StagedCommitExport,
 };
 use crate::group::diff::PublicGroupDiff;
 use crate::group::GroupEpoch;
 use crate::messages::ConfirmationTag;
 use crate::prelude::{Commit, LeafNodeIndex};
+use crate::schedule::psk::load_psks;
 #[cfg(feature = "extensions-draft")]
 use crate::{component::ComponentId, schedule::application_export_tree::ApplicationExportTree};
 
@@ -181,6 +182,8 @@ impl MlsGroup {
             let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
                 provider.storage(),
                 &self.resumption_psk_store,
+                Some(self.group_id()),
+                None,
                 &apply_proposals_values.presharedkeys,
             )?;
 
