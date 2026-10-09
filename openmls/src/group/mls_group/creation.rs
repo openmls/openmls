@@ -37,7 +37,6 @@ use crate::{
         RetainedKeyPackageMaterial, VcDerivationEpochParams, VcDerivationEpochState,
         VcWelcomeMaterial, VirtualClientOperationType, VirtualClientsError,
     },
-    extensions::ExtensionType,
     framing::{mls_auth_content::AuthenticatedContent, ProtocolMessage, SafeAad, Sender},
     group::{
         config::PastEpochDeletionPolicy,
@@ -50,6 +49,7 @@ use crate::{
         },
         public_group::{errors::ApplyAppDataUpdateError, PublicGroup},
     },
+    key_packages::has_last_resort_marker,
     messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal, Proposal, ProposalOrRef},
     prelude::mls_content::FramedContentBody,
     schedule::{EpochSecrets, InitSecret},
@@ -1224,7 +1224,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         {
             let key_package_bundle: KeyPackageBundle = key_package_bundle;
             if key_package_bundle.key_package().last_resort() {
-                log::debug!("Key package has last resort extension, not deleting");
+                log::debug!("KeyPackage has a last-resort marker, not deleting");
             } else if !join_consumes_key_package(&key_package_bundle)? {
                 provider
                     .storage()
@@ -1331,9 +1331,7 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
         init_private_key: init_key_pair.private,
         init_key: init_key_pair.public.into(),
         encryption_keypair,
-        last_resort: material
-            .key_package_extensions
-            .contains(ExtensionType::LastResort),
+        last_resort: has_last_resort_marker(&material.key_package_extensions),
     }))
 }
 

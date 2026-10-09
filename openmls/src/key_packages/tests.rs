@@ -1,4 +1,7 @@
-use crate::{prelude::ExtensionTypeNotValidInLeafNodeError, test_utils::*};
+use crate::{
+    prelude::ExtensionTypeNotValidInLeafNodeError, test_utils::*,
+    treesync::node::leaf_node::Capabilities,
+};
 use openmls_basic_credential::SignatureKeyPair;
 
 use tls_codec::{Deserialize, Serialize};
@@ -262,51 +265,77 @@ fn key_package_validation_with_many_extensions() {
         .expect("validation should accept supported extensions");
 }
 
-/// Test that a key package is correctly built with a last resort extension when
-/// the last resort flag is set during the build process.
+#[cfg(feature = "extensions-draft")]
+fn last_resort_extension_type() -> ExtensionType {
+    ExtensionType::AppDataDictionary
+}
+
+#[cfg(not(feature = "extensions-draft"))]
+fn last_resort_extension_type() -> ExtensionType {
+    ExtensionType::LastResort
+}
+
+fn last_resort_capabilities(ciphersuite: Ciphersuite) -> Capabilities {
+    Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .extensions(vec![last_resort_extension_type()])
+        .build()
+}
+
+#[cfg(feature = "extensions-draft")]
+fn assert_last_resort_encoding(key_package: &KeyPackage) {
+    assert!(key_package.last_resort());
+
+    let dictionary = key_package
+        .extensions()
+        .app_data_dictionary()
+        .expect("last-resort KeyPackage should contain app_data_dictionary")
+        .dictionary();
+    assert_eq!(dictionary.get(&last_resort_component_id()), Some(&[][..]));
+}
+
+#[cfg(not(feature = "extensions-draft"))]
+fn assert_last_resort_encoding(key_package: &KeyPackage) {
+    assert!(key_package.last_resort());
+    assert!(key_package.extensions().contains(ExtensionType::LastResort));
+}
+
+fn assert_valid_after_roundtrip(provider: &impl OpenMlsProvider, key_package: &KeyPackage) {
+    let encoded = key_package
+        .tls_serialize_detached()
+        .expect("failed to serialize last-resort KeyPackage");
+    let decoded = KeyPackageIn::tls_deserialize_exact(&encoded)
+        .expect("failed to deserialize last-resort KeyPackage")
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .expect("failed to validate last-resort KeyPackage");
+    assert_last_resort_encoding(&decoded);
+}
+
+/// Building a last-resort KeyPackage fails before producing an invalid
+/// KeyPackage when explicitly set LeafNode capabilities don't advertise the
+/// marker's extension.
 #[openmls_test::openmls_test]
-fn last_resort_key_package() {
+fn last_resort_key_package_requires_capability() {
     let provider = &Provider::default();
     let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
     let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
-    // build without any other extensions
-    let key_package = KeyPackage::builder()
-        .mark_as_last_resort()
-        .build(
-            ciphersuite,
-            provider,
-            &signature_keys,
-            CredentialWithKey {
-                signature_key: signature_keys.to_public_vec().into(),
-                credential: credential.clone(),
-            },
-        )
-        .expect("An unexpected error occurred.");
-    assert!(key_package.key_package().last_resort());
+    // With the draft, this also exercises the migration failure mode:
+    // advertising the legacy extension doesn't cover the AppDataDictionary
+    // marker.
+    let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .extensions(if cfg!(feature = "extensions-draft") {
+            vec![ExtensionType::LastResort]
+        } else {
+            vec![]
+        })
+        .build();
 
-    // build with empty extensions
-    let key_package = KeyPackage::builder()
-        .key_package_extensions(Extensions::empty())
-        .mark_as_last_resort()
-        .build(
-            ciphersuite,
-            provider,
-            &signature_keys,
-            CredentialWithKey {
-                signature_key: signature_keys.to_public_vec().into(),
-                credential: credential.clone(),
-            },
-        )
-        .expect("An unexpected error occurred.");
-    assert!(key_package.key_package().last_resort());
-
-    // build with extension
-    let key_package = KeyPackage::builder()
-        .key_package_extensions(
-            Extensions::single(Extension::Unknown(0xFF00, UnknownExtension(vec![0x00])))
-                .expect("failed to create single-element extensions list"),
-        )
+    let error = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities)
         .mark_as_last_resort()
         .build(
             ciphersuite,
@@ -317,7 +346,243 @@ fn last_resort_key_package() {
                 credential,
             },
         )
+        .expect_err("missing last-resort capability must fail during KeyPackage creation");
+
+    assert_eq!(
+        error,
+        KeyPackageNewError::MissingLastResortCapability(last_resort_extension_type())
+    );
+}
+
+/// Under `CapabilitiesPolicy::Widen`, either set explicitly or implied by
+/// leaving the capabilities unset, the marker's extension is added to the
+/// LeafNode capabilities.
+#[openmls_test::openmls_test]
+fn last_resort_key_package_widens_capabilities() {
+    let provider = &Provider::default();
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let credential_with_key = CredentialWithKey {
+        signature_key: signature_keys.to_public_vec().into(),
+        credential,
+    };
+
+    let builders = [
+        KeyPackage::builder(),
+        KeyPackage::builder()
+            .leaf_node_capabilities(Capabilities::empty())
+            .capabilities_policy(CapabilitiesPolicy::Widen),
+    ];
+    for builder in builders {
+        let key_package = builder
+            .mark_as_last_resort()
+            .build(
+                ciphersuite,
+                provider,
+                &signature_keys,
+                credential_with_key.clone(),
+            )
+            .expect("failed to build last-resort KeyPackage");
+        let key_package = key_package.key_package();
+
+        assert!(key_package
+            .leaf_node()
+            .capabilities()
+            .extensions()
+            .contains(&last_resort_extension_type()));
+        assert_last_resort_encoding(key_package);
+        assert_valid_after_roundtrip(provider, key_package);
+    }
+}
+
+/// Test that a KeyPackage is correctly built with a last-resort marker when
+/// the last-resort flag is set during the build process.
+#[openmls_test::openmls_test]
+fn last_resort_key_package() {
+    let provider = &Provider::default();
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+    // build without any other extensions
+    let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(last_resort_capabilities(ciphersuite))
+        .mark_as_last_resort()
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential: credential.clone(),
+            },
+        )
         .expect("An unexpected error occurred.");
+    assert_last_resort_encoding(key_package.key_package());
+
+    assert_valid_after_roundtrip(provider, key_package.key_package());
+    #[cfg(feature = "extensions-draft")]
+    assert!(!key_package
+        .key_package()
+        .extensions()
+        .contains(ExtensionType::LastResort));
+
+    // build with empty extensions
+    let key_package = KeyPackage::builder()
+        .key_package_extensions(Extensions::empty())
+        .leaf_node_capabilities(last_resort_capabilities(ciphersuite))
+        .mark_as_last_resort()
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential: credential.clone(),
+            },
+        )
+        .expect("An unexpected error occurred.");
+    assert_last_resort_encoding(key_package.key_package());
+
+    // build with extension
+    let key_package = KeyPackage::builder()
+        .key_package_extensions(
+            Extensions::single(Extension::Unknown(0xFF00, UnknownExtension(vec![0x00])))
+                .expect("failed to create single-element extensions list"),
+        )
+        .leaf_node_capabilities(last_resort_capabilities(ciphersuite))
+        .mark_as_last_resort()
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential: credential.clone(),
+            },
+        )
+        .expect("An unexpected error occurred.");
+    assert_last_resort_encoding(key_package.key_package());
+
+    // An application in a transition phase may emit both the legacy extension
+    // and the component. Existing app_data_dictionary entries and a legacy
+    // extension set by the caller are kept.
+    #[cfg(feature = "extensions-draft")]
+    {
+        let private_component_id = 0x8001;
+        let private_component_data = vec![1, 2, 3];
+        let mut dictionary = AppDataDictionary::new();
+        dictionary.insert(private_component_id, private_component_data.clone());
+        dictionary.insert(last_resort_component_id(), vec![0xff]);
+        let extensions = Extensions::from_vec(vec![
+            Extension::LastResort(LastResortExtension::new()),
+            Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary)),
+        ])
+        .expect("failed to create KeyPackage extensions");
+
+        let key_package = KeyPackage::builder()
+            .key_package_extensions(extensions)
+            .leaf_node_capabilities(
+                Capabilities::builder()
+                    .ciphersuites(vec![ciphersuite])
+                    .credentials(vec![CredentialType::Basic])
+                    .extensions(vec![
+                        ExtensionType::AppDataDictionary,
+                        ExtensionType::LastResort,
+                    ])
+                    .build(),
+            )
+            .mark_as_last_resort()
+            .build(
+                ciphersuite,
+                provider,
+                &signature_keys,
+                CredentialWithKey {
+                    signature_key: signature_keys.to_public_vec().into(),
+                    credential: credential.clone(),
+                },
+            )
+            .expect("failed to build last-resort KeyPackage");
+        let key_package = key_package.key_package();
+
+        assert_last_resort_encoding(key_package);
+        assert!(key_package.extensions().contains(ExtensionType::LastResort));
+        assert_eq!(
+            key_package
+                .extensions()
+                .app_data_dictionary()
+                .expect("missing app_data_dictionary")
+                .dictionary()
+                .get(&private_component_id),
+            Some(private_component_data.as_slice())
+        );
+        assert_valid_after_roundtrip(provider, key_package);
+    }
+}
+
+#[cfg(feature = "extensions-draft")]
+#[openmls_test::openmls_test]
+fn malformed_last_resort_component_is_rejected() {
+    let provider = &Provider::default();
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let mut dictionary = AppDataDictionary::new();
+    dictionary.insert(last_resort_component_id(), vec![1]);
+
+    let key_package = KeyPackage::builder()
+        .key_package_extensions(
+            Extensions::single(Extension::AppDataDictionary(
+                AppDataDictionaryExtension::new(dictionary),
+            ))
+            .expect("failed to create app_data_dictionary extension"),
+        )
+        .leaf_node_capabilities(last_resort_capabilities(ciphersuite))
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential,
+            },
+        )
+        .expect("failed to build malformed KeyPackage fixture");
+
+    assert!(!key_package.key_package().last_resort());
+    let error = KeyPackageIn::from(key_package.key_package().clone())
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .expect_err("non-empty last-resort component data must be rejected");
+    assert_eq!(error, KeyPackageVerifyError::MalformedLastResortComponent);
+}
+
+#[cfg(feature = "extensions-draft")]
+#[openmls_test::openmls_test]
+fn legacy_last_resort_extension_is_still_recognized() {
+    let provider = &Provider::default();
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let key_package = KeyPackage::builder()
+        .key_package_extensions(
+            Extensions::single(Extension::LastResort(LastResortExtension::new()))
+                .expect("failed to create legacy last-resort extension"),
+        )
+        .leaf_node_capabilities(
+            Capabilities::builder()
+                .ciphersuites(vec![ciphersuite])
+                .credentials(vec![CredentialType::Basic])
+                .extensions(vec![ExtensionType::LastResort])
+                .build(),
+        )
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential,
+            },
+        )
+        .expect("failed to build legacy last-resort KeyPackage");
+
     assert!(key_package.key_package().last_resort());
 }
 

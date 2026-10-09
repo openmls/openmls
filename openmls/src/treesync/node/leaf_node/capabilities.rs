@@ -338,6 +338,17 @@ impl Capabilities {
         }
     }
 
+    /// Ensure `extension_type` is advertised.
+    ///
+    /// Used under [`CapabilitiesPolicy::Widen`] for extensions the library
+    /// adds to a KeyPackage on the caller's behalf, which [`Self::widen_for`]
+    /// can't see because it only covers the leaf's own extensions.
+    pub(crate) fn ensure_extension(&mut self, extension_type: ExtensionType) {
+        if !extension_type.is_default() && !self.extensions.contains(&extension_type) {
+            self.extensions.push(extension_type);
+        }
+    }
+
     /// Widen `self` to cover what the leaf itself uses: its ciphersuite, its
     /// credential type, and its non-default extension types.
     ///
