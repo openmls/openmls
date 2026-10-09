@@ -34,7 +34,8 @@ use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::{
         leaf_node::{
-            Capabilities, NewLeafNodeParams, TreeInfoTbs, TreePosition, VerifiableLeafNode,
+            Capabilities, LeafNodeConstraints, NewLeafNodeParams, TreeInfoTbs, TreePosition,
+            VerifiableLeafNode,
         },
         NodeIn,
     },
@@ -82,8 +83,8 @@ pub use node::encryption_keys::EncryptionKey;
 // Public re-exports
 pub use node::{
     leaf_node::{
-        LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeSource,
-        LeafNodeUpdateError,
+        CapabilitiesPolicy, LeafNode, LeafNodeBuildError, LeafNodeParameters,
+        LeafNodeParametersBuilder, LeafNodeSource, LeafNodeUpdateError,
     },
     parent_node::ParentNode,
     Node,
@@ -440,6 +441,7 @@ impl TreeSync {
     ///
     /// Returns the resulting [`TreeSync`] instance, as well as the
     /// corresponding [`CommitSecret`].
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
@@ -448,7 +450,9 @@ impl TreeSync {
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions<LeafNode>,
-    ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
+        constraints: LeafNodeConstraints,
+        capabilities_policy: CapabilitiesPolicy,
+    ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LeafNodeBuildError> {
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
             credential_with_key,
@@ -457,6 +461,8 @@ impl TreeSync {
             capabilities,
             extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            constraints,
+            capabilities_policy,
         };
         let (leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)?;
 
@@ -501,7 +507,9 @@ impl TreeSync {
         capabilities: Capabilities,
         leaf_extensions: Extensions<LeafNode>,
         encryption_key_pair: EncryptionKeyPair,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        constraints: LeafNodeConstraints,
+        capabilities_policy: CapabilitiesPolicy,
+    ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
             credential_with_key,
@@ -511,6 +519,8 @@ impl TreeSync {
             capabilities,
             extensions: leaf_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            constraints,
+            capabilities_policy,
         };
         let (leaf, encryption_key_pair) = LeafNode::new_with_encryption_key_pair(
             signer,
@@ -805,9 +815,9 @@ impl TreeSync {
         RatchetTree::trimmed(nodes)
     }
 
-    /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
-    /// leaf is blank.
-    pub(crate) fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&LeafNode> {
+    /// Return a reference to the leaf at the given `LeafNodeIndex`, or `None` if
+    /// the leaf is blank or the index is out of bounds.
+    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&LeafNode> {
         let tsn = self.tree.leaf(leaf_index);
         tsn.node().as_ref()
     }
@@ -897,6 +907,84 @@ impl TreeSync {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    /// Builds a [`TreeSync`] with the given leaves and only blank parent nodes.
+    fn tree_sync_from_leaves(
+        provider: &impl OpenMlsProvider,
+        ciphersuite: Ciphersuite,
+        leaves: Vec<Option<LeafNode>>,
+    ) -> TreeSync {
+        let mut nodes = Vec::new();
+        for (leaf_index, leaf) in leaves.into_iter().enumerate() {
+            // Interleave the leaves with blank parent nodes.
+            if leaf_index > 0 {
+                nodes.push(None);
+            }
+            nodes.push(leaf.map(Node::leaf_node));
+        }
+
+        TreeSync::from_ratchet_tree(provider.crypto(), ciphersuite, RatchetTree::trimmed(nodes))
+            .expect("error building tree")
+    }
+
+    /// Generates a fresh [`LeafNode`].
+    fn leaf_node(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) -> LeafNode {
+        let (key_package, _, _) = crate::key_packages::tests::key_package(ciphersuite, provider);
+        LeafNode::from(key_package)
+    }
+
+    #[openmls_test::openmls_test]
+    fn test_leaf_returns_populated_leaves() {
+        let provider = &Provider::default();
+        let leaves: Vec<_> = (0..3).map(|_| leaf_node(ciphersuite, provider)).collect();
+
+        let tree = tree_sync_from_leaves(
+            provider,
+            ciphersuite,
+            leaves.iter().cloned().map(Some).collect(),
+        );
+
+        for (leaf_index, leaf) in leaves.iter().enumerate() {
+            assert_eq!(
+                tree.leaf(LeafNodeIndex::new(leaf_index as u32)),
+                Some(leaf),
+                "unexpected leaf at index {leaf_index}"
+            );
+        }
+    }
+
+    #[openmls_test::openmls_test]
+    fn test_leaf_returns_none_out_of_bounds() {
+        let provider = &Provider::default();
+        let leaves: Vec<_> = (0..2)
+            .map(|_| Some(leaf_node(ciphersuite, provider)))
+            .collect();
+
+        let tree = tree_sync_from_leaves(provider, ciphersuite, leaves);
+
+        // The tree has two leaves, so everything from index 2 on is out of bounds.
+        assert_eq!(tree.leaf(LeafNodeIndex::new(2)), None);
+        assert_eq!(tree.leaf(LeafNodeIndex::new(100)), None);
+        assert_eq!(tree.leaf(LeafNodeIndex::new(u32::MAX)), None);
+    }
+
+    #[openmls_test::openmls_test]
+    fn test_leaf_returns_none_for_blank_leaf_between_populated_ones() {
+        let provider = &Provider::default();
+        let first = leaf_node(ciphersuite, provider);
+        let last = leaf_node(ciphersuite, provider);
+
+        // A tree with a blank leaf between two populated ones.
+        let tree = tree_sync_from_leaves(
+            provider,
+            ciphersuite,
+            vec![Some(first.clone()), None, Some(last.clone())],
+        );
+
+        assert_eq!(tree.leaf(LeafNodeIndex::new(0)), Some(&first));
+        assert_eq!(tree.leaf(LeafNodeIndex::new(1)), None);
+        assert_eq!(tree.leaf(LeafNodeIndex::new(2)), Some(&last));
+    }
 
     #[cfg(debug_assertions)]
     #[test]

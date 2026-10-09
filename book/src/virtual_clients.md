@@ -72,10 +72,15 @@ use openmls::components::vc_derivation_info::VC_COMPONENT_ID;
 use openmls::extensions::{
     AppDataDictionary, AppDataDictionaryExtension, Extension, ExtensionType, Extensions,
 };
-use openmls::prelude::Capabilities;
+use openmls::prelude::{Capabilities, CredentialType};
 use tls_codec::Serialize as _;
 
+// Capabilities set explicitly are taken at face value, so the ciphersuite and
+// credential type the leaf itself uses have to be listed alongside the
+// extension type this feature needs.
 let capabilities = Capabilities::builder()
+    .ciphersuites(vec![ciphersuite])
+    .credentials(vec![CredentialType::Basic])
     .extensions(vec![ExtensionType::AppDataDictionary])
     .build();
 
@@ -93,6 +98,10 @@ Pass `capabilities` and `leaf_extensions` to `MlsGroupCreateConfig::builder()`
 through `.capabilities(...)` and `.with_leaf_node_extensions(...)`, and to the
 `KeyPackage::builder()` through `.leaf_node_capabilities(...)` and
 `.leaf_node_extensions(...)`.
+
+Capabilities have to be set explicitly here: virtual clients need
+`AppDataDictionary` advertised, and leaving capabilities unset would only
+advertise what the leaf itself uses.
 
 ## Derivation epochs
 
@@ -404,6 +413,16 @@ Once the Delivery Service accepts the message, drop the retained key:
 ```rust,no_run,noplayground
 main_group.confirm_application_message(provider.storage(), unconfirmed.epoch, unconfirmed.generation)?;
 ```
+
+When the Delivery Service fans the confirmed message back, `process_message`
+returns `ProcessedMessageContent::OwnPrivateMessage`, so it can be skipped. Only
+a confirmed generation is reported this way. A second delivery of an own-leaf
+message whose generation was already used for a decryption attempt fails with
+`SecretTreeError::SecretReuseError`, like a duplicate from any other member,
+because that attempt may not have succeeded. An own-leaf message older than the
+oldest generation pruned from the receive window fails with
+`SecretTreeError::TooDistantInThePast`, because it may be a sibling's message
+that was never processed.
 
 If the Delivery Service reports a collision, the sibling won that generation.
 Process the winning message through `process_message`, which has a carve-out for
