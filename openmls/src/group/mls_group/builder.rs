@@ -625,7 +625,8 @@ impl ReInitGroupBuilder {
     /// The commit is staged but **not** merged: merge it with
     /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
     /// only once the delivery service has confirmed it.
-    pub fn build_reinit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_reinit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -645,7 +646,9 @@ impl ReInitGroupBuilder {
             .ciphersuite(proposal.ciphersuite)
             .with_group_id(proposal.group_id)
             .with_group_context_extensions(proposal.extensions);
-        let mut group = group_builder.build(provider, signer, credential_with_key)?;
+        let mut group = group_builder
+            .build(provider, signer, credential_with_key)
+            .await?;
 
         let mut commit_builder = group
             .commit_builder()
@@ -660,9 +663,11 @@ impl ReInitGroupBuilder {
             commit_builder = commit_builder.force_self_update(true);
         }
         let bundle = commit_builder
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         Ok((group, bundle))
     }

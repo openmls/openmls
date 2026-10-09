@@ -587,6 +587,7 @@ impl MlsGroup {
             provider
                 .storage()
                 .write_group_state(self.group_id(), &self.group_state)
+                .await
                 .map_err(MergeCommitError::StorageError)?;
         }
 

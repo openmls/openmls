@@ -203,7 +203,7 @@ impl ProcessedWelcome {
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        resumption_info: Option<ResumptionInfo>,
+        resumption_info: Option<ResumptionInfo<'_>>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let (resumption_psk_store, key_material, group_secrets) =
             decrypt_group_secrets(provider, mls_group_config, &welcome).await?;
@@ -948,7 +948,8 @@ impl PendingResumingWelcome {
     /// Use this method if the welcome does not need a PSK, indicated by [`Self::required_resumption_secret`] returning [`None`].
     ///
     /// This has the same effect as [`ProcessedWelcome::new_from_welcome`]
-    pub fn build<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<ProcessedWelcome, WelcomeError<Provider::StorageError>> {
@@ -961,7 +962,8 @@ impl PendingResumingWelcome {
             self.group_secrets,
             &self.welcome,
             None,
-        )?;
+        )
+        .await?;
 
         Ok(processed_welcome)
     }
@@ -972,7 +974,8 @@ impl PendingResumingWelcome {
     /// [`StagedWelcome::build_from_reinit`]); a `reinit_info` from the wrong
     /// group or epoch fails with [`WelcomeError::ReInitPredecessorMismatch`]. The
     /// remaining receiver checks run when [`JoinBuilder::build`] is called.
-    pub fn build_from_reinit<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_reinit<'a, Provider: OpenMlsProvider>(
         self,
         provider: &'a Provider,
         reinit_info: ReInitInfo,
@@ -986,7 +989,8 @@ impl PendingResumingWelcome {
             self.group_secrets,
             &self.welcome,
             Some(ResumptionInfo::ReInit(&reinit_info)),
-        )?;
+        )
+        .await?;
 
         Ok(JoinBuilder::new(provider, processed_welcome).with_reinit_info(reinit_info))
     }
@@ -1110,7 +1114,7 @@ async fn finish_processed_welcome<Provider: OpenMlsProvider>(
     key_material: WelcomeKeyMaterial,
     group_secrets: GroupSecrets,
     welcome: &Welcome,
-    resumption_info: Option<ResumptionInfo>,
+    resumption_info: Option<ResumptionInfo<'_>>,
 ) -> Result<ProcessedWelcome, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
     if let Some(resumption_info) = resumption_info {
         // For subgroup branching and reinit, inject the parent group's resumption PSK at

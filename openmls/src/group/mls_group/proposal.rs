@@ -710,7 +710,8 @@ impl MlsGroup {
     ///
     /// [`MlsGroupBuilder::reinit`]: crate::group::MlsGroupBuilder::reinit
     /// [`StagedWelcome::build_from_reinit`]: crate::group::StagedWelcome::build_from_reinit
-    pub fn propose_reinit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn propose_reinit<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         reinit_proposal: ReInitProposal,
@@ -733,10 +734,11 @@ impl MlsGroup {
         provider
             .storage()
             .queue_proposal(self.group_id(), &proposal_ref, &queued_proposal)
+            .await
             .map_err(ProposalError::StorageError)?;
         self.proposal_store_mut().add(queued_proposal);
 
-        let framing = self.content_to_mls_message(proposal, provider)?;
+        let framing = self.content_to_mls_message(proposal, provider).await?;
 
         self.reset_aad();
         Ok((framing.message, proposal_ref))
