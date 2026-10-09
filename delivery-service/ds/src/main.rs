@@ -258,7 +258,10 @@ async fn consume_key_package(
 /// clients in the welcome message.
 async fn send_welcome(State(data): State<Arc<DsData>>, body: Bytes) -> Response {
     let welcome_msg = unwrap_data!(MlsMessageIn::tls_deserialize(&mut &body[..]));
-    let welcome = welcome_msg.clone().into_welcome().unwrap();
+    let welcome = match welcome_msg.clone().into_welcome() {
+        Ok(welcome) => welcome,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
     log::debug!("Storing welcome message: {welcome_msg:?}");
 
     let mut clients = data.clients.lock();
@@ -293,7 +296,10 @@ async fn msg_send(State(data): State<Arc<DsData>>, body: Bytes) -> Response {
     let mut clients = data.clients.lock();
     let mut groups = data.groups.lock();
 
-    let protocol_msg: ProtocolMessage = group_msg.msg.clone().try_into().unwrap();
+    let protocol_msg: ProtocolMessage = match group_msg.msg.clone().try_into() {
+        Ok(message) => message,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
 
     // Reject any handshake message that has an earlier epoch than the one we know
     // about.
