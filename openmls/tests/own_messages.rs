@@ -1,6 +1,6 @@
 //! Test that processing a PrivateMessage authored by this client surfaces as
 //! `OwnPrivateMessage` instead of failing. The groups here do not register
-//! emulation state, so this also holds under the `virtual-clients-draft`
+//! derivation epoch state, so this also holds under the `virtual-clients-draft`
 //! feature whenever the message cannot be decrypted (the dual-use ratchet
 //! there still decrypts own messages whose secrets are retained).
 use openmls::prelude::*;

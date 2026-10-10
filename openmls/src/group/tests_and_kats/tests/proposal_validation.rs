@@ -1,6 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
+use crate::test_utils::minimal_capabilities_for;
 use std::slice::from_ref;
 
 use crate::{
@@ -2256,10 +2257,10 @@ fn valsem113() {
 
     let capabilities_with_support = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         None,
         Some(&[ProposalType::Custom(custom_proposal_type)]),
-        None,
+        Some(&[CredentialType::Basic]),
     );
 
     let mls_group_config = MlsGroupJoinConfig::default();
@@ -2283,6 +2284,8 @@ fn valsem113() {
 
         // Generate Bob's KeyPackage depending on the test mode
         let bob_key_package = if matches!(test_mode, TestMode::Unsupported) {
+            // Advertise everything except the proposal type under test, so the
+            // leaf is rejected for the proposal, not for its own ciphersuite.
             KeyPackageBuilder::new()
         } else {
             KeyPackageBuilder::new().leaf_node_capabilities(capabilities_with_support.clone())
@@ -2297,7 +2300,8 @@ fn valsem113() {
 
         // Create a group with the defined capabilities
         let mut alice_group = if matches!(test_mode, TestMode::Unsupported) {
-            MlsGroup::builder()
+            // Advertise everything except the proposal type under test.
+            MlsGroup::builder().with_capabilities(minimal_capabilities_for(ciphersuite).build())
         } else {
             MlsGroup::builder().with_capabilities(capabilities_with_support.clone())
         }
@@ -2393,6 +2397,133 @@ fn valsem113() {
             result.expect("Error processing commit")
         };
     }
+}
+
+// Tests `PublicGroup::validate_key_package_for_add`, which runs the checks of
+// an Add proposal on a single key package. The group used here carries the
+// unknown extension 0xf001 in its group context and requires support for the
+// unknown extension 0xf002 through its required capabilities.
+#[openmls_test::openmls_test]
+fn validate_key_package_for_add() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let group_context_extension_type = ExtensionType::Unknown(0xf001);
+    let required_extension_type = ExtensionType::Unknown(0xf002);
+
+    let capabilities = |ciphersuite, extension_types: Vec<ExtensionType>| {
+        Capabilities::builder()
+            .ciphersuites(vec![ciphersuite])
+            .credentials(vec![CredentialType::Basic])
+            .extensions(extension_types)
+            .build()
+    };
+
+    let group_context_extensions = Extensions::from_vec(vec![
+        Extension::Unknown(0xf001, UnknownExtension(vec![0x01])),
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+            &[required_extension_type],
+            &[],
+            &[],
+        )),
+    ])
+    .unwrap();
+
+    let alice_credential_with_key_and_signer = generate_credential_with_key(
+        "Alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .with_capabilities(capabilities(
+            ciphersuite,
+            vec![group_context_extension_type, required_extension_type],
+        ))
+        .with_group_context_extensions(group_context_extensions)
+        .build(
+            alice_provider,
+            &alice_credential_with_key_and_signer.signer,
+            alice_credential_with_key_and_signer
+                .credential_with_key
+                .clone(),
+        )
+        .unwrap();
+
+    let public_group = alice_group.public_group();
+
+    // Builds a key package for Bob with the given ciphersuite and capabilities.
+    let bob_key_package = |ciphersuite: Ciphersuite, capabilities| {
+        let credential_with_key_and_signer = generate_credential_with_key(
+            "Bob".into(),
+            ciphersuite.signature_algorithm(),
+            bob_provider,
+        );
+
+        KeyPackage::builder()
+            .leaf_node_capabilities(capabilities)
+            .build(
+                ciphersuite,
+                bob_provider,
+                &credential_with_key_and_signer.signer,
+                credential_with_key_and_signer.credential_with_key,
+            )
+            .unwrap()
+    };
+
+    // A key package that supports both extensions is eligible.
+    let eligible = bob_key_package(
+        ciphersuite,
+        capabilities(
+            ciphersuite,
+            vec![group_context_extension_type, required_extension_type],
+        ),
+    );
+    public_group
+        .validate_key_package_for_add(eligible.key_package())
+        .unwrap();
+
+    // A key package for a different ciphersuite is not eligible.
+    let other_ciphersuite = bob_provider
+        .crypto()
+        .supported_ciphersuites()
+        .into_iter()
+        .find(|supported| *supported != ciphersuite)
+        .expect("the provider should support more than one ciphersuite");
+    let wrong_ciphersuite = bob_key_package(
+        other_ciphersuite,
+        capabilities(
+            other_ciphersuite,
+            vec![group_context_extension_type, required_extension_type],
+        ),
+    );
+    assert_eq!(
+        public_group.validate_key_package_for_add(wrong_ciphersuite.key_package()),
+        Err(ProposalValidationError::InvalidAddProposalCiphersuiteOrVersion)
+    );
+
+    // A key package whose leaf node does not support the group context
+    // extension is not eligible.
+    let missing_group_context_extension =
+        bob_key_package(ciphersuite, capabilities(ciphersuite, vec![]));
+    assert_eq!(
+        public_group.validate_key_package_for_add(missing_group_context_extension.key_package()),
+        Err(ProposalValidationError::InsufficientCapabilities)
+    );
+
+    // A key package whose leaf node does not satisfy the required capabilities
+    // of the group is not eligible.
+    let missing_required_capability = bob_key_package(
+        ciphersuite,
+        capabilities(ciphersuite, vec![group_context_extension_type]),
+    );
+    assert_eq!(
+        public_group.validate_key_package_for_add(missing_required_capability.key_package()),
+        Err(ProposalValidationError::LeafNodeValidation(
+            LeafNodeValidationError::UnsupportedExtensions
+        ))
+    );
 }
 
 // --- PreSharedKey Proposals ---

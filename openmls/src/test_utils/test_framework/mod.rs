@@ -356,7 +356,9 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
         group.public_tree = sender_group.export_ratchet_tree();
         group.exporter_secret = sender_group
             .export_secret(sender.provider.crypto(), "test", &[], 32)
-            .map_err(ClientError::ExportSecretError)?;
+            .map_err(ClientError::ExportSecretError)?
+            .as_slice()
+            .to_vec();
         Ok(())
     }
 
@@ -388,7 +390,8 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
                     assert_eq!(
                         group_state
                             .export_secret(m.provider.crypto(), "test", &[], 32)
-                            .expect("An unexpected error occurred."),
+                            .expect("An unexpected error occurred.")
+                            .as_slice(),
                         group.exporter_secret
                     );
                     // Get the signature public key to read the signer from the
@@ -483,8 +486,10 @@ impl<Provider: OpenMlsProvider + Default> MlsGroupTestSetup<Provider> {
             .get(&group_id)
             .expect("An unexpected error occurred.");
         let public_tree = group.export_ratchet_tree();
-        let exporter_secret =
-            group.export_secret(group_creator.provider.crypto(), "test", &[], 32)?;
+        let exporter_secret = group
+            .export_secret(group_creator.provider.crypto(), "test", &[], 32)?
+            .as_slice()
+            .to_vec();
         let member_ids = vec![(0, group_creator_id)];
         let group = Group {
             group_id: group_id.clone(),

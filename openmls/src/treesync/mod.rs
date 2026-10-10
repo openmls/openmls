@@ -34,7 +34,8 @@ use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::{
         leaf_node::{
-            Capabilities, NewLeafNodeParams, TreeInfoTbs, TreePosition, VerifiableLeafNode,
+            Capabilities, LeafNodeConstraints, NewLeafNodeParams, TreeInfoTbs, TreePosition,
+            VerifiableLeafNode,
         },
         NodeIn,
     },
@@ -82,8 +83,8 @@ pub use node::encryption_keys::EncryptionKey;
 // Public re-exports
 pub use node::{
     leaf_node::{
-        LeafNode, LeafNodeParameters, LeafNodeParametersBuilder, LeafNodeSource,
-        LeafNodeUpdateError,
+        CapabilitiesPolicy, LeafNode, LeafNodeBuildError, LeafNodeParameters,
+        LeafNodeParametersBuilder, LeafNodeSource, LeafNodeUpdateError,
     },
     parent_node::ParentNode,
     Node,
@@ -274,6 +275,21 @@ impl RatchetTreeIn {
         })
     }
 
+    /// Returns an iterator over all non-blank leaf nodes together with their
+    /// real [`LeafNodeIndex`], unlike [`Self::leaves`] whose positions are
+    /// compacted by skipping blank tree slots.
+    pub fn full_leaves(&self) -> impl Iterator<Item = (LeafNodeIndex, &LeafNodeIn)> {
+        self.0
+            .iter()
+            .enumerate()
+            .filter_map(|(node_index, slot)| match slot {
+                Some(NodeIn::LeafNode(leaf_node)) => {
+                    Some((LeafNodeIndex::new((node_index / 2) as u32), &**leaf_node))
+                }
+                _ => None,
+            })
+    }
+
     /// Returns an iterator over all parent nodes in the ratchet tree.
     pub fn parents(&self) -> impl Iterator<Item = &ParentNode> {
         self.nodes().filter_map(|node| match node {
@@ -425,6 +441,7 @@ impl TreeSync {
     ///
     /// Returns the resulting [`TreeSync`] instance, as well as the
     /// corresponding [`CommitSecret`].
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
@@ -433,7 +450,9 @@ impl TreeSync {
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions<LeafNode>,
-    ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
+        constraints: LeafNodeConstraints,
+        capabilities_policy: CapabilitiesPolicy,
+    ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LeafNodeBuildError> {
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
             credential_with_key,
@@ -442,6 +461,8 @@ impl TreeSync {
             capabilities,
             extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            constraints,
+            capabilities_policy,
         };
         let (leaf, encryption_key_pair) = LeafNode::new(provider, signer, new_leaf_node_params)?;
 
@@ -486,7 +507,9 @@ impl TreeSync {
         capabilities: Capabilities,
         leaf_extensions: Extensions<LeafNode>,
         encryption_key_pair: EncryptionKeyPair,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+        constraints: LeafNodeConstraints,
+        capabilities_policy: CapabilitiesPolicy,
+    ) -> Result<(Self, EncryptionKeyPair), LeafNodeBuildError> {
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
             credential_with_key,
@@ -496,6 +519,8 @@ impl TreeSync {
             capabilities,
             extensions: leaf_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            constraints,
+            capabilities_policy,
         };
         let (leaf, encryption_key_pair) = LeafNode::new_with_encryption_key_pair(
             signer,
@@ -548,7 +573,6 @@ impl TreeSync {
         ciphersuite: Ciphersuite,
         ratchet_tree: RatchetTree,
     ) -> Result<Self, TreeSyncFromNodesError> {
-        // TODO #800: Unmerged leaves should be checked
         let total_nodes = ratchet_tree.0.len();
         let mut leaf_nodes = Vec::with_capacity(total_nodes.div_ceil(2));
         let mut parent_nodes = Vec::with_capacity(total_nodes / 2);
@@ -581,6 +605,18 @@ impl TreeSync {
                     None => TreeSyncParentNode::blank(),
                 };
                 parent_nodes.push(parent);
+            }
+        }
+
+        // Unmerged leaves must point into the tree
+        let leaf_count = leaf_nodes.len() as u32;
+        for parent in parent_nodes.iter() {
+            if let Some(parent_node) = parent.node() {
+                if let Some(last_unmerged_leaf_index) = parent_node.unmerged_leaves().last() {
+                    if last_unmerged_leaf_index.u32() >= leaf_count {
+                        return Err(TreeSyncFromNodesError::from(PublicTreeError::MalformedTree));
+                    }
+                }
             }
         }
 
@@ -779,9 +815,9 @@ impl TreeSync {
         RatchetTree::trimmed(nodes)
     }
 
-    /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
-    /// leaf is blank.
-    pub(crate) fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&LeafNode> {
+    /// Return a reference to the leaf at the given `LeafNodeIndex`, or `None` if
+    /// the leaf is blank or the index is out of bounds.
+    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&LeafNode> {
         let tsn = self.tree.leaf(leaf_index);
         tsn.node().as_ref()
     }
@@ -872,6 +908,84 @@ impl TreeSync {
 mod test {
     use super::*;
 
+    /// Builds a [`TreeSync`] with the given leaves and only blank parent nodes.
+    fn tree_sync_from_leaves(
+        provider: &impl OpenMlsProvider,
+        ciphersuite: Ciphersuite,
+        leaves: Vec<Option<LeafNode>>,
+    ) -> TreeSync {
+        let mut nodes = Vec::new();
+        for (leaf_index, leaf) in leaves.into_iter().enumerate() {
+            // Interleave the leaves with blank parent nodes.
+            if leaf_index > 0 {
+                nodes.push(None);
+            }
+            nodes.push(leaf.map(Node::leaf_node));
+        }
+
+        TreeSync::from_ratchet_tree(provider.crypto(), ciphersuite, RatchetTree::trimmed(nodes))
+            .expect("error building tree")
+    }
+
+    /// Generates a fresh [`LeafNode`].
+    fn leaf_node(ciphersuite: Ciphersuite, provider: &impl OpenMlsProvider) -> LeafNode {
+        let (key_package, _, _) = crate::key_packages::tests::key_package(ciphersuite, provider);
+        LeafNode::from(key_package)
+    }
+
+    #[openmls_test::openmls_test]
+    fn test_leaf_returns_populated_leaves() {
+        let provider = &Provider::default();
+        let leaves: Vec<_> = (0..3).map(|_| leaf_node(ciphersuite, provider)).collect();
+
+        let tree = tree_sync_from_leaves(
+            provider,
+            ciphersuite,
+            leaves.iter().cloned().map(Some).collect(),
+        );
+
+        for (leaf_index, leaf) in leaves.iter().enumerate() {
+            assert_eq!(
+                tree.leaf(LeafNodeIndex::new(leaf_index as u32)),
+                Some(leaf),
+                "unexpected leaf at index {leaf_index}"
+            );
+        }
+    }
+
+    #[openmls_test::openmls_test]
+    fn test_leaf_returns_none_out_of_bounds() {
+        let provider = &Provider::default();
+        let leaves: Vec<_> = (0..2)
+            .map(|_| Some(leaf_node(ciphersuite, provider)))
+            .collect();
+
+        let tree = tree_sync_from_leaves(provider, ciphersuite, leaves);
+
+        // The tree has two leaves, so everything from index 2 on is out of bounds.
+        assert_eq!(tree.leaf(LeafNodeIndex::new(2)), None);
+        assert_eq!(tree.leaf(LeafNodeIndex::new(100)), None);
+        assert_eq!(tree.leaf(LeafNodeIndex::new(u32::MAX)), None);
+    }
+
+    #[openmls_test::openmls_test]
+    fn test_leaf_returns_none_for_blank_leaf_between_populated_ones() {
+        let provider = &Provider::default();
+        let first = leaf_node(ciphersuite, provider);
+        let last = leaf_node(ciphersuite, provider);
+
+        // A tree with a blank leaf between two populated ones.
+        let tree = tree_sync_from_leaves(
+            provider,
+            ciphersuite,
+            vec![Some(first.clone()), None, Some(last.clone())],
+        );
+
+        assert_eq!(tree.leaf(LeafNodeIndex::new(0)), Some(&first));
+        assert_eq!(tree.leaf(LeafNodeIndex::new(1)), None);
+        assert_eq!(tree.leaf(LeafNodeIndex::new(2)), Some(&last));
+    }
+
     #[cfg(debug_assertions)]
     #[test]
     #[should_panic]
@@ -934,5 +1048,30 @@ mod test {
     /// This should not panic in release-builds.
     fn test_ratchet_tree_internal_empty_after_trim() {
         RatchetTree::trimmed(vec![None]);
+    }
+
+    #[openmls_test::openmls_test]
+    fn test_ratchet_tree_in_full_leaves_reports_real_index_past_a_blank_leaf() {
+        let provider = &Provider::default();
+        let (key_package, credential, _) =
+            crate::key_packages::tests::key_package(ciphersuite, provider);
+        let node_in = NodeIn::from(Node::leaf_node(LeafNode::from(key_package)));
+
+        // A 2-leaf tree whose first leaf (index 0) is blank and whose second
+        // leaf (index 1) is the only non-blank one: flat positions
+        // 0 = leaf 0 (blank), 1 = parent (blank), 2 = leaf 1 (node_in).
+        let ratchet_tree = RatchetTreeIn(vec![None, None, Some(node_in)]);
+
+        // `leaves()` skips the blank slot, so its position is compacted and no
+        // longer matches the leaf's real index -- exactly the bug `full_leaves()`
+        // fixes for callers that need the real `LeafNodeIndex`.
+        let compacted: Vec<_> = ratchet_tree.leaves().collect();
+        assert_eq!(compacted.len(), 1);
+
+        let full: Vec<_> = ratchet_tree.full_leaves().collect();
+        assert_eq!(full.len(), 1);
+        let (index, leaf) = full[0];
+        assert_eq!(index, LeafNodeIndex::new(1));
+        assert_eq!(leaf.credential(), &credential);
     }
 }

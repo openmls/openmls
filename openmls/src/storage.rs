@@ -160,8 +160,8 @@ impl traits::ApplicationExportTree<CURRENT_VERSION> for ApplicationExportTree {}
 mod virtual_clients_storage {
     use super::*;
     use crate::components::vc_derivation_info::{
-        EmulationEpochState, EpochId, RegisteredVcEmulationEpoch, RetainedKeyPackageMaterial,
-        VcEmulationBindings,
+        EpochId, RetainedKeyPackageMaterial, VcDerivationEpochLogEntry, VcDerivationEpochState,
+        VcEmulationBinding,
     };
     use crate::components::vc_operation_tree::OperationSecretTree;
 
@@ -170,14 +170,14 @@ mod virtual_clients_storage {
     impl Entity<CURRENT_VERSION> for EpochId {}
     impl traits::VcEpochId<CURRENT_VERSION> for EpochId {}
 
-    impl Entity<CURRENT_VERSION> for EmulationEpochState {}
-    impl traits::VcEmulationEpochState<CURRENT_VERSION> for EmulationEpochState {}
+    impl Entity<CURRENT_VERSION> for VcDerivationEpochState {}
+    impl traits::VcDerivationEpochState<CURRENT_VERSION> for VcDerivationEpochState {}
 
-    impl Entity<CURRENT_VERSION> for VcEmulationBindings {}
-    impl traits::VcEmulationBindings<CURRENT_VERSION> for VcEmulationBindings {}
+    impl Entity<CURRENT_VERSION> for VcEmulationBinding {}
+    impl traits::VcEmulationBinding<CURRENT_VERSION> for VcEmulationBinding {}
 
-    impl Entity<CURRENT_VERSION> for RegisteredVcEmulationEpoch {}
-    impl traits::RegisteredVcEmulationEpoch<CURRENT_VERSION> for RegisteredVcEmulationEpoch {}
+    impl Entity<CURRENT_VERSION> for VcDerivationEpochLogEntry {}
+    impl traits::VcDerivationEpochLogEntry<CURRENT_VERSION> for VcDerivationEpochLogEntry {}
 
     impl Entity<CURRENT_VERSION> for OperationSecretTree {}
     impl traits::VcOperationTree<CURRENT_VERSION> for OperationSecretTree {}
@@ -190,6 +190,7 @@ mod virtual_clients_storage {
 mod test {
     use crate::{
         group::mls_group::tests_and_kats::utils::setup_client, prelude::KeyPackageBuilder,
+        test_utils::minimal_capabilities_for,
     };
 
     use super::*;
@@ -226,17 +227,18 @@ mod test {
 
     #[test]
     fn key_packages_key_upgrade() {
+        const CIPHERSUITE: Ciphersuite =
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
+
         // Store an old version
         let provider = OpenMlsRustCrypto::default();
 
-        let (credential_with_key, _kpb, signer, _pk) = setup_client(
-            "Alice",
-            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            &provider,
-        );
+        let (credential_with_key, _kpb, signer, _pk) =
+            setup_client("Alice", CIPHERSUITE, &provider);
 
         // build and store key package bundle
         let key_package_bundle = KeyPackageBuilder::new()
+            .leaf_node_capabilities(minimal_capabilities_for(CIPHERSUITE).build())
             .build(
                 Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
                 &provider,

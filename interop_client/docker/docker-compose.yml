@@ -10,9 +10,16 @@ services:
     command: -p ${OPENMLS_PORT:-50051}
   mlspp:
     build: ./mlspp/
+    profiles: ["mlspp", "all"]
     ports:
       - 50052:${MLSPP_PORT:-50052}
     command: -live ${MLSPP_PORT:-50052}
+  mls-rs:
+    build: ./mls-rs/
+    profiles: ["mls-rs", "all"]
+    ports:
+      - 50053:${MLSRS_PORT:-50053}
+    command: -p ${MLSRS_PORT:-50053}
   test-runner:
     build: ./test-runner/
-    command: -fail-fast -client openmls:${OPENMLS_PORT:-50051} -client mlspp:${MLSPP_PORT:-50052} -config=../configs/${CONFIG_RUN:-welcome_join.json}
+    command: -fail-fast ${CLIENTS:--client openmls:50051 -client mlspp:50052} -config=../configs/${CONFIG_RUN:-welcome_join.json}

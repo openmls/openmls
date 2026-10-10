@@ -19,6 +19,7 @@ fn test_boundaries() {
         TreeSize::from_leaf_count(3u32),
         LeafNodeIndex::new(2u32),
     );
+    assert_eq!(secret_tree.own_index(), LeafNodeIndex::new(2u32));
     let secret_type = SecretType::ApplicationSecret;
     assert!(secret_tree
         .secret_for_decryption(
@@ -193,7 +194,9 @@ fn increment_generation() {
                     i as u32,
                     &SenderRatchetConfiguration::default(),
                 )
-                .expect("Index out of bounds.");
+                .expect("Index out of bounds.")
+                .available()
+                .expect("Expected key material of another member.");
             assert_eq!(next_gen, i as u32);
             assert!(unique_values
                 .insert(handshake_key.as_slice().to_vec(), true)
@@ -212,7 +215,9 @@ fn increment_generation() {
                     i as u32,
                     &SenderRatchetConfiguration::default(),
                 )
-                .expect("Index out of bounds.");
+                .expect("Index out of bounds.")
+                .available()
+                .expect("Expected key material of another member.");
             assert_eq!(next_gen, i as u32);
             assert!(unique_values
                 .insert(application_key.as_slice().to_vec(), true)
@@ -251,7 +256,9 @@ fn secret_tree() {
             generation,
             configuration,
         )
-        .expect("Error getting decryption secret");
+        .expect("Error getting decryption secret")
+        .available()
+        .expect("Expected key material of another member.");
     println!(
         "application_secret_key: {:x?}",
         application_secret_key.as_slice()

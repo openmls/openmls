@@ -2,7 +2,8 @@
 //!
 //! In MLS, extensions appear in the following places:
 //!
-//! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities
+//! - In [`KeyPackages`](`crate::key_packages`) and [`LeafNode`](`crate::treesync::node::leaf_node::LeafNode`),
+//!   to describe client capabilities
 //!   and aspects of their participation in the group.
 //!
 //! - In `GroupInfo`, to inform new members of the group's parameters and to
@@ -20,8 +21,11 @@
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 //! - [`ExternalPubExtension`] (GroupInfo extension)
+//! - [`ExternalSendersExtension`] (GroupContext extension)
+//! - [`LastResortExtension`] (KeyPackage extension)
 
 use std::{
+    collections::HashSet,
     convert::Infallible,
     fmt::Debug,
     io::{Read, Write},
@@ -35,6 +39,7 @@ use serde::{Deserialize, Serialize};
 mod app_data_dict_extension;
 mod application_id_extension;
 mod codec;
+mod extension_in;
 mod external_pub_extension;
 mod external_sender_extension;
 mod last_resort;
@@ -63,8 +68,8 @@ use tls_codec::{
 };
 
 use crate::{
-    group::GroupContext, key_packages::KeyPackage, messages::group_info::GroupInfo,
-    treesync::LeafNode,
+    extensions::extension_in::ExtensionIn, group::GroupContext, key_packages::KeyPackage,
+    messages::group_info::GroupInfo, treesync::LeafNode,
 };
 
 #[cfg(test)]
@@ -160,31 +165,37 @@ impl ExtensionType {
     }
 
     /// Returns whether an extension type is valid when used in leaf nodes.
-    /// Returns None if validity can not be determined.
-    /// This is the case for unknown extensions.
+    /// Returns [`true`] for unknown extensions.
     //  https://validation.openmls.tech/#valn1601
     pub(crate) fn is_valid_in_leaf_node(self) -> bool {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders => false,
-            ExtensionType::Unknown(_) | ExtensionType::ApplicationId => true,
+            // GREASE may appear as an extension type in `leaf_node.extensions`
+            // and must be tolerated there. It is still subject to the normal rule
+            // that it must be declared in `capabilities` (checked separately),
+            // so this only permits the type, it does not exempt it from that check.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::ApplicationId => {
+                true
+            }
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
     }
     pub(crate) fn is_valid_in_group_info(self) -> Option<bool> {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::LastResort
+            ExtensionType::LastResort
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => Some(false),
             ExtensionType::RatchetTree | ExtensionType::ExternalPub => Some(true),
-            ExtensionType::Unknown(_) => None,
+            // GREASE is treated like an unknown extension type (tolerated): a
+            // GREASE-valued extension used to be reported as `Unknown` here, and
+            // must not become stricter now that it maps to `Grease`.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => None,
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => Some(true),
         }
@@ -192,13 +203,18 @@ impl ExtensionType {
 
     pub(crate) fn is_valid_in_key_package(self) -> bool {
         match self {
-            ExtensionType::Grease(_)
-            | ExtensionType::RatchetTree
+            ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders
             | ExtensionType::ApplicationId => false,
-            ExtensionType::Unknown(_) | ExtensionType::LastResort => true,
+            // GREASE may appear as an extension type in `key_package.extensions`
+            // and must be tolerated there. It is still subject to the normal rule
+            // that it be declared in `capabilities` (checked separately), so this
+            // only permits the type, it does not exempt it from that check.
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) | ExtensionType::LastResort => {
+                true
+            }
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
         }
@@ -209,6 +225,12 @@ impl ExtensionType {
             ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalSenders
             | ExtensionType::Unknown(_) => true,
+            // GREASE is treated like an unknown extension type: structurally
+            // allowed to appear here, but (like any unknown extension in the
+            // GroupContext) still subject to the per-member support check, which
+            // enforces the consensus rule that every member support it. GREASE
+            // does not bypass that check.
+            ExtensionType::Grease(_) => true,
             #[cfg(feature = "extensions-draft")]
             ExtensionType::AppDataDictionary => true,
             _ => false,
@@ -395,7 +417,7 @@ impl<T> TlsSerializeTrait for Extensions<T> {
     }
 }
 
-impl<T: ExtensionValidator> TlsDeserializeTrait for Extensions<T>
+impl<T: ExtensionValidator<Error: ToString>> TlsDeserializeTrait for Extensions<T>
 where
     InvalidExtensionError: From<T::Error>,
 {
@@ -403,13 +425,13 @@ where
     where
         Self: Sized,
     {
-        let candidate: Vec<Extension> = Vec::tls_deserialize(bytes)?;
+        let candidate: Vec<ExtensionIn<T>> = Vec::tls_deserialize(bytes)?;
         Extensions::<T>::try_from(candidate)
             .map_err(|_| Error::DecodingError("Found duplicate extensions".into()))
     }
 }
 
-impl<T: ExtensionValidator> DeserializeBytes for Extensions<T>
+impl<T: ExtensionValidator<Error: ToString>> DeserializeBytes for Extensions<T>
 where
     InvalidExtensionError: From<T::Error>,
 {
@@ -469,7 +491,7 @@ where
 {
     /// Create an extension list with a single extension.
     pub fn single(extension: Extension) -> Result<Self, InvalidExtensionError> {
-        T::validate_extension_type(&extension)?;
+        T::validate_extension_type(extension.extension_type())?;
         Ok(Self {
             unique: vec![extension],
             _object: PhantomData,
@@ -489,7 +511,7 @@ where
         extensions: impl Iterator<Item = &'a Extension>,
     ) -> Result<(), InvalidExtensionError> {
         for ext in extensions {
-            T::validate_extension_type(ext)?;
+            T::validate_extension_type(ext.extension_type())?;
         }
         Ok(())
     }
@@ -499,7 +521,7 @@ where
     /// Returns an error when there already is an extension with the same
     /// extension type.
     pub fn add(&mut self, extension: Extension) -> Result<(), InvalidExtensionError> {
-        T::validate_extension_type(&extension)?;
+        T::validate_extension_type(extension.extension_type())?;
         if self.contains(extension.extension_type()) {
             return Err(InvalidExtensionError::Duplicate);
         }
@@ -516,7 +538,7 @@ where
         &mut self,
         extension: Extension,
     ) -> Result<Option<Extension>, InvalidExtensionError> {
-        T::validate_extension_type(&extension)?;
+        T::validate_extension_type(extension.extension_type())?;
         let replaced = self.remove(extension.extension_type());
         self.unique.push(extension);
         Ok(replaced)
@@ -538,19 +560,26 @@ impl Extensions<AnyObject> {
     }
 }
 
+mod private {
+    /// Used to seal other traits
+    pub trait Sealed {}
+}
+
 /// Can be implemented by a type to validate extensions.
-pub trait ExtensionValidator {
+pub trait ExtensionValidator: private::Sealed {
     /// The error returned by the validator
     type Error;
 
     /// Check if the extension is valid.
-    fn validate_extension_type(ext: &Extension) -> Result<(), Self::Error>;
+    fn validate_extension_type(ext: ExtensionType) -> Result<(), Self::Error>;
 }
+
+impl private::Sealed for AnyObject {}
 
 impl ExtensionValidator for AnyObject {
     type Error = Infallible;
 
-    fn validate_extension_type(_ext: &Extension) -> Result<(), Infallible> {
+    fn validate_extension_type(_ext: ExtensionType) -> Result<(), Infallible> {
         Ok(())
     }
 }
@@ -562,87 +591,88 @@ where
     type Error = InvalidExtensionError;
 
     fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
-        let mut unique: Vec<Extension> = Vec::new();
-        for extension in candidate.into_iter() {
-            T::validate_extension_type(&extension)?;
+        let mut seen = HashSet::with_capacity(candidate.len());
+        for extension in candidate.iter() {
+            T::validate_extension_type(extension.extension_type())?;
 
-            if unique
-                .iter()
-                .any(|ext| ext.extension_type() == extension.extension_type())
-            {
+            if !seen.insert(extension.extension_type()) {
                 return Err(InvalidExtensionError::Duplicate);
-            } else {
-                unique.push(extension);
             }
         }
 
         Ok(Self {
-            unique,
+            unique: candidate,
             _object: PhantomData,
         })
     }
 }
+
+impl private::Sealed for GroupInfo {}
 
 // https://validation.openmls.tech/#valn1602
 impl ExtensionValidator for GroupInfo {
     type Error = ExtensionTypeNotValidInGroupInfoError;
 
     fn validate_extension_type(
-        ext: &Extension,
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInGroupInfoError> {
-        if ext.extension_type().is_valid_in_group_info() == Some(true)
-            || ext.extension_type().is_valid_in_group_info().is_none()
+        if extension_type.is_valid_in_group_info() == Some(true)
+            || extension_type.is_valid_in_group_info().is_none()
         {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInGroupInfoError(ext.extension_type()))
+            Err(ExtensionTypeNotValidInGroupInfoError(extension_type))
         }
     }
 }
+
+impl private::Sealed for GroupContext {}
 
 // https://validation.openmls.tech/#valn1603
 impl ExtensionValidator for GroupContext {
     type Error = ExtensionTypeNotValidInGroupContextError;
 
     fn validate_extension_type(
-        ext: &Extension,
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInGroupContextError> {
-        if ext.extension_type().is_valid_in_group_context() {
+        if extension_type.is_valid_in_group_context() {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInGroupContextError(
-                ext.extension_type(),
-            ))
+            Err(ExtensionTypeNotValidInGroupContextError(extension_type))
         }
     }
 }
+
+impl private::Sealed for KeyPackage {}
 
 // https://validation.openmls.tech/#valn1604
 impl ExtensionValidator for KeyPackage {
     type Error = ExtensionTypeNotValidInKeyPackageError;
 
     fn validate_extension_type(
-        ext: &Extension,
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInKeyPackageError> {
-        if ext.extension_type().is_valid_in_key_package() {
+        if extension_type.is_valid_in_key_package() {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInKeyPackageError(ext.extension_type()))
+            Err(ExtensionTypeNotValidInKeyPackageError(extension_type))
         }
     }
 }
+
+impl private::Sealed for LeafNode {}
 
 // https://validation.openmls.tech/#valn1601
 impl ExtensionValidator for LeafNode {
     type Error = ExtensionTypeNotValidInLeafNodeError;
 
     fn validate_extension_type(
-        ext: &Extension,
+        extension_type: ExtensionType,
     ) -> Result<(), ExtensionTypeNotValidInLeafNodeError> {
-        if ext.extension_type().is_valid_in_leaf_node() {
+        if extension_type.is_valid_in_leaf_node() {
             Ok(())
         } else {
-            Err(ExtensionTypeNotValidInLeafNodeError(ext.extension_type()))
+            Err(ExtensionTypeNotValidInLeafNodeError(extension_type))
         }
     }
 }
@@ -715,10 +745,12 @@ impl<T> Extensions<T> {
         let extension_type: ExtensionType = extension_type_id.into();
 
         match extension_type {
-            ExtensionType::Unknown(_) => self.find_by_type(extension_type).and_then(|e| match e {
-                Extension::Unknown(_, e) => Some(e),
-                _ => None,
-            }),
+            ExtensionType::Grease(_) | ExtensionType::Unknown(_) => {
+                self.find_by_type(extension_type).and_then(|e| match e {
+                    Extension::Unknown(_, e) => Some(e),
+                    _ => None,
+                })
+            }
             _ => None,
         }
     }
@@ -815,6 +847,13 @@ impl Extension {
             #[cfg(feature = "extensions-draft")]
             Extension::AppDataDictionary(_) => ExtensionType::AppDataDictionary,
             Extension::LastResort(_) => ExtensionType::LastResort,
+            // Map GREASE-valued extension types to `Grease`, consistent with
+            // `ExtensionType::from(u16)`. Without this an extension carrying a
+            // GREASE value would be reported as `Unknown`, so GREASE-aware
+            // validation (which ignores `Grease(_)`) would not recognize it.
+            Extension::Unknown(kind, _) if crate::grease::is_grease_value(*kind) => {
+                ExtensionType::Grease(*kind)
+            }
             Extension::Unknown(kind, _) => ExtensionType::Unknown(*kind),
         }
     }
@@ -838,6 +877,7 @@ macro_rules! impl_from_extensions_validator {
                 value
                     .unique
                     .iter()
+                    .map(Extension::extension_type)
                     .try_for_each(<$validator as ExtensionValidator>::validate_extension_type)?;
 
                 Ok(Extensions {
@@ -883,6 +923,47 @@ mod test {
                 RequiredCapabilitiesExtension::default()
             ))
             .is_err());
+    }
+
+    #[test]
+    fn grease_extension_type_mapping() {
+        // A GREASE-valued extension must report a `Grease` extension type
+        // (consistent with `ExtensionType::from(u16)`), not `Unknown`. Otherwise
+        // GREASE-aware validation would fail to recognize it and reject peers
+        // (e.g. MLS++) that decorate leaf/key-package extensions with GREASE.
+        let grease = Extension::Unknown(0x5A5A, UnknownExtension(vec![1, 2, 3]));
+        assert_eq!(grease.extension_type(), ExtensionType::Grease(0x5A5A));
+        assert!(grease.extension_type().is_grease());
+
+        // A non-GREASE unknown value stays `Unknown`.
+        let unknown = Extension::Unknown(0xABCD, UnknownExtension(vec![]));
+        assert_eq!(unknown.extension_type(), ExtensionType::Unknown(0xABCD));
+    }
+
+    #[test]
+    fn grease_extension_must_be_declared_in_capabilities() {
+        // GREASE does NOT bypass the capability check: a GREASE extension type is
+        // "contained" only if it is advertised in the capabilities (RFC 9420:
+        // extensions in leaf_node.extensions/key_package.extensions MUST be in
+        // capabilities). The fix that makes this work is that a GREASE-valued
+        // extension now reports a `Grease(_)` type that matches the `Grease(_)`
+        // parsed into the capabilities list.
+        let advertised = crate::treesync::node::leaf_node::Capabilities::new(
+            None,
+            None,
+            Some(&[ExtensionType::Grease(0x5A5A)]),
+            None,
+            None,
+        );
+        assert!(advertised.contains_extension_type(&ExtensionType::Grease(0x5A5A)));
+        // A GREASE value that is not advertised is not contained.
+        assert!(!advertised.contains_extension_type(&ExtensionType::Grease(0xAAAA)));
+
+        // Empty capabilities contain no (non-default) extension, GREASE included.
+        let empty =
+            crate::treesync::node::leaf_node::Capabilities::new(None, None, None, None, None);
+        assert!(!empty.contains_extension_type(&ExtensionType::Grease(0x5A5A)));
+        assert!(!empty.contains_extension_type(&ExtensionType::Unknown(0xABCD)));
     }
 
     #[test]

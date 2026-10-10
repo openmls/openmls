@@ -101,7 +101,10 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
-            leaf_node::{Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs},
+            leaf_node::{
+                resolve_capabilities, Capabilities, CapabilitiesPolicy, LeafNodeConstraints,
+                LeafNodeSource, NewLeafNodeParams, TreeInfoTbs,
+            },
         },
         LeafNode,
     },
@@ -228,6 +231,10 @@ pub(crate) struct KeyPackageLeafNodeParams {
     pub(crate) lifetime: Lifetime,
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions<LeafNode>,
+    /// How `capabilities` is treated when it doesn't cover what the leaf
+    /// needs. A bare `KeyPackage` has no group context, so there are no
+    /// required capabilities to check against.
+    pub(crate) capabilities_policy: CapabilitiesPolicy,
 }
 
 /// Helper struct containing the results of building a new [`KeyPackage`].
@@ -357,6 +364,7 @@ impl KeyPackage {
             lifetime,
             capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         } = leaf_node_params;
 
         let new_leaf_node_params = NewLeafNodeParams {
@@ -366,6 +374,10 @@ impl KeyPackage {
             capabilities,
             extensions: leaf_node_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            // A bare KeyPackage has no group context to source required
+            // capabilities from.
+            constraints: LeafNodeConstraints::default(),
+            capabilities_policy,
         };
 
         let (leaf_node, encryption_key_pair) =
@@ -404,6 +416,7 @@ impl KeyPackage {
             lifetime,
             capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         } = leaf_node_params;
 
         let new_leaf_node_params = NewLeafNodeParams {
@@ -413,6 +426,10 @@ impl KeyPackage {
             capabilities,
             extensions: leaf_node_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            // A bare KeyPackage has no group context to source required
+            // capabilities from.
+            constraints: LeafNodeConstraints::default(),
+            capabilities_policy,
         };
 
         let (leaf_node, encryption_key_pair) = LeafNode::new_with_encryption_key_pair(
@@ -513,6 +530,7 @@ pub struct KeyPackageBuilder {
     leaf_node_capabilities: Option<Capabilities>,
     leaf_node_extensions: Option<Extensions<LeafNode>>,
     last_resort: bool,
+    capabilities_policy: Option<CapabilitiesPolicy>,
 }
 
 impl KeyPackageBuilder {
@@ -524,6 +542,7 @@ impl KeyPackageBuilder {
             leaf_node_capabilities: None,
             leaf_node_extensions: None,
             last_resort: false,
+            capabilities_policy: None,
         }
     }
 
@@ -559,6 +578,17 @@ impl KeyPackageBuilder {
         self
     }
 
+    /// Set how the leaf node's capabilities are treated when they don't cover
+    /// what the leaf itself uses.
+    ///
+    /// If never called, capabilities set via
+    /// [`KeyPackageBuilder::leaf_node_capabilities`] are held to exactly what
+    /// was listed and unset capabilities are derived from the leaf.
+    pub fn capabilities_policy(mut self, policy: CapabilitiesPolicy) -> Self {
+        self.capabilities_policy = Some(policy);
+        self
+    }
+
     /// Ensure that a last-resort extension is present in the key package if the
     /// `last_resort` flag is set.
     fn ensure_last_resort(&mut self) {
@@ -586,10 +616,13 @@ impl KeyPackageBuilder {
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError> {
         self.ensure_last_resort();
+        let (capabilities, capabilities_policy) =
+            resolve_capabilities(self.leaf_node_capabilities, self.capabilities_policy);
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: self.key_package_lifetime.unwrap_or_default(),
-            capabilities: self.leaf_node_capabilities.unwrap_or_default(),
+            capabilities,
             extensions: self.leaf_node_extensions.unwrap_or_default(),
+            capabilities_policy,
         };
         KeyPackage::create(
             ciphersuite,
@@ -611,10 +644,13 @@ impl KeyPackageBuilder {
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
         self.ensure_last_resort();
 
+        let (capabilities, capabilities_policy) =
+            resolve_capabilities(self.leaf_node_capabilities, self.capabilities_policy);
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: self.key_package_lifetime.unwrap_or_default(),
-            capabilities: self.leaf_node_capabilities.unwrap_or_default(),
+            capabilities,
             extensions: self.leaf_node_extensions.unwrap_or_default(),
+            capabilities_policy,
         };
         let KeyPackageCreationResult {
             key_package,
@@ -646,8 +682,14 @@ impl KeyPackageBuilder {
 
     /// Build a batch of virtual-client KeyPackages a sibling can reproduce.
     ///
+    /// The batch uses the newest derivation epoch of the emulation group named
+    /// by `emulation_group_id`, which is what the draft requires of every new
+    /// virtual-client operation. The epoch is resolved from the emulation
+    /// group's current state, and the returned [`VcKeyPackageBatch`] reports it
+    /// in its `epoch_id`.
+    ///
     /// Allocates a single generation of the `key_package` operation ratchet for
-    /// the emulation epoch identified by `epoch_id`. For each
+    /// that derivation epoch. For each
     /// `key_package_index` in `0..count` it derives a per-KeyPackage seed
     /// secret from that one operation secret and derives the KeyPackage's init
     /// key and leaf encryption key from the seed. Each leaf carries an
@@ -656,7 +698,7 @@ impl KeyPackageBuilder {
     /// so a sibling can recover the emulation leaf index, generation, and
     /// index.
     ///
-    /// The operation secret and the seeds are derived under the emulation
+    /// The operation secret and the seeds are derived under the derivation
     /// epoch's ciphersuite (the operation tree's ciphersuite). The init and
     /// leaf-encryption keys are derived from each seed under the KeyPackage's
     /// own `ciphersuite`.
@@ -684,7 +726,7 @@ impl KeyPackageBuilder {
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
-        epoch_id: crate::components::vc_derivation_info::EpochId,
+        emulation_group_id: &crate::group::GroupId,
         count: usize,
     ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
         // Reject an unsupported ciphersuite and an empty batch before loading
@@ -697,7 +739,8 @@ impl KeyPackageBuilder {
         if count == 0 {
             return Err(KeyPackageNewError::EmptyBatch);
         }
-        let mut builder = VcKeyPackageBatchBuilder::with_capacity(provider, epoch_id, count)?;
+        let mut builder =
+            VcKeyPackageBatchBuilder::with_capacity(provider, emulation_group_id, count)?;
         for _ in 0..count {
             builder.add_key_package(
                 self.clone(),
@@ -779,6 +822,12 @@ impl KeyPackageBundle {
         credential_with_key: CredentialWithKey,
     ) -> Self {
         KeyPackage::builder()
+            .leaf_node_capabilities(
+                Capabilities::builder()
+                    .ciphersuites(vec![ciphersuite])
+                    .credentials(vec![CredentialType::Basic])
+                    .build(),
+            )
             .build(ciphersuite, provider, signer, credential_with_key)
             .unwrap()
     }

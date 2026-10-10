@@ -334,9 +334,8 @@ impl Proposal {
         Self::ExternalInit(Box::new(p))
     }
 
-    #[cfg(test)]
     /// Build a ReInit proposal.
-    pub(crate) fn re_init(p: ReInitProposal) -> Self {
+    pub fn re_init(p: ReInitProposal) -> Self {
         Self::ReInit(Box::new(p))
     }
 
@@ -378,6 +377,7 @@ impl Proposal {
             (Proposal::Remove(_), Proposal::Remove(_)) => true,
             // SelfRemoves have the highest priority.
             (_, Proposal::SelfRemove) => true,
+            (Proposal::SelfRemove, Proposal::Update(_) | Proposal::Remove(_)) => false,
             _ => {
                 debug_assert!(false);
                 false
@@ -518,16 +518,19 @@ pub struct PreSharedKeyProposal {
 }
 
 impl PreSharedKeyProposal {
-    /// Returns the [`PreSharedKeyId`] and consume this proposal.
-    pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
-        self.psk
-    }
-}
-
-impl PreSharedKeyProposal {
     /// Create a new PSK proposal
     pub fn new(psk: PreSharedKeyId) -> Self {
         Self { psk }
+    }
+
+    /// Returns a reference to the [`PreSharedKeyId`] in the proposal.
+    pub fn psk(&self) -> &PreSharedKeyId {
+        &self.psk
+    }
+
+    /// Returns the [`PreSharedKeyId`] and consume this proposal.
+    pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
+        self.psk
     }
 }
 
@@ -564,6 +567,44 @@ pub struct ReInitProposal {
     pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: Ciphersuite,
     pub(crate) extensions: Extensions<GroupContext>,
+}
+
+impl ReInitProposal {
+    /// Create a new ReInit proposal describing the parameters of the successor
+    /// group the current group should be reinitialized into.
+    pub fn new(
+        group_id: GroupId,
+        version: ProtocolVersion,
+        ciphersuite: Ciphersuite,
+        extensions: Extensions<GroupContext>,
+    ) -> Self {
+        Self {
+            group_id,
+            version,
+            ciphersuite,
+            extensions,
+        }
+    }
+
+    /// Returns the [`GroupId`] of the successor group.
+    pub fn group_id(&self) -> &GroupId {
+        &self.group_id
+    }
+
+    /// Returns the [`ProtocolVersion`] of the successor group.
+    pub fn version(&self) -> ProtocolVersion {
+        self.version
+    }
+
+    /// Returns the [`Ciphersuite`] of the successor group.
+    pub fn ciphersuite(&self) -> Ciphersuite {
+        self.ciphersuite
+    }
+
+    /// Returns the [`Extensions`] of the successor group.
+    pub fn extensions(&self) -> &Extensions<GroupContext> {
+        &self.extensions
+    }
 }
 
 /// ExternalInit Proposal.

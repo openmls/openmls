@@ -65,7 +65,7 @@ fn test_storage_compatibility() {
 
         // modify the loaded MessageSecretsStore, adding a new past epoch tree with a timestamp
         message_secrets_store.add_past_epoch_tree(
-            0,
+            alice_group.epoch(),
             MessageSecrets::random(ciphersuite, alice_provider.rand(), LeafNodeIndex::new(0))
                 .with_timestamp(std::time::SystemTime::now()),
             Vec::new(),
@@ -127,9 +127,14 @@ impl OpenMlsProvider for Provider {
 
 impl Provider {
     fn new(conn: Connection) -> Self {
+        let mut storage = SqliteStorageProvider::new(conn);
+        storage
+            .run_migrations()
+            .expect("error running storage migrations");
+
         Self {
             crypto: CryptoProvider::default(),
-            storage: SqliteStorageProvider::new(conn),
+            storage,
         }
     }
 }

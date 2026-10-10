@@ -111,7 +111,7 @@ fn decrypt_targeted_message_content_independently(
         .open_psk(
             crate::ciphersuite::hpke::PskEncryptParams {
                 info: &info,
-                psk: &psk,
+                psk: psk.as_slice(),
                 psk_id: &psk_id_bytes,
                 ciphersuite: ctx.ciphersuite,
             },

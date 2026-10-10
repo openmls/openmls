@@ -10,18 +10,21 @@ use crate::{
     binary_tree::LeafNodeIndex,
     components::{
         vc_derivation_info::{
-            load_vc_epoch_state_and_tree, merge_vc_derivation_info, resolve_vc_leaf_dictionary,
-            DerivationInfo, DerivationInfoTbe, EpochEncryptionKey, EpochId, KeyPackageInfo,
-            OperationSecret, VirtualClientOperationType, VirtualClientsError,
+            load_vc_epoch_state_and_tree, merge_vc_derivation_info,
+            require_newest_vc_derivation_epoch, resolve_vc_leaf_dictionary, DerivationInfo,
+            DerivationInfoTbe, EpochEncryptionKey, EpochId, KeyPackageInfo, OperationSecret,
+            RetainedKeyPackageMaterial, VirtualClientOperationType, VirtualClientsError,
         },
         vc_operation_tree::OperationSecretTree,
     },
     credentials::CredentialWithKey,
     extensions::AppDataDictionary,
+    group::GroupId,
     key_packages::{
         errors::KeyPackageNewError, KeyPackage, KeyPackageBuilder, KeyPackageBundle,
         KeyPackageLeafNodeParams,
     },
+    treesync::node::leaf_node::resolve_capabilities,
 };
 
 /// A batch of virtual-client KeyPackages a sibling can reproduce.
@@ -29,6 +32,13 @@ use crate::{
 /// Build from a single epoch id and generation.
 #[derive(Debug)]
 pub struct VcKeyPackageBatch {
+    /// The derivation epoch the batch was built from. Hand it to
+    /// [`assemble_vc_key_package_upload`] together with the batch's
+    /// `generation`, so the upload names the epoch this batch actually consumed
+    /// rather than whichever one is newest by then.
+    ///
+    /// [`assemble_vc_key_package_upload`]: crate::components::vc_derivation_info::assemble_vc_key_package_upload
+    pub epoch_id: EpochId,
     /// The `key_package` operation generation consumed for the whole batch.
     pub generation: u32,
     /// One entry per KeyPackage built, in batch-index order. Never empty.
@@ -60,19 +70,36 @@ pub struct VcKeyPackageBatchBuilder {
 }
 
 impl VcKeyPackageBatchBuilder {
-    /// Load emulation epoch and allocate the next generation of the key package operation ratchet.
+    /// Load the newest derivation epoch of the emulation group named by
+    /// `emulation_group_id` and allocate the next generation of its key package
+    /// operation ratchet.
+    ///
+    /// The batch uses the newest derivation epoch of the emulation group, which
+    /// is what the draft requires of every new virtual-client operation. The
+    /// epoch is resolved from the emulation group's current state.
     ///
     /// Nothing is persisted yet. Dropping the builder without calling `finalize` burns no
     /// generation.
     pub fn new(
         provider: &impl OpenMlsProvider,
-        epoch_id: EpochId,
+        emulation_group_id: &GroupId,
     ) -> Result<Self, KeyPackageNewError> {
-        Self::with_capacity(provider, epoch_id, 0)
+        Self::with_capacity(provider, emulation_group_id, 0)
     }
 
     /// Same as [`Self::new`], but with a capacity hint for the number of key packages.
     pub fn with_capacity(
+        provider: &impl OpenMlsProvider,
+        emulation_group_id: &GroupId,
+        capacity: usize,
+    ) -> Result<Self, KeyPackageNewError> {
+        let epoch_id = require_newest_vc_derivation_epoch(provider.storage(), emulation_group_id)?;
+        Self::with_capacity_at_epoch(provider, epoch_id, capacity)
+    }
+
+    /// Same as [`Self::with_capacity`], but for an explicitly named derivation
+    /// epoch instead of the emulation group's newest one.
+    pub(crate) fn with_capacity_at_epoch(
         provider: &impl OpenMlsProvider,
         epoch_id: EpochId,
         capacity: usize,
@@ -150,9 +177,18 @@ impl VcKeyPackageBatchBuilder {
 
     /// Finalize the batch.
     ///
-    /// Persists the operation tree and the key packages. The operation is not atomic. On failure,
-    /// the generation should be considered as burned. Few orphaned key packages may be left in
-    /// storage.
+    /// Persists the operation tree, a [`RetainedKeyPackageMaterial`] per key
+    /// package and the key packages. The material is what a sibling stores when
+    /// it processes the batch's [`KeyPackageUpload`]. It keeps the batch's
+    /// derivation epoch alive for as long as a key package can still be used to
+    /// join, also after the epoch was superseded. It goes with the key package,
+    /// see [`StorageProvider::delete_key_package`].
+    ///
+    /// The operation is not atomic. On failure, the generation should be
+    /// considered as burned. Few orphaned key packages may be left in storage.
+    ///
+    /// [`KeyPackageUpload`]:
+    ///     crate::components::vc_derivation_info::KeyPackageUpload
     pub fn finalize(
         self,
         provider: &impl OpenMlsProvider,
@@ -161,15 +197,40 @@ impl VcKeyPackageBatchBuilder {
             return Err(KeyPackageNewError::EmptyBatch);
         }
 
+        let mut materials = Vec::with_capacity(self.key_packages.len());
+        for (_, info) in &self.key_packages {
+            let key_package_seed_secret = self.operation_secret.derive_key_package_seed_secret(
+                provider.crypto(),
+                info.cipher_suite,
+                info.key_package_index,
+            )?;
+            let material = RetainedKeyPackageMaterial {
+                epoch_id: self.epoch_id.clone(),
+                leaf_index: self.emulation_leaf_index,
+                generation: self.generation,
+                key_package_ciphersuite: info.cipher_suite,
+                key_package_index: info.key_package_index,
+                key_package_seed_secret,
+                key_package_extensions: info.extensions.clone(),
+            };
+            materials.push((info.key_package_ref.clone(), material));
+        }
+
         // Persist the advanced operation tree before the KeyPackages it backs.
         // If a KeyPackage write fails after this, the burned generation is
         // harmless, but writing KeyPackages first would let the next batch
         // reuse the same key material under an unconsumed generation.
         provider
             .storage()
-            .write_vc_operation_tree(&self.epoch_id, &self.operation_tree)
+            .write_retained_key_package_material_batch(
+                &self.epoch_id,
+                &self.operation_tree,
+                &materials,
+            )
             .map_err(|e| {
-                log::error!("vc: persist advanced operation tree in build_vc_batch failed: {e:?}");
+                log::error!(
+                    "vc: persist batch key package material in build_vc_batch failed: {e:?}"
+                );
                 VirtualClientsError::StorageError
             })?;
         for (full_kp, info) in &self.key_packages {
@@ -180,6 +241,7 @@ impl VcKeyPackageBatchBuilder {
         }
 
         Ok(VcKeyPackageBatch {
+            epoch_id: self.epoch_id,
             generation: self.generation,
             key_packages: self.key_packages,
         })
@@ -240,10 +302,15 @@ impl VcKeyPackageBatchBuilder {
         )
         .map_err(KeyPackageNewError::LibraryError)?;
 
+        let (capabilities, capabilities_policy) = resolve_capabilities(
+            builder.leaf_node_capabilities.clone(),
+            builder.capabilities_policy,
+        );
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: builder.key_package_lifetime.unwrap_or_default(),
-            capabilities: builder.leaf_node_capabilities.unwrap_or_default(),
+            capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         };
         let (key_package, encryption_key_pair) = KeyPackage::new_from_vc_keys(
             ciphersuite,
@@ -256,6 +323,7 @@ impl VcKeyPackageBatchBuilder {
         )?;
 
         let key_package_ref = key_package.hash_ref(crypto)?;
+        let extensions = key_package.extensions().clone();
         let full_kp = KeyPackageBundle {
             key_package,
             private_init_key: init_key_pair.private,
@@ -268,6 +336,7 @@ impl VcKeyPackageBatchBuilder {
                 key_package_ref,
                 cipher_suite: ciphersuite,
                 key_package_index,
+                extensions,
             },
         ))
     }

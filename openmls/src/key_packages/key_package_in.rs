@@ -123,7 +123,13 @@ impl KeyPackageIn {
         }
     }
 
+    /// Returns the ciphersuite this key package claims, before validation.
+    pub(crate) fn unverified_ciphersuite(&self) -> Ciphersuite {
+        self.payload.ciphersuite
+    }
+
     /// Verify that this key package is valid:
+    /// * verify that the ciphersuite is supported by the crypto provider
     /// * verify that the signature on this key package is valid
     /// * verify that the signature on the leaf node is valid
     /// * verify that all extensions are supported by the leaf node
@@ -138,6 +144,11 @@ impl KeyPackageIn {
         crypto: &impl OpenMlsCrypto,
         protocol_version: ProtocolVersion,
     ) -> Result<KeyPackage, KeyPackageVerifyError> {
+        let ciphersuite = self.payload.ciphersuite;
+        crypto
+            .supports(ciphersuite)
+            .map_err(|_| KeyPackageVerifyError::UnsupportedCiphersuite(ciphersuite))?;
+
         // We first need to verify the LeafNode inside the KeyPackage
         let leaf_node = self.payload.leaf_node.clone().into_verifiable_leaf_node();
 
@@ -182,14 +193,13 @@ impl KeyPackageIn {
 
         // Extension included in the extensions or leaf_node.extensions fields
         // MUST be included in the leaf_node.capabilities field.
-        for extension in key_package.payload.extensions.iter() {
-            if !key_package
-                .payload
-                .leaf_node
-                .supports_extension(&extension.extension_type())
-            {
-                return Err(KeyPackageVerifyError::UnsupportedExtension);
-            }
+        if !key_package
+            .payload
+            .leaf_node
+            .capabilities()
+            .contains_extensions(&key_package.payload.extensions)
+        {
+            return Err(KeyPackageVerifyError::UnsupportedExtension);
         }
 
         // Ensure validity of the life time extension in the leaf node.

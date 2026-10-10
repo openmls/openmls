@@ -9,11 +9,11 @@ use super::{
     mls_auth_content_in::VerifiableAuthenticatedContentIn, mls_content_in::FramedContentBodyIn,
 };
 
+#[cfg(feature = "virtual-clients-draft")]
+use crate::binary_tree::array_representation::LeafNodeIndex;
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex,
-    error::LibraryError,
-    framing::mls_content_in::FramedContentIn,
-    tree::{secret_tree::SecretType, sender_ratchet::SenderRatchetConfiguration},
+    error::LibraryError, framing::mls_content_in::FramedContentIn,
+    tree::sender_ratchet::RatchetKeyMaterial,
 };
 
 use super::*;
@@ -154,45 +154,24 @@ impl PrivateMessageIn {
         .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// This function decrypts a [`PrivateMessage`] into a
-    /// [`VerifiableAuthenticatedContent`]. In order to get an
-    /// [`FramedContent`] the result must be verified.
+    /// This function decrypts a [`PrivateMessage`] with the sender's ratchet
+    /// key material into a [`VerifiableAuthenticatedContent`]. In order to get
+    /// an [`FramedContent`] the result must be verified.
     ///
     /// When called with `emulator_ctx = Some(_)`, also inverts the
     /// virtual-clients reuse guard to recover the sender's emulation-group
     /// leaf index.
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn to_verifiable_content(
         &self,
-        ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
-        message_secrets: &mut MessageSecrets,
-        sender_index: LeafNodeIndex,
-        sender_ratchet_configuration: &SenderRatchetConfiguration,
+        message_secrets: &MessageSecrets,
+        ratchet_key_material: RatchetKeyMaterial,
         sender_data: MlsSenderData,
         #[cfg(feature = "virtual-clients-draft")] emulator_ctx: Option<
             &crate::framing::private_message::EmulatorReuseGuardCtx<'_>,
         >,
     ) -> Result<DecryptedContent, MessageDecryptionError> {
-        let secret_type = SecretType::from(&self.content_type);
-        // Extract generation and key material for encryption
-        let (ratchet_key, ratchet_nonce) = message_secrets
-            .secret_tree_mut()
-            .secret_for_decryption(
-                ciphersuite,
-                crypto,
-                sender_index,
-                secret_type,
-                sender_data.generation,
-                sender_ratchet_configuration,
-            )
-            .map_err(|e| {
-                log::error!(
-                    "  Ciphertext generation out of bounds {}\n\t{e:?}",
-                    sender_data.generation
-                );
-                MessageDecryptionError::SecretTreeError(e)
-            })?;
+        let (ratchet_key, ratchet_nonce) = ratchet_key_material;
 
         // Reuse-guard inversion. Uses the pre-XOR ratchet nonce as the
         // `key_schedule_nonce` input to `ExpandWithLabel`.
@@ -218,7 +197,7 @@ impl PrivateMessageIn {
             if n_e == 0 {
                 log::error!("vc: emulation_group_size is zero (corrupt state)");
                 return Err(LibraryError::custom(
-                    "EmulationEpochState has zero emulation_group_size",
+                    "VcDerivationEpochState has zero emulation_group_size",
                 )
                 .into());
             }

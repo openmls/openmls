@@ -26,7 +26,7 @@ pub struct UnconfirmedMessage {
     /// accepted the message, to delete the retained encryption secret.
     pub generation: u32,
     /// The [`GenerationId`] to attach to the fanned-out message, present when
-    /// the group is bound to an emulation epoch and `None` otherwise. A
+    /// the group is bound to a derivation epoch and `None` otherwise. A
     /// strongly-consistent DS compares it across siblings to detect generation
     /// collisions.
     ///
@@ -162,7 +162,7 @@ impl MlsGroup {
     /// [`GenerationId`], and the encrypted message. The `generation` is passed
     /// back to `confirm_application_message` to delete the retained encryption
     /// secret once the DS has accepted the message. The [`GenerationId`] is
-    /// present when the group is bound to an emulation epoch and `None`
+    /// present when the group is bound to a derivation epoch and `None`
     /// otherwise. When present, the application attaches it to the fanned-out
     /// message so a strongly-consistent DS can detect generation collisions
     /// between siblings.

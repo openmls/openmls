@@ -239,7 +239,14 @@ impl PublicGroup {
                                 // None would be blank, and we don't care about those
                                 if let Some(intermediate_node) = treesync
                                     .parent(*intermediate_index) {
-                                    if !intermediate_node.unmerged_leaves().contains(leaf_index) {
+                                    // The list of unmerged leaves is sorted,
+                                    // which UnmergedLeaves enforces when it is
+                                    // deserialized from the wire.
+                                    if intermediate_node
+                                        .unmerged_leaves()
+                                        .binary_search(leaf_index)
+                                        .is_err()
+                                    {
                                         return Err(CreationFromExternalError::<StorageError>::IntermediateNodeMissingUnmergedLeaf);
                                     }
                                 }

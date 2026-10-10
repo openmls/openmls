@@ -12,6 +12,7 @@ pub use super::mls_group::errors::*;
 use super::public_group::errors::CreationFromExternalError;
 use crate::{
     ciphersuite::signable::SignatureError,
+    credentials::Credential,
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::MessageDecryptionError,
@@ -113,9 +114,49 @@ pub enum WelcomeError<StorageError> {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// The joined group is an emulation group, and registering the derivation
+    /// epoch of the Welcome's output epoch failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    RegisterVcDerivationEpoch(#[from] crate::group::RegisterVcDerivationEpochError<StorageError>),
     /// This error indicates that computing the key schedule failed
     #[error(transparent)]
     KeySchedule(#[from] KeyScheduleError),
+    /// The subgroup's protocol version or ciphersuite does not match the parent
+    /// group (RFC 9420 §11.3).
+    #[error("The subgroup's protocol version or ciphersuite does not match the parent group.")]
+    SubgroupParameterMismatch,
+    /// The subgroup is not at epoch 1, as required for a branched subgroup
+    /// (RFC 9420 §11.3).
+    #[error("The subgroup is not at epoch 1.")]
+    SubgroupEpochInvalid,
+    /// A member of the subgroup does not match any member of the parent group
+    /// (RFC 9420 §11.3).
+    #[error("A member of the subgroup does not match any member of the parent group.")]
+    SubgroupLeafMismatch,
+    /// The parent group or epoch referenced by the subgroup's branch PSK does not
+    /// match the provided parent group information (RFC 9420 §11.3).
+    #[error("The subgroup's branch PSK does not reference the provided parent group/epoch.")]
+    SubgroupParentMismatch,
+    /// The successor group's parameters (group id, protocol version, ciphersuite
+    /// or extensions) do not match the ReInit proposal (RFC 9420 §11.2).
+    #[error("The successor group's parameters do not match the ReInit proposal.")]
+    ReInitParameterMismatch,
+    /// The successor group is not at epoch 1, as required for reinitialization
+    /// (RFC 9420 §11.2).
+    #[error("The successor group is not at epoch 1.")]
+    ReInitEpochInvalid,
+    /// A member of the successor group does not match any member of the old
+    /// group (RFC 9420 §11.2).
+    #[error("A member of the successor group does not match any member of the old group.")]
+    ReInitLeafMismatch,
+    /// The successor group is missing members of the old group (RFC 9420 §11.2).
+    #[error("The successor group is missing members {0:?} of the old group.")]
+    ReInitLeavesMissing(Vec<Credential>),
+    /// The old group or epoch referenced by the reinit PSK does not
+    /// match the provided predecessor reinit group information (RFC 9420 §11.2).
+    #[error("The group's reinit PSK does not reference the provided predecessor group/epoch.")]
+    ReInitPredecessorMismatch,
 }
 
 /// External Commit error
@@ -191,9 +232,9 @@ impl<StorageError> From<ExternalCommitBuilderError<StorageError>>
 
 /// Error joining a higher-level group as a virtual client's sibling emulator
 /// by processing another sibling's external commit
-/// ([`MlsGroup::vc_join_via_sibling_external_commit`]).
+/// ([`VcExternalCommitJoinBuilder`]).
 ///
-/// [`MlsGroup::vc_join_via_sibling_external_commit`]: crate::group::MlsGroup::vc_join_via_sibling_external_commit
+/// [`VcExternalCommitJoinBuilder`]: crate::group::VcExternalCommitJoinBuilder
 #[cfg(feature = "virtual-clients-draft")]
 #[derive(Error, Debug)]
 pub enum VcExternalCommitJoinError<StorageError> {
@@ -223,9 +264,9 @@ pub enum VcExternalCommitJoinError<StorageError> {
     /// so a sibling cannot reconstruct the joining state from it.
     #[error("The external commit carries no virtual-clients derivation info.")]
     MissingDerivationInfo,
-    /// The derivation info references a different emulation epoch than the one
+    /// The derivation info references a different derivation epoch than the one
     /// supplied.
-    #[error("The external commit references a different emulation epoch.")]
+    #[error("The external commit references a different derivation epoch.")]
     EpochIdMismatch,
     /// A virtual-clients processing error occurred.
     #[error(transparent)]
@@ -259,9 +300,9 @@ pub enum VcGroupCreationJoinError<StorageError> {
     /// The creator leaf carries no virtual-clients derivation info.
     #[error("The creator leaf carries no virtual-clients derivation info.")]
     MissingDerivationInfo,
-    /// The derivation info references a different emulation epoch than the one
+    /// The derivation info references a different derivation epoch than the one
     /// supplied.
-    #[error("The creator leaf references a different emulation epoch.")]
+    #[error("The creator leaf references a different derivation epoch.")]
     EpochIdMismatch,
     /// The creator leaf is not `key_package`-sourced, so it is not a virtual
     /// client's group-creation leaf.
@@ -313,6 +354,13 @@ pub enum StageCommitError {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// The commit's virtual-clients Safe AAD item, or the Safe AAD carrying it,
+    /// did not parse. The item decides whether the commit's output epoch is a
+    /// derivation epoch, so an emulation group cannot fall back to a guess.
+    /// Groups that are not emulation groups never read the item.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("The commit's virtual-clients Safe AAD item did not parse: {0}")]
+    MalformedVcCommitData(String),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -407,6 +455,22 @@ pub enum CreateCommitError {
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]
     VirtualClientsError(#[from] crate::components::vc_derivation_info::VirtualClientsError),
+    /// See [`VcCommitDataError`](crate::components::vc_commit_data::VcCommitDataError)
+    /// for more details.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    VcCommitData(#[from] crate::components::vc_commit_data::VcCommitDataError),
+    /// A new derivation epoch was requested, but the group's GroupContext does
+    /// not require Safe AAD framing, so the commit cannot carry the marker.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("A new derivation epoch requires the group to use Safe AAD framing.")]
+    NewDerivationEpochWithoutSafeAad,
+    /// A new derivation epoch was requested in a group that is not configured
+    /// as an emulation group. The sender would broadcast the marker without
+    /// registering the epoch itself, desynchronizing the emulator clients.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error("A new derivation epoch can only be requested in an emulation group.")]
+    NewDerivationEpochOutsideEmulationGroup,
     /// Missing own key to apply proposal.
     #[error("Missing own key to apply proposal.")]
     OwnKeyNotFound,
@@ -446,9 +510,9 @@ pub enum CreateCommitError {
     GroupContextExtensionsProposalValidationError(
         #[from] GroupContextExtensionsProposalValidationError,
     ),
-    /// See [`TreeSyncAddLeaf`] for more details.
+    /// See [`ApplyOwnUpdatePathError`] for more details.
     #[error(transparent)]
-    TreeSyncAddLeaf(#[from] TreeSyncAddLeaf),
+    ApplyOwnUpdatePath(#[from] ApplyOwnUpdatePathError),
     /// Invalid [`LeafNodeParameters`]. `[CredentialWithKey]` can't be set with new signer.
     #[error("Invalid LeafNodeParameters. CredentialWithKey can't be set with new signer.")]
     InvalidLeafNodeParameters,
@@ -639,6 +703,17 @@ pub enum ProposalValidationError {
     /// Regular Commits may not contain ExternalInit proposals, but one was found
     #[error("Found ExternalInit proposal in regular commit")]
     ExternalInitProposalInRegularCommit,
+    /// A Commit that references a ReInit proposal must contain no other
+    /// proposals, but at least one other proposal was found (RFC 9420 §12.2).
+    #[error("Found a ReInit proposal alongside other proposals in a commit")]
+    ReInitProposalNotAlone,
+    /// A ReInit proposal's protocol version is lower than the current group's
+    /// (RFC 9420 §12.1.5).
+    #[error("ReInit proposal downgrades the protocol version")]
+    ReInitDowngrade,
+    /// A ReInit proposal contains an unsupported protocol version.
+    #[error("ReInit proposal contains an unsupported protocol version")]
+    ReInitUnsupportedVersion,
 }
 
 /// External Commit validaton error
@@ -762,6 +837,11 @@ pub enum MergeCommitError<StorageError> {
     /// Error writing updated group to storage.
     #[error("Error writing updated group data to storage.")]
     StorageError(StorageError),
+    /// The commit creates a virtual-clients derivation epoch for this emulation
+    /// group, and registering it failed.
+    #[cfg(feature = "virtual-clients-draft")]
+    #[error(transparent)]
+    RegisterVcDerivationEpoch(#[from] crate::group::RegisterVcDerivationEpochError<StorageError>),
 }
 
 #[cfg(feature = "extensions-draft")]

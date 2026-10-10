@@ -368,49 +368,39 @@ impl PreSharedKeyId {
 
     // ----- Validation ----------------------------------------------------------------------------
 
-    pub(crate) fn validate_in_proposal(self, ciphersuite: Ciphersuite) -> Result<(), PskError> {
-        // ValSem402
-        match self.psk() {
-            Psk::Resumption(resumption_psk) => {
-                // https://validation.openmls.tech/#valn0801
-                // https://validation.openmls.tech/#valn0802
-                if resumption_psk.usage != ResumptionPskUsage::Application {
-                    return Err(PskError::UsageMismatch {
-                        allowed: vec![ResumptionPskUsage::Application],
-                        got: resumption_psk.usage,
-                    });
-                }
-            }
-            Psk::External(_) => {}
-            #[cfg(feature = "extensions-draft")]
-            Psk::Application(_) => {}
-        };
+    /// Checks that the nonce is of length `KDF.Nh`
+    ///
+    /// ValSem401: The nonce of a PreSharedKeyID must have length KDF.Nh
+    /// https://validation.openmls.tech/#valn0803
+    pub(crate) fn validate_nonce(&self, ciphersuite: Ciphersuite) -> Result<(), PskError> {
+        let expected_nonce_length = ciphersuite.hash_length();
+        let got_nonce_length = self.psk_nonce().len();
 
-        // ValSem401
-        // https://validation.openmls.tech/#valn0803
-        {
-            let expected_nonce_length = ciphersuite.hash_length();
-            let got_nonce_length = self.psk_nonce().len();
-
-            if expected_nonce_length != got_nonce_length {
-                return Err(PskError::NonceLengthMismatch {
-                    expected: expected_nonce_length,
-                    got: got_nonce_length,
-                });
-            }
+        if expected_nonce_length != got_nonce_length {
+            return Err(PskError::NonceLengthMismatch {
+                expected: expected_nonce_length,
+                got: got_nonce_length,
+            });
         }
-
         Ok(())
     }
 
+    /// Validates the list of PSKs in a Welcome message:
+    ///
+    /// * ValSem401 (https://validation.openmls.tech/#valn0803)
+    /// * https://validation.openmls.tech/#valn1401 (2/2)
     pub(crate) fn validate_in_welcome(
         psk_ids: &[PreSharedKeyId],
         ciphersuite: Ciphersuite,
     ) -> Result<(), PskError> {
-        let mut contains_branch_psk = false;
-        let mut contains_reinit_psk = false;
+        let mut contained_resumption_usage: Option<ResumptionPskUsage> = None;
         for id in psk_ids {
-            // https://validation.openmls.tech/#valn1401
+            // ValSem401
+            // https://validation.openmls.tech/#valn0803
+            id.validate_nonce(ciphersuite)?;
+
+            // https://validation.openmls.tech/#valn1401 (2/2)
+            // If a PreSharedKeyID has type resumption with usage reinit or branch, verify that it is the only such PSK.
             match id.psk() {
                 Psk::Resumption(resumption_psk) => match resumption_psk.usage {
                     ResumptionPskUsage::Application => {
@@ -419,51 +409,27 @@ impl PreSharedKeyId {
                             got: resumption_psk.usage,
                         });
                     }
-                    ResumptionPskUsage::Reinit => {
-                        if contains_reinit_psk {
-                            return Err(PskError::UsageDuplicate {
-                                usage: ResumptionPskUsage::Reinit,
-                            });
-                        }
-                        if contains_branch_psk {
-                            return Err(PskError::UsageConflict {
-                                first: ResumptionPskUsage::Reinit,
-                                second: ResumptionPskUsage::Branch,
-                            });
-                        }
-                        contains_reinit_psk = true;
-                    }
-                    ResumptionPskUsage::Branch => {
-                        if contains_branch_psk {
-                            return Err(PskError::UsageDuplicate {
-                                usage: ResumptionPskUsage::Branch,
-                            });
-                        }
-                        if contains_reinit_psk {
-                            return Err(PskError::UsageConflict {
-                                first: ResumptionPskUsage::Branch,
-                                second: ResumptionPskUsage::Reinit,
-                            });
-                        }
-                        contains_branch_psk = true;
+                    ResumptionPskUsage::Reinit | ResumptionPskUsage::Branch => {
+                        if let Some(previous_usage) = contained_resumption_usage {
+                            if previous_usage == resumption_psk.usage {
+                                return Err(PskError::UsageDuplicate {
+                                    usage: previous_usage,
+                                });
+                            } else {
+                                return Err(PskError::UsageConflict {
+                                    first: previous_usage,
+                                    second: resumption_psk.usage,
+                                });
+                            }
+                        } else {
+                            contained_resumption_usage = Some(resumption_psk.usage);
+                        };
                     }
                 },
                 Psk::External(_) => {}
                 #[cfg(feature = "extensions-draft")]
                 Psk::Application(_) => {}
             };
-
-            {
-                let expected_nonce_length = ciphersuite.hash_length();
-                let got_nonce_length = id.psk_nonce().len();
-
-                if expected_nonce_length != got_nonce_length {
-                    return Err(PskError::NonceLengthMismatch {
-                        expected: expected_nonce_length,
-                        got: got_nonce_length,
-                    });
-                }
-            }
         }
         Ok(())
     }
@@ -588,6 +554,7 @@ impl From<Secret> for PskSecret {
     }
 }
 
+/// Load PSKs from storage
 pub(crate) fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
     resumption_psk_store: &ResumptionPskStore,
@@ -600,7 +567,16 @@ pub(crate) fn load_psks<'p, Storage: StorageProvider>(
 
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
-                if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
+                let psk_epoch = match resumption.usage() {
+                    // Application PSKs are looked up by their own epoch.
+                    ResumptionPskUsage::Application => resumption.psk_epoch(),
+                    // The branch and reinit PSK is not in this group's resumption store: it
+                    // comes from the parent or predecessor group and is injected at the sentinel
+                    // epoch 0 (see `CommitBuilder::branch` and
+                    // `ProcessedWelcome::new_from_welcome_inner`).
+                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit => 0.into(),
+                };
+                if let Some(psk_bundle) = resumption_psk_store.get(psk_epoch) {
                     psk_bundles.push((psk_id, psk_bundle.secret.clone()));
                 } else {
                     return Err(PskError::KeyNotFound);
@@ -658,6 +634,12 @@ pub mod store {
                 resumption_psk: vec![],
                 cursor: 0,
             }
+        }
+
+        /// Clear all PSKs.
+        pub(crate) fn clear(&mut self) {
+            self.resumption_psk = vec![];
+            self.cursor = 0;
         }
 
         /// Adds a new entry to the store.
