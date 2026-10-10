@@ -17,7 +17,7 @@ use crate::{
         PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageIn},
-    messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
+    messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType, RemoveProposal},
     prelude::LeafNodeParameters,
     treesync::node::leaf_node::Capabilities,
     versions::ProtocolVersion,
@@ -273,6 +273,31 @@ fn proposal_queue_order() {
 
     assert_eq!(proposal_collection[0].proposal(), &proposal_add_bob1);
     assert_eq!(proposal_collection[1].proposal(), &proposal_add_alice1);
+}
+
+/// Test that member-specific proposals are returned in ascending leaf order.
+#[openmls_test::openmls_test]
+fn proposal_queue_member_specific_order() {
+    let provider = &Provider::default();
+    let sender = Sender::build_member(LeafNodeIndex::new(0));
+
+    let removed_leaves: Vec<u32> = (1..=8).rev().collect();
+    let proposals = removed_leaves.iter().map(|&leaf| {
+        let proposal = Proposal::remove(RemoveProposal {
+            removed: LeafNodeIndex::new(leaf),
+        });
+        QueuedProposal::from_proposal_and_sender(ciphersuite, provider.crypto(), proposal, &sender)
+            .expect("Could not create QueuedProposal.")
+    });
+
+    let (proposal_queue, _) = ProposalQueue::filter_proposals(proposals, LeafNodeIndex::new(0))
+        .expect("Could not create ProposalQueue.");
+
+    let removed: Vec<u32> = proposal_queue
+        .remove_proposals()
+        .map(|remove| remove.remove_proposal().removed().u32())
+        .collect();
+    assert_eq!(removed, (1..=8).collect::<Vec<u32>>());
 }
 
 #[openmls_test::openmls_test]
