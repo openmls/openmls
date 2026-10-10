@@ -67,23 +67,27 @@ impl MlsGroup {
 
     /// Creates a new group with the creator as the only member (and a random
     /// group ID).
-    pub fn new<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn new<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<Provider::StorageError>> {
-        MlsGroupBuilder::new().build_internal(
-            provider,
-            signer,
-            credential_with_key,
-            Some(mls_group_create_config.clone()),
-        )
+        MlsGroupBuilder::new()
+            .build_internal(
+                provider,
+                signer,
+                credential_with_key,
+                Some(mls_group_create_config.clone()),
+            )
+            .await
     }
 
     /// Creates a new group with a given group ID with the creator as the only
     /// member.
-    pub fn new_with_group_id<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn new_with_group_id<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
@@ -98,6 +102,7 @@ impl MlsGroup {
                 credential_with_key,
                 Some(mls_group_create_config.clone()),
             )
+            .await
     }
 
     /// Join an existing group through an External Commit.
@@ -119,7 +124,8 @@ impl MlsGroup {
         since = "0.7.1",
         note = "Use the `MlsGroup::external_commit_builder` instead."
     )]
-    pub fn join_by_external_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn join_by_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -152,12 +158,14 @@ impl MlsGroup {
             .build_group(provider, verifiable_group_info, credential_with_key)?
             .leaf_node_parameters(leaf_node_parameters)
             .load_psks(provider.storage())
+            .await
             .map_err(|e| {
                 log::error!("Error loading PSKs for external commit: {e:?}");
                 LibraryError::custom("Error loading PSKs for external commit")
             })?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .finalize(provider)?;
+            .finalize(provider)
+            .await?;
 
         let (commit, _, group_info) = commit_message_bundle.into_contents();
 
@@ -172,12 +180,13 @@ impl ProcessedWelcome {
     /// This does not require a ratchet tree yet.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        Self::new_from_welcome_inner(provider, mls_group_config, welcome, None)
+        Self::new_from_welcome_inner(provider, mls_group_config, welcome, None).await
     }
 
     /// Like [`ProcessedWelcome::new_from_welcome`], but allows injecting a
@@ -189,14 +198,15 @@ impl ProcessedWelcome {
     /// [`load_psks`] looks it up for both usages. See
     /// [`StagedWelcome::build_from_branch`] and
     /// [`StagedWelcome::build_from_reinit`].
-    pub(crate) fn new_from_welcome_inner<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn new_from_welcome_inner<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        resumption_info: Option<ResumptionInfo>,
+        resumption_info: Option<ResumptionInfo<'_>>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let (resumption_psk_store, key_material, group_secrets) =
-            decrypt_group_secrets(provider, mls_group_config, &welcome)?;
+            decrypt_group_secrets(provider, mls_group_config, &welcome).await?;
 
         finish_processed_welcome(
             provider,
@@ -208,6 +218,7 @@ impl ProcessedWelcome {
             &welcome,
             resumption_info,
         )
+        .await
     }
 
     /// Get a reference to the GroupInfo in this Welcome message.
@@ -226,7 +237,8 @@ impl ProcessedWelcome {
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    pub fn into_staged_welcome<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn into_staged_welcome<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -237,11 +249,13 @@ impl ProcessedWelcome {
             LeafNodeLifetimePolicy::Verify,
             false,
         )
+        .await
     }
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    pub(crate) fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
         mut self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -251,6 +265,7 @@ impl ProcessedWelcome {
         // Check if we need to replace an old group
         if !replace_old_group
             && MlsGroup::load(provider.storage(), self.verifiable_group_info.group_id())
+                .await
                 .map_err(WelcomeError::StorageError)?
                 .is_some()
         {
@@ -326,7 +341,7 @@ impl ProcessedWelcome {
             }
             #[cfg(feature = "virtual-clients-draft")]
             WelcomeKeyMaterialInner::VirtualClient(material) => {
-                find_and_validate_vc_own_leaf(provider, &public_group, material)?
+                find_and_validate_vc_own_leaf(provider, &public_group, material).await?
             }
         };
 
@@ -483,29 +498,33 @@ impl StagedWelcome {
     /// A virtual client's key material is only consumed by [`Self::into_group`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let processed_welcome =
-            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
+            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome).await?;
 
-        processed_welcome.into_staged_welcome(provider, ratchet_tree)
+        processed_welcome
+            .into_staged_welcome(provider, ratchet_tree)
+            .await
     }
 
     /// Similar to [`StagedWelcome::new_from_welcome`] but as a builder.
     ///
     /// The builder allows to set the ratchet tree, skip leaf node lifetime
     /// validation, and get the [`ProcessedWelcome`] for inspection before staging.
-    pub fn build_from_welcome<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_welcome<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
         let processed_welcome =
-            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
+            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome).await?;
 
         // processed_welcome.into_staged_welcome(provider, ratchet_tree)
         Ok(JoinBuilder::new(provider, processed_welcome))
@@ -549,14 +568,17 @@ impl StagedWelcome {
     /// decrypts only once, via the same carrier.
     ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
-    pub fn build_from_branch<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_branch<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         branch_info: BranchInfo,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
-        Self::process_resuming_welcome(provider, mls_group_config, welcome)?
+        Self::process_resuming_welcome(provider, mls_group_config, welcome)
+            .await?
             .build_from_branch(provider, branch_info)
+            .await
     }
 
     /// Builder to create a [`StagedWelcome`] for a reinit of a
@@ -594,14 +616,17 @@ impl StagedWelcome {
     /// predecessor.
     ///
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
-    pub fn build_from_reinit<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_reinit<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         reinit_info: ReInitInfo,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
-        Self::process_resuming_welcome(provider, mls_group_config, welcome)?
+        Self::process_resuming_welcome(provider, mls_group_config, welcome)
+            .await?
             .build_from_reinit(provider, reinit_info)
+            .await
     }
 
     /// Decrypt a `Welcome`'s group secrets so its branch or reinit reference can be
@@ -614,13 +639,14 @@ impl StagedWelcome {
     ///
     /// If [`PendingResumingWelcome::required_resumption_secret`] returns [`None`] the [`Welcome`]
     /// is not a branch or reinit welcome and must be completed with [`PendingResumingWelcome::build`].
-    pub fn process_resuming_welcome<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn process_resuming_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<PendingResumingWelcome, WelcomeError<Provider::StorageError>> {
         let (resumption_psk_store, key_material, group_secrets) =
-            decrypt_group_secrets(provider, mls_group_config, &welcome)?;
+            decrypt_group_secrets(provider, mls_group_config, &welcome).await?;
 
         Ok(PendingResumingWelcome {
             mls_group_config: mls_group_config.clone(),
@@ -691,7 +717,8 @@ impl StagedWelcome {
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
-    pub fn into_group<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, WelcomeError<Provider::StorageError>> {
@@ -725,7 +752,8 @@ impl StagedWelcome {
                         .vc_derivation_epoch_retention_policy()
                         .clone(),
                 ),
-            )?;
+            )
+            .await?;
         }
 
         // A join via a virtual-client KeyPackage lands on a leaf shared with
@@ -746,6 +774,7 @@ impl StagedWelcome {
             provider
                 .storage()
                 .vc_derivation_epoch_state::<_, VcDerivationEpochState>(&epoch_id)
+                .await
                 .map_err(WelcomeError::StorageError)?
                 .ok_or(WelcomeError::VirtualClientsError(
                     VirtualClientsError::MissingDerivationEpochState,
@@ -760,6 +789,7 @@ impl StagedWelcome {
                 epoch_id,
                 max_entries,
             )
+            .await
             .map_err(WelcomeError::StorageError)?;
         }
 
@@ -785,6 +815,7 @@ impl StagedWelcome {
 
         mls_group
             .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
+            .await
             .map_err(WelcomeError::StorageError)?;
         // resize the store
         mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
@@ -806,11 +837,13 @@ impl StagedWelcome {
                 material.epoch_id.clone(),
                 max_entries,
             )
+            .await
             .map_err(WelcomeError::StorageError)?;
             if !material.last_resort {
                 provider
                     .storage()
                     .delete_retained_key_package_material(&material.key_package_ref)
+                    .await
                     .map_err(WelcomeError::StorageError)?;
             }
         }
@@ -830,12 +863,14 @@ impl StagedWelcome {
                             .key_package()
                             .hash_ref(provider.crypto())?,
                     )
+                    .await
                     .map_err(WelcomeError::StorageError)?;
             }
         }
 
         mls_group
             .store(provider.storage())
+            .await
             .map_err(WelcomeError::StorageError)?;
 
         Ok(mls_group)
@@ -913,7 +948,8 @@ impl PendingResumingWelcome {
     /// Use this method if the welcome does not need a PSK, indicated by [`Self::required_resumption_secret`] returning [`None`].
     ///
     /// This has the same effect as [`ProcessedWelcome::new_from_welcome`]
-    pub fn build<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<ProcessedWelcome, WelcomeError<Provider::StorageError>> {
@@ -926,7 +962,8 @@ impl PendingResumingWelcome {
             self.group_secrets,
             &self.welcome,
             None,
-        )?;
+        )
+        .await?;
 
         Ok(processed_welcome)
     }
@@ -937,7 +974,8 @@ impl PendingResumingWelcome {
     /// [`StagedWelcome::build_from_reinit`]); a `reinit_info` from the wrong
     /// group or epoch fails with [`WelcomeError::ReInitPredecessorMismatch`]. The
     /// remaining receiver checks run when [`JoinBuilder::build`] is called.
-    pub fn build_from_reinit<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_reinit<'a, Provider: OpenMlsProvider>(
         self,
         provider: &'a Provider,
         reinit_info: ReInitInfo,
@@ -951,7 +989,8 @@ impl PendingResumingWelcome {
             self.group_secrets,
             &self.welcome,
             Some(ResumptionInfo::ReInit(&reinit_info)),
-        )?;
+        )
+        .await?;
 
         Ok(JoinBuilder::new(provider, processed_welcome).with_reinit_info(reinit_info))
     }
@@ -962,7 +1001,8 @@ impl PendingResumingWelcome {
     /// [`StagedWelcome::build_from_branch`]); a `branch_info` from the wrong
     /// parent epoch fails with [`WelcomeError::SubgroupParentMismatch`]. The
     /// remaining receiver checks run when [`JoinBuilder::build`] is called.
-    pub fn build_from_branch<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_branch<'a, Provider: OpenMlsProvider>(
         self,
         provider: &'a Provider,
         branch_info: BranchInfo,
@@ -976,7 +1016,8 @@ impl PendingResumingWelcome {
             self.group_secrets,
             &self.welcome,
             Some(ResumptionInfo::Branch(&branch_info)),
-        )?;
+        )
+        .await?;
 
         Ok(JoinBuilder::new(provider, processed_welcome).with_branch_info(branch_info))
     }
@@ -998,7 +1039,8 @@ pub(crate) enum ResumptionInfo<'a> {
 /// secret is not injected here: injection and the parent-reference check
 /// happen in [`finish_processed_welcome`], so this step is identical on both
 /// paths.
-fn decrypt_group_secrets<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+async fn decrypt_group_secrets<Provider: OpenMlsProvider>(
     provider: &Provider,
     mls_group_config: &MlsGroupJoinConfig,
     welcome: &Welcome,
@@ -1015,7 +1057,7 @@ fn decrypt_group_secrets<Provider: OpenMlsProvider>(
         .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
 
     let (resumption_psk_store, key_material) =
-        keys_for_welcome(mls_group_config, welcome, provider)?;
+        keys_for_welcome(mls_group_config, welcome, provider).await?;
 
     let Some(egs) =
         welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
@@ -1063,7 +1105,8 @@ fn decrypt_group_secrets<Provider: OpenMlsProvider>(
 /// wrong-epoch secret fails cleanly with [`WelcomeError::SubgroupParentMismatch`]
 /// rather than as an opaque group-info decryption failure further down.
 #[allow(clippy::too_many_arguments)]
-fn finish_processed_welcome<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+async fn finish_processed_welcome<Provider: OpenMlsProvider>(
     provider: &Provider,
     mls_group_config: &MlsGroupJoinConfig,
     ciphersuite: Ciphersuite,
@@ -1071,7 +1114,7 @@ fn finish_processed_welcome<Provider: OpenMlsProvider>(
     key_material: WelcomeKeyMaterial,
     group_secrets: GroupSecrets,
     welcome: &Welcome,
-    resumption_info: Option<ResumptionInfo>,
+    resumption_info: Option<ResumptionInfo<'_>>,
 ) -> Result<ProcessedWelcome, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
     if let Some(resumption_info) = resumption_info {
         // For subgroup branching and reinit, inject the parent group's resumption PSK at
@@ -1129,7 +1172,8 @@ fn finish_processed_welcome<Provider: OpenMlsProvider>(
             provider.storage(),
             &resumption_psk_store,
             &group_secrets.psks,
-        )?;
+        )
+        .await?;
 
         PskSecret::new(provider.crypto(), ciphersuite, psks)?
     };
@@ -1205,7 +1249,8 @@ fn finish_processed_welcome<Provider: OpenMlsProvider>(
 }
 
 /// Read keys for decrypting the welcome message.
-fn keys_for_welcome<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+async fn keys_for_welcome<Provider: OpenMlsProvider>(
     mls_group_config: &MlsGroupJoinConfig,
     welcome: &Welcome,
     provider: &Provider,
@@ -1220,6 +1265,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         if let Some(key_package_bundle) = provider
             .storage()
             .key_package(&hash_ref)
+            .await
             .map_err(WelcomeError::StorageError)?
         {
             let key_package_bundle: KeyPackageBundle = key_package_bundle;
@@ -1231,6 +1277,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
                     .delete_key_package(
                         &key_package_bundle.key_package.hash_ref(provider.crypto())?,
                     )
+                    .await
                     .map_err(WelcomeError::StorageError)?;
             }
             return Ok((
@@ -1241,7 +1288,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
 
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(material) =
-            resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref)?
+            resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref).await?
         {
             // The retained material stays in storage for now.
             return Ok((
@@ -1292,7 +1339,8 @@ fn join_consumes_key_package<StorageError>(
 ///
 /// [`RetainedKeyPackageMaterial`]: RetainedKeyPackageMaterial
 #[cfg(feature = "virtual-clients-draft")]
-pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
     provider: &Provider,
     ciphersuite: Ciphersuite,
     hash_ref: &KeyPackageRef,
@@ -1300,6 +1348,7 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
     let storage = provider.storage();
     let Some(material) = storage
         .retained_key_package_material::<_, RetainedKeyPackageMaterial>(hash_ref)
+        .await
         .map_err(WelcomeError::StorageError)?
     else {
         return Ok(None);
@@ -1350,7 +1399,8 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
 /// [`VC_COMPONENT_ID`]: crate::components::vc_derivation_info::VC_COMPONENT_ID
 /// [`DerivationInfoTbe`]: crate::components::vc_derivation_info::DerivationInfoTbe
 #[cfg(feature = "virtual-clients-draft")]
-fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+async fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     provider: &Provider,
     public_group: &PublicGroup,
     material: &VcWelcomeMaterial,
@@ -1385,6 +1435,7 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     let state: VcDerivationEpochState = provider
         .storage()
         .vc_derivation_epoch_state(&material.epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load derivation epoch state in welcome staging failed: {e:?}");
             VirtualClientsError::StorageError
@@ -1450,7 +1501,8 @@ impl MlsGroup {
     /// this client on the shared virtual-client leaf (index 0).
     ///
     /// [`MlsGroupBuilder::vc_emulation`]: crate::group::MlsGroupBuilder::vc_emulation
-    pub fn vc_join_at_creation<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn vc_join_at_creation<Provider: OpenMlsProvider>(
         provider: &Provider,
         join_config: &MlsGroupJoinConfig,
         verifiable_group_info: VerifiableGroupInfo,
@@ -1499,7 +1551,7 @@ impl MlsGroup {
         }
 
         // Load the derivation epoch state and operation tree.
-        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
+        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id).await?;
         let (_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
 
         // Decrypt the derivation info (KeyPackage case) and read the batch index
@@ -1587,6 +1639,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .await
             .map_err(Error::StorageError)?;
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(
@@ -1613,6 +1666,7 @@ impl MlsGroup {
             epoch_id,
             max_entries,
         )
+        .await
         .map_err(Error::StorageError)?;
 
         let mls_group = MlsGroup {
@@ -1634,9 +1688,11 @@ impl MlsGroup {
         };
         mls_group
             .store(provider.storage())
+            .await
             .map_err(Error::StorageError)?;
         mls_group
             .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+            .await
             .map_err(Error::StorageError)?;
 
         Ok(mls_group)
@@ -1706,7 +1762,8 @@ impl VcExternalCommitJoinBuilder {
     /// Nothing is consumed or persisted at this point. Dropping the returned
     /// [`StagedVcExternalCommitJoin`] discards the join without advancing
     /// the shared operation secret tree.
-    pub fn process_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn process_commit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         verifiable_group_info: VerifiableGroupInfo,
@@ -1786,7 +1843,7 @@ impl VcExternalCommitJoinBuilder {
         // Parse and verify the external commit against the prior-epoch group.
         // A PrivateMessage claiming our own leaf cannot be an external commit.
         let processing::UnprotectedMessage::Unverified(unverified) =
-            group.unprotect_message(provider, external_commit)?
+            group.unprotect_message(provider, external_commit).await?
         else {
             return Err(Error::NotAnExternalCommit);
         };
@@ -1940,7 +1997,8 @@ impl StagedVcExternalCommitJoin {
     /// the committing sibling's dictionary fail with a confirmation tag
     /// mismatch after the generation is consumed, so they should be computed
     /// deterministically from the proposals rather than guessed.
-    pub fn into_group<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, VcExternalCommitJoinError<Provider::StorageError>> {
@@ -1974,21 +2032,25 @@ impl StagedVcExternalCommitJoin {
         // epoch id + carried external init secret) from the leaf's derivation
         // info, then stage and merge the commit through the sibling-VC path.
         let material = group
-            .load_vc_commit_material(provider, commit)?
+            .load_vc_commit_material(provider, commit)
+            .await?
             .ok_or(Error::MissingDerivationInfo)?;
-        let staged = group.stage_commit_with_app_data_updates(
-            &content,
-            vec![],
-            vec![],
-            app_data_updates,
-            provider,
-            Some(material),
-        )?;
-        group.merge_staged_commit(provider, staged)?;
+        let staged = group
+            .stage_commit_with_app_data_updates(
+                &content,
+                vec![],
+                vec![],
+                app_data_updates,
+                provider,
+                Some(material),
+            )
+            .await?;
+        group.merge_staged_commit(provider, staged).await?;
         let deletion_policy = group.mls_group_config.past_epoch_deletion_policy().clone();
         group.resize_message_secrets_store(&deletion_policy);
         group
             .store(provider.storage())
+            .await
             .map_err(Error::StorageError)?;
         Ok(group)
     }
@@ -2105,7 +2167,8 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     }
 
     /// Build the [`StagedWelcome`].
-    pub fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+    #[openmls_traits::maybe_async]
+    pub async fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
         // Receiver checks (a) and (b): when joining a subgroup branch, the
         // version and ciphersuite must match the parent group, and the subgroup
         // must be at epoch 1.
@@ -2141,12 +2204,15 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             }
         }
 
-        let staged_welcome = self.processed_welcome.into_staged_welcome_inner(
-            self.provider,
-            self.ratchet_tree,
-            self.validate_lifetimes,
-            self.replace_old_group,
-        )?;
+        let staged_welcome = self
+            .processed_welcome
+            .into_staged_welcome_inner(
+                self.provider,
+                self.ratchet_tree,
+                self.validate_lifetimes,
+                self.replace_old_group,
+            )
+            .await?;
 
         // Receiver check (c): every LeafNode in the subgroup must
         // match a LeafNode in the parent group. For a reinit, the members

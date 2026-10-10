@@ -136,6 +136,30 @@
 //!     .expect("Error creating the group from the staged join");
 //! ```
 //!
+//! ## Async mode
+//!
+//! The storage API is synchronous by default. With the `async` feature, every
+//! function that reads or writes storage is an `async fn` and the
+//! [`StorageProvider`](openmls_traits::storage::StorageProvider) trait returns
+//! `Send` futures.
+//!
+//! ```toml
+//! openmls = { version = "0.9", features = ["async"] }
+//! ```
+//!
+//! Cargo unifies features, so a single crate in the build that enables `async`
+//! switches every crate in the build to the async API. The [`openmls_traits`]
+//! docs describe how the mode is chosen.
+//!
+//! OpenMLS futures are not cancel-safe. An operation updates the group in
+//! memory and then performs several storage writes. If the future is dropped
+//! between two writes, for example by a timeout or by `select!`, the group in
+//! memory and the stored state no longer match. Run each operation inside a
+//! storage transaction and roll the transaction back when the future does not
+//! complete. Then discard the group and load it again with
+//! [`MlsGroup::load`](group::MlsGroup::load). The same applies when an
+//! operation returns a storage error.
+//!
 //! [//]: # "links and badges"
 //! [user Manual]: https://book.openmls.tech
 #![cfg_attr(docsrs, feature(doc_cfg))]

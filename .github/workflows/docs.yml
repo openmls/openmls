@@ -17,5 +17,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
-      - run: RUSTDOCFLAGS="--cfg doc_cfg --cfg docsrs" cargo +nightly doc --all-features --no-deps
+      # The check uses the docs.rs feature list so that it covers what docs.rs builds.
+      - run: |
+          set -euo pipefail
+          features=$(cargo metadata --no-deps --format-version 1 | jq -r \
+            '.packages[] | select(.name == "openmls") | .metadata.docs.rs.features[]')
+          RUSTDOCFLAGS="--cfg doc_cfg --cfg docsrs" cargo +nightly doc --no-deps -F "${features}"
         working-directory: openmls

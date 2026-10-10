@@ -27,13 +27,15 @@ impl MlsGroup {
     /// See the `# Concurrency` note on [`OperationSecretTree`].
     ///
     /// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
-    pub fn next_vc_application_secret<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn next_vc_application_secret<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         operation_context: &[u8],
     ) -> Result<(VcApplicationSecretInfo, Vec<u8>), VirtualClientsError> {
-        let epoch_id = require_newest_vc_derivation_epoch(provider.storage(), self.group_id())?;
-        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
+        let epoch_id =
+            require_newest_vc_derivation_epoch(provider.storage(), self.group_id()).await?;
+        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id).await?;
         let (leaf_index, _epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
         let (generation, operation_secret) = operation_tree.next_operation_secret(
             provider.crypto(),
@@ -46,6 +48,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .await
             .map_err(|e| {
                 log::error!(
                     "vc: persist operation tree after allocating an application secret failed: {e:?}"
@@ -67,13 +70,15 @@ impl MlsGroup {
     ///
     /// The same concurrency requirement as for
     /// [`Self::next_vc_application_secret`] applies.
-    pub fn derive_vc_application_secret<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn derive_vc_application_secret<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
         info: &VcApplicationSecretInfo,
         operation_context: &[u8],
     ) -> Result<Vec<u8>, VirtualClientsError> {
-        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &info.epoch_id)?;
+        let (state, mut operation_tree) =
+            load_vc_epoch_state_and_tree(provider, &info.epoch_id).await?;
         let (own_leaf_index, _epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
         if info.leaf_index == own_leaf_index {
             log::error!("vc: application secret coordinates name the caller's own leaf index.");
@@ -91,6 +96,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_vc_operation_tree(&info.epoch_id, &operation_tree)
+            .await
             .map_err(|e| {
                 log::error!(
                     "vc: persist operation tree after rederiving an application secret failed: {e:?}"

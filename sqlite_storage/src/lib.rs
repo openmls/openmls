@@ -20,6 +20,11 @@
 //! ## Support
 //!
 //! The SQLite storage provider currently does not support the `wasm32` target.
+//!
+//! The provider exposes a sync API and needs the sync mode of `openmls_traits`.
+//! No crate in the build may enable the `async` feature of `openmls` or
+//! `openmls_traits`. Otherwise the crate fails to compile with a message that
+//! names the problem.
 
 #[cfg(doc)]
 use openmls_traits::storage::StorageProvider;
@@ -44,6 +49,8 @@ mod wrappers;
 pub use codec::Codec;
 pub use rusqlite::Connection;
 pub use storage_provider::SqliteStorageProvider;
+
+openmls_traits::require_sync_mode!("openmls_sqlite_storage");
 
 /// The version of the storage provider. If the `CURRENT_VERSION` of the OpenMLS
 /// storage provider trait changes, the read/write/delete functions of the
