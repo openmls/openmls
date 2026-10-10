@@ -34,9 +34,9 @@
 //!
 //! ## Runtime
 //!
-//! The provider exposes an async API and needs the async mode of
-//! `openmls_traits`. Enable its `async` feature, or the `async` feature of
-//! `openmls`, and make sure no crate in the build enables `sync`.
+//! The provider exposes an async API and enables the async mode of
+//! `openmls_traits`. The mode applies to the whole build, so crates that only
+//! support the sync mode cannot be used together with this crate.
 //!
 //! Calls on one provider are serialized by an async mutex around the
 //! connection, so concurrent OpenMLS operations that share a provider wait for
@@ -51,8 +51,6 @@ use tokio::sync::Mutex;
 
 pub use crate::codec::Codec;
 use crate::migrator::MigratorWrapper;
-
-openmls_traits::require_async_mode!("openmls_sqlx_storage");
 
 mod codec;
 mod group_data;

@@ -6,9 +6,9 @@
 //! ## Sync and async mode
 //!
 //! The storage traits come in a sync and an async flavor. The crate builds the
-//! async flavor when the `async` feature is enabled and the `sync` feature is
-//! not. Every other combination builds the sync flavor. `sync` takes
-//! precedence so that `--all-features` builds keep the sync API.
+//! sync flavor by default and the async flavor when the `async` feature is
+//! enabled. Cargo unifies features, so a single crate in the build that enables
+//! `async` switches every crate in the build to the async flavor.
 //!
 //! Crates that implement or call the storage traits mark their code with
 //! [`maybe_async`](macro@crate::maybe_async) and follow the mode of this
@@ -28,7 +28,7 @@ pub mod signatures;
 pub mod storage;
 pub mod types;
 
-#[cfg(all(feature = "async", not(feature = "sync")))]
+#[cfg(feature = "async")]
 mod mode {
     /// Marks code that is written as async and follows the mode of
     /// `openmls_traits`. In async mode it leaves the code unchanged.
@@ -45,7 +45,7 @@ mod mode {
     impl<T: Send + ?Sized> MaybeSend for T {}
 }
 
-#[cfg(not(all(feature = "async", not(feature = "sync"))))]
+#[cfg(not(feature = "async"))]
 mod mode {
     /// Marks code that is written as async and follows the mode of
     /// `openmls_traits`. In sync mode it removes `async` and `.await`.
@@ -65,25 +65,25 @@ mod mode {
 pub use mode::{maybe_async, MaybeSend, MaybeSync};
 
 /// Stops compilation with a message naming `$crate_name` unless
-/// `openmls_traits` is in async mode. Crates that only work in async mode use
-/// it to report a feature mix-up before the trait mismatch errors.
-#[cfg(all(feature = "async", not(feature = "sync")))]
+/// `openmls_traits` is in sync mode. Crates that only work in sync mode use it
+/// to report a feature mix-up before the trait mismatch errors.
+#[cfg(not(feature = "async"))]
 #[macro_export]
-macro_rules! require_async_mode {
+macro_rules! require_sync_mode {
     ($crate_name:literal) => {};
 }
 
 /// Stops compilation with a message naming `$crate_name` unless
-/// `openmls_traits` is in async mode. Crates that only work in async mode use
-/// it to report a feature mix-up before the trait mismatch errors.
-#[cfg(not(all(feature = "async", not(feature = "sync"))))]
+/// `openmls_traits` is in sync mode. Crates that only work in sync mode use it
+/// to report a feature mix-up before the trait mismatch errors.
+#[cfg(feature = "async")]
 #[macro_export]
-macro_rules! require_async_mode {
+macro_rules! require_sync_mode {
     ($crate_name:literal) => {
         compile_error!(concat!(
             $crate_name,
-            " needs the async mode of openmls_traits, but the build uses the sync mode. ",
-            "Enable the `async` feature and make sure no crate enables `sync`. ",
+            " needs the sync mode of openmls_traits, but a crate in the build enables ",
+            "the `async` feature. ",
             "`cargo tree -e features -i openmls_traits` shows which crates enable it."
         ));
     };

@@ -6,7 +6,7 @@ publish = false
 description = "End-to-end tests for the async mode of OpenMLS."
 
 # The crate has its own workspace. In the main workspace, feature unification
-# with the sync-only crates would switch `openmls_traits` to sync mode.
+# would switch the sync-only crates to async mode.
 [workspace]
 
 [dependencies]

@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added an async mode for `StorageProvider` and `PublicStorageProvider`, enabled with the `async` feature. Every method then returns a `Send` future. The sync mode stays the default and takes precedence when both `sync` and `async` are enabled.
-- Added the `maybe_async` attribute, which lets other crates write storage code once and follow the mode of `openmls_traits`, and the `require_async_mode!` macro for crates that only work in async mode.
-- Added the `MaybeSync` and `MaybeSend` traits. In async mode they require `Sync` and `Send`. In sync mode every type implements them.
+- [#1923](https://github.com/openmls/openmls/pull/1923): Added an async mode for `StorageProvider` and `PublicStorageProvider`, enabled with the `async` feature. Every method then returns a `Send` future. The sync mode stays the default. A single crate in the build that enables `async` switches every crate in the build to the async mode.
+- [#1923](https://github.com/openmls/openmls/pull/1923): Added the `maybe_async` attribute, which lets other crates write storage code once and follow the mode of `openmls_traits`, and the `require_sync_mode!` macro for crates that only work in sync mode.
+- [#1923](https://github.com/openmls/openmls/pull/1923): Added the `MaybeSync` and `MaybeSend` traits. In async mode they require `Sync` and `Send`. In sync mode every type implements them.
 
 ### Changed
 
-- `StorageProvider`, `PublicStorageProvider`, `Key` and `Entity` now require `MaybeSync`, and the storage error types require `MaybeSend`. This only adds bounds in async mode.
+- [#1923](https://github.com/openmls/openmls/pull/1923): `StorageProvider`, `PublicStorageProvider`, `Key` and `Entity` now require `MaybeSync`, and the storage error types require `MaybeSend`. This only adds bounds in async mode.
 
 ## 0.6.0 (2026-08-25)
 

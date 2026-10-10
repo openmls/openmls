@@ -138,15 +138,18 @@
 //!
 //! ## Async mode
 //!
-//! The storage API is synchronous by default. With the `async` feature, and no
-//! crate in the build enabling `sync`, every function that reads or writes
-//! storage is an `async fn` and the
+//! The storage API is synchronous by default. With the `async` feature, every
+//! function that reads or writes storage is an `async fn` and the
 //! [`StorageProvider`](openmls_traits::storage::StorageProvider) trait returns
-//! `Send` futures. The [`openmls_traits`] docs describe how the mode is chosen.
+//! `Send` futures.
 //!
 //! ```toml
 //! openmls = { version = "0.9", features = ["async"] }
 //! ```
+//!
+//! Cargo unifies features, so a single crate in the build that enables `async`
+//! switches every crate in the build to the async API. The [`openmls_traits`]
+//! docs describe how the mode is chosen.
 //!
 //! OpenMLS futures are not cancel-safe. An operation updates the group in
 //! memory and then performs several storage writes. If the future is dropped

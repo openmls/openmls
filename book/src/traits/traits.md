@@ -96,10 +96,10 @@ In the default sync mode the same methods return the output type directly, and
 `MaybeSync` and `MaybeSend` place no bounds on the types.
 
 The async mode is enabled with the `async` feature of `openmls` or
-`openmls_traits`, as long as no crate in the build enables `sync`. In async mode
-the provider and the keys and entities must be `Sync`, and the error type must be
-`Send`. An implementation that supports both modes writes the methods as
-`async fn` and marks the `impl` block with
+`openmls_traits`. It applies to the whole build as soon as one crate enables it.
+In async mode the provider and the keys and entities must be `Sync`, and the
+error type must be `Send`. An implementation that supports both modes writes the
+methods as `async fn` and marks the `impl` block with
 `#[openmls_traits::maybe_async(AFIT)]`.
 
 An implementation of the storage trait should ensure that it can address and

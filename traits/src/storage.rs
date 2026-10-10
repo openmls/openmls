@@ -3,7 +3,7 @@
 //! implements the [`StorageProvider`] trait. The trait mostly defines getters and setters, but
 //! also a few methods that append to lists (which behave similar to setters).
 
-#[cfg(all(feature = "async", not(feature = "sync")))]
+#[cfg(feature = "async")]
 use core::future::Future;
 
 use serde::{de::DeserializeOwned, Serialize};

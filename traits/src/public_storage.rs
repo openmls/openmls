@@ -2,7 +2,7 @@
 //! Applications that only want to use the `PublicGroup` only need to implement
 //! the `PublicStorageProvider` trait, and not the `StorageProvider` trait.
 
-#[cfg(all(feature = "async", not(feature = "sync")))]
+#[cfg(feature = "async")]
 use core::future::Future;
 
 use crate::{storage::StorageProvider, MaybeSend, MaybeSync};
