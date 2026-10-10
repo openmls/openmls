@@ -45,8 +45,6 @@ use super::LABEL_PREFIX;
 
 #[cfg(feature = "targeted-messages-draft")]
 use crate::error::LibraryError;
-#[cfg(feature = "targeted-messages-draft")]
-use openmls_traits::crypto::HpkeSealPskResolvedAadError;
 
 #[cfg(feature = "extensions-draft")]
 use crate::component::{ComponentId, ComponentOperationLabel};
@@ -273,62 +271,51 @@ pub fn safe_decrypt_with_label(
     decrypt_with_label_internal(private_key, context, ciphertext, ciphersuite, crypto)
 }
 
-/// Parameters shared by [`encrypt_with_label_psk_resolved_aad`] and
-/// [`decrypt_with_label_psk_aad`]: the label and context that make up the HPKE
-/// info, and the PSK material for the HPKE PSK mode.
+/// Parameters shared by [`seal_psk`] and [`open_psk`]: the serialized HPKE
+/// info and the PSK material for the HPKE PSK mode. Callers own the info
+/// layout, so they serialize it before calling these functions.
 #[cfg(feature = "targeted-messages-draft")]
 pub(crate) struct PskEncryptParams<'a> {
-    pub label: &'a str,
-    pub context: &'a [u8],
+    pub info: &'a [u8],
     pub psk: &'a [u8],
     pub psk_id: &'a [u8],
     pub ciphersuite: Ciphersuite,
 }
 
 #[cfg(feature = "targeted-messages-draft")]
-pub(crate) fn encrypt_with_label_psk_resolved_aad<F>(
+pub(crate) fn seal_psk(
     public_key: &[u8],
     params: PskEncryptParams,
+    aad: &[u8],
     plaintext: &[u8],
     crypto: &impl OpenMlsCrypto,
-    aad_builder: F,
-) -> Result<HpkeCiphertext, LibraryError>
-where
-    F: FnOnce(&[u8]) -> Result<Vec<u8>, LibraryError>,
-{
-    let info = EncryptContext::new(params.label, params.context.into())
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)?;
+) -> Result<HpkeCiphertext, LibraryError> {
     crypto
-        .hpke_seal_psk_resolved_aad(
+        .hpke_seal_psk(
             params.ciphersuite.hpke_config(),
             public_key,
-            &info,
+            params.info,
+            aad,
             plaintext,
             params.psk,
             params.psk_id,
-            aad_builder,
         )
-        .map_err(|e| match e {
-            HpkeSealPskResolvedAadError::CryptoError(e) => LibraryError::unexpected_crypto_error(e),
-            HpkeSealPskResolvedAadError::AadBuildError(e) => e,
-        })
+        .map_err(LibraryError::unexpected_crypto_error)
 }
 
 #[cfg(feature = "targeted-messages-draft")]
-pub(crate) fn decrypt_with_label_psk_aad(
+pub(crate) fn open_psk(
     private_key: &[u8],
     params: PskEncryptParams,
     aad: &[u8],
     ciphertext: &HpkeCiphertext,
     crypto: &impl OpenMlsCrypto,
 ) -> Result<Vec<u8>, Error> {
-    let info = EncryptContext::new(params.label, params.context.into()).tls_serialize_detached()?;
     let content_bytes = crypto.hpke_open_psk(
         params.ciphersuite.hpke_config(),
         ciphertext,
         private_key,
-        &info,
+        params.info,
         aad,
         params.psk,
         params.psk_id,

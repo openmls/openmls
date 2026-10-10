@@ -9,17 +9,6 @@ use crate::types::{
     HpkeKeyPair, KemOutput, SignatureScheme,
 };
 
-/// Errors that can occur while building AAD after deriving the HPKE KEM output
-/// and before sealing the ciphertext.
-#[cfg(feature = "targeted-messages-draft")]
-#[derive(Debug)]
-pub enum HpkeSealPskResolvedAadError<E> {
-    /// A crypto backend error occurred.
-    CryptoError(CryptoError),
-    /// Building the final AAD failed.
-    AadBuildError(E),
-}
-
 pub trait OpenMlsCrypto: Send + Sync {
     /// Check whether the [`Ciphersuite`] is supported by the backend or not.
     ///
@@ -183,26 +172,20 @@ pub trait OpenMlsCrypto: Send + Sync {
         psk_id: &[u8],
     ) -> Result<Vec<u8>, CryptoError>;
 
-    /// HPKE PSK encryption where the AAD depends on the KEM output.
-    ///
-    /// The KEM output is only produced by the sealing operation itself, so it
-    /// cannot be passed as a ready-made AAD. Instead, `aad_builder` is invoked
-    /// with the KEM output between sender setup and seal to construct the AAD.
+    /// HPKE single-shot encryption in PSK mode of `ptxt` to `pk_r`, using
+    /// `info`, `aad`, `psk`, and `psk_id`.
     #[cfg(feature = "targeted-messages-draft")]
     #[allow(clippy::too_many_arguments)]
-    fn hpke_seal_psk_resolved_aad<F, E>(
+    fn hpke_seal_psk(
         &self,
         config: HpkeConfig,
         pk_r: &[u8],
         info: &[u8],
+        aad: &[u8],
         ptxt: &[u8],
         psk: &[u8],
         psk_id: &[u8],
-        aad_builder: F,
-    ) -> Result<HpkeCiphertext, HpkeSealPskResolvedAadError<E>>
-    where
-        Self: Sized,
-        F: FnOnce(&[u8]) -> Result<Vec<u8>, E>;
+    ) -> Result<HpkeCiphertext, CryptoError>;
 
     /// FF1-AES128 encryption of a 32-bit value under a 16-byte key.
     ///
