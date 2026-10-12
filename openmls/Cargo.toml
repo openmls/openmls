@@ -43,6 +43,8 @@ zeroize = "1.8.1"
 serde_bytes = "0.11.17"
 
 [features]
+# The storage API is sync by default. `async` switches it to async.
+async = ["openmls_traits/async"]
 # enable for compatibility with openmls=0.8.1
 0-8-1-storage-format = []
 # import a group (and the group-associated data it owns) exported from a previous
@@ -179,6 +181,30 @@ web-time = "1.1"
 name = "benchmark"
 harness = false
 
+# Every feature except `async`, so that the docs show the default sync API.
+# `--all-features` would not build because the SQLite storage behind
+# `sqlite-provider` only supports the sync mode. The docs CI workflows read this
+# list.
 [package.metadata.docs.rs]
-all-features = true
+features = [
+    "0-8-1-storage-format",
+    "migration-import",
+    "test-utils",
+    "backtrace",
+    "libcrux-provider",
+    "sqlite-provider",
+    "all-ciphersuites",
+    "generate-kats",
+    "crypto-debug",
+    "content-debug",
+    "js",
+    "virtual-clients-draft",
+    "virtual-clients-draft-test-dependencies",
+    "extensions-draft",
+    "extensions-draft-test-dependencies",
+    "targeted-messages-draft",
+    "draft-ietf-mls-pq-ciphersuites",
+    "fork-resolution",
+    "unchecked-conversions",
+]
 rustdoc-args = ["--cfg", "docsrs"]

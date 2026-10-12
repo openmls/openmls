@@ -248,9 +248,11 @@ impl PublicGroup {
         processed_message: ProcessedMessage,
         app_data_dict_updates: Option<AppDataUpdates>,
     ) -> Result<ProcessedMessage, ResolveAppDataCommitError> {
-        processed_message.resolve_app_data_commit(|unresolved_commit| {
-            self.stage_app_data_commit(crypto, unresolved_commit, app_data_dict_updates)
-        })
+        let (unresolved_commit, with_staged_commit) =
+            processed_message.split_unresolved_app_data_commit()?;
+        let staged_commit =
+            self.stage_app_data_commit(crypto, unresolved_commit, app_data_dict_updates)?;
+        Ok(with_staged_commit(staged_commit))
     }
 }
 

@@ -80,31 +80,35 @@ impl VcKeyPackageBatchBuilder {
     ///
     /// Nothing is persisted yet. Dropping the builder without calling `finalize` burns no
     /// generation.
-    pub fn new(
+    #[openmls_traits::maybe_async]
+    pub async fn new(
         provider: &impl OpenMlsProvider,
         emulation_group_id: &GroupId,
     ) -> Result<Self, KeyPackageNewError> {
-        Self::with_capacity(provider, emulation_group_id, 0)
+        Self::with_capacity(provider, emulation_group_id, 0).await
     }
 
     /// Same as [`Self::new`], but with a capacity hint for the number of key packages.
-    pub fn with_capacity(
+    #[openmls_traits::maybe_async]
+    pub async fn with_capacity(
         provider: &impl OpenMlsProvider,
         emulation_group_id: &GroupId,
         capacity: usize,
     ) -> Result<Self, KeyPackageNewError> {
-        let epoch_id = require_newest_vc_derivation_epoch(provider.storage(), emulation_group_id)?;
-        Self::with_capacity_at_epoch(provider, epoch_id, capacity)
+        let epoch_id =
+            require_newest_vc_derivation_epoch(provider.storage(), emulation_group_id).await?;
+        Self::with_capacity_at_epoch(provider, epoch_id, capacity).await
     }
 
     /// Same as [`Self::with_capacity`], but for an explicitly named derivation
     /// epoch instead of the emulation group's newest one.
-    pub(crate) fn with_capacity_at_epoch(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn with_capacity_at_epoch(
         provider: &impl OpenMlsProvider,
         epoch_id: EpochId,
         capacity: usize,
     ) -> Result<Self, KeyPackageNewError> {
-        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
+        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id).await?;
         let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
             state.into_parts();
         let (generation, operation_secret) = operation_tree.next_operation_secret(
@@ -189,7 +193,8 @@ impl VcKeyPackageBatchBuilder {
     ///
     /// [`KeyPackageUpload`]:
     ///     crate::components::vc_derivation_info::KeyPackageUpload
-    pub fn finalize(
+    #[openmls_traits::maybe_async]
+    pub async fn finalize(
         self,
         provider: &impl OpenMlsProvider,
     ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
@@ -227,6 +232,7 @@ impl VcKeyPackageBatchBuilder {
                 &self.operation_tree,
                 &materials,
             )
+            .await
             .map_err(|e| {
                 log::error!(
                     "vc: persist batch key package material in build_vc_batch failed: {e:?}"
@@ -237,6 +243,7 @@ impl VcKeyPackageBatchBuilder {
             provider
                 .storage()
                 .write_key_package(&info.key_package_ref, full_kp)
+                .await
                 .map_err(|_| KeyPackageNewError::StorageError)?;
         }
 
