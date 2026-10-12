@@ -48,17 +48,19 @@ pub use crate::binary_tree::{LeafNodeIndex, ParentNodeIndex};
 // TreeSync
 pub use crate::treesync::{
     errors::{ApplyUpdatePathError, PublicTreeError},
-    node::leaf_node::{Capabilities, CapabilitiesBuilder, LeafNode, LeafNodeParameters},
+    node::leaf_node::{
+        Capabilities, CapabilitiesBuilder, CapabilitiesPolicy, LeafNode, LeafNodeBuildError,
+        LeafNodeParameters,
+    },
     node::parent_node::ParentNode,
     node::Node,
     RatchetTreeIn,
 };
 
 // PSKs
-// TODO #751
-// pub use crate::schedule::psk::{
-//    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,
-// };
+pub use crate::schedule::psk::{
+    ExternalPsk, PreSharedKeyId, Psk, PskType, ResumptionPsk, ResumptionPskUsage,
+};
 
 // Targeted messages
 #[cfg(feature = "targeted-messages-draft")]

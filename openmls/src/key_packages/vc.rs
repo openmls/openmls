@@ -13,7 +13,7 @@ use crate::{
             load_vc_epoch_state_and_tree, merge_vc_derivation_info,
             require_newest_vc_derivation_epoch, resolve_vc_leaf_dictionary, DerivationInfo,
             DerivationInfoTbe, EpochEncryptionKey, EpochId, KeyPackageInfo, OperationSecret,
-            VirtualClientOperationType, VirtualClientsError,
+            RetainedKeyPackageMaterial, VirtualClientOperationType, VirtualClientsError,
         },
         vc_operation_tree::OperationSecretTree,
     },
@@ -24,6 +24,7 @@ use crate::{
         errors::KeyPackageNewError, KeyPackage, KeyPackageBuilder, KeyPackageBundle,
         KeyPackageLeafNodeParams,
     },
+    treesync::node::leaf_node::resolve_capabilities,
 };
 
 /// A batch of virtual-client KeyPackages a sibling can reproduce.
@@ -79,31 +80,35 @@ impl VcKeyPackageBatchBuilder {
     ///
     /// Nothing is persisted yet. Dropping the builder without calling `finalize` burns no
     /// generation.
-    pub fn new(
+    #[openmls_traits::maybe_async]
+    pub async fn new(
         provider: &impl OpenMlsProvider,
         emulation_group_id: &GroupId,
     ) -> Result<Self, KeyPackageNewError> {
-        Self::with_capacity(provider, emulation_group_id, 0)
+        Self::with_capacity(provider, emulation_group_id, 0).await
     }
 
     /// Same as [`Self::new`], but with a capacity hint for the number of key packages.
-    pub fn with_capacity(
+    #[openmls_traits::maybe_async]
+    pub async fn with_capacity(
         provider: &impl OpenMlsProvider,
         emulation_group_id: &GroupId,
         capacity: usize,
     ) -> Result<Self, KeyPackageNewError> {
-        let epoch_id = require_newest_vc_derivation_epoch(provider.storage(), emulation_group_id)?;
-        Self::with_capacity_at_epoch(provider, epoch_id, capacity)
+        let epoch_id =
+            require_newest_vc_derivation_epoch(provider.storage(), emulation_group_id).await?;
+        Self::with_capacity_at_epoch(provider, epoch_id, capacity).await
     }
 
     /// Same as [`Self::with_capacity`], but for an explicitly named derivation
     /// epoch instead of the emulation group's newest one.
-    pub(crate) fn with_capacity_at_epoch(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn with_capacity_at_epoch(
         provider: &impl OpenMlsProvider,
         epoch_id: EpochId,
         capacity: usize,
     ) -> Result<Self, KeyPackageNewError> {
-        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
+        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id).await?;
         let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) =
             state.into_parts();
         let (generation, operation_secret) = operation_tree.next_operation_secret(
@@ -176,15 +181,44 @@ impl VcKeyPackageBatchBuilder {
 
     /// Finalize the batch.
     ///
-    /// Persists the operation tree and the key packages. The operation is not atomic. On failure,
-    /// the generation should be considered as burned. Few orphaned key packages may be left in
-    /// storage.
-    pub fn finalize(
+    /// Persists the operation tree, a [`RetainedKeyPackageMaterial`] per key
+    /// package and the key packages. The material is what a sibling stores when
+    /// it processes the batch's [`KeyPackageUpload`]. It keeps the batch's
+    /// derivation epoch alive for as long as a key package can still be used to
+    /// join, also after the epoch was superseded. It goes with the key package,
+    /// see [`StorageProvider::delete_key_package`].
+    ///
+    /// The operation is not atomic. On failure, the generation should be
+    /// considered as burned. Few orphaned key packages may be left in storage.
+    ///
+    /// [`KeyPackageUpload`]:
+    ///     crate::components::vc_derivation_info::KeyPackageUpload
+    #[openmls_traits::maybe_async]
+    pub async fn finalize(
         self,
         provider: &impl OpenMlsProvider,
     ) -> Result<VcKeyPackageBatch, KeyPackageNewError> {
         if self.key_packages.is_empty() {
             return Err(KeyPackageNewError::EmptyBatch);
+        }
+
+        let mut materials = Vec::with_capacity(self.key_packages.len());
+        for (_, info) in &self.key_packages {
+            let key_package_seed_secret = self.operation_secret.derive_key_package_seed_secret(
+                provider.crypto(),
+                info.cipher_suite,
+                info.key_package_index,
+            )?;
+            let material = RetainedKeyPackageMaterial {
+                epoch_id: self.epoch_id.clone(),
+                leaf_index: self.emulation_leaf_index,
+                generation: self.generation,
+                key_package_ciphersuite: info.cipher_suite,
+                key_package_index: info.key_package_index,
+                key_package_seed_secret,
+                key_package_extensions: info.extensions.clone(),
+            };
+            materials.push((info.key_package_ref.clone(), material));
         }
 
         // Persist the advanced operation tree before the KeyPackages it backs.
@@ -193,15 +227,23 @@ impl VcKeyPackageBatchBuilder {
         // reuse the same key material under an unconsumed generation.
         provider
             .storage()
-            .write_vc_operation_tree(&self.epoch_id, &self.operation_tree)
+            .write_retained_key_package_material_batch(
+                &self.epoch_id,
+                &self.operation_tree,
+                &materials,
+            )
+            .await
             .map_err(|e| {
-                log::error!("vc: persist advanced operation tree in build_vc_batch failed: {e:?}");
+                log::error!(
+                    "vc: persist batch key package material in build_vc_batch failed: {e:?}"
+                );
                 VirtualClientsError::StorageError
             })?;
         for (full_kp, info) in &self.key_packages {
             provider
                 .storage()
                 .write_key_package(&info.key_package_ref, full_kp)
+                .await
                 .map_err(|_| KeyPackageNewError::StorageError)?;
         }
 
@@ -267,10 +309,15 @@ impl VcKeyPackageBatchBuilder {
         )
         .map_err(KeyPackageNewError::LibraryError)?;
 
+        let (capabilities, capabilities_policy) = resolve_capabilities(
+            builder.leaf_node_capabilities.clone(),
+            builder.capabilities_policy,
+        );
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: builder.key_package_lifetime.unwrap_or_default(),
-            capabilities: builder.leaf_node_capabilities.unwrap_or_default(),
+            capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         };
         let (key_package, encryption_key_pair) = KeyPackage::new_from_vc_keys(
             ciphersuite,
@@ -283,6 +330,7 @@ impl VcKeyPackageBatchBuilder {
         )?;
 
         let key_package_ref = key_package.hash_ref(crypto)?;
+        let extensions = key_package.extensions().clone();
         let full_kp = KeyPackageBundle {
             key_package,
             private_init_key: init_key_pair.private,
@@ -295,6 +343,7 @@ impl VcKeyPackageBatchBuilder {
                 key_package_ref,
                 cipher_suite: ciphersuite,
                 key_package_index,
+                extensions,
             },
         ))
     }

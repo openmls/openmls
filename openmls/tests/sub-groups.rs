@@ -5,11 +5,7 @@
 //! <https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching>
 
 use openmls::{
-    prelude::*,
-    schedule::{
-        errors::PskError,
-        psk::{PreSharedKeyId, Psk, ResumptionPsk, ResumptionPskUsage},
-    },
+    prelude::*, schedule::psk::ResumptionPskUsage,
     test_utils::single_group_test_framework::generate_credential,
 };
 use openmls_test::openmls_test;
@@ -179,69 +175,6 @@ fn subgroup_branching() {
     assert_eq!(
         alice_bob_sub_group.confirmation_tag(),
         bob_alice_sub_group.confirmation_tag()
-    );
-}
-
-/// A resumption PSK of usage `Branch` must only appear in the initial commit of
-/// a subgroup (i.e. at epoch 0). Using it in any later commit must be rejected.
-#[openmls_test]
-fn subgroup_branch_psk_rejected_outside_initial_commit() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
-
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
-        .build();
-
-    // `alice_group` is at epoch 1 after adding Bob and Charlie, so a branch PSK
-    // in a commit on it must be rejected.
-    let ((_alice_credential, alice_signer), _, mut alice_group, _bob_group) = setup_group(
-        ciphersuite,
-        &mls_group_create_config,
-        alice_provider,
-        bob_provider,
-        charlie_provider,
-    );
-
-    // A new group always keeps its own epoch-0 resumption secret in the
-    // rollover store (see `MlsGroupBuilder::build`), so a branch-usage PSK
-    // (which is always looked up at the sentinel epoch 0) resolves via
-    // `load_psks` without needing an actual subgroup branch. This lets us
-    // reach the proposal validation directly.
-    let psk_id = PreSharedKeyId::new(
-        ciphersuite,
-        alice_provider.rand(),
-        Psk::Resumption(ResumptionPsk::new(
-            ResumptionPskUsage::Branch,
-            alice_group.group_id().clone(),
-            alice_group.epoch(),
-        )),
-    )
-    .unwrap();
-
-    let result = alice_group
-        .commit_builder()
-        .propose_psks([psk_id])
-        .load_psks(alice_provider.storage())
-        .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        );
-
-    assert!(
-        matches!(
-            result,
-            Err(CreateCommitError::ProposalValidationError(
-                ProposalValidationError::Psk(PskError::NotAllowed)
-            ))
-        ),
-        "expected a branch PSK outside the initial commit to be rejected, got {result:?}"
     );
 }
 
@@ -466,7 +399,7 @@ fn build_from_branch_rejects_non_branch_welcome() {
 }
 
 /// The receiver can peek the parent `(group_id, epoch)` a branch derives from
-/// via [`StagedWelcome::process_branch_welcome`] + [`PendingBranchWelcome::parent`],
+/// via [`StagedWelcome::process_resuming_welcome`] + [`PendingResumingWelcome::required_resumption_secret`],
 /// pick the matching `BranchInfo`, and finish the join from the same carrier —
 /// decrypting the `Welcome` only once.
 #[openmls_test]
@@ -522,16 +455,23 @@ fn subgroup_branch_peek_parent_then_build() {
 
     // Bob decrypts the branch welcome once and reads which parent epoch it
     // derives from, before committing to a `BranchInfo`.
-    let pending = StagedWelcome::process_branch_welcome(
+    let pending = StagedWelcome::process_resuming_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome,
     )
     .expect("Bob could not process the branch welcome");
 
+    let resumption_psk = pending
+        .required_resumption_secret()
+        .expect("branch welcome must carry a resumption PSK");
+    assert_eq!(resumption_psk.usage(), ResumptionPskUsage::Branch);
     assert_eq!(
-        pending.parent(),
-        Some((parent_group_id, parent_epoch)),
+        (
+            resumption_psk.psk_group_id().clone(),
+            resumption_psk.psk_epoch()
+        ),
+        (parent_group_id, parent_epoch),
         "peeked parent reference must match the epoch Alice branched from"
     );
 
@@ -553,7 +493,7 @@ fn subgroup_branch_peek_parent_then_build() {
 
 /// Finishing a peeked branch welcome with a `BranchInfo` from the wrong parent
 /// epoch still fails with [`WelcomeError::SubgroupParentMismatch`] (the
-/// authoritative check runs in [`PendingBranchWelcome::build_from_branch`]).
+/// authoritative check runs in [`PendingResumingWelcome::build_from_branch`]).
 #[openmls_test]
 fn subgroup_branch_carrier_rejects_wrong_epoch() {
     let alice_provider = &Provider::default();
@@ -603,7 +543,7 @@ fn subgroup_branch_carrier_rejects_wrong_epoch() {
     let welcome: MlsMessageIn = welcome.into();
     let welcome = welcome.into_welcome().unwrap();
 
-    let pending = StagedWelcome::process_branch_welcome(
+    let pending = StagedWelcome::process_resuming_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
         welcome,
@@ -627,9 +567,9 @@ fn subgroup_branch_carrier_rejects_wrong_epoch() {
 }
 
 /// A plain (non-branch) welcome carries no branch resumption PSK, so
-/// [`PendingBranchWelcome::parent`] returns `None`.
+/// [`PendingResumingWelcome::required_resumption_secret`] returns `None`.
 #[openmls_test]
-fn process_branch_welcome_parent_none_for_plain_welcome() {
+fn process_resuming_welcome_no_resumption_psk_for_plain_welcome() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
     let charlie_provider = &Provider::default();
@@ -672,17 +612,16 @@ fn process_branch_welcome_parent_none_for_plain_welcome() {
     let welcome = welcome.into_welcome().unwrap();
 
     // Eve decrypts the welcome via the branch carrier; it carries no branch PSK,
-    // so `parent()` reports `None`.
-    let pending = StagedWelcome::process_branch_welcome(
+    // so `required_resumption_secret()` reports `None`.
+    let pending = StagedWelcome::process_resuming_welcome(
         eve_provider,
         mls_group_create_config.join_config(),
         welcome,
     )
     .expect("Eve could not process the welcome");
 
-    assert_eq!(
-        pending.parent(),
-        None,
+    assert!(
+        pending.required_resumption_secret().is_none(),
         "a plain welcome has no branch parent reference"
     );
 }

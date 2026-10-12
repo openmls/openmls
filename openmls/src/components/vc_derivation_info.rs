@@ -20,11 +20,12 @@ use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::{hash_ref::KeyPackageRef, Secret},
     components::vc_operation_tree::OperationSecretTree,
+    extensions::{Extension, Extensions, LastResortExtension},
     group::{
         mls_group::errors::RegisterVcDerivationEpochError, GroupEpoch, GroupId,
         VcDerivationEpochRetentionPolicy,
     },
-    key_packages::InitKey,
+    key_packages::{InitKey, KeyPackage},
     messages::PathSecret,
     schedule::application_export_tree::{ApplicationExportTree, ApplicationExportTreeError},
     treesync::node::encryption_keys::EncryptionKeyPair,
@@ -518,6 +519,7 @@ impl EpochId {
 ///   opaque key_package_ref<V>;
 ///   CipherSuite cipher_suite;
 ///   uint32 key_package_index;
+///   Extension extensions<V>;
 /// } KeyPackageInfo
 /// ```
 ///
@@ -525,7 +527,9 @@ impl EpochId {
 /// KeyPackage built by [`KeyPackageBuilder::build_vc_batch`]. `key_package_index`
 /// is the KeyPackage's position within the `key_package` operation batch: one
 /// operation secret covers the whole batch and each KeyPackage's seed is
-/// derived from it under this index.
+/// derived from it under this index. `extensions` is the KeyPackage's complete
+/// extensions vector, so a sibling can apply their semantics (such as last
+/// resort) when it processes a Welcome for the KeyPackage.
 ///
 /// [`HashReference`]: crate::ciphersuite::hash_ref::HashReference
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
@@ -537,6 +541,8 @@ pub struct KeyPackageInfo {
     pub cipher_suite: Ciphersuite,
     /// Position of this KeyPackage within the operation batch.
     pub key_package_index: u32,
+    /// The KeyPackage's extensions, in their original order.
+    pub extensions: Extensions<KeyPackage>,
 }
 
 /// Wire struct a virtual client uploads to a sibling so the sibling learns
@@ -575,16 +581,25 @@ pub struct KeyPackageUpload {
 
 /// Per-`KeyPackageRef` material a sibling retains when it processes a
 /// [`KeyPackageUpload`]. It captures what the Welcome path needs to later
-/// rederive the KeyPackage's init and leaf-encryption keys without touching
-/// the operation tree: the per-KeyPackage seed secret, plus the derivation
-/// epoch, leaf index, generation, and batch index used to validate the leaf
-/// found in the ratchet tree.
+/// rederive the KeyPackage's init and leaf-encryption keys without touching the
+/// operation tree: the per-KeyPackage seed secret, plus the derivation epoch,
+/// leaf index, generation, and batch index used to validate the leaf found in
+/// the ratchet tree. The sibling also keeps the KeyPackage's extensions, s.t.
+/// it can apply the corresponding semantics when processing a Welcome.
 ///
 /// The seed is pinned here at upload-processing time so the Welcome path stays
 /// independent of the operation tree's bounded out-of-order tolerance: a batch
 /// can hold more KeyPackages than that tolerance, and Welcomes can arrive in
 /// any order, yet every seed remains available because the single batch
 /// generation is consumed once and each seed is stored alongside its index.
+///
+/// The uploader stores the same material when it finalizes the batch, next to
+/// its KeyPackages. It joins through the KeyPackage itself, so for the uploader
+/// the material only keeps the derivation epoch alive, as it does for the
+/// sibling (see
+/// [`StorageProvider::delete_unreferenced_vc_derivation_epoch_states`]).
+///
+/// [`StorageProvider::delete_unreferenced_vc_derivation_epoch_states`]: openmls_traits::storage::StorageProvider::delete_unreferenced_vc_derivation_epoch_states
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RetainedKeyPackageMaterial {
     /// Derivation epoch the KeyPackage belongs to.
@@ -601,6 +616,18 @@ pub struct RetainedKeyPackageMaterial {
     /// Per-KeyPackage seed secret from which the init and leaf-encryption keys
     /// are derived at Welcome time.
     pub key_package_seed_secret: KeyPackageSeedSecret,
+    /// The KeyPackage's extensions, as listed in the upload. Records stored
+    /// before uploads carried extensions read back with only a last resort
+    /// extension.
+    #[serde(default = "last_resort_extensions")]
+    pub key_package_extensions: Extensions<KeyPackage>,
+}
+
+/// Outputs an extension vector that is empty except for a last-resort
+/// extension.
+fn last_resort_extensions() -> Extensions<KeyPackage> {
+    Extensions::single(Extension::LastResort(LastResortExtension::default()))
+        .expect("LastResort extensions are allowed in key packages")
 }
 
 /// Reject a batch whose [`KeyPackageInfo`] entries are not all distinct.
@@ -646,7 +673,8 @@ fn validate_key_package_infos(infos: &[KeyPackageInfo]) -> Result<(), VirtualCli
 /// registered for `epoch_id`.
 ///
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
-pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
+#[openmls_traits::maybe_async]
+pub async fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     epoch_id: EpochId,
     generation: u32,
@@ -655,6 +683,7 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
     validate_key_package_infos(&key_package_info)?;
     let state: VcDerivationEpochState = storage
         .vc_derivation_epoch_state(&epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load derivation epoch state in assemble upload failed: {e:?}");
             VirtualClientsError::StorageError
@@ -682,7 +711,8 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
 /// leaf-encryption keys are later derived from each seed under the same
 /// ciphersuite at Welcome time. The operation secret is dropped once all seeds
 /// are derived. The batch generation is consumed in the tree exactly once.
-pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+pub async fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
     provider: &Provider,
     upload: &KeyPackageUpload,
 ) -> Result<(), VirtualClientsError> {
@@ -696,6 +726,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
 
     let state: VcDerivationEpochState = storage
         .vc_derivation_epoch_state(&upload.epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load derivation epoch state in process upload failed: {e:?}");
             VirtualClientsError::StorageError
@@ -703,6 +734,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
         .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     let mut operation_tree: OperationSecretTree = storage
         .vc_operation_tree(&upload.epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load operation tree in process upload failed: {e:?}");
             VirtualClientsError::StorageError
@@ -735,12 +767,14 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
             key_package_ciphersuite: info.cipher_suite,
             key_package_index: info.key_package_index,
             key_package_seed_secret,
+            key_package_extensions: info.extensions.clone(),
         };
         materials.push((info.key_package_ref.clone(), material));
     }
 
     storage
         .write_retained_key_package_material_batch(&upload.epoch_id, &operation_tree, &materials)
+        .await
         .map_err(|e| {
             log::error!("vc: persist batch key package material in process upload failed: {e:?}");
             VirtualClientsError::StorageError
@@ -779,6 +813,8 @@ pub(crate) struct VcWelcomeMaterial {
     /// Leaf encryption keypair derived from the seed, used as the joiner's
     /// leaf keypair.
     pub(crate) encryption_keypair: EncryptionKeyPair,
+    /// Whether the KeyPackage carries a last resort extension.
+    pub(crate) last_resort: bool,
 }
 
 /// One registration in an emulation group's log of derivation epochs, stored
@@ -830,12 +866,13 @@ pub(crate) struct VcDerivationEpochLog {
 impl VcDerivationEpochLog {
     /// Reconstruct the log of `group_id` from its stored entries. The log is
     /// empty for a group that never registered a derivation epoch.
-    pub(crate) fn load<Storage: crate::storage::StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Self, Storage::Error> {
         let mut entries: Vec<VcDerivationEpochLogEntry> =
-            storage.vc_derivation_epoch_log_entries(group_id)?;
+            storage.vc_derivation_epoch_log_entries(group_id).await?;
         entries.sort_unstable_by_key(|entry| entry.sequence);
         // Entries are keyed by their epoch id in storage, so a duplicate id
         // cannot come from storage. It would mean two registrations derived
@@ -935,12 +972,14 @@ pub struct RegisteredVcDerivationEpoch {
 ///
 /// Read from storage, so the result reflects the state at the time of the
 /// call.
-pub(crate) fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     emulation_group_id: &GroupId,
 ) -> Result<Option<EpochId>, Storage::Error> {
-    let entries: Vec<VcDerivationEpochLogEntry> =
-        storage.vc_derivation_epoch_log_entries(emulation_group_id)?;
+    let entries: Vec<VcDerivationEpochLogEntry> = storage
+        .vc_derivation_epoch_log_entries(emulation_group_id)
+        .await?;
     Ok(entries
         .into_iter()
         .max_by_key(|entry| entry.sequence)
@@ -959,11 +998,13 @@ pub(crate) fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvide
 /// Returns [`VirtualClientsError::NoDerivationEpoch`] when no derivation epoch
 /// is registered, which is the case for every group that is not an emulation
 /// group.
-pub(crate) fn require_newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn require_newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     emulation_group_id: &GroupId,
 ) -> Result<EpochId, VirtualClientsError> {
     newest_vc_derivation_epoch(storage, emulation_group_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load newest derivation epoch for a new operation failed: {e:?}");
             VirtualClientsError::StorageError
@@ -1039,7 +1080,8 @@ impl<'a> VcDerivationEpochParams<'a> {
 /// `export_tree` when it is handed a fresh, unpunctured tree for that epoch,
 /// as a retried Welcome join does. Without the puncture the caller would
 /// persist a tree that can re-derive the consumed secret.
-pub(crate) fn register_vc_derivation_epoch<
+#[openmls_traits::maybe_async]
+pub(crate) async fn register_vc_derivation_epoch<
     Crypto: OpenMlsCrypto,
     Storage: crate::storage::StorageProvider,
 >(
@@ -1059,10 +1101,12 @@ pub(crate) fn register_vc_derivation_epoch<
     let export_tree =
         export_tree.ok_or(RegisterVcDerivationEpochError::MissingApplicationExportTree)?;
 
-    let mut log = VcDerivationEpochLog::load(storage, group_id).map_err(|e| {
-        log::error!("vc: load derivation epoch log before registration failed: {e:?}");
-        RegisterVcDerivationEpochError::Storage(e)
-    })?;
+    let mut log = VcDerivationEpochLog::load(storage, group_id)
+        .await
+        .map_err(|e| {
+            log::error!("vc: load derivation epoch log before registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
 
     // Puncture before consulting the log. A repeat for a registered epoch can
     // hold a fresh, unpunctured tree, and returning early on the log alone
@@ -1116,18 +1160,21 @@ pub(crate) fn register_vc_derivation_epoch<
 
     storage
         .write_vc_operation_tree(&epoch_id, &operation_tree)
+        .await
         .map_err(|e| {
             log::error!("vc: persist operation tree at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
         })?;
     storage
         .write_vc_derivation_epoch_state(&epoch_id, &state)
+        .await
         .map_err(|e| {
             log::error!("vc: persist derivation epoch state at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
         })?;
     storage
         .write_vc_derivation_epoch_log_entry(group_id, &epoch_id, &entry)
+        .await
         .map_err(|e| {
             log::error!("vc: persist derivation epoch log entry at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
@@ -1135,6 +1182,7 @@ pub(crate) fn register_vc_derivation_epoch<
     if !dropped.is_empty() {
         storage
             .delete_vc_derivation_epoch_log_entries(group_id, &dropped)
+            .await
             .map_err(|e| {
                 log::error!("vc: prune derivation epoch log at registration failed: {e:?}");
                 RegisterVcDerivationEpochError::Storage(e)
@@ -1145,6 +1193,7 @@ pub(crate) fn register_vc_derivation_epoch<
     // crashes left behind.
     storage
         .delete_unreferenced_vc_derivation_epoch_states::<EpochId>()
+        .await
         .map_err(|e| {
             log::error!("vc: release pruned derivation epochs at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
@@ -1216,7 +1265,10 @@ impl VcEmulationBindings {
 /// with the lowest group epochs. `max_entries` follows the group's
 /// message-secrets retention, so bindings age out in lockstep with the message
 /// secrets they are needed for.
-pub(crate) fn write_vc_emulation_binding_with_pruning<Storage: crate::storage::StorageProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn write_vc_emulation_binding_with_pruning<
+    Storage: crate::storage::StorageProvider,
+>(
     storage: &Storage,
     group_id: &GroupId,
     group_epoch: GroupEpoch,
@@ -1227,15 +1279,19 @@ pub(crate) fn write_vc_emulation_binding_with_pruning<Storage: crate::storage::S
         group_epoch,
         epoch_id: epoch_id.clone(),
     };
-    storage.write_vc_emulation_binding(group_id, &group_epoch, &epoch_id, &binding)?;
-    let mut bindings: Vec<VcEmulationBinding> = storage.vc_emulation_bindings(group_id)?;
+    storage
+        .write_vc_emulation_binding(group_id, &group_epoch, &epoch_id, &binding)
+        .await?;
+    let mut bindings: Vec<VcEmulationBinding> = storage.vc_emulation_bindings(group_id).await?;
     if bindings.len() > max_entries {
         bindings.sort_unstable_by_key(|binding| binding.group_epoch.as_u64());
         let stale: Vec<GroupEpoch> = bindings[..bindings.len() - max_entries]
             .iter()
             .map(|binding| binding.group_epoch)
             .collect();
-        storage.delete_vc_emulation_bindings(group_id, &stale)?;
+        storage
+            .delete_vc_emulation_bindings(group_id, &stale)
+            .await?;
     }
     Ok(())
 }
@@ -1881,7 +1937,8 @@ impl DerivationInfoTbe {
 /// returned [`VirtualClientsError`] into their own error type.
 ///
 /// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
-pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
     provider: &Provider,
     epoch_id: &EpochId,
 ) -> Result<
@@ -1896,6 +1953,7 @@ pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
     let storage = provider.storage();
     let state = storage
         .vc_derivation_epoch_state(epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load derivation epoch state failed: {e:?}");
             VirtualClientsError::StorageError
@@ -1903,6 +1961,7 @@ pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
         .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     let operation_tree = storage
         .vc_operation_tree(epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load operation tree failed: {e:?}");
             VirtualClientsError::StorageError
@@ -2095,11 +2154,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                extensions: Extensions::empty(),
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
+                extensions: Extensions::empty(),
             },
         ];
 
@@ -2142,11 +2203,13 @@ mod tests {
                     key_package_ref: ref_a.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    extensions: Extensions::empty(),
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
+                    extensions: Extensions::empty(),
                 },
             ],
         };
@@ -2180,6 +2243,45 @@ mod tests {
         assert_eq!(material_b.key_package_ciphersuite, CIPHERSUITE);
     }
 
+    #[test]
+    fn retained_material_without_extensions_deserializes_as_last_resort() {
+        let provider = OpenMlsRustCrypto::default();
+        let leaf_index = LeafNodeIndex::new(0);
+        let epoch_id = register_epoch_state(&provider, leaf_index);
+        let key_package_ref = KeyPackageRef::from_slice(b"kp-ref");
+        let upload = KeyPackageUpload {
+            epoch_id,
+            leaf_index,
+            generation: 0,
+            key_package_info: vec![KeyPackageInfo {
+                key_package_ref: key_package_ref.clone(),
+                cipher_suite: CIPHERSUITE,
+                key_package_index: 0,
+                extensions: Extensions::empty(),
+            }],
+        };
+        process_vc_key_package_upload(&provider, &upload).expect("process upload");
+        let material: RetainedKeyPackageMaterial = <MemoryStorage as StorageProvider<
+            CURRENT_VERSION,
+        >>::retained_key_package_material(
+            provider.storage(), &key_package_ref
+        )
+        .expect("read material")
+        .expect("material present");
+
+        let mut record = serde_json::to_value(&material).expect("serialize material");
+        record
+            .as_object_mut()
+            .expect("material serializes as an object")
+            .remove("key_package_extensions")
+            .expect("record has the extensions field");
+        let material: RetainedKeyPackageMaterial =
+            serde_json::from_value(record).expect("deserialize record without extensions");
+
+        assert_eq!(material.key_package_extensions, last_resort_extensions());
+        assert_eq!(material.key_package_index, 0);
+    }
+
     /// `delete_key_package` removes the associated retained VC material.
     #[test]
     fn delete_key_package_removes_vc_record() {
@@ -2195,6 +2297,7 @@ mod tests {
                 key_package_ref: kp_ref.clone(),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                extensions: Extensions::empty(),
             }],
         };
         process_vc_key_package_upload(&provider, &upload).expect("process upload");
@@ -2625,11 +2728,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
+                extensions: Extensions::empty(),
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 2,
+                extensions: Extensions::empty(),
             },
         ];
         let err = validate_key_package_infos(&infos).expect_err("duplicate index must be rejected");
@@ -2644,11 +2749,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                extensions: Extensions::empty(),
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
+                extensions: Extensions::empty(),
             },
         ];
         let err = validate_key_package_infos(&infos).expect_err("duplicate ref must be rejected");
@@ -2663,11 +2770,13 @@ mod tests {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-a"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 0,
+                extensions: Extensions::empty(),
             },
             KeyPackageInfo {
                 key_package_ref: KeyPackageRef::from_slice(b"kp-ref-b"),
                 cipher_suite: CIPHERSUITE,
                 key_package_index: 1,
+                extensions: Extensions::empty(),
             },
         ];
         validate_key_package_infos(&infos).expect("distinct infos must pass");
@@ -2693,11 +2802,13 @@ mod tests {
                     key_package_ref: ref_a.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    extensions: Extensions::empty(),
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    extensions: Extensions::empty(),
                 },
             ],
         };
@@ -2714,11 +2825,13 @@ mod tests {
                     key_package_ref: ref_a.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    extensions: Extensions::empty(),
                 },
                 KeyPackageInfo {
                     key_package_ref: ref_b.clone(),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
+                    extensions: Extensions::empty(),
                 },
             ],
         };
