@@ -2,7 +2,7 @@ use serde::Serialize;
 use sqlx::error::BoxDynError;
 
 /// A codec is used to serialize and deserialize OpenMLS data.
-pub trait Codec: Default {
+pub trait Codec: Default + Send + Sync {
     /// The error type used by the codec.
     type Error: std::error::Error + std::fmt::Debug + Send + Sync + 'static;
 

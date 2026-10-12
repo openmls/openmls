@@ -759,7 +759,8 @@ impl KeyPackageBuilder {
     }
 
     /// Finalize and build the key package.
-    pub fn build(
+    #[openmls_traits::maybe_async]
+    pub async fn build(
         mut self,
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
@@ -799,6 +800,7 @@ impl KeyPackageBuilder {
         provider
             .storage()
             .write_key_package(&full_kp.key_package.hash_ref(provider.crypto())?, &full_kp)
+            .await
             .map_err(|_| KeyPackageNewError::StorageError)?;
 
         Ok(full_kp)
@@ -844,7 +846,8 @@ impl KeyPackageBuilder {
     /// Returns [`KeyPackageNewError::EmptyBatch`] when `count` is 0, before
     /// loading any state or consuming a generation.
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn build_vc_batch(
+    #[openmls_traits::maybe_async]
+    pub async fn build_vc_batch(
         self,
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
@@ -864,7 +867,7 @@ impl KeyPackageBuilder {
             return Err(KeyPackageNewError::EmptyBatch);
         }
         let mut builder =
-            VcKeyPackageBatchBuilder::with_capacity(provider, emulation_group_id, count)?;
+            VcKeyPackageBatchBuilder::with_capacity(provider, emulation_group_id, count).await?;
         for _ in 0..count {
             builder.add_key_package(
                 self.clone(),
@@ -874,7 +877,7 @@ impl KeyPackageBuilder {
                 credential_with_key.clone(),
             )?;
         }
-        builder.finalize(provider)
+        builder.finalize(provider).await
     }
 }
 

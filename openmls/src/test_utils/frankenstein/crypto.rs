@@ -83,7 +83,8 @@ impl FrankenWelcome {
     /// This method is meant for tests that need to manipulate the encrypted contents.
     ///
     /// The implementation is roughly inspired by `mls_group::creation::decrypt_group_secrets`, without validity checks.
-    pub fn open<Crypto, Storage>(
+    #[openmls_traits::maybe_async]
+    pub async fn open<Crypto, Storage>(
         &self,
         crypto: &Crypto,
         storage: &Storage,
@@ -99,7 +100,7 @@ impl FrankenWelcome {
             .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
 
         // Find and decrypt GroupSecrets addressed to us
-        let (key_material, egs) = self.find_decryptable_secret(storage)?;
+        let (key_material, egs) = self.find_decryptable_secret(storage).await?;
         let group_secrets_plaintext = hpke::decrypt_with_label(
             key_material.init_private_key(),
             "Welcome",
@@ -115,7 +116,9 @@ impl FrankenWelcome {
         // Derive keys for GroupInfo
         let (welcome_key, welcome_nonce) = group_secrets.welcome_keys(
             ciphersuite,
-            group_secrets.psk_secret(ciphersuite, crypto, storage)?,
+            group_secrets
+                .psk_secret(ciphersuite, crypto, storage)
+                .await?,
             crypto,
         )?;
 
@@ -136,7 +139,8 @@ impl FrankenWelcome {
     /// Performs no semantic checks.
     ///
     /// This method is meant for tests that need to manipulate the encrypted contents.
-    pub fn seal<Crypto, Storage>(
+    #[openmls_traits::maybe_async]
+    pub async fn seal<Crypto, Storage>(
         ciphersuite: Ciphersuite,
         group_secrets: &FrankenGroupSecrets,
         group_info: &FrankenGroupInfo,
@@ -154,7 +158,9 @@ impl FrankenWelcome {
         group_info.resign(signer);
 
         // Seal GroupInfo
-        let psk_secret = group_secrets.psk_secret(ciphersuite, crypto, storage)?;
+        let psk_secret = group_secrets
+            .psk_secret(ciphersuite, crypto, storage)
+            .await?;
         let (welcome_key, welcome_nonce) =
             group_secrets.welcome_keys(ciphersuite, psk_secret, crypto)?;
         let encrypted_group_info = welcome_key
@@ -213,7 +219,8 @@ impl FrankenWelcome {
     /// Finds the first `EncryptedGroupSecret` in this `Welcome` that corresponds to a `KeyPackageBundle` in `storage`.
     ///
     /// Combines [`crate::group::mls_group::creation::keys_for_welcome`] and [`Welcome::find_encrypted_group_secret`]
-    pub(crate) fn find_decryptable_secret<Storage>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn find_decryptable_secret<Storage>(
         &self,
         storage: &Storage,
     ) -> Result<(WelcomeKeyMaterial, &FrankenEncryptedGroupSecrets), WelcomeError<Storage::Error>>
@@ -225,6 +232,7 @@ impl FrankenWelcome {
             let hash_ref = &HashReference::from_slice(egs.new_member.as_slice());
             if let Some(key_package_bundle) = storage
                 .key_package(hash_ref)
+                .await
                 .map_err(WelcomeError::StorageError)?
             {
                 return Ok((
@@ -239,7 +247,8 @@ impl FrankenWelcome {
     /// Create a FrankenWelcome from `self` with updated, sealed content.
     ///
     /// Equivalent to using [`Self::open`] and [`Self::seal`].
-    pub fn with_sealed_update<F, InvitedProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn with_sealed_update<F, InvitedProvider>(
         &self,
         signer: &impl Signer,
         signer_provider: &impl OpenMlsProvider,
@@ -253,6 +262,7 @@ impl FrankenWelcome {
     {
         let (mut ciphersuite, mut group_secrets, mut group_info) = self
             .open(invited_provider.crypto(), invited_provider.storage())
+            .await
             .expect("failed to open FrankenWelcome");
 
         f(&mut ciphersuite, &mut group_secrets, &mut group_info);
@@ -269,6 +279,7 @@ impl FrankenWelcome {
             signer_provider.crypto(),
             signer_provider.storage(),
         )
+        .await
         .expect("failed to seal FrankenWelcome")
     }
 }
@@ -278,7 +289,8 @@ impl FrankenGroupSecrets {
         self.psks.iter().clone().map(Into::into).collect()
     }
 
-    pub fn psk_secret<Crypto, Storage>(
+    #[openmls_traits::maybe_async]
+    pub async fn psk_secret<Crypto, Storage>(
         &self,
         ciphersuite: Ciphersuite,
         crypto: &Crypto,
@@ -294,7 +306,8 @@ impl FrankenGroupSecrets {
             // No resumption keys for now
             &ResumptionPskStore::new(0),
             psk_ids.as_slice(),
-        )?;
+        )
+        .await?;
         let psk_secret = PskSecret::new(crypto, ciphersuite, psks)?;
         Ok(psk_secret)
     }
