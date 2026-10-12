@@ -4629,13 +4629,15 @@ fn vc_emulation_rejects_misconfigured_leaf_before_allocating() {
     let (alice_credential, alice_signer) =
         new_credential(&provider, b"Alice", ciphersuite.signature_algorithm());
 
-    // The leaf advertises `AppDataDictionary` support but carries no
+    // The leaf advertises `AppDataDictionary` support and an empty
     // `AppComponents` entry, so `VC_COMPONENT_ID` is not listed.
     let group_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
         .capabilities(vc_capabilities(ciphersuite))
+        .with_leaf_node_extensions(openmls::test_utils::app_components_leaf_extensions(vec![]))
+        .expect("attach leaf-node extensions")
         .build();
     let mut alice_group = MlsGroup::new(&provider, &alice_signer, &group_config, alice_credential)
         .expect("create alice group");

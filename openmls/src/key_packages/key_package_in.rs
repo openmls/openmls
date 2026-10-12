@@ -136,6 +136,8 @@ impl KeyPackageIn {
     /// * make sure that the lifetime is valid
     /// * make sure that the init key and the encryption key are different
     /// * make sure that the protocol version is valid
+    /// * make sure that the leaf node advertises `app_components` if it
+    ///   supports `app_data_dictionary` (with the `extensions-draft` feature)
     ///
     /// Returns a [`KeyPackage`] after having verified the signature or a
     /// [`KeyPackageVerifyError`] otherwise.
@@ -201,6 +203,12 @@ impl KeyPackageIn {
         {
             return Err(KeyPackageVerifyError::UnsupportedExtension);
         }
+
+        #[cfg(feature = "extensions-draft")]
+        crate::treesync::node::leaf_node::validate_app_components_advertised(
+            key_package.payload.leaf_node.capabilities(),
+            key_package.payload.leaf_node.extensions(),
+        )?;
 
         // Ensure validity of the life time extension in the leaf node.
         if let Some(life_time) = key_package.payload.leaf_node.life_time() {

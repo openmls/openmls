@@ -5,6 +5,8 @@
 use openmls_traits::types::Ciphersuite;
 use thiserror::Error;
 
+#[cfg(feature = "extensions-draft")]
+use crate::treesync::errors::LeafNodeValidationError;
 use crate::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
@@ -48,6 +50,10 @@ pub enum KeyPackageVerifyError {
     /// The provided extension is not allowed in key packages
     #[error(transparent)]
     ExtensionTypeNotValidInKeyPackage(#[from] ExtensionTypeNotValidInKeyPackageError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[cfg(feature = "extensions-draft")]
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// KeyPackage extension support error

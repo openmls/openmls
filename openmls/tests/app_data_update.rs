@@ -4,7 +4,7 @@ use openmls::component::*;
 use openmls::extensions::*;
 use openmls::group::ProposalStore;
 use openmls::prelude::*;
-use openmls::test_utils::single_group_test_framework::*;
+use openmls::test_utils::{app_components_leaf_extensions, single_group_test_framework::*};
 use openmls_test::openmls_test;
 
 fn setup<'a, Provider: OpenMlsProvider>(
@@ -41,12 +41,15 @@ fn setup<'a, Provider: OpenMlsProvider>(
     let bob_pre_group = bob_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(capabilities.clone())
+        .with_leaf_node_extensions(app_components_leaf_extensions(vec![]))
         .build();
 
     // Define the MlsGroup configuration
     let create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .capabilities(capabilities.clone())
+        .with_leaf_node_extensions(app_components_leaf_extensions(vec![]))
+        .unwrap()
         .use_ratchet_tree_extension(true)
         // so that commit messages are PublicMessages, which can be deserialized
         // using the tools in test_utils::frankenstein
@@ -218,6 +221,7 @@ fn test_app_data_update_with_welcome() {
             Some(&[ProposalType::AppDataUpdate]),
             Some(&[CredentialType::Basic]),
         ))
+        .with_leaf_node_extensions(app_components_leaf_extensions(vec![]))
         .build();
 
     let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);

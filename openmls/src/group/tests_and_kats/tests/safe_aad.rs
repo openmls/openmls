@@ -14,7 +14,7 @@ use crate::{
         *,
     },
     key_packages::{KeyPackage, KeyPackageBundle},
-    test_utils::frankenstein,
+    test_utils::{app_components_leaf_extensions, frankenstein},
     treesync::{node::leaf_node::Capabilities, LeafNodeParameters},
 };
 
@@ -49,6 +49,7 @@ fn key_package_with_app_data_dictionary_support<Provider: crate::storage::OpenMl
 ) -> KeyPackageBundle {
     KeyPackage::builder()
         .leaf_node_capabilities(safe_aad_capabilities(ciphersuite))
+        .leaf_node_extensions(app_components_leaf_extensions(vec![]))
         .build(
             ciphersuite,
             provider,
@@ -87,7 +88,9 @@ fn create_group_pair<Provider: crate::storage::OpenMlsProvider>(
     let builder = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .wire_format_policy(wire_format_policy)
-        .capabilities(safe_aad_capabilities(ciphersuite));
+        .capabilities(safe_aad_capabilities(ciphersuite))
+        .with_leaf_node_extensions(app_components_leaf_extensions(vec![]))
+        .unwrap();
 
     let mls_group_create_config = if safe_aad_required {
         builder
@@ -270,6 +273,8 @@ fn safe_aad_set_rejects_invalid_items() {
         .ciphersuite(ciphersuite)
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .capabilities(safe_aad_capabilities(ciphersuite))
+        .with_leaf_node_extensions(app_components_leaf_extensions(vec![]))
+        .unwrap()
         .with_group_context_extensions(app_data_dictionary_with_safe_aad(vec![]))
         .build();
 

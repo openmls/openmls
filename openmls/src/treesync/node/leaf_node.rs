@@ -783,9 +783,44 @@ impl LeafNode {
     /// - the used extensions are not known to be invalid in leaf nodes
     /// - the types of the used extensions are covered by the capabilities
     /// - the type of the credential is covered by the capabilities
+    /// - `app_components` is advertised if `app_data_dictionary` is supported
     pub(crate) fn validate_locally(&self) -> Result<(), LeafNodeValidationError> {
         self.payload.validate_locally()
     }
+}
+
+/// Check that a leaf node advertising `app_data_dictionary` support also
+/// advertises its supported components.
+#[cfg(feature = "extensions-draft")]
+pub(crate) fn validate_app_components_advertised(
+    capabilities: &Capabilities,
+    extensions: &Extensions<LeafNode>,
+) -> Result<(), LeafNodeValidationError> {
+    use crate::component::{ComponentId, ComponentType, ComponentsList};
+    use tls_codec::DeserializeBytes as _;
+
+    if !capabilities
+        .extensions()
+        .contains(&ExtensionType::AppDataDictionary)
+    {
+        return Ok(());
+    }
+
+    let app_components = extensions.app_data_dictionary().and_then(|extension| {
+        extension
+            .dictionary()
+            .get(&ComponentId::from(ComponentType::AppComponents))
+    });
+    let Some(app_components) = app_components else {
+        log::error!("Leaf node supports app_data_dictionary but does not advertise app_components");
+        return Err(LeafNodeValidationError::AppComponentsNotAdvertised);
+    };
+    if let Err(e) = ComponentsList::tls_deserialize_exact_bytes(app_components) {
+        log::error!("Leaf node's app_components entry is malformed: {e:?}");
+        return Err(LeafNodeValidationError::AppComponentsNotAdvertised);
+    }
+
+    Ok(())
 }
 
 /// The payload of a [`LeafNode`]
@@ -839,6 +874,7 @@ impl LeafNodePayload {
     /// - the used extensions are not known to be invalid in leaf nodes
     /// - the types of the used extensions are covered by the capabilities
     /// - the type of the credential is covered by the capabilities
+    /// - `app_components` is advertised if `app_data_dictionary` is supported
     ///
     /// This lives on the payload rather than on [`LeafNode`] so that leaf
     /// construction can run it *before* signing, and so that a leaf we build
@@ -882,6 +918,9 @@ impl LeafNodePayload {
         {
             return Err(LeafNodeValidationError::CredentialNotInCapabilities);
         }
+
+        #[cfg(feature = "extensions-draft")]
+        validate_app_components_advertised(&self.capabilities, &self.extensions)?;
 
         Ok(())
     }

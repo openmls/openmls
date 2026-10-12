@@ -44,6 +44,8 @@ Next, we crate the group.
 ## Group Setup
 
 Both the group and its members must advertise support for `AppDataUpdate` proposals and the `AppDataDictionary` extension. This is done through capabilities and required capabilities.
+
+A leaf node that lists the `AppDataDictionary` extension in its capabilities must also carry an `AppDataDictionary` extension with an `app_components` entry. That entry lists the components the client supports, here the counter component. OpenMLS refuses to create such a leaf node without the entry and rejects leaf nodes from other members that lack it.
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_app_data.rs:group_setup}}
 ```
