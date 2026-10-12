@@ -585,41 +585,35 @@ pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
                 let psk_secret = match resumption.usage() {
                     // Application PSKs are looked up by their own epoch.
                     ResumptionPskUsage::Application => {
-                        if let Some(group_id) = group_id {
-                            if &resumption.psk_group_id != group_id {
-                                // The application resumption PSK does not refer to this group.
-                                return Err(PskError::DifferentGroupId {
-                                    expected: group_id.clone(),
-                                    got: resumption.psk_group_id.clone(),
-                                });
-                            }
-                            if let Some(psk_bundle) =
-                                resumption_psk_store.get(resumption.psk_epoch())
-                            {
-                                (psk_id, psk_bundle.secret.clone())
-                            } else {
-                                // The application resumption PSK either points to a future epoch or is already evicted.
-                                return Err(PskError::KeyNotFound);
-                            }
-                        } else {
+                        let Some(group_id) = group_id else {
                             // If the group ID is not yet known (i.e. in processing a Welcome),
                             // usage application cannot be used.
                             return Err(PskError::NotAllowed);
+                        };
+                        if &resumption.psk_group_id != group_id {
+                            // The application resumption PSK does not refer to this group.
+                            return Err(PskError::DifferentGroupId {
+                                expected: group_id.clone(),
+                                got: resumption.psk_group_id.clone(),
+                            });
+                        }
+                        if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
+                            (psk_id, psk_bundle.secret.clone())
+                        } else {
+                            // The application resumption PSK either points to a future epoch or is already evicted.
+                            return Err(PskError::KeyNotFound);
                         }
                     }
                     // The branch and reinit PSK is not in this group's resumption store: it
                     // comes from the parent or predecessor group.
                     ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit => {
-                        if let Some((foreign_psk_id, foreign_psk_secret)) =
-                            foreign_resumption_psk.take()
-                        {
-                            if foreign_psk_id == psk_id {
+                        match foreign_resumption_psk.take() {
+                            Some((foreign_psk_id, foreign_psk_secret))
+                                if foreign_psk_id == psk_id =>
+                            {
                                 (psk_id, foreign_psk_secret.secret)
-                            } else {
-                                return Err(PskError::KeyNotFound);
                             }
-                        } else {
-                            return Err(PskError::KeyNotFound);
+                            _ => return Err(PskError::KeyNotFound),
                         }
                     }
                 };
