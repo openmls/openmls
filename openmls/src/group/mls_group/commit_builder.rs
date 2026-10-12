@@ -120,7 +120,8 @@ pub struct Initial {
     leaf_node_parameters: LeafNodeParameters,
     external_commit_info: Option<ExternalCommitInfo>,
 
-    /// The bare AAD to use for this commit. If it is set, the one from the group is ignored.
+    /// The bare AAD to use for this commit. If it is set, the one from the group is not used for
+    /// this commit, but it is still reset by `stage_commit`.
     bare_aad: Option<Vec<u8>>,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
@@ -156,7 +157,8 @@ pub struct LoadedPsks {
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
 
-    /// The AAD to use for this commit. If it is set, the one from the group is ignored and left untouched.
+    /// The bare AAD to use for this commit. If it is set, the one from the group is not used for
+    /// this commit, but it is still reset by `stage_commit`.
     bare_aad: Option<Vec<u8>>,
 
     #[cfg(feature = "extensions-draft")]
@@ -525,8 +527,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         self
     }
 
-    /// The AAD to use for this commit. If it is set, the one from the group is ignored, but will
-    /// still be overwritten.
+    /// The AAD to use for this commit. If it is set, the AAD set on the group via
+    /// [`MlsGroup::set_aad`] is not used for this commit. It is still reset when the commit is
+    /// staged, just as it would be if this method had not been called.
     pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
         self.stage.bare_aad = Some(aad);
         self
