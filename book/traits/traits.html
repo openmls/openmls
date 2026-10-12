@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c97894be.js";
+            window.path_to_searchindex_js = "../searchindex-c24e8b80.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5c7e1a74.js"></script>
@@ -297,9 +297,20 @@ value (in which case they are an <code>Entity</code>).</p>
 <pre><code class="language-rust no_run noplayground">/// Key is a trait implemented by all types that serve as a key (in the database sense) to in the
 /// storage. For example, a GroupId is a key to the stored entities for the group with that id.
 /// The point of a key is not to be stored, it's to address something that is stored.
-pub trait Key&lt;const VERSION: u16&gt;: Serialize {}</code></pre>
+pub trait Key&lt;const VERSION: u16&gt;: Serialize + MaybeSync {}</code></pre>
 <pre><code class="language-rust no_run noplayground">/// Entity is a trait implemented by the values being stored.
-pub trait Entity&lt;const VERSION: u16&gt;: Serialize + DeserializeOwned {}</code></pre>
+pub trait Entity&lt;const VERSION: u16&gt;: Serialize + DeserializeOwned + MaybeSync {}</code></pre>
+<h4 id="sync-and-async-mode"><a class="header" href="#sync-and-async-mode">Sync and async mode</a></h4>
+<p>The storage traits come in a sync and an async flavor. The source shown on this
+page uses the async signatures, which return <code>impl Future&lt;Output = ...&gt; + Send</code>.
+In the default sync mode the same methods return the output type directly, and
+<code>MaybeSync</code> and <code>MaybeSend</code> place no bounds on the types.</p>
+<p>The async mode is enabled with the <code>async</code> feature of <code>openmls</code> or
+<code>openmls_traits</code>. It applies to the whole build as soon as one crate enables it.
+In async mode the provider and the keys and entities must be <code>Sync</code>, and the
+error type must be <code>Send</code>. An implementation that supports both modes writes the
+methods as <code>async fn</code> and marks the <code>impl</code> block with
+<code>#[openmls_traits::maybe_async(AFIT)]</code>.</p>
 <p>An implementation of the storage trait should ensure that it can address and
 efficiently handle values.</p>
 <h4 id="example-key-packages"><a class="header" href="#example-key-packages">Example: Key packages</a></h4>
@@ -315,7 +326,7 @@ The application needs to implement some logic to manage last resort key packages
         &amp;self,
         hash_ref: &amp;HashReference,
         key_package: &amp;KeyPackage,
-    ) -&gt; Result&lt;(), Self::Error&gt;;</code></pre>
+    ) -&gt; impl Future&lt;Output = Result&lt;(), Self::Error&gt;&gt; + Send;</code></pre>
 <p>The application may store the hash references in a separate list with a validity
 period.</p>
 <pre><code class="language-rust ro_run noplayground">fn write_key_package&lt;
