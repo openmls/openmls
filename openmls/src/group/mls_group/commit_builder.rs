@@ -120,7 +120,7 @@ pub struct Initial {
     leaf_node_parameters: LeafNodeParameters,
     external_commit_info: Option<ExternalCommitInfo>,
 
-    /// The bare AAD to use for this commit. If it is set, the one from the group is ignored and left untouched.
+    /// The bare AAD to use for this commit. If it is set, the one from the group is ignored.
     bare_aad: Option<Vec<u8>>,
 
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
@@ -525,7 +525,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         self
     }
 
-    /// The AAD to use for this commit. If it is set, the one from the group is ignored and left untouched.
+    /// The AAD to use for this commit. If it is set, the one from the group is ignored, but will
+    /// still be overwritten.
     pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
         self.stage.bare_aad = Some(aad);
         self

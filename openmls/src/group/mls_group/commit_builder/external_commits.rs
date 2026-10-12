@@ -122,7 +122,8 @@ impl ExternalCommitBuilder {
     }
 
     /// Specifies additional authenticated data (AAD) to be included in the
-    /// external commit.
+    /// external commit. If it is set, the one from the group is ignored, but
+    /// will still be overwritten.
     pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
         self.aad = aad;
         self
