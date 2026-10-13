@@ -92,11 +92,11 @@ fn create_group_with_members<Provider: OpenMlsProvider>(
         })
 }
 
-struct ProposalValidationTestSetup {
-    alice_group: MlsGroup,
-    alice_credential_with_key_and_signer: CredentialWithKeyAndSigner,
-    bob_group: MlsGroup,
-    bob_credential_with_key_and_signer: CredentialWithKeyAndSigner,
+pub(super) struct ProposalValidationTestSetup {
+    pub(super) alice_group: MlsGroup,
+    pub(super) alice_credential_with_key_and_signer: CredentialWithKeyAndSigner,
+    pub(super) bob_group: MlsGroup,
+    pub(super) bob_credential_with_key_and_signer: CredentialWithKeyAndSigner,
 }
 
 // Creates a standalone group
@@ -132,7 +132,7 @@ fn new_test_group(
 }
 
 // Validation test setup
-fn validation_test_setup(
+pub(super) fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
     alice_provider: &impl OpenMlsProvider,
@@ -193,7 +193,7 @@ fn validation_test_setup(
     }
 }
 
-fn insert_proposal_and_resign(
+pub(super) fn insert_proposal_and_resign(
     provider: &impl OpenMlsProvider,
     ciphersuite: Ciphersuite,
     mut proposal_or_ref: Vec<ProposalOrRef>,

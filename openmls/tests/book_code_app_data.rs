@@ -7,8 +7,12 @@
 #![cfg(feature = "extensions-draft")]
 
 use openmls::test_utils::single_group_test_framework::*;
-use openmls::{component::ComponentId, prelude::*};
+use openmls::{
+    component::{ComponentId, ComponentType, ComponentsList},
+    prelude::*,
+};
 use openmls_test::openmls_test;
+use tls_codec::Serialize as _;
 
 // ANCHOR: component_definition
 /// Our counter component ID (in the private range 0x8000..0xffff)
@@ -111,21 +115,41 @@ fn setup_group_with_app_data_support<'a, Provider: OpenMlsProvider>(
             &[],                                 // required credentials
         ));
 
-    // Create pre-group states with the capabilities
+    // A leaf that supports the AppDataDictionary extension must advertise the
+    // components it supports in the `app_components` entry of its own
+    // AppDataDictionary extension
+    let app_components = ComponentsList::new(vec![COUNTER_COMPONENT_ID])
+        .tls_serialize_detached()
+        .expect("failed to serialize the components list");
+    let mut leaf_dictionary = AppDataDictionary::new();
+    leaf_dictionary.insert(
+        ComponentId::from(ComponentType::AppComponents),
+        app_components,
+    );
+    let leaf_node_extensions = Extensions::single(Extension::AppDataDictionary(
+        AppDataDictionaryExtension::new(leaf_dictionary),
+    ))
+    .expect("valid extensions");
+
+    // Create pre-group states with the capabilities and leaf node extensions
     let alice_pre_group = alice_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(capabilities.clone())
+        .with_leaf_node_extensions(leaf_node_extensions.clone())
         .build();
 
     let bob_pre_group = bob_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(capabilities.clone())
+        .with_leaf_node_extensions(leaf_node_extensions.clone())
         .build();
 
     // Configure the group with required capabilities
     let create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .capabilities(capabilities)
+        .with_leaf_node_extensions(leaf_node_extensions)
+        .expect("leaf node extensions are covered by the capabilities")
         .use_ratchet_tree_extension(true)
         .with_group_context_extensions(
             Extensions::single(required_capabilities_extension).expect("valid extensions"),

@@ -60,6 +60,32 @@ pub fn minimal_capabilities_for(ciphersuite: Ciphersuite) -> CapabilitiesBuilder
         .credentials(vec![CredentialType::Basic])
 }
 
+/// Build leaf node extensions holding an `app_data_dictionary` whose
+/// `app_components` entry lists `component_ids`.
+#[cfg(feature = "extensions-draft")]
+pub fn app_components_leaf_extensions(
+    component_ids: Vec<crate::component::ComponentId>,
+) -> crate::extensions::Extensions<crate::treesync::LeafNode> {
+    use crate::{
+        component::{ComponentId, ComponentType, ComponentsList},
+        extensions::{AppDataDictionary, AppDataDictionaryExtension, Extension, Extensions},
+    };
+    use tls_codec::Serialize as _;
+
+    let app_components = ComponentsList::new(component_ids)
+        .tls_serialize_detached()
+        .expect("serializing a ComponentsList must succeed");
+    let mut dictionary = AppDataDictionary::new();
+    dictionary.insert(
+        ComponentId::from(ComponentType::AppComponents),
+        app_components,
+    );
+    Extensions::single(Extension::AppDataDictionary(
+        AppDataDictionaryExtension::new(dictionary),
+    ))
+    .expect("an app_data_dictionary extension is valid in a leaf node")
+}
+
 pub(crate) fn write(file_name: &str, obj: impl Serialize) {
     let mut file = match File::create(file_name) {
         Ok(f) => f,

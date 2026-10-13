@@ -256,6 +256,12 @@ pub enum LeafNodeValidationError {
     /// The credential used by a member is not supported by this leaf node.
     #[error("The credential used by a member is not supported by this leaf node.")]
     MemberCredentialNotSupportedByLeafNode,
+    /// The leaf node lists `app_data_dictionary` in its capabilities but its
+    /// `app_data_dictionary` extension has no well-formed `app_components`
+    /// entry.
+    #[cfg(feature = "extensions-draft")]
+    #[error("The leaf node supports app_data_dictionary but does not advertise app_components.")]
+    AppComponentsNotAdvertised,
 }
 
 /// Errors that can happen during lifetime validation.

@@ -375,6 +375,7 @@ fn safe_aad_group_pair<P: OpenMlsProvider>(
     );
     let bob_key_package = KeyPackage::builder()
         .leaf_node_capabilities(vc_capabilities(GROUP_CIPHERSUITE))
+        .leaf_node_extensions(crate::test_utils::app_components_leaf_extensions(vec![]))
         .build(GROUP_CIPHERSUITE, bob_provider, &bob_signer, bob_credential)
         .expect("bob KP build");
     let (_commit, welcome, _group_info) = alice_group

@@ -2,6 +2,8 @@
 
 mod aad;
 #[cfg(feature = "extensions-draft")]
+mod app_components_advertisement;
+#[cfg(feature = "extensions-draft")]
 mod app_data_update_proposal_validation;
 #[cfg(feature = "extensions-draft")]
 mod safe_aad;

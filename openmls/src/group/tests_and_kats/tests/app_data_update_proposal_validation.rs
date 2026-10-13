@@ -4,7 +4,9 @@ use crate::group::tests_and_kats::utils::{
     generate_credential_with_key, CredentialWithKeyAndSigner,
 };
 use crate::prelude::*;
-use crate::test_utils::{frankenstein::*, single_group_test_framework::*};
+use crate::test_utils::{
+    app_components_leaf_extensions, frankenstein::*, single_group_test_framework::*,
+};
 use openmls_test::openmls_test;
 
 fn setup<'a, Provider: OpenMlsProvider>(
@@ -39,12 +41,15 @@ fn setup<'a, Provider: OpenMlsProvider>(
     let bob_pre_group = bob_party
         .pre_group_builder(ciphersuite)
         .with_leaf_node_capabilities(capabilities.clone())
+        .with_leaf_node_extensions(app_components_leaf_extensions(vec![]))
         .build();
 
     // Define the MlsGroup configuration
     let create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .capabilities(capabilities.clone())
+        .with_leaf_node_extensions(app_components_leaf_extensions(vec![]))
+        .unwrap()
         .use_ratchet_tree_extension(true)
         // so that commit messages are PublicMessages, which can be deserialized
         // using the tools in test_utils::frankenstein
@@ -833,6 +838,8 @@ fn test_external_commit_with_app_data_update_proposal() {
         .ciphersuite(ciphersuite)
         .with_wire_format_policy(crate::group::PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .with_capabilities(capabilities.clone())
+        .with_leaf_node_extensions(app_components_leaf_extensions(vec![]))
+        .unwrap()
         .with_group_context_extensions(Extensions::single(required_capabilities_extension).unwrap())
         .build(alice_provider, &alice_signer, alice_credential_with_key)
         .unwrap();
@@ -914,6 +921,7 @@ fn test_external_commit_with_app_data_update_proposal() {
         .leaf_node_parameters(
             LeafNodeParameters::builder()
                 .with_capabilities(capabilities)
+                .with_extensions(app_components_leaf_extensions(vec![]))
                 .build(),
         )
         .add_app_data_update_proposal(AppDataUpdateProposal::update(0xf043, b"charlie"))
