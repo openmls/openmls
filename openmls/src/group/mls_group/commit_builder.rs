@@ -1210,16 +1210,15 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             // the prefix is empty unless the builder staged the
             // virtual-clients marker.
             #[cfg(feature = "extensions-draft")]
-            let aad_bytes = if group.context().safe_aad_required() {
+            if group.context().safe_aad_required() {
                 crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, &aad)
                     .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
             } else {
-                aad.clone()
-            };
+                aad
+            }
 
             #[cfg(not(feature = "extensions-draft"))]
-            let aad_bytes = aad.clone();
-            aad_bytes
+            aad
         } else {
             group.outgoing_authenticated_data()?
         };
