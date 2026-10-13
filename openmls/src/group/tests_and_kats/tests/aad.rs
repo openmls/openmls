@@ -293,6 +293,10 @@ const BUILDER_AAD: &[u8] = b"CommitBuilder AAD";
 /// way *out*; it does not protect it from the unconditional `reset_aad()` in
 /// `stage_commit`. If that ever changes, this test should be updated
 /// deliberately, together with the documentation of `with_aad`.
+///
+/// The `extensions-draft` counterpart, where the GroupContext requires Safe
+/// AAD and `with_aad` replaces only the tail, is
+/// `safe_aad::safe_aad_commit_builder_with_aad_replaces_only_tail`.
 #[openmls_test::openmls_test]
 fn test_aad_stage_commit_with_aad_overrides_group_aad() {
     let provider = &Provider::default();

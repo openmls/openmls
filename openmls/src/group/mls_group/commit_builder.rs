@@ -530,6 +530,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// The AAD to use for this commit. If it is set, the AAD set on the group via
     /// [`MlsGroup::set_aad`] is not used for this commit. It is still reset when the commit is
     /// staged, just as it would be if this method had not been called.
+    #[cfg_attr(
+        feature = "extensions-draft",
+        doc = "",
+        doc = "When the GroupContext requires Safe AAD, this sets the tail only. The Safe AAD",
+        doc = "items staged on the group via [`MlsGroup::set_safe_aad`] are still prefixed to it,",
+        doc = "and are also reset when the commit is staged."
+    )]
     pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
         self.stage.bare_aad = Some(aad);
         self
