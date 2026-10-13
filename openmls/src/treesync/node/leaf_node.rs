@@ -541,7 +541,8 @@ impl LeafNode {
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[cfg(all(test, feature = "generate-kats"))]
-    pub(crate) fn generate_update<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn generate_update<Provider: OpenMlsProvider>(
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
@@ -572,6 +573,7 @@ impl LeafNode {
         // Store the encryption key pair in the key store.
         encryption_key_pair
             .write(provider.storage())
+            .await
             .map_err(LeafNodeGenerationError::StorageError)?;
 
         Ok(leaf_node)
@@ -585,7 +587,8 @@ impl LeafNode {
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn update<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn update<Provider: OpenMlsProvider>(
         &mut self,
         ciphersuite: Ciphersuite,
         provider: &Provider,
@@ -639,6 +642,7 @@ impl LeafNode {
         // Store the encryption key pair in the key store.
         encryption_key_pair
             .write(provider.storage())
+            .await
             .map_err(LeafNodeUpdateError::Storage)?;
 
         // Sign the leaf node
