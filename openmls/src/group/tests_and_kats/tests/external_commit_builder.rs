@@ -136,6 +136,9 @@ fn external_commit_builder() {
         .process_message(alice_provider, plaintext)
         .unwrap();
 
+    // The AAD Bob set on the external commit builder reaches the receiver.
+    assert_eq!(processed_message.aad(), AAD);
+
     let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_message.into_content()
     else {

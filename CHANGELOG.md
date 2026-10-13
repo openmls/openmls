@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2206](https://github.com/openmls/openmls/pull/2206): Added `KeyPackageVerifyError::UnsupportedCiphersuite`, returned by `KeyPackageIn::validate` when the crypto provider does not support the key package's ciphersuite. Previously the check was missing on this path, and such a key package was reported as `InvalidLeafNodeSignature` even though its signature is valid.
 - [#2262](https://github.com/openmls/openmls/pull/2262): Added `TreeSync::leaf` to get a `LeafNode` at a given index.
 - [#2275](https://github.com/openmls/openmls/pull/2275): Made `VerifiableGroupInfo::signer` public and added `GroupInfo::signer`. Both return the leaf index of the member that signed the group info.
+- [#2175](https://github.com/openmls/openmls/pull/2175): Added `CommitBuilder::with_aad`, which allows setting the AAD used for the commit.
 
 ### Changed
 
