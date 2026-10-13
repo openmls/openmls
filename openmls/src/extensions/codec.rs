@@ -5,7 +5,7 @@ use tls_codec::{Deserialize, DeserializeBytes, Serialize, Size, VLBytes};
 use crate::extensions::{Extension, ExtensionType, UnknownExtension};
 
 /// Known extension types must consume the bounded payload without silently dropping trailing bytes.
-fn deserialize_extension_exact<T: Deserialize>(
+pub(super) fn deserialize_extension_exact<T: Deserialize>(
     extension_data: &[u8],
 ) -> Result<T, tls_codec::Error> {
     T::tls_deserialize_exact(extension_data)

@@ -122,7 +122,8 @@ impl PublicGroup {
     /// This function performs basic validation checks and returns an error if
     /// one of the checks fails. See [`CreationFromExternalError`] for more
     /// details.
-    pub fn from_external<StorageProvider, StorageError>(
+    #[openmls_traits::maybe_async]
+    pub async fn from_external<StorageProvider, StorageError>(
         crypto: &impl OpenMlsCrypto,
         storage: &StorageProvider,
         ratchet_tree: RatchetTreeIn,
@@ -140,6 +141,7 @@ impl PublicGroup {
             proposal_store,
             LeafNodeLifetimePolicy::Verify,
         )
+        .await
     }
 
     /// Like [`Self::from_external`], but checks the lifetimes of the leaf nodes
@@ -149,7 +151,8 @@ impl PublicGroup {
     /// sends an Update or a commit with a path, so the ratchet tree can contain
     /// expired leaf nodes. RFC 9420, Section 7.3, recommends the check for
     /// received leaf nodes but does not require it.
-    pub fn from_external_with_lifetime_policy<StorageProvider, StorageError>(
+    #[openmls_traits::maybe_async]
+    pub async fn from_external_with_lifetime_policy<StorageProvider, StorageError>(
         crypto: &impl OpenMlsCrypto,
         storage: &StorageProvider,
         ratchet_tree: RatchetTreeIn,
@@ -170,6 +173,7 @@ impl PublicGroup {
 
         public_group
             .store(storage)
+            .await
             .map_err(CreationFromExternalError::WriteToStorageError)?;
 
         Ok((public_group, group_info))
@@ -435,33 +439,40 @@ impl PublicGroup {
     }
 
     /// Add the [`QueuedProposal`] to the [`PublicGroup`]s internal [`ProposalStore`].
-    pub fn add_proposal<Storage: PublicStorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn add_proposal<Storage: PublicStorageProvider>(
         &mut self,
         storage: &Storage,
         proposal: QueuedProposal,
     ) -> Result<(), Storage::Error> {
-        storage.queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)?;
+        storage
+            .queue_proposal(self.group_id(), &proposal.proposal_reference(), &proposal)
+            .await?;
         self.proposal_store.add(proposal);
         Ok(())
     }
 
     /// Remove the Proposal with the given [`ProposalRef`] from the [`PublicGroup`]s internal [`ProposalStore`].
-    pub fn remove_proposal<Storage: PublicStorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn remove_proposal<Storage: PublicStorageProvider>(
         &mut self,
         storage: &Storage,
         proposal_ref: &ProposalRef,
     ) -> Result<(), Storage::Error> {
-        storage.remove_proposal(self.group_id(), proposal_ref)?;
+        storage
+            .remove_proposal(self.group_id(), proposal_ref)
+            .await?;
         self.proposal_store.remove(proposal_ref);
         Ok(())
     }
 
     /// Return all queued proposals
-    pub fn queued_proposals<Storage: PublicStorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn queued_proposals<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<Vec<(ProposalRef, QueuedProposal)>, Storage::Error> {
-        storage.queued_proposals(self.group_id())
+        storage.queued_proposals(self.group_id()).await
     }
 }
 
@@ -527,45 +538,55 @@ impl PublicGroup {
     /// existing group, both inside [`PublicGroup`] and in [`MlsGroup`].
     ///
     /// [`MlsGroup`]: crate::group::MlsGroup
-    pub(crate) fn store<Storage: PublicStorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn store<Storage: PublicStorageProvider>(
         &self,
         storage: &Storage,
     ) -> Result<(), Storage::Error> {
         let group_id = self.group_context.group_id();
-        storage.write_tree(group_id, self.treesync())?;
-        storage.write_confirmation_tag(group_id, self.confirmation_tag())?;
-        storage.write_context(group_id, self.group_context())?;
-        storage.write_interim_transcript_hash(
-            group_id,
-            &InterimTranscriptHash(self.interim_transcript_hash.clone()),
-        )?;
+        storage.write_tree(group_id, self.treesync()).await?;
+        storage
+            .write_confirmation_tag(group_id, self.confirmation_tag())
+            .await?;
+        storage
+            .write_context(group_id, self.group_context())
+            .await?;
+        storage
+            .write_interim_transcript_hash(
+                group_id,
+                &InterimTranscriptHash(self.interim_transcript_hash.clone()),
+            )
+            .await?;
         Ok(())
     }
 
     /// Deletes the [`PublicGroup`] from storage.
-    pub fn delete<Storage: PublicStorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn delete<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<(), Storage::Error> {
-        storage.delete_tree(group_id)?;
-        storage.delete_confirmation_tag(group_id)?;
-        storage.delete_context(group_id)?;
-        storage.delete_interim_transcript_hash(group_id)?;
+        storage.delete_tree(group_id).await?;
+        storage.delete_confirmation_tag(group_id).await?;
+        storage.delete_context(group_id).await?;
+        storage.delete_interim_transcript_hash(group_id).await?;
 
         Ok(())
     }
 
     /// Loads the [`PublicGroup`] corresponding to a [`GroupId`] from storage.
-    pub fn load<Storage: PublicStorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn load<Storage: PublicStorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Option<Self>, Storage::Error> {
-        let treesync = storage.tree(group_id)?;
-        let proposals: Vec<(ProposalRef, QueuedProposal)> = storage.queued_proposals(group_id)?;
-        let group_context = storage.group_context(group_id)?;
+        let treesync = storage.tree(group_id).await?;
+        let proposals: Vec<(ProposalRef, QueuedProposal)> =
+            storage.queued_proposals(group_id).await?;
+        let group_context = storage.group_context(group_id).await?;
         let interim_transcript_hash: Option<InterimTranscriptHash> =
-            storage.interim_transcript_hash(group_id)?;
-        let confirmation_tag = storage.confirmation_tag(group_id)?;
+            storage.interim_transcript_hash(group_id).await?;
+        let confirmation_tag = storage.confirmation_tag(group_id).await?;
         let mut proposal_store = ProposalStore::new();
 
         for (_ref, proposal) in proposals {
