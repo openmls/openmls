@@ -772,6 +772,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     fn hex(s: &str) -> Vec<u8> {
         (0..s.len())
             .step_by(2)
@@ -780,6 +781,7 @@ mod tests {
     }
 
     /// Checks `derive_hpke_keypair` against `sk` and `SHA-256(pk)`.
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     fn assert_derived_keypair(
         provider: &CryptoProvider,
         ciphersuite: Ciphersuite,
