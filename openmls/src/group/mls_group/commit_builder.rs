@@ -80,7 +80,9 @@ struct VcLoaded {
 
 pub(crate) mod external_commits;
 
-pub use external_commits::{ExternalCommitBuilder, ExternalCommitBuilderError};
+pub use external_commits::{
+    ExternalCommitBuilder, ExternalCommitBuilderError, VerifiedExternalCommitBuilder,
+};
 
 #[cfg(doc)]
 use super::MlsGroupJoinConfig;
