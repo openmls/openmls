@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2257](https://github.com/openmls/openmls/pull/2257): Added `PublicGroup::from_external_with_lifetime_policy`, which checks the lifetimes of the leaf nodes in the ratchet tree under the given `LeafNodeLifetimePolicy`.
 - [#2257](https://github.com/openmls/openmls/pull/2257): Added `leaf_node_lifetime_policy` to `CommitBuilder`, `BranchGroupBuilder`, `JoinBuilder` and `ExternalCommitBuilder`. On the first two it applies to the key packages of the new members when the commit is built, on the other two to the leaf nodes in the ratchet tree.
 - [#2257](https://github.com/openmls/openmls/pull/2257): Added `KeyPackageIn::validate_with_lifetime_policy` and `PublicGroup::validate_key_package_for_add_with_lifetime_policy`. They work like `validate` and `validate_key_package_for_add`, but check the lifetime under the given `LeafNodeLifetimePolicy`.
+- Added `ExternalCommitBuilder::verify_group`, which verifies the group info and ratchet tree of the group to be joined without building an external commit. It returns a `VerifiedExternalCommitBuilder` that exposes the verified `GroupInfo` and `GroupContext`, and whose `build_group` builds the external commit as before. `ExternalCommitBuilder::build_group` is unchanged and runs both steps.
 
 ### Changed
 
