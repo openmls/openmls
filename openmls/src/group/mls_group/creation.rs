@@ -189,23 +189,6 @@ impl ProcessedWelcome {
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        Self::new_from_welcome_inner(provider, mls_group_config, welcome).await
-    }
-
-    /// Like [`ProcessedWelcome::new_from_welcome`], but allows injecting a
-    /// resumption PSK secret that is not held in storage.
-    ///
-    /// This is used for subgroup branching (RFC 9420 §11.3) and
-    /// reinitialization (RFC 9420 §11.2): the branch resp. reinit PSK secret
-    /// comes from another group. See
-    /// [`StagedWelcome::build_from_branch`] and
-    /// [`StagedWelcome::build_from_reinit`].
-    #[openmls_traits::maybe_async]
-    pub(crate) async fn new_from_welcome_inner<Provider: OpenMlsProvider>(
-        provider: &Provider,
-        mls_group_config: &MlsGroupJoinConfig,
-        welcome: Welcome,
-    ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let (resumption_psk_store, key_material, group_secrets) =
             decrypt_group_secrets(provider, mls_group_config, &welcome).await?;
 
@@ -993,7 +976,7 @@ impl PendingResumingWelcome {
             .psks()
             .iter()
             .map(PreSharedKeyId::psk)
-            .filter(|psk| {
+            .find(|psk| {
                 matches!(
                     psk,
                     Psk::Resumption(ResumptionPsk {
@@ -1002,7 +985,6 @@ impl PendingResumingWelcome {
                     })
                 )
             })
-            .nth(0)
         else {
             return Err(WelcomeError::ReInitPredecessorMismatch);
         };
@@ -1041,7 +1023,7 @@ impl PendingResumingWelcome {
             .psks()
             .iter()
             .map(PreSharedKeyId::psk)
-            .filter(|psk| {
+            .find(|psk| {
                 matches!(
                     psk,
                     Psk::Resumption(ResumptionPsk {
@@ -1050,7 +1032,6 @@ impl PendingResumingWelcome {
                     })
                 )
             })
-            .nth(0)
         else {
             return Err(WelcomeError::SubgroupParentMismatch);
         };
