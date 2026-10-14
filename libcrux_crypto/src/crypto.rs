@@ -1,3 +1,4 @@
+use curve25519_dalek::edwards::CompressedEdwardsY;
 use hpke_rs_libcrux::HpkeLibcrux;
 
 use std::sync::Mutex;
@@ -56,6 +57,24 @@ impl CryptoProvider {
 
         Ok(())
     }
+}
+
+/// Whether an encoded Ed25519 point decompresses to the small-order subgroup.
+/// Libcrux's equation verifier does not screen small-order public keys or `R`,
+/// so the provider boundary rejects those encodings before checking the
+/// signature equation.
+fn is_small_order_ed25519_point(encoded: &[u8]) -> bool {
+    let Ok(encoded) = <&[u8; 32]>::try_from(encoded) else {
+        return false;
+    };
+    CompressedEdwardsY(*encoded)
+        .decompress()
+        .is_some_and(|point| point.is_small_order())
+}
+
+fn rejects_small_order_ed25519_points(public_key: &[u8; 32], signature: &[u8; 64]) -> bool {
+    let (encoded_r, _) = signature.split_at(32);
+    is_small_order_ed25519_point(public_key) || is_small_order_ed25519_point(encoded_r)
 }
 
 impl OpenMlsCrypto for CryptoProvider {
@@ -337,6 +356,10 @@ impl OpenMlsCrypto for CryptoProvider {
                 let sk =
                     <&[u8; 64]>::try_from(signature).map_err(|_| CryptoError::InvalidLength)?;
 
+                if rejects_small_order_ed25519_points(pk, sk) {
+                    return Err(CryptoError::InvalidSignature);
+                }
+
                 libcrux_ed25519::verify(data, pk, sk).map_err(|e| match e {
                     libcrux_ed25519::Error::InvalidSignature => CryptoError::InvalidSignature,
                     _ => CryptoError::SigningError,
@@ -588,6 +611,43 @@ impl OpenMlsCrypto for CryptoProvider {
     #[cfg(feature = "virtual-clients-draft")]
     fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError> {
         crate::ff1::decrypt(key, ciphertext)
+    }
+}
+
+#[cfg(test)]
+mod strict_ed25519_tests {
+    use super::rejects_small_order_ed25519_points;
+
+    const IDENTITY: [u8; 32] = {
+        let mut point = [0; 32];
+        point[0] = 1;
+        point
+    };
+    const BASEPOINT: [u8; 32] = [
+        0x58, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
+        0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
+        0x66, 0x66,
+    ];
+
+    #[test]
+    fn rejects_small_order_public_key_and_signature_r() {
+        let mut signature_with_basepoint_r = [0; 64];
+        signature_with_basepoint_r[..32].copy_from_slice(&BASEPOINT);
+        assert!(rejects_small_order_ed25519_points(
+            &IDENTITY,
+            &signature_with_basepoint_r
+        ));
+
+        let mut signature_with_identity_r = [0; 64];
+        signature_with_identity_r[..32].copy_from_slice(&IDENTITY);
+        assert!(rejects_small_order_ed25519_points(
+            &BASEPOINT,
+            &signature_with_identity_r
+        ));
+        assert!(!rejects_small_order_ed25519_points(
+            &BASEPOINT,
+            &signature_with_basepoint_r
+        ));
     }
 }
 
