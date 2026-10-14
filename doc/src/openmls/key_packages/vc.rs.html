@@ -301,7 +301,7 @@
 <a href=#301 id=301 data-nosnippet>301</a>        <span class="kw">let </span>derivation_info_bytes = derivation_info
 <a href=#302 id=302 data-nosnippet>302</a>            .tls_serialize_detached()
 <a href=#303 id=303 data-nosnippet>303</a>            .map_err(VirtualClientsError::from)<span class="question-mark">?</span>;
-<a href=#304 id=304 data-nosnippet>304</a>        builder.ensure_last_resort();
+<a href=#304 id=304 data-nosnippet>304</a>        builder.ensure_last_resort()<span class="question-mark">?</span>;
 <a href=#305 id=305 data-nosnippet>305</a>        <span class="kw">let </span>leaf_node_extensions = merge_vc_derivation_info(
 <a href=#306 id=306 data-nosnippet>306</a>            builder.leaf_node_extensions.as_ref(),
 <a href=#307 id=307 data-nosnippet>307</a>            resolved_dictionary.clone(),
