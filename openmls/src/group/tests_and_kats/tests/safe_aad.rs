@@ -380,3 +380,130 @@ fn safe_aad_rejects_malformed_inbound() {
         "unexpected error: {err:#?}"
     );
 }
+
+/// `CommitBuilder::with_aad` replaces only the *tail* of the authenticated
+/// data. When the GroupContext requires Safe AAD, the Safe AAD items staged on
+/// the group are still prefixed to it.
+///
+/// This pins the behaviour of the two overlapping AAD sources under Safe AAD:
+/// the group's tail AAD (`set_aad`) is ignored in favour of the builder's,
+/// while the group's Safe AAD items (`set_safe_aad`) are still used. Both are
+/// reset by `stage_commit`, just as they are without `with_aad`.
+#[openmls_test::openmls_test]
+fn safe_aad_commit_builder_with_aad_replaces_only_tail() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (mut alice_group, mut bob_group, alice_credential) = create_group_pair(
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        true,
+    );
+
+    assert!(alice_group.context().safe_aad_required());
+
+    let items = vec![SafeAadItem::new(7, b"staged-on-the-group".to_vec())];
+    alice_group.set_safe_aad(items.clone()).unwrap();
+    alice_group.set_aad(b"group-tail".to_vec());
+
+    let builder_aad = b"builder-tail".to_vec();
+
+    let message_bundle = alice_group
+        .commit_builder()
+        .with_aad(builder_aad.clone())
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_credential.signer,
+            |_proposal| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    // Both AAD sources on the group are reset, including the one that was not
+    // used for this commit.
+    assert!(alice_group.aad().is_empty());
+    assert!(alice_group.safe_aad_items().is_empty());
+
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            message_bundle
+                .commit()
+                .clone()
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .expect("process commit");
+
+    // The Safe AAD items staged on the group are still part of the commit's
+    // authenticated data, ...
+    let safe_aad = processed.safe_aad().expect("Safe AAD should be present");
+    assert_eq!(safe_aad.items(), items.as_slice());
+    assert_eq!(
+        processed.safe_aad_item(7),
+        Some(b"staged-on-the-group".as_slice())
+    );
+
+    // ... while the tail is the builder's AAD, not the group's.
+    assert_eq!(processed.tail_aad(), builder_aad.as_slice());
+    assert!(processed.aad().ends_with(&builder_aad));
+    assert!(processed.aad().len() > builder_aad.len());
+}
+
+/// Without `with_aad`, a commit in a Safe-AAD group carries the group's Safe
+/// AAD items *and* the group's tail AAD. This is the baseline that
+/// [`safe_aad_commit_builder_with_aad_replaces_only_tail`] compares against.
+#[openmls_test::openmls_test]
+fn safe_aad_commit_without_with_aad_uses_group_tail() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (mut alice_group, mut bob_group, alice_credential) = create_group_pair(
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        true,
+    );
+
+    let items = vec![SafeAadItem::new(7, b"staged-on-the-group".to_vec())];
+    alice_group.set_safe_aad(items.clone()).unwrap();
+    let tail = b"group-tail".to_vec();
+    alice_group.set_aad(tail.clone());
+
+    let message_bundle = alice_group
+        .commit_builder()
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_credential.signer,
+            |_proposal| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+
+    assert!(alice_group.aad().is_empty());
+    assert!(alice_group.safe_aad_items().is_empty());
+
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            message_bundle
+                .commit()
+                .clone()
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .expect("process commit");
+
+    let safe_aad = processed.safe_aad().expect("Safe AAD should be present");
+    assert_eq!(safe_aad.items(), items.as_slice());
+    assert_eq!(processed.tail_aad(), tail.as_slice());
+}

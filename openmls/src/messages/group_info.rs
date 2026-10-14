@@ -94,10 +94,10 @@ impl VerifiableGroupInfo {
         self.payload.group_context.ciphersuite()
     }
 
-    /// Get (unverified) signer of the verifiable group info.
+    /// Get (unverified) leaf index of the member that signed the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn signer(&self) -> LeafNodeIndex {
+    pub fn signer(&self) -> LeafNodeIndex {
         self.payload.signer
     }
 
@@ -206,6 +206,11 @@ impl GroupInfo {
     /// Returns the [`GroupInfo`] signature.
     pub fn signature(&self) -> &Signature {
         &self.signature
+    }
+
+    /// Returns the leaf index of the member that signed the group info.
+    pub fn signer(&self) -> LeafNodeIndex {
+        self.payload.signer
     }
 
     /// Returns the confirmation tag.
