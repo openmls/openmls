@@ -560,26 +560,21 @@ impl From<Secret> for PskSecret {
 ///
 /// # Arguments
 ///
-/// * `storage` - Storage provider to fetch `External` PSKs from
-/// * `resumption_psk_store` - past application resumption PSKs of this group
-/// * `group_id_option` - application resumption PSKs must match this `psk_group_id`.
-///   If None, no resumption PSKs of type `application` are allowed.
-/// * `foreign_resumption_psk` - resumption PSK of use `reinit` or `branch` from predecessor/parent group
+/// * `storage` - Storage provider to fetch PSK secrets from
+/// * `group_id_option` - group ID to fetch resumption PSKs from.
+///     Application resumption PSKs must match this `psk_group_id`.
+///     If `None`, no resumption PSKs of type `application` are allowed.
 /// * `psk_ids` - IDs to load
 #[openmls_traits::maybe_async]
 pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
-    resumption_psk_store: &ResumptionPskStore,
     group_id: Option<&GroupId>,
-    foreign_resumption_psk: Option<(&PreSharedKeyId, ResumptionPskSecret)>,
     psk_ids: &'p [PreSharedKeyId],
 ) -> Result<Vec<(&'p PreSharedKeyId, Secret)>, PskError> {
     let mut psk_bundles = Vec::new();
-    let mut foreign_resumption_psk = foreign_resumption_psk;
+    let mut lazy_resumption_psk_store: Option<ResumptionPskStore> = None;
 
     for psk_id in psk_ids.iter() {
-        log_crypto!(trace, "PSK store {:?}", resumption_psk_store);
-
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
                 let psk_secret = match resumption.usage() {
@@ -597,6 +592,18 @@ pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
                                 got: resumption.psk_group_id.clone(),
                             });
                         }
+                        let resumption_psk_store =
+                            if let Some(resumption_psk_store) = &lazy_resumption_psk_store {
+                                resumption_psk_store
+                            } else {
+                                let resumption_psk_store = storage
+                                    .resumption_psk_store(group_id)
+                                    .await
+                                    .map_err(|_| PskError::Storage)?
+                                    .ok_or(PskError::KeyNotFound)?;
+                                log_crypto!(trace, "PSK store {:?}", resumption_psk_store);
+                                lazy_resumption_psk_store.insert(resumption_psk_store)
+                            };
                         if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
                             (psk_id, psk_bundle.secret.clone())
                         } else {
@@ -607,14 +614,15 @@ pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
                     // The branch and reinit PSK is not in this group's resumption store: it
                     // comes from the parent or predecessor group.
                     ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit => {
-                        match foreign_resumption_psk.take() {
-                            Some((foreign_psk_id, foreign_psk_secret))
-                                if foreign_psk_id == psk_id =>
-                            {
-                                (psk_id, foreign_psk_secret.secret)
-                            }
-                            _ => return Err(PskError::KeyNotFound),
-                        }
+                        let foreign_psk_store: ResumptionPskStore = storage
+                            .resumption_psk_store(resumption.psk_group_id())
+                            .await
+                            .map_err(|_| PskError::Storage)?
+                            .ok_or(PskError::KeyNotFound)?;
+                        let secret = foreign_psk_store
+                            .get(resumption.psk_epoch())
+                            .ok_or(PskError::KeyNotFound)?;
+                        (psk_id, secret.secret.clone())
                     }
                 };
                 psk_bundles.push(psk_secret);

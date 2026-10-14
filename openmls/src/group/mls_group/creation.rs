@@ -189,7 +189,7 @@ impl ProcessedWelcome {
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        Self::new_from_welcome_inner(provider, mls_group_config, welcome, None).await
+        Self::new_from_welcome_inner(provider, mls_group_config, welcome).await
     }
 
     /// Like [`ProcessedWelcome::new_from_welcome`], but allows injecting a
@@ -205,7 +205,6 @@ impl ProcessedWelcome {
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        resumption_info: Option<ResumptionInfo<'_>>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let (resumption_psk_store, key_material, group_secrets) =
             decrypt_group_secrets(provider, mls_group_config, &welcome).await?;
@@ -218,7 +217,6 @@ impl ProcessedWelcome {
             key_material,
             group_secrets,
             &welcome,
-            resumption_info,
         )
         .await
     }
@@ -963,7 +961,6 @@ impl PendingResumingWelcome {
             self.key_material,
             self.group_secrets,
             &self.welcome,
-            None,
         )
         .await?;
 
@@ -990,9 +987,30 @@ impl PendingResumingWelcome {
             self.key_material,
             self.group_secrets,
             &self.welcome,
-            Some(ResumptionInfo::ReInit(&reinit_info)),
         )
         .await?;
+        let Some(Psk::Resumption(resumption_psk)) = processed_welcome
+            .psks()
+            .iter()
+            .map(PreSharedKeyId::psk)
+            .filter(|psk| {
+                matches!(
+                    psk,
+                    Psk::Resumption(ResumptionPsk {
+                        usage: ResumptionPskUsage::Reinit,
+                        ..
+                    })
+                )
+            })
+            .nth(0)
+        else {
+            return Err(WelcomeError::ReInitPredecessorMismatch);
+        };
+        if (resumption_psk.psk_epoch(), resumption_psk.psk_group_id())
+            != (reinit_info.old_group_epoch(), reinit_info.old_group_id())
+        {
+            return Err(WelcomeError::ReInitPredecessorMismatch);
+        }
 
         Ok(JoinBuilder::new(provider, processed_welcome).with_reinit_info(reinit_info))
     }
@@ -1017,17 +1035,33 @@ impl PendingResumingWelcome {
             self.key_material,
             self.group_secrets,
             &self.welcome,
-            Some(ResumptionInfo::Branch(&branch_info)),
         )
         .await?;
+        let Some(Psk::Resumption(resumption_psk)) = processed_welcome
+            .psks()
+            .iter()
+            .map(PreSharedKeyId::psk)
+            .filter(|psk| {
+                matches!(
+                    psk,
+                    Psk::Resumption(ResumptionPsk {
+                        usage: ResumptionPskUsage::Branch,
+                        ..
+                    })
+                )
+            })
+            .nth(0)
+        else {
+            return Err(WelcomeError::SubgroupParentMismatch);
+        };
+        if (resumption_psk.psk_epoch(), resumption_psk.psk_group_id())
+            != (branch_info.epoch(), branch_info.group_id())
+        {
+            return Err(WelcomeError::SubgroupParentMismatch);
+        }
 
         Ok(JoinBuilder::new(provider, processed_welcome).with_branch_info(branch_info))
     }
-}
-
-pub(crate) enum ResumptionInfo<'a> {
-    ReInit(&'a ReInitInfo),
-    Branch(&'a BranchInfo),
 }
 
 /// Decrypt a `Welcome`'s `GroupSecrets`.
@@ -1116,57 +1150,11 @@ async fn finish_processed_welcome<Provider: OpenMlsProvider>(
     key_material: WelcomeKeyMaterial,
     group_secrets: GroupSecrets,
     welcome: &Welcome,
-    resumption_info: Option<ResumptionInfo<'_>>,
 ) -> Result<ProcessedWelcome, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
-    let foreign_psk = if let Some(resumption_info) = resumption_info {
-        // For subgroup branching and reinit, inject the parent group's resumption PSK.
-        match resumption_info {
-            ResumptionInfo::Branch(branch_info) => {
-                // When joining a subgroup branch, the branch resumption
-                // PSK carried in the Welcome must reference the same parent group and
-                // epoch the receiver is branching from.
-                let parent_psk_id = group_secrets.psks.iter().find(|id| {
-                    matches!(id.psk(), Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Branch
-                            && r.psk_group_id() == branch_info.group_id()
-                            && r.psk_epoch() == branch_info.epoch()
-                    )
-                });
-                if let Some(psk_id) = parent_psk_id {
-                    Some((psk_id, branch_info.resumption_psk_secret().clone()))
-                } else {
-                    return Err(WelcomeError::SubgroupParentMismatch);
-                }
-            }
-            ResumptionInfo::ReInit(reinit_info) => {
-                // When joining a reinit, the resumption psk must match the `group_id` and final epoch of the old group.
-                let predecessor_psk_id = group_secrets.psks.iter().find(|id| {
-                    matches!(id.psk(), Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Reinit
-                        && r.psk_group_id() == reinit_info.old_group_id()
-                        && r.psk_epoch() == reinit_info.old_group_epoch()
-                    )
-                });
-                if let Some(psk_id) = predecessor_psk_id {
-                    Some((psk_id, reinit_info.resumption_psk_secret().clone()))
-                } else {
-                    return Err(WelcomeError::SubgroupParentMismatch);
-                }
-            }
-        }
-    } else {
-        None
-    };
-
     let psk_secret = {
         // We are joining the group, so there is no resumption psk history and we don't know the group_id yet.
         // Therefore, resumption PSKs of type `application` cannot be resolved, we set `group_id` to `None`.
-        let psks = load_psks(
-            provider.storage(),
-            &resumption_psk_store,
-            None,
-            foreign_psk,
-            &group_secrets.psks,
-        )
-        .await?;
+        let psks = load_psks(provider.storage(), None, &group_secrets.psks).await?;
 
         PskSecret::new(provider.crypto(), ciphersuite, psks)?
     };

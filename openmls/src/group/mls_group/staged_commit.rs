@@ -182,9 +182,7 @@ impl MlsGroup {
         let psk_secret = {
             let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
                 provider.storage(),
-                &self.resumption_psk_store,
                 Some(self.group_id()),
-                None,
                 &apply_proposals_values.presharedkeys,
             )
             .await?;

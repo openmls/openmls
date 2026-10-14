@@ -234,9 +234,7 @@ impl MlsGroupBuilder {
         // Prepare the PskSecret
         let psk_secret = load_psks(
             provider.storage(),
-            &resumption_psk_store,
             Some(public_group_builder.group_context().group_id()),
-            None,
             &self.psk_ids,
         )
         .await
@@ -655,7 +653,6 @@ impl ReInitGroupBuilder {
             proposal,
             old_group_id,
             old_group_epoch,
-            resumption_psk_secret,
             member_credentials: _,
         } = self.reinit_info;
         let group_builder = self
@@ -669,12 +666,7 @@ impl ReInitGroupBuilder {
 
         let mut commit_builder = group
             .commit_builder()
-            .reinit(
-                provider.rand(),
-                old_group_id,
-                old_group_epoch,
-                resumption_psk_secret,
-            )?
+            .reinit(provider.rand(), old_group_id, old_group_epoch)?
             .propose_adds(members);
         if self.force_self_update {
             commit_builder = commit_builder.force_self_update(true);

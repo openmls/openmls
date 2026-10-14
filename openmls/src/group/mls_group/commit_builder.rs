@@ -31,7 +31,7 @@ use crate::{
     schedule::{
         errors::PskError,
         psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
-        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk, ResumptionPskSecret,
+        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
     },
     storage::{OpenMlsProvider, StorageProvider},
     versions::ProtocolVersion,
@@ -130,7 +130,6 @@ pub struct Initial {
 
     /// How the lifetimes of the key packages in Add proposals are checked.
     lifetime_policy: LeafNodeLifetimePolicy,
-    foreign_resumption_psk: Option<(PreSharedKeyId, ResumptionPskSecret)>,
 }
 
 impl Default for Initial {
@@ -143,7 +142,6 @@ impl Default for Initial {
             external_commit_info: None,
             lifetime_policy: LeafNodeLifetimePolicy::Verify,
             bare_aad: None,
-            foreign_resumption_psk: None,
         }
     }
 }
@@ -438,8 +436,6 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
         self = self.propose_psks_unchecked([psk_id.clone()]);
-        self.stage.foreign_resumption_psk =
-            Some((psk_id, branch_info.resumption_psk_secret().clone()));
         Ok(self)
     }
 
@@ -460,7 +456,6 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         rand: &impl OpenMlsRand,
         old_group_id: GroupId,
         old_group_epoch: GroupEpoch,
-        resumption_psk_secret: ResumptionPskSecret,
     ) -> Result<Self, CreateCommitError> {
         // Sample a fresh random nonce of length KDF.Nh. Unlike branching, the
         // successor group may use a different ciphersuite than the old group, so
@@ -476,7 +471,6 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
         self = self.propose_psks_unchecked([psk_id.clone()]);
-        self.stage.foreign_resumption_psk = Some((psk_id, resumption_psk_secret));
         Ok(self)
     }
 
@@ -759,20 +753,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .collect();
 
         // Load the PSKs and make the PskIds owned.
-        let psks = load_psks(
-            storage,
-            &self.group.borrow().resumption_psk_store,
-            Some(self.group.borrow().group_id()),
-            self.stage
-                .foreign_resumption_psk
-                .as_ref()
-                .map(|(psk_id, secret)| (psk_id, secret.clone())),
-            &psk_ids,
-        )
-        .await?
-        .into_iter()
-        .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
-        .collect();
+        let psks = load_psks(storage, Some(self.group.borrow().group_id()), &psk_ids)
+            .await?
+            .into_iter()
+            .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
+            .collect();
 
         // Initialize GroupInfoConfig
         let use_ratchet_tree_extension = self
@@ -1962,7 +1947,6 @@ mod tests {
     fn subgroup_branch_psk_rejected_outside_initial_commit() {
         let alice_provider = &Provider::default();
         let bob_provider = &Provider::default();
-        let parent_provider = &Provider::default();
 
         // `alice_group` is at epoch 1 after adding Bob, so a branch PSK in a
         // commit on it must be rejected.
@@ -1973,10 +1957,10 @@ mod tests {
         // secret, so that `load_psks` succeeds and we actually reach the
         // proposal validation.
         let (parent_cwk, _parent_kpb, parent_signer, _parent_pk) =
-            setup_client("Parent", ciphersuite, parent_provider);
+            setup_client("Parent", ciphersuite, alice_provider);
         let parent_group = MlsGroup::builder()
             .ciphersuite(ciphersuite)
-            .build(parent_provider, &parent_signer, parent_cwk)
+            .build(alice_provider, &parent_signer, parent_cwk)
             .unwrap();
 
         let result = alice_group
@@ -2014,7 +1998,6 @@ mod tests {
     fn reinit_psk_rejected_outside_initial_commit() {
         let alice_provider = &Provider::default();
         let bob_provider = &Provider::default();
-        let old_provider = &Provider::default();
 
         // `alice_group` is at epoch 1 after adding Bob, so a branch PSK in a
         // commit on it must be rejected.
@@ -2024,14 +2007,11 @@ mod tests {
         // An arbitrary group serves as the "old" group whose resumption PSK is
         // injected, so that `load_psks` succeeds and validation is reached.
         let (old_cwk, _old_kpb, old_signer, _old_pk) =
-            setup_client("Old", ciphersuite, old_provider);
+            setup_client("Old", ciphersuite, alice_provider);
         let old_group = MlsGroup::builder()
             .ciphersuite(ciphersuite)
-            .build(old_provider, &old_signer, old_cwk)
+            .build(alice_provider, &old_signer, old_cwk)
             .unwrap();
-        let old_secret = old_group
-            .resumption_psk_secret() // or however BranchInfo/ReInitInfo gets it
-            .clone();
 
         let result = alice_group
             .commit_builder()
@@ -2039,7 +2019,6 @@ mod tests {
                 alice_provider.rand(),
                 old_group.group_id().clone(),
                 old_group.epoch(),
-                old_secret,
             )
             .unwrap()
             .load_psks(alice_provider.storage())
