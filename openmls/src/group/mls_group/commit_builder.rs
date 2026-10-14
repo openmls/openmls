@@ -429,7 +429,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             )),
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
-        self = self.propose_psks_unchecked([psk_id.clone()]);
+        self = self.propose_psks_unchecked([psk_id]);
         Ok(self)
     }
 
@@ -464,7 +464,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             )),
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
-        self = self.propose_psks_unchecked([psk_id.clone()]);
+        self = self.propose_psks_unchecked([psk_id]);
         Ok(self)
     }
 
