@@ -192,22 +192,18 @@ impl OpenMlsCrypto for RestrictedCrypto {
     }
 
     #[cfg(feature = "targeted-messages-draft")]
-    fn hpke_seal_psk_resolved_aad<F, E>(
+    fn hpke_seal_psk(
         &self,
         config: HpkeConfig,
         pk_r: &[u8],
         info: &[u8],
+        aad: &[u8],
         ptxt: &[u8],
         psk: &[u8],
         psk_id: &[u8],
-        aad_builder: F,
-    ) -> Result<HpkeCiphertext, openmls_traits::crypto::HpkeSealPskResolvedAadError<E>>
-    where
-        Self: Sized,
-        F: FnOnce(&[u8]) -> Result<Vec<u8>, E>,
-    {
+    ) -> Result<HpkeCiphertext, CryptoError> {
         self.inner
-            .hpke_seal_psk_resolved_aad(config, pk_r, info, ptxt, psk, psk_id, aad_builder)
+            .hpke_seal_psk(config, pk_r, info, aad, ptxt, psk, psk_id)
     }
 
     #[cfg(feature = "virtual-clients-draft")]

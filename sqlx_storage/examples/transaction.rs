@@ -50,16 +50,16 @@ struct SignatureKeyPair(Vec<u8>);
 impl Entity<CURRENT_VERSION> for SignatureKeyPair {}
 impl traits::SignatureKeyPair<CURRENT_VERSION> for SignatureKeyPair {}
 
-// The provider performs blocking calls internally, so it needs a multi-threaded
-// runtime.
-#[tokio::main(flavor = "multi_thread")]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut connection = SqliteConnection::connect("sqlite::memory:").await?;
 
     // Run the provider's migrations once, on the bare connection, before any
     // transactions. Migrations create their own tables and should not be tied
     // to the lifetime of a single transaction.
-    SqliteStorageProvider::<JsonCodec>::new(&mut connection).run_migrations()?;
+    SqliteStorageProvider::<JsonCodec>::new(&mut connection)
+        .run_migrations()
+        .await?;
 
     // An application-owned table that lives next to the OpenMLS tables in the
     // same database.
@@ -89,7 +89,9 @@ async fn commit_scenario(
     // again and to be committed.
     {
         let storage = SqliteStorageProvider::<JsonCodec>::new(&mut transaction);
-        storage.write_signature_key_pair(public_key, key_pair)?;
+        storage
+            .write_signature_key_pair(public_key, key_pair)
+            .await?;
     }
 
     // The same transaction also carries an application write.
@@ -122,7 +124,9 @@ async fn rollback_scenario(
     let mut transaction = connection.begin().await?;
     {
         let storage = SqliteStorageProvider::<JsonCodec>::new(&mut transaction);
-        storage.write_signature_key_pair(&discarded_key, &discarded_pair)?;
+        storage
+            .write_signature_key_pair(&discarded_key, &discarded_pair)
+            .await?;
     }
     sqlx::query("INSERT INTO accounts (name, key) VALUES (?, ?)")
         .bind("bob")
@@ -158,7 +162,7 @@ async fn read_key_pair(
     let mut transaction: Transaction<'_, Sqlite> = connection.begin().await?;
     let stored = {
         let storage = SqliteStorageProvider::<JsonCodec>::new(&mut transaction);
-        storage.signature_key_pair(public_key)?
+        storage.signature_key_pair(public_key).await?
     };
     transaction.commit().await?;
     Ok(stored)

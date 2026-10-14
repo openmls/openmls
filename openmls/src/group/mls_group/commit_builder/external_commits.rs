@@ -417,7 +417,8 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
     ///
     /// In contrast to the deprecated [`MlsGroup::join_by_external_commit`]
     /// there is no need to merge the pending commit.
-    pub fn finalize<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn finalize<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<
@@ -438,7 +439,8 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
         // commit is always framed as a PublicMessage, so it carries no
         // handshake confirmation data.
         let mls_message = group
-            .content_to_mls_message(create_commit_result.commit, provider)?
+            .content_to_mls_message(create_commit_result.commit, provider)
+            .await?
             .message;
 
         group.reset_aad();
@@ -451,6 +453,7 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
         // Store the group in storage.
         group
             .store(provider.storage())
+            .await
             .map_err(ExternalCommitBuilderFinalizeError::StorageError)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
@@ -459,7 +462,7 @@ impl CommitBuilder<'_, super::Complete, MlsGroup> {
             create_commit_result.staged_commit,
         )));
 
-        group.merge_pending_commit(provider)?;
+        group.merge_pending_commit(provider).await?;
 
         let bundle = super::CommitMessageBundle {
             version: group.version(),

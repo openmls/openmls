@@ -673,7 +673,8 @@ fn validate_key_package_infos(infos: &[KeyPackageInfo]) -> Result<(), VirtualCli
 /// registered for `epoch_id`.
 ///
 /// [`KeyPackageBuilder::build_vc_batch`]: crate::key_packages::KeyPackageBuilder::build_vc_batch
-pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
+#[openmls_traits::maybe_async]
+pub async fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     epoch_id: EpochId,
     generation: u32,
@@ -682,6 +683,7 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
     validate_key_package_infos(&key_package_info)?;
     let state: VcDerivationEpochState = storage
         .vc_derivation_epoch_state(&epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load derivation epoch state in assemble upload failed: {e:?}");
             VirtualClientsError::StorageError
@@ -709,7 +711,8 @@ pub fn assemble_vc_key_package_upload<Storage: crate::storage::StorageProvider>(
 /// leaf-encryption keys are later derived from each seed under the same
 /// ciphersuite at Welcome time. The operation secret is dropped once all seeds
 /// are derived. The batch generation is consumed in the tree exactly once.
-pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+pub async fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
     provider: &Provider,
     upload: &KeyPackageUpload,
 ) -> Result<(), VirtualClientsError> {
@@ -723,6 +726,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
 
     let state: VcDerivationEpochState = storage
         .vc_derivation_epoch_state(&upload.epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load derivation epoch state in process upload failed: {e:?}");
             VirtualClientsError::StorageError
@@ -730,6 +734,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
         .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     let mut operation_tree: OperationSecretTree = storage
         .vc_operation_tree(&upload.epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load operation tree in process upload failed: {e:?}");
             VirtualClientsError::StorageError
@@ -769,6 +774,7 @@ pub fn process_vc_key_package_upload<Provider: OpenMlsProvider>(
 
     storage
         .write_retained_key_package_material_batch(&upload.epoch_id, &operation_tree, &materials)
+        .await
         .map_err(|e| {
             log::error!("vc: persist batch key package material in process upload failed: {e:?}");
             VirtualClientsError::StorageError
@@ -860,12 +866,13 @@ pub(crate) struct VcDerivationEpochLog {
 impl VcDerivationEpochLog {
     /// Reconstruct the log of `group_id` from its stored entries. The log is
     /// empty for a group that never registered a derivation epoch.
-    pub(crate) fn load<Storage: crate::storage::StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn load<Storage: crate::storage::StorageProvider>(
         storage: &Storage,
         group_id: &GroupId,
     ) -> Result<Self, Storage::Error> {
         let mut entries: Vec<VcDerivationEpochLogEntry> =
-            storage.vc_derivation_epoch_log_entries(group_id)?;
+            storage.vc_derivation_epoch_log_entries(group_id).await?;
         entries.sort_unstable_by_key(|entry| entry.sequence);
         // Entries are keyed by their epoch id in storage, so a duplicate id
         // cannot come from storage. It would mean two registrations derived
@@ -965,12 +972,14 @@ pub struct RegisteredVcDerivationEpoch {
 ///
 /// Read from storage, so the result reflects the state at the time of the
 /// call.
-pub(crate) fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     emulation_group_id: &GroupId,
 ) -> Result<Option<EpochId>, Storage::Error> {
-    let entries: Vec<VcDerivationEpochLogEntry> =
-        storage.vc_derivation_epoch_log_entries(emulation_group_id)?;
+    let entries: Vec<VcDerivationEpochLogEntry> = storage
+        .vc_derivation_epoch_log_entries(emulation_group_id)
+        .await?;
     Ok(entries
         .into_iter()
         .max_by_key(|entry| entry.sequence)
@@ -989,11 +998,13 @@ pub(crate) fn newest_vc_derivation_epoch<Storage: crate::storage::StorageProvide
 /// Returns [`VirtualClientsError::NoDerivationEpoch`] when no derivation epoch
 /// is registered, which is the case for every group that is not an emulation
 /// group.
-pub(crate) fn require_newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn require_newest_vc_derivation_epoch<Storage: crate::storage::StorageProvider>(
     storage: &Storage,
     emulation_group_id: &GroupId,
 ) -> Result<EpochId, VirtualClientsError> {
     newest_vc_derivation_epoch(storage, emulation_group_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load newest derivation epoch for a new operation failed: {e:?}");
             VirtualClientsError::StorageError
@@ -1069,7 +1080,8 @@ impl<'a> VcDerivationEpochParams<'a> {
 /// `export_tree` when it is handed a fresh, unpunctured tree for that epoch,
 /// as a retried Welcome join does. Without the puncture the caller would
 /// persist a tree that can re-derive the consumed secret.
-pub(crate) fn register_vc_derivation_epoch<
+#[openmls_traits::maybe_async]
+pub(crate) async fn register_vc_derivation_epoch<
     Crypto: OpenMlsCrypto,
     Storage: crate::storage::StorageProvider,
 >(
@@ -1089,10 +1101,12 @@ pub(crate) fn register_vc_derivation_epoch<
     let export_tree =
         export_tree.ok_or(RegisterVcDerivationEpochError::MissingApplicationExportTree)?;
 
-    let mut log = VcDerivationEpochLog::load(storage, group_id).map_err(|e| {
-        log::error!("vc: load derivation epoch log before registration failed: {e:?}");
-        RegisterVcDerivationEpochError::Storage(e)
-    })?;
+    let mut log = VcDerivationEpochLog::load(storage, group_id)
+        .await
+        .map_err(|e| {
+            log::error!("vc: load derivation epoch log before registration failed: {e:?}");
+            RegisterVcDerivationEpochError::Storage(e)
+        })?;
 
     // Puncture before consulting the log. A repeat for a registered epoch can
     // hold a fresh, unpunctured tree, and returning early on the log alone
@@ -1146,18 +1160,21 @@ pub(crate) fn register_vc_derivation_epoch<
 
     storage
         .write_vc_operation_tree(&epoch_id, &operation_tree)
+        .await
         .map_err(|e| {
             log::error!("vc: persist operation tree at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
         })?;
     storage
         .write_vc_derivation_epoch_state(&epoch_id, &state)
+        .await
         .map_err(|e| {
             log::error!("vc: persist derivation epoch state at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
         })?;
     storage
         .write_vc_derivation_epoch_log_entry(group_id, &epoch_id, &entry)
+        .await
         .map_err(|e| {
             log::error!("vc: persist derivation epoch log entry at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
@@ -1165,6 +1182,7 @@ pub(crate) fn register_vc_derivation_epoch<
     if !dropped.is_empty() {
         storage
             .delete_vc_derivation_epoch_log_entries(group_id, &dropped)
+            .await
             .map_err(|e| {
                 log::error!("vc: prune derivation epoch log at registration failed: {e:?}");
                 RegisterVcDerivationEpochError::Storage(e)
@@ -1175,6 +1193,7 @@ pub(crate) fn register_vc_derivation_epoch<
     // crashes left behind.
     storage
         .delete_unreferenced_vc_derivation_epoch_states::<EpochId>()
+        .await
         .map_err(|e| {
             log::error!("vc: release pruned derivation epochs at registration failed: {e:?}");
             RegisterVcDerivationEpochError::Storage(e)
@@ -1246,7 +1265,10 @@ impl VcEmulationBindings {
 /// with the lowest group epochs. `max_entries` follows the group's
 /// message-secrets retention, so bindings age out in lockstep with the message
 /// secrets they are needed for.
-pub(crate) fn write_vc_emulation_binding_with_pruning<Storage: crate::storage::StorageProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn write_vc_emulation_binding_with_pruning<
+    Storage: crate::storage::StorageProvider,
+>(
     storage: &Storage,
     group_id: &GroupId,
     group_epoch: GroupEpoch,
@@ -1257,15 +1279,19 @@ pub(crate) fn write_vc_emulation_binding_with_pruning<Storage: crate::storage::S
         group_epoch,
         epoch_id: epoch_id.clone(),
     };
-    storage.write_vc_emulation_binding(group_id, &group_epoch, &epoch_id, &binding)?;
-    let mut bindings: Vec<VcEmulationBinding> = storage.vc_emulation_bindings(group_id)?;
+    storage
+        .write_vc_emulation_binding(group_id, &group_epoch, &epoch_id, &binding)
+        .await?;
+    let mut bindings: Vec<VcEmulationBinding> = storage.vc_emulation_bindings(group_id).await?;
     if bindings.len() > max_entries {
         bindings.sort_unstable_by_key(|binding| binding.group_epoch.as_u64());
         let stale: Vec<GroupEpoch> = bindings[..bindings.len() - max_entries]
             .iter()
             .map(|binding| binding.group_epoch)
             .collect();
-        storage.delete_vc_emulation_bindings(group_id, &stale)?;
+        storage
+            .delete_vc_emulation_bindings(group_id, &stale)
+            .await?;
     }
     Ok(())
 }
@@ -1911,7 +1937,8 @@ impl DerivationInfoTbe {
 /// returned [`VirtualClientsError`] into their own error type.
 ///
 /// [`OperationSecretTree`]: crate::components::vc_operation_tree::OperationSecretTree
-pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
     provider: &Provider,
     epoch_id: &EpochId,
 ) -> Result<
@@ -1926,6 +1953,7 @@ pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
     let storage = provider.storage();
     let state = storage
         .vc_derivation_epoch_state(epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load derivation epoch state failed: {e:?}");
             VirtualClientsError::StorageError
@@ -1933,6 +1961,7 @@ pub(crate) fn load_vc_epoch_state_and_tree<Provider: OpenMlsProvider>(
         .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
     let operation_tree = storage
         .vc_operation_tree(epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load operation tree failed: {e:?}");
             VirtualClientsError::StorageError
