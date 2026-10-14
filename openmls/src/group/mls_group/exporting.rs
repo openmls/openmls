@@ -223,7 +223,6 @@ impl MlsGroup {
             ciphersuite: self.ciphersuite(),
             group_id: self.group_id().clone(),
             epoch: self.epoch(),
-            resumption_psk_secret: self.resumption_psk_secret().clone(),
             member_credentials: self.members().map(|m| m.credential).collect(),
         }
     }
@@ -258,7 +257,6 @@ impl MlsGroup {
             proposal,
             old_group_id: self.group_id().clone(),
             old_group_epoch: self.epoch(),
-            resumption_psk_secret: self.resumption_psk_secret().clone(),
             member_credentials: self.members().map(|member| member.credential).collect(),
         })
     }

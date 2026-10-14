@@ -11,7 +11,6 @@
 use crate::{
     credentials::Credential,
     group::{GroupEpoch, GroupId},
-    schedule::ResumptionPskSecret,
     versions::ProtocolVersion,
 };
 use openmls_traits::types::Ciphersuite;
@@ -36,7 +35,6 @@ pub struct BranchInfo {
     pub(crate) ciphersuite: Ciphersuite,
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
-    pub(crate) resumption_psk_secret: ResumptionPskSecret,
     pub(crate) member_credentials: Vec<Credential>,
 }
 
@@ -59,13 +57,6 @@ impl BranchInfo {
     /// The epoch of the parent group from which this branch is taken.
     pub fn epoch(&self) -> GroupEpoch {
         self.epoch
-    }
-
-    /// The parent group's resumption PSK secret for [`Self::epoch`].
-    ///
-    /// This is sensitive key material.
-    pub(crate) fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
-        &self.resumption_psk_secret
     }
 
     /// The credentials of the parent group's members, used by the receiver to

@@ -304,8 +304,6 @@ impl FrankenGroupSecrets {
         let psks = load_psks(
             storage,
             // No resumption keys for now
-            &ResumptionPskStore::new(0),
-            None,
             None,
             psk_ids.as_slice(),
         )
