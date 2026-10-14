@@ -1504,14 +1504,25 @@ fn build_key<const V: u16, K: Serialize>(label: &[u8], key: K) -> Vec<u8> {
     build_key_from_vec::<V>(label, serde_json::to_vec(&key).unwrap())
 }
 
+/// Append a length prefix, so concatenated parts cannot be re-split differently.
+fn push_length_prefixed(out: &mut Vec<u8>, part: &[u8]) {
+    out.extend_from_slice(&(part.len() as u64).to_be_bytes());
+    out.extend_from_slice(part);
+}
+
 fn epoch_key_pairs_id(
     group_id: &impl traits::GroupId<CURRENT_VERSION>,
     epoch: &impl traits::EpochKey<CURRENT_VERSION>,
     leaf_index: u32,
 ) -> Result<Vec<u8>, <MemoryStorage as StorageProvider<CURRENT_VERSION>>::Error> {
-    let mut key = serde_json::to_vec(group_id)?;
-    key.extend_from_slice(&serde_json::to_vec(epoch)?);
-    key.extend_from_slice(&serde_json::to_vec(&leaf_index)?);
+    // The serialized parts are all variable length (and the epoch and leaf
+    // index serialize to bare integers), so concatenating them directly is
+    // ambiguous: epoch 1 / leaf 23 and epoch 12 / leaf 3 would share a key.
+    // Length-prefix each part instead so every tuple maps to a distinct key.
+    let mut key = Vec::new();
+    push_length_prefixed(&mut key, &serde_json::to_vec(group_id)?);
+    push_length_prefixed(&mut key, &serde_json::to_vec(epoch)?);
+    push_length_prefixed(&mut key, &serde_json::to_vec(&leaf_index)?);
     Ok(key)
 }
 
