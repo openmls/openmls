@@ -13,6 +13,7 @@ use crate::{
     extensions::{
         Extension, ExtensionType, ExtensionValidator, Extensions, RequiredCapabilitiesExtension,
     },
+    key_packages::KeyPackage,
     messages::proposals::ProposalType,
     treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
@@ -31,7 +32,8 @@ pub enum CapabilitiesPolicy {
     /// group's required capabilities.
     Reject,
     /// Add whatever the leaf itself uses — its ciphersuite, credential type
-    /// and extension types — and reject only if the group's required
+    /// and extension types, plus the extension types of the KeyPackage the
+    /// leaf is built for — and reject only if the group's required
     /// capabilities are still unmet. Never removes anything the caller set.
     ///
     /// Note that this widens only capabilities the library can derive from the
@@ -338,15 +340,18 @@ impl Capabilities {
         }
     }
 
-    /// Ensure `extension_type` is advertised.
+    /// Widen `self` to cover the non-default extension types of the
+    /// KeyPackage this leaf is built for.
     ///
-    /// Used under [`CapabilitiesPolicy::Widen`] for extensions the library
-    /// adds to a KeyPackage on the caller's behalf, which [`Self::widen_for`]
-    /// can't see because it only covers the leaf's own extensions.
-    pub(crate) fn ensure_extension(&mut self, extension_type: ExtensionType) {
-        if !extension_type.is_default() && !self.extensions.contains(&extension_type) {
-            self.extensions.push(extension_type);
-        }
+    /// RFC 9420 requires a KeyPackage's extensions to be listed in its leaf's
+    /// capabilities, but [`Self::widen_for`] only sees the leaf's own
+    /// extensions. As there, every added entry is a fact about what is being
+    /// built.
+    pub(crate) fn widen_for_key_package(
+        &mut self,
+        key_package_extensions: &Extensions<KeyPackage>,
+    ) {
+        self.widen_for_extensions(key_package_extensions);
     }
 
     /// Widen `self` to cover what the leaf itself uses: its ciphersuite, its
@@ -382,7 +387,11 @@ impl Capabilities {
             self.credentials.push(credential_type);
         }
 
-        for extension_type in leaf_extensions.iter().map(Extension::extension_type) {
+        self.widen_for_extensions(leaf_extensions);
+    }
+
+    fn widen_for_extensions(&mut self, extensions: &Extensions<impl ExtensionValidator>) {
+        for extension_type in extensions.iter().map(Extension::extension_type) {
             if !extension_type.is_default() && !self.extensions.contains(&extension_type) {
                 self.extensions.push(extension_type);
             }

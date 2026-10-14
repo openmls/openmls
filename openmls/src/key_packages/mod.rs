@@ -390,10 +390,14 @@ impl KeyPackage {
 
         let KeyPackageLeafNodeParams {
             lifetime,
-            capabilities,
+            mut capabilities,
             extensions: leaf_node_extensions,
             capabilities_policy,
         } = leaf_node_params;
+
+        if matches!(capabilities_policy, CapabilitiesPolicy::Widen) {
+            capabilities.widen_for_key_package(&extensions);
+        }
 
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
@@ -442,10 +446,14 @@ impl KeyPackage {
     ) -> Result<(Self, EncryptionKeyPair), KeyPackageNewError> {
         let KeyPackageLeafNodeParams {
             lifetime,
-            capabilities,
+            mut capabilities,
             extensions: leaf_node_extensions,
             capabilities_policy,
         } = leaf_node_params;
+
+        if matches!(capabilities_policy, CapabilitiesPolicy::Widen) {
+            capabilities.widen_for_key_package(&extensions);
+        }
 
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
@@ -633,7 +641,7 @@ impl KeyPackageBuilder {
     }
 
     /// Set how the leaf node's capabilities are treated when they don't cover
-    /// what the leaf itself uses.
+    /// what the leaf itself or the KeyPackage's extensions use.
     ///
     /// If never called, capabilities set via
     /// [`KeyPackageBuilder::leaf_node_capabilities`] are held to exactly what
@@ -643,32 +651,25 @@ impl KeyPackageBuilder {
         self
     }
 
-    /// Ensure that the leaf node capabilities advertise the extension that
-    /// carries the last-resort marker.
-    ///
-    /// Under [`CapabilitiesPolicy::Widen`], which is also what applies when no
-    /// capabilities were set, the extension type is added. Under
-    /// [`CapabilitiesPolicy::Reject`], building fails if it is missing.
+    /// Under [`CapabilitiesPolicy::Reject`], fail early if the leaf node
+    /// capabilities don't advertise the extension that carries the last-resort
+    /// marker. Under [`CapabilitiesPolicy::Widen`], it is added along with the
+    /// KeyPackage's other extensions.
     fn ensure_last_resort_capability(
-        &mut self,
+        &self,
         extension_type: ExtensionType,
     ) -> Result<(), KeyPackageNewError> {
-        let (mut capabilities, capabilities_policy) =
-            resolve_capabilities(self.leaf_node_capabilities.take(), self.capabilities_policy);
-        match capabilities_policy {
-            CapabilitiesPolicy::Widen => capabilities.ensure_extension(extension_type),
-            CapabilitiesPolicy::Reject => {
-                if !capabilities.extensions().contains(&extension_type) {
-                    return Err(KeyPackageNewError::MissingLastResortCapability(
-                        extension_type,
-                    ));
-                }
-            }
+        let (capabilities, capabilities_policy) = resolve_capabilities(
+            self.leaf_node_capabilities.clone(),
+            self.capabilities_policy,
+        );
+        if matches!(capabilities_policy, CapabilitiesPolicy::Reject)
+            && !capabilities.extensions().contains(&extension_type)
+        {
+            return Err(KeyPackageNewError::MissingLastResortCapability(
+                extension_type,
+            ));
         }
-        // Pin the resolved policy: the capabilities are set now, which would
-        // otherwise turn an implied `Widen` into `Reject`.
-        self.leaf_node_capabilities = Some(capabilities);
-        self.capabilities_policy = Some(capabilities_policy);
         Ok(())
     }
 

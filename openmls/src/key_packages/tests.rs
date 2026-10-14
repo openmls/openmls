@@ -395,6 +395,76 @@ fn last_resort_key_package_widens_capabilities() {
     }
 }
 
+/// Under `CapabilitiesPolicy::Widen`, the LeafNode capabilities cover every
+/// KeyPackage extension, so a KeyPackage carrying both the legacy extension and
+/// the component for a transition phase is valid.
+#[cfg(feature = "extensions-draft")]
+#[openmls_test::openmls_test]
+fn last_resort_key_package_with_both_markers_widens_capabilities() {
+    let provider = &Provider::default();
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+    let key_package = KeyPackage::builder()
+        .key_package_extensions(
+            Extensions::single(Extension::LastResort(LastResortExtension::new()))
+                .expect("failed to create legacy last-resort extension"),
+        )
+        .mark_as_last_resort()
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential,
+            },
+        )
+        .expect("failed to build last-resort KeyPackage");
+    let key_package = key_package.key_package();
+
+    let capabilities = key_package.leaf_node().capabilities().extensions();
+    assert!(capabilities.contains(&ExtensionType::AppDataDictionary));
+    assert!(capabilities.contains(&ExtensionType::LastResort));
+    assert!(key_package.extensions().contains(ExtensionType::LastResort));
+    assert_valid_after_roundtrip(provider, key_package);
+}
+
+/// Under `CapabilitiesPolicy::Widen`, the LeafNode capabilities cover
+/// KeyPackage extensions in general, not just the last-resort marker.
+#[openmls_test::openmls_test]
+fn widen_covers_key_package_extensions() {
+    let provider = &Provider::default();
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+    let key_package = KeyPackage::builder()
+        .key_package_extensions(
+            Extensions::single(Extension::Unknown(0xFF00, UnknownExtension(vec![0x00])))
+                .expect("failed to create single-element extensions list"),
+        )
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential,
+            },
+        )
+        .expect("failed to build KeyPackage");
+
+    assert!(key_package
+        .key_package()
+        .leaf_node()
+        .capabilities()
+        .extensions()
+        .contains(&ExtensionType::Unknown(0xFF00)));
+    KeyPackageIn::from(key_package.key_package().clone())
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .expect("a KeyPackage built under Widen must validate");
+}
+
 /// Test that a KeyPackage is correctly built with a last-resort marker when
 /// the last-resort flag is set during the build process.
 #[openmls_test::openmls_test]
