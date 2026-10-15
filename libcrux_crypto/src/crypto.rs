@@ -78,8 +78,8 @@ impl OpenMlsCrypto for CryptoProvider {
         }?;
 
         // The hpke-rs libcrux backend only implements these KEMs (pure ML-KEM
-        // needs its `draft-ietf-hpke-pq` feature, which
-        // `draft-ietf-mls-pq-ciphersuites` enables).
+        // and the ML-KEM + NIST curve hybrids need its `draft-ietf-hpke-pq`
+        // feature, which `draft-ietf-mls-pq-ciphersuites` enables).
         match ciphersuite.hpke_kem_algorithm() {
             HpkeKemType::DhKemP256 | HpkeKemType::DhKem25519 => Ok(()),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
@@ -88,7 +88,10 @@ impl OpenMlsCrypto for CryptoProvider {
                 Err(CryptoError::UnsupportedCiphersuite)
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            HpkeKemType::MlKem768 | HpkeKemType::MlKem1024 => Ok(()),
+            HpkeKemType::MlKem768
+            | HpkeKemType::MlKem1024
+            | HpkeKemType::MlKem768P256
+            | HpkeKemType::MlKem1024P384 => Ok(()),
         }?;
 
         match ciphersuite.hpke_aead_algorithm() {
@@ -121,6 +124,15 @@ impl OpenMlsCrypto for CryptoProvider {
             Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768P256_AES256GCM_SHA384_P256,
+            // `MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384` and
+            // `MLS_192_MLKEM1024_AES256GCM_SHA384_P384` are not supported:
+            // libcrux has no ECDSA P-384 implementation yet.
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         ]
     }
@@ -663,6 +675,10 @@ fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
         HpkeKemType::MlKem768 => hpke_rs_crypto::types::KemAlgorithm::MlKem768,
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::MlKem1024 => hpke_rs_crypto::types::KemAlgorithm::MlKem1024,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem768P256 => hpke_rs_crypto::types::KemAlgorithm::MlKem768P256,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem1024P384 => hpke_rs_crypto::types::KemAlgorithm::MlKem1024P384,
     }
 }
 
@@ -828,6 +844,23 @@ mod tests {
             "d6688a981deeff1d1273426af8a44aab877c50b6e8ac74b11e01a5960d97c03bffd9634894d255c424c80c74e0930b85b9f4c60e22a3efb09f4bad4749be427b",
             "73a9ffe155d39edcc023b11171ad6cf541ff85eff68c33b521ba25cbb1b7079bf848b63f5b8ca53f809255b51f1bef24b342d706a77cb460981e16b2ce737552",
             "b45440fa44f6a7046ecf45d77fdd4fd9f02982defa787501ba365f0c264d9f73",
+        );
+        // MLKEM768-P256 (0x0050)
+        assert_derived_keypair(
+            &provider,
+            Ciphersuite::MLS_128_MLKEM768P256_AES128GCM_SHA256_P256,
+            "3bf888035cc5f48fa476c2ccdb73a5482e97a0d0578fa710b1e393ca9716b6f0",
+            "1f25a59a6b22ef57b8e48a6cfe739b9ec13e9cf57e82dfd6e0480e0324cf905b",
+            "58906fb2678e7c53e22220d398ffc2bec8e95e9ee1369bbfdea67db2628378b4",
+        );
+        // MLKEM1024-P384 (0x0051). The ciphersuite itself is unsupported (no
+        // ECDSA P-384), but its HPKE KEM is.
+        assert_derived_keypair(
+            &provider,
+            Ciphersuite::MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384,
+            "14c036a5e3c4af452baccdcd62cf818f250607076c299636e5c8074b3c757df1",
+            "0ba4a1ff718a4444da0016d59f449e28d8abdeac107ee105e5ac0dc1e8219b37",
+            "2fa438cda8bdfa993e8286a31a3c7d90766dacd114131cd5dfecf466eab936e3",
         );
     }
 
