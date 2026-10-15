@@ -12,7 +12,6 @@ use crate::{
     credentials::Credential,
     group::{GroupEpoch, GroupId},
     messages::proposals::ReInitProposal,
-    schedule::ResumptionPskSecret,
 };
 use serde::{Deserialize, Serialize};
 
@@ -34,7 +33,6 @@ pub struct ReInitInfo {
     pub(crate) proposal: ReInitProposal,
     pub(crate) old_group_id: GroupId,
     pub(crate) old_group_epoch: GroupEpoch,
-    pub(crate) resumption_psk_secret: ResumptionPskSecret,
     pub(crate) member_credentials: Vec<Credential>,
 }
 
@@ -52,13 +50,6 @@ impl ReInitInfo {
     /// The final epoch of the old group.
     pub fn old_group_epoch(&self) -> GroupEpoch {
         self.old_group_epoch
-    }
-
-    /// The old group's resumption PSK secret for [`Self::old_group_epoch`].
-    ///
-    /// This is sensitive key material.
-    pub(crate) fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
-        &self.resumption_psk_secret
     }
 
     /// The credentials of the old group's members, used by the receiver to

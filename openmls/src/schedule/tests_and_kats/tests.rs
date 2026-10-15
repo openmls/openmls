@@ -2,10 +2,7 @@
 
 use openmls_traits::random::OpenMlsRand;
 
-use crate::{
-    ciphersuite::Secret,
-    schedule::psk::{store::ResumptionPskStore, PskSecret, *},
-};
+use crate::{ciphersuite::Secret, schedule::psk::*};
 
 #[openmls_test::openmls_test]
 fn test_psks() {
@@ -34,9 +31,7 @@ fn test_psks() {
     }
 
     let _psk_secret = {
-        let resumption_psk_store = ResumptionPskStore::new(1024);
-
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
+        let psks = load_psks(provider.storage(), None, &psk_ids).unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
@@ -91,9 +86,7 @@ fn test_application_psks() {
         psk_id.store(provider, secret.as_slice()).unwrap();
     }
 
-    let resumption_psk_store = ResumptionPskStore::new(1024);
-
-    let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
+    let psks = load_psks(provider.storage(), None, &psk_ids).unwrap();
     PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap();
 
     // Loading an application PSK that is not in storage fails.
@@ -106,7 +99,7 @@ fn test_application_psks() {
     assert_eq!(
         load_psks(
             provider.storage(),
-            &resumption_psk_store,
+            None,
             std::slice::from_ref(&unknown_psk_id),
         )
         .unwrap_err(),

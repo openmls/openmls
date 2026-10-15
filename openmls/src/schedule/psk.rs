@@ -557,33 +557,75 @@ impl From<Secret> for PskSecret {
 }
 
 /// Load PSKs from storage
+///
+/// # Arguments
+///
+/// * `storage` - Storage provider to fetch PSK secrets from
+/// * `group_id_option` - group ID to fetch resumption PSKs from.
+///     Application resumption PSKs must match this `psk_group_id`.
+///     If `None`, no resumption PSKs of type `application` are allowed.
+/// * `psk_ids` - IDs to load
 #[openmls_traits::maybe_async]
 pub(crate) async fn load_psks<'p, Storage: StorageProvider>(
     storage: &Storage,
-    resumption_psk_store: &ResumptionPskStore,
+    group_id: Option<&GroupId>,
     psk_ids: &'p [PreSharedKeyId],
 ) -> Result<Vec<(&'p PreSharedKeyId, Secret)>, PskError> {
     let mut psk_bundles = Vec::new();
+    let mut lazy_resumption_psk_store: Option<ResumptionPskStore> = None;
 
     for psk_id in psk_ids.iter() {
-        log_crypto!(trace, "PSK store {:?}", resumption_psk_store);
-
         match &psk_id.psk {
             Psk::Resumption(resumption) => {
-                let psk_epoch = match resumption.usage() {
+                let psk_secret = match resumption.usage() {
                     // Application PSKs are looked up by their own epoch.
-                    ResumptionPskUsage::Application => resumption.psk_epoch(),
+                    ResumptionPskUsage::Application => {
+                        let Some(group_id) = group_id else {
+                            // If the group ID is not yet known (i.e. in processing a Welcome),
+                            // usage application cannot be used.
+                            return Err(PskError::NotAllowed);
+                        };
+                        if &resumption.psk_group_id != group_id {
+                            // The application resumption PSK does not refer to this group.
+                            return Err(PskError::DifferentGroupId {
+                                expected: group_id.clone(),
+                                got: resumption.psk_group_id.clone(),
+                            });
+                        }
+                        let resumption_psk_store =
+                            if let Some(resumption_psk_store) = &lazy_resumption_psk_store {
+                                resumption_psk_store
+                            } else {
+                                let resumption_psk_store = storage
+                                    .resumption_psk_store(group_id)
+                                    .await
+                                    .map_err(|_| PskError::Storage)?
+                                    .ok_or(PskError::KeyNotFound)?;
+                                log_crypto!(trace, "PSK store {:?}", resumption_psk_store);
+                                lazy_resumption_psk_store.insert(resumption_psk_store)
+                            };
+                        if let Some(psk_bundle) = resumption_psk_store.get(resumption.psk_epoch()) {
+                            (psk_id, psk_bundle.secret.clone())
+                        } else {
+                            // The application resumption PSK either points to a future epoch or is already evicted.
+                            return Err(PskError::KeyNotFound);
+                        }
+                    }
                     // The branch and reinit PSK is not in this group's resumption store: it
-                    // comes from the parent or predecessor group and is injected at the sentinel
-                    // epoch 0 (see `CommitBuilder::branch` and
-                    // `ProcessedWelcome::new_from_welcome_inner`).
-                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit => 0.into(),
+                    // comes from the parent or predecessor group.
+                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit => {
+                        let foreign_psk_store: ResumptionPskStore = storage
+                            .resumption_psk_store(resumption.psk_group_id())
+                            .await
+                            .map_err(|_| PskError::Storage)?
+                            .ok_or(PskError::KeyNotFound)?;
+                        let secret = foreign_psk_store
+                            .get(resumption.psk_epoch())
+                            .ok_or(PskError::KeyNotFound)?;
+                        (psk_id, secret.secret.clone())
+                    }
                 };
-                if let Some(psk_bundle) = resumption_psk_store.get(psk_epoch) {
-                    psk_bundles.push((psk_id, psk_bundle.secret.clone()));
-                } else {
-                    return Err(PskError::KeyNotFound);
-                }
+                psk_bundles.push(psk_secret);
             }
             Psk::External(_) => {
                 let psk_bundle: Option<PskBundle> = storage
@@ -639,12 +681,6 @@ pub mod store {
                 resumption_psk: vec![],
                 cursor: 0,
             }
-        }
-
-        /// Clear all PSKs.
-        pub(crate) fn clear(&mut self) {
-            self.resumption_psk = vec![];
-            self.cursor = 0;
         }
 
         /// Adds a new entry to the store.
