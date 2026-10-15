@@ -66,6 +66,10 @@ fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
         HpkeKemType::MlKem768 => hpke_types::KemAlgorithm::MlKem768,
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::MlKem1024 => hpke_types::KemAlgorithm::MlKem1024,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem768P256 => hpke_types::KemAlgorithm::MlKem768P256,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem1024P384 => hpke_types::KemAlgorithm::MlKem1024P384,
     }
 }
 
@@ -104,6 +108,8 @@ impl OpenMlsCrypto for RustCrypto {
             | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87
             | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87
             | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519 => Ok(()),
+            // This includes the ML-KEM + P-256/P-384 hybrid ciphersuites, because
+            // hpke-rs-rust-crypto does not implement those KEMs.
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }
     }

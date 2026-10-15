@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `HpkeKemType::MlKem768P256` (0x0050) and `HpkeKemType::MlKem1024P384` (0x0051) hybrid KEMs from `draft-ietf-hpke-pq`, and the ciphersuites `MLS_128_MLKEM768P256_AES128GCM_SHA256_P256` (TBD3, provisional code point 0xF050), `MLS_128_MLKEM768P256_AES256GCM_SHA384_P256` (TBD4, 0xF051) and `MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384` (TBD5, 0xF052) from `draft-ietf-mls-pq-ciphersuites`, behind the `draft-ietf-mls-pq-ciphersuites` feature flag.
 - [#1923](https://github.com/openmls/openmls/pull/1923): Added an async mode for `StorageProvider` and `PublicStorageProvider`, enabled with the `async` feature. Every method then returns a `Send` future. The sync mode stays the default. A single crate in the build that enables `async` switches every crate in the build to the async mode.
 - [#1923](https://github.com/openmls/openmls/pull/1923): Added the `maybe_async` attribute, which lets other crates write storage code once and follow the mode of `openmls_traits`, and the `require_sync_mode!` macro for crates that only work in sync mode.
 - [#1923](https://github.com/openmls/openmls/pull/1923): Added the `MaybeSync` and `MaybeSend` traits. In async mode they require `Sync` and `Send`. In sync mode every type implements them.
