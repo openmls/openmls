@@ -6,6 +6,7 @@ use crate::group::tests_and_kats::utils::{
 use crate::prelude::*;
 use crate::test_utils::{frankenstein::*, single_group_test_framework::*};
 use openmls_test::openmls_test;
+use tls_codec::{Deserialize as _, Serialize as _};
 
 fn setup<'a, Provider: OpenMlsProvider>(
     alice_party: &'a CorePartyState<Provider>,
@@ -70,6 +71,66 @@ fn setup<'a, Provider: OpenMlsProvider>(
         .expect("Could not add member");
 
     group_state
+}
+
+/// Alice commits AppDataUpdate proposals that set data for `component_ids`, and both Alice and
+/// Bob merge the commit.
+fn seed_components<Provider: OpenMlsProvider>(
+    alice: &mut MemberState<'_, Provider>,
+    bob: &mut MemberState<'_, Provider>,
+    component_ids: &[ComponentId],
+) {
+    let alice_provider = &alice.party.core_state.provider;
+    let bob_provider = &bob.party.core_state.provider;
+
+    let proposals: Vec<_> = component_ids
+        .iter()
+        .map(|id| Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::update(*id, b"seed"))))
+        .collect();
+    let mut stage = alice
+        .group
+        .commit_builder()
+        .add_proposals(proposals)
+        .load_psks(alice_provider.storage())
+        .unwrap();
+    let mut updater = stage.app_data_dictionary_updater();
+    for id in component_ids {
+        updater.set(ComponentData::from_parts(*id, b"seed".to_vec().into()));
+    }
+    stage.with_app_data_dictionary_updates(updater.changes());
+    let (commit, _, _) = stage
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap()
+        .into_contents();
+    alice.group.merge_pending_commit(alice_provider).unwrap();
+
+    let processed_message = bob
+        .group
+        .process_message(bob_provider, commit.into_protocol_message().unwrap())
+        .unwrap();
+    let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected an unresolved AppDataUpdate commit.");
+    };
+    let mut updater = bob.group.app_data_dictionary_updater();
+    for id in component_ids {
+        updater.set(ComponentData::from_parts(*id, b"seed".to_vec().into()));
+    }
+    let staged_commit = bob
+        .group
+        .stage_app_data_commit(bob_provider, *unresolved_commit, updater.changes())
+        .unwrap();
+    bob.group
+        .merge_staged_commit(bob_provider, staged_commit)
+        .unwrap();
 }
 
 /// Commit creation:
@@ -291,7 +352,10 @@ fn test_app_data_update_multi_remove_validate_outgoing() {
 
     let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
 
-    let [alice] = group_state.members_mut(&["alice"]);
+    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
+
+    // A Remove is only valid for a component that has data.
+    seed_components(alice, bob, &[16]);
 
     // Alice sends a commit containing an AppDataUpdate proposal
     let mut stage = alice
@@ -1089,4 +1153,317 @@ fn test_commit_by_reference_requires_app_data_updates() {
                  but got: {err:?}",
         );
     }
+}
+
+/// Component with data in the group context of [`seeded_group`].
+const SEEDED_X: ComponentId = 0xf042;
+/// Component with data in the group context of [`seeded_group`].
+const SEEDED_Y: ComponentId = 0xf043;
+/// Component without data in the group context of [`seeded_group`].
+const ABSENT_Z: ComponentId = 0xf044;
+
+/// Sets up the group and seeds [`SEEDED_X`] and [`SEEDED_Y`] with data.
+fn seeded_group<'a, Provider: OpenMlsProvider>(
+    alice_party: &'a CorePartyState<Provider>,
+    bob_party: &'a CorePartyState<Provider>,
+    ciphersuite: Ciphersuite,
+) -> GroupState<'a, Provider> {
+    let mut group_state = setup(alice_party, bob_party, ciphersuite, true);
+    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
+    seed_components(alice, bob, &[SEEDED_X, SEEDED_Y]);
+    group_state
+}
+
+/// An inline AppDataUpdate proposal committed by `member`.
+fn inline_app_data_update<Provider: OpenMlsProvider>(
+    member: &MemberState<'_, Provider>,
+    ciphersuite: Ciphersuite,
+    proposal: AppDataUpdateProposal,
+) -> QueuedProposal {
+    QueuedProposal::from_proposal_and_sender(
+        ciphersuite,
+        member.party.core_state.provider.crypto(),
+        Proposal::AppDataUpdate(Box::new(proposal)),
+        &Sender::Member(member.group.own_leaf_index()),
+    )
+    .unwrap()
+}
+
+/// Runs the AppDataUpdate validation of `member`'s group on a proposal list without a
+/// GroupContextExtensions proposal.
+fn validate_app_data_updates<Provider: OpenMlsProvider>(
+    member: &MemberState<'_, Provider>,
+    proposals: Vec<QueuedProposal>,
+) -> Result<(), AppDataUpdateValidationError> {
+    let mut proposal_queue = ProposalQueue::default();
+    for proposal in proposals {
+        proposal_queue.add(proposal);
+    }
+    member
+        .group
+        .public_group()
+        .validate_app_data_update_proposals_and_group_context(&proposal_queue)
+}
+
+/// Regression test for #2283: two Removes for the same component, one by reference and one
+/// inline (so they have different proposal references and both stay in the queue), are invalid
+/// without a GroupContextExtensions proposal in the commit.
+#[openmls_test]
+fn test_app_data_update_duplicate_remove_without_gce() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut group_state = seeded_group(&alice_party, &bob_party, ciphersuite);
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            SEEDED_X,
+            AppDataUpdateOperation::Remove,
+        )
+        .unwrap();
+    let by_reference = alice.group.pending_proposals().next().unwrap().clone();
+    let inline =
+        inline_app_data_update(alice, ciphersuite, AppDataUpdateProposal::remove(SEEDED_X));
+
+    assert_eq!(
+        validate_app_data_updates(alice, vec![by_reference, inline]),
+        Err(AppDataUpdateValidationError::MoreThanOneRemovePerComponentId)
+    );
+}
+
+/// Regression test for #2283: a Remove and an Update for the same component are invalid without
+/// a GroupContextExtensions proposal in the commit.
+#[openmls_test]
+fn test_app_data_update_remove_and_update_without_gce() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut group_state = seeded_group(&alice_party, &bob_party, ciphersuite);
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let proposals = vec![
+        inline_app_data_update(alice, ciphersuite, AppDataUpdateProposal::remove(SEEDED_X)),
+        inline_app_data_update(
+            alice,
+            ciphersuite,
+            AppDataUpdateProposal::update(SEEDED_X, b"new"),
+        ),
+    ];
+
+    assert_eq!(
+        validate_app_data_updates(alice, proposals),
+        Err(AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations)
+    );
+}
+
+/// Regression test for #2283: a Remove for a component that has no data in the group context is
+/// invalid without a GroupContextExtensions proposal in the commit.
+#[openmls_test]
+fn test_app_data_update_remove_absent_without_gce() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut group_state = seeded_group(&alice_party, &bob_party, ciphersuite);
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let proposals = vec![inline_app_data_update(
+        alice,
+        ciphersuite,
+        AppDataUpdateProposal::remove(ABSENT_Z),
+    )];
+
+    assert_eq!(
+        validate_app_data_updates(alice, proposals),
+        Err(AppDataUpdateValidationError::CannotRemoveNonexistentComponent)
+    );
+}
+
+/// Regression test for #2283: a valid Remove for one component does not end validation, so a
+/// Remove and an Update for a later component are still rejected.
+#[openmls_test]
+fn test_app_data_update_valid_remove_then_remove_and_update_without_gce() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut group_state = seeded_group(&alice_party, &bob_party, ciphersuite);
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let proposals = vec![
+        inline_app_data_update(alice, ciphersuite, AppDataUpdateProposal::remove(SEEDED_X)),
+        inline_app_data_update(alice, ciphersuite, AppDataUpdateProposal::remove(SEEDED_Y)),
+        inline_app_data_update(
+            alice,
+            ciphersuite,
+            AppDataUpdateProposal::update(SEEDED_Y, b"new"),
+        ),
+    ];
+
+    assert_eq!(
+        validate_app_data_updates(alice, proposals),
+        Err(AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations)
+    );
+}
+
+/// Regression test for #2283: a valid Remove for one component does not end validation, so a
+/// Remove for a later component without data is still rejected.
+#[openmls_test]
+fn test_app_data_update_valid_remove_then_remove_absent_without_gce() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut group_state = seeded_group(&alice_party, &bob_party, ciphersuite);
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let proposals = vec![
+        inline_app_data_update(alice, ciphersuite, AppDataUpdateProposal::remove(SEEDED_X)),
+        inline_app_data_update(alice, ciphersuite, AppDataUpdateProposal::remove(ABSENT_Z)),
+    ];
+
+    assert_eq!(
+        validate_app_data_updates(alice, proposals),
+        Err(AppDataUpdateValidationError::CannotRemoveNonexistentComponent)
+    );
+}
+
+/// A single Remove of a component with data plus Updates of other components is valid.
+#[openmls_test]
+fn test_app_data_update_remove_and_other_updates_without_gce() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut group_state = seeded_group(&alice_party, &bob_party, ciphersuite);
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    let proposals = vec![
+        inline_app_data_update(alice, ciphersuite, AppDataUpdateProposal::remove(SEEDED_X)),
+        inline_app_data_update(
+            alice,
+            ciphersuite,
+            AppDataUpdateProposal::update(SEEDED_Y, b"new"),
+        ),
+        inline_app_data_update(
+            alice,
+            ciphersuite,
+            AppDataUpdateProposal::update(ABSENT_Z, b"new"),
+        ),
+    ];
+
+    assert_eq!(validate_app_data_updates(alice, proposals), Ok(()));
+}
+
+/// Regression test for #2283: a receiver rejects a commit carrying a Remove and an Update for the
+/// same component and no GroupContextExtensions proposal.
+///
+/// The commit builder refuses such a proposal list, so Alice builds a valid commit with a single
+/// Remove, and the test appends an Update for the same component, re-signs the commit and
+/// recomputes its membership tag.
+#[openmls_test]
+fn test_app_data_update_receiver_rejects_remove_and_update() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut group_state = seeded_group(&alice_party, &bob_party, ciphersuite);
+    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
+
+    let mut stage = alice
+        .group
+        .commit_builder()
+        .add_proposals(vec![Proposal::AppDataUpdate(Box::new(
+            AppDataUpdateProposal::remove(SEEDED_X),
+        ))])
+        .load_psks(alice_party.provider.storage())
+        .unwrap();
+    let mut updater = stage.app_data_dictionary_updater();
+    updater.remove(&SEEDED_X);
+    stage.with_app_data_dictionary_updates(updater.changes());
+    let (commit, _, _) = stage
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(&alice_party.provider)
+        .unwrap()
+        .into_contents();
+
+    let FrankenMlsMessage {
+        version,
+        body:
+            FrankenMlsMessageBody::PublicMessage(FrankenPublicMessage {
+                mut content, auth, ..
+            }),
+    } = FrankenMlsMessage::from(commit)
+    else {
+        unreachable!()
+    };
+    let FrankenFramedContentBody::Commit(ref mut franken_commit) = content.body else {
+        unreachable!()
+    };
+    franken_commit
+        .proposals
+        .push(FrankenProposalOrRef::Proposal(
+            FrankenProposal::AppDataUpdate(FrankenAppDataUpdateProposal {
+                component_id: SEEDED_X,
+                operation: AppDataUpdateOperation::Update(b"new".into()),
+            }),
+        ));
+
+    // The confirmation tag no longer matches the commit, but the AppDataUpdate validation runs
+    // before the confirmation tag is checked.
+    let group_context = alice.group.export_group_context().clone();
+    let membership_key = alice.group.message_secrets().membership_key().as_slice();
+    let tampered_commit = FrankenMlsMessage {
+        version,
+        body: FrankenMlsMessageBody::PublicMessage(FrankenPublicMessage::auth(
+            &alice_party.provider,
+            ciphersuite,
+            &alice.party.signer,
+            content,
+            Some(&group_context.into()),
+            Some(membership_key),
+            auth.confirmation_tag,
+        )),
+    };
+    let tampered_commit =
+        MlsMessageIn::tls_deserialize_exact(tampered_commit.tls_serialize_detached().unwrap())
+            .unwrap();
+
+    let processed_message = bob
+        .group
+        .process_message(
+            &bob_party.provider,
+            tampered_commit.try_into_protocol_message().unwrap(),
+        )
+        .unwrap();
+    let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) =
+        processed_message.into_content()
+    else {
+        panic!("Expected an unresolved AppDataUpdate commit.");
+    };
+
+    // Bob applies the proposals in the order he gets them, relying on OpenMLS to reject an
+    // invalid proposal list.
+    let mut updater = bob.group.app_data_dictionary_updater();
+    for proposal in unresolved_commit.app_data_update_proposals() {
+        match proposal.operation() {
+            AppDataUpdateOperation::Update(data) => updater.set(ComponentData::from_parts(
+                proposal.component_id(),
+                data.clone(),
+            )),
+            AppDataUpdateOperation::Remove => updater.remove(&proposal.component_id()),
+        }
+    }
+    let err = bob
+        .group
+        .stage_app_data_commit(&bob_party.provider, *unresolved_commit, updater.changes())
+        .unwrap_err();
+
+    assert!(
+        matches!(
+            err,
+            StageCommitError::AppDataUpdateValidationError(
+                AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+            )
+        ),
+        "got wrong error: {err:#?}"
+    );
 }
