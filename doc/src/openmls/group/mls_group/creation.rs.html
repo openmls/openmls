@@ -1846,409 +1846,426 @@
 <a href=#1846 id=1846 data-nosnippet>1846</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NotAnExternalCommit);
 <a href=#1847 id=1847 data-nosnippet>1847</a>        };
 <a href=#1848 id=1848 data-nosnippet>1848</a>        <span class="kw">let </span>verified = unverified
-<a href=#1849 id=1849 data-nosnippet>1849</a>            .verify(group.ciphersuite(), provider.crypto(), group.version())
-<a href=#1850 id=1850 data-nosnippet>1850</a>            .map_err(ProcessMessageError::from)<span class="question-mark">?</span>;
-<a href=#1851 id=1851 data-nosnippet>1851</a>        <span class="kw">if </span>!<span class="macro">matches!</span>(verified.content.sender(), Sender::NewMemberCommit) {
-<a href=#1852 id=1852 data-nosnippet>1852</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NotAnExternalCommit);
-<a href=#1853 id=1853 data-nosnippet>1853</a>        }
-<a href=#1854 id=1854 data-nosnippet>1854</a>        <span class="kw">let </span>content = verified.content;
-<a href=#1855 id=1855 data-nosnippet>1855</a>        <span class="kw">let </span>FramedContentBody::Commit(commit) = content.content() <span class="kw">else </span>{
-<a href=#1856 id=1856 data-nosnippet>1856</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NotAnExternalCommit);
-<a href=#1857 id=1857 data-nosnippet>1857</a>        };
-<a href=#1858 id=1858 data-nosnippet>1858</a>
-<a href=#1859 id=1859 data-nosnippet>1859</a>        <span class="comment">// Check the commit's derivation info without consuming an operation
-<a href=#1860 id=1860 data-nosnippet>1860</a>        // secret generation: presence and the emulation epoch binding are
-<a href=#1861 id=1861 data-nosnippet>1861</a>        // validated here, decryption and the consume-once secret derivation
-<a href=#1862 id=1862 data-nosnippet>1862</a>        // happen in `StagedVcExternalCommitJoin::into_group`.
-<a href=#1863 id=1863 data-nosnippet>1863</a>        </span><span class="kw">let </span>derivation_info = commit
-<a href=#1864 id=1864 data-nosnippet>1864</a>            .path
-<a href=#1865 id=1865 data-nosnippet>1865</a>            .as_ref()
-<a href=#1866 id=1866 data-nosnippet>1866</a>            .map(|path| path.leaf_node().vc_derivation_info())
-<a href=#1867 id=1867 data-nosnippet>1867</a>            .transpose()<span class="question-mark">?
-<a href=#1868 id=1868 data-nosnippet>1868</a>            </span>.flatten()
-<a href=#1869 id=1869 data-nosnippet>1869</a>            .ok_or(Error::MissingDerivationInfo)<span class="question-mark">?</span>;
-<a href=#1870 id=1870 data-nosnippet>1870</a>        <span class="kw">if </span>derivation_info.epoch_id() != <span class="kw-2">&amp;</span>epoch_id {
-<a href=#1871 id=1871 data-nosnippet>1871</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::EpochIdMismatch);
-<a href=#1872 id=1872 data-nosnippet>1872</a>        }
-<a href=#1873 id=1873 data-nosnippet>1873</a>
-<a href=#1874 id=1874 data-nosnippet>1874</a>        <span class="comment">// The AppDataUpdate proposals covered by the commit, for the
-<a href=#1875 id=1875 data-nosnippet>1875</a>        // application to resolve before completing the join. The transient
-<a href=#1876 id=1876 data-nosnippet>1876</a>        // group's proposal store is empty, so only by-value proposals
-<a href=#1877 id=1877 data-nosnippet>1877</a>        // resolve. An external commit cannot reference proposals a
-<a href=#1878 id=1878 data-nosnippet>1878</a>        // non-member could hold.
-<a href=#1879 id=1879 data-nosnippet>1879</a>        </span><span class="kw">let </span>app_data_update_proposals =
-<a href=#1880 id=1880 data-nosnippet>1880</a>            committed_app_data_update_proposals(commit, group.proposal_store());
-<a href=#1881 id=1881 data-nosnippet>1881</a>
-<a href=#1882 id=1882 data-nosnippet>1882</a>        <span class="prelude-val">Ok</span>(StagedVcExternalCommitJoin {
-<a href=#1883 id=1883 data-nosnippet>1883</a>            group,
-<a href=#1884 id=1884 data-nosnippet>1884</a>            content,
-<a href=#1885 id=1885 data-nosnippet>1885</a>            app_data_update_proposals,
-<a href=#1886 id=1886 data-nosnippet>1886</a>            app_data_updates: <span class="prelude-val">None</span>,
-<a href=#1887 id=1887 data-nosnippet>1887</a>        })
-<a href=#1888 id=1888 data-nosnippet>1888</a>    }
-<a href=#1889 id=1889 data-nosnippet>1889</a>}
-<a href=#1890 id=1890 data-nosnippet>1890</a>
-<a href=#1891 id=1891 data-nosnippet>1891</a><span class="doccomment">/// A verified sibling external commit, ready to be joined. Returned by
-<a href=#1892 id=1892 data-nosnippet>1892</a>/// [`VcExternalCommitJoinBuilder::process_commit`].
-<a href=#1893 id=1893 data-nosnippet>1893</a>///
-<a href=#1894 id=1894 data-nosnippet>1894</a>/// The commit's signature has been verified against the prior-epoch group,
-<a href=#1895 id=1895 data-nosnippet>1895</a>/// so the proposals exposed here are authenticated. If the commit covers
-<a href=#1896 id=1896 data-nosnippet>1896</a>/// AppDataUpdate proposals, the application must interpret them (with the
-<a href=#1897 id=1897 data-nosnippet>1897</a>/// help of [`Self::app_data_dictionary_updater`]) and supply the resulting
-<a href=#1898 id=1898 data-nosnippet>1898</a>/// [`AppDataUpdates`] via [`Self::with_app_data_dictionary_updates`] before
-<a href=#1899 id=1899 data-nosnippet>1899</a>/// calling [`Self::into_group`], exactly as it would for
-<a href=#1900 id=1900 data-nosnippet>1900</a>/// [`MlsGroup::resolve_app_data_commit`] when processing the same commit as
-<a href=#1901 id=1901 data-nosnippet>1901</a>/// a member.
-<a href=#1902 id=1902 data-nosnippet>1902</a>///
-<a href=#1903 id=1903 data-nosnippet>1903</a>/// Dropping this value discards the join. No operation secret generation is
-<a href=#1904 id=1904 data-nosnippet>1904</a>/// consumed before [`Self::into_group`], so a discarded join can be started
-<a href=#1905 id=1905 data-nosnippet>1905</a>/// over by processing the same commit again.
-<a href=#1906 id=1906 data-nosnippet>1906</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#1907 id=1907 data-nosnippet>1907</a></span><span class="kw">pub struct </span>StagedVcExternalCommitJoin {
-<a href=#1908 id=1908 data-nosnippet>1908</a>    <span class="doccomment">/// Transient reconstruction of the group at the prior epoch.
-<a href=#1909 id=1909 data-nosnippet>1909</a>    </span>group: MlsGroup,
-<a href=#1910 id=1910 data-nosnippet>1910</a>    <span class="doccomment">/// The verified commit content.
-<a href=#1911 id=1911 data-nosnippet>1911</a>    </span>content: AuthenticatedContent,
-<a href=#1912 id=1912 data-nosnippet>1912</a>    <span class="doccomment">/// The by-value AppDataUpdate proposals covered by the commit, sorted by
-<a href=#1913 id=1913 data-nosnippet>1913</a>    /// component id.
-<a href=#1914 id=1914 data-nosnippet>1914</a>    </span>app_data_update_proposals: Vec&lt;AppDataUpdateProposal&gt;,
-<a href=#1915 id=1915 data-nosnippet>1915</a>    <span class="doccomment">/// The application-resolved updates for the commit's AppDataUpdate
-<a href=#1916 id=1916 data-nosnippet>1916</a>    /// proposals, if any.
-<a href=#1917 id=1917 data-nosnippet>1917</a>    </span>app_data_updates: <span class="prelude-ty">Option</span>&lt;AppDataUpdates&gt;,
-<a href=#1918 id=1918 data-nosnippet>1918</a>}
-<a href=#1919 id=1919 data-nosnippet>1919</a>
-<a href=#1920 id=1920 data-nosnippet>1920</a><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
-<a href=#1921 id=1921 data-nosnippet>1921</a></span><span class="kw">impl </span>StagedVcExternalCommitJoin {
-<a href=#1922 id=1922 data-nosnippet>1922</a>    <span class="doccomment">/// Returns the [`GroupContext`] of the group at the epoch *before* the
-<a href=#1923 id=1923 data-nosnippet>1923</a>    /// external commit. The commit's changes (including any AppDataUpdate
-<a href=#1924 id=1924 data-nosnippet>1924</a>    /// proposals) are not applied to it. The joined group's context is
-<a href=#1925 id=1925 data-nosnippet>1925</a>    /// available on the [`MlsGroup`] returned by [`Self::into_group`].
-<a href=#1926 id=1926 data-nosnippet>1926</a>    </span><span class="kw">pub fn </span>prior_group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
-<a href=#1927 id=1927 data-nosnippet>1927</a>        <span class="self">self</span>.group.context()
-<a href=#1928 id=1928 data-nosnippet>1928</a>    }
-<a href=#1929 id=1929 data-nosnippet>1929</a>
-<a href=#1930 id=1930 data-nosnippet>1930</a>    <span class="doccomment">/// Returns an iterator over the [`Member`]s of the group at the epoch
-<a href=#1931 id=1931 data-nosnippet>1931</a>    /// *before* the external commit. The commit's changes are not applied:
-<a href=#1932 id=1932 data-nosnippet>1932</a>    /// the committing sibling's virtual-client leaf is absent and members
-<a href=#1933 id=1933 data-nosnippet>1933</a>    /// the commit inline-removes are still present.
-<a href=#1934 id=1934 data-nosnippet>1934</a>    </span><span class="kw">pub fn </span>prior_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">'_ </span>{
-<a href=#1935 id=1935 data-nosnippet>1935</a>        <span class="self">self</span>.group.members()
-<a href=#1936 id=1936 data-nosnippet>1936</a>    }
-<a href=#1937 id=1937 data-nosnippet>1937</a>
-<a href=#1938 id=1938 data-nosnippet>1938</a>    <span class="doccomment">/// Returns the AppDataUpdate proposals covered by the commit, sorted by
-<a href=#1939 id=1939 data-nosnippet>1939</a>    /// component id. The application interprets them to compute the
-<a href=#1940 id=1940 data-nosnippet>1940</a>    /// [`AppDataUpdates`] that [`Self::into_group`] requires.
-<a href=#1941 id=1941 data-nosnippet>1941</a>    </span><span class="kw">pub fn </span>app_data_update_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>AppDataUpdateProposal&gt; {
-<a href=#1942 id=1942 data-nosnippet>1942</a>        <span class="self">self</span>.app_data_update_proposals.iter()
-<a href=#1943 id=1943 data-nosnippet>1943</a>    }
-<a href=#1944 id=1944 data-nosnippet>1944</a>
-<a href=#1945 id=1945 data-nosnippet>1945</a>    <span class="doccomment">/// Returns the AppEphemeral proposals for `component_id` that the commit
-<a href=#1946 id=1946 data-nosnippet>1946</a>    /// carries by value, in the order they appear in the commit, for example
-<a href=#1947 id=1947 data-nosnippet>1947</a>    /// to decide how to follow the join. Unlike
-<a href=#1948 id=1948 data-nosnippet>1948</a>    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`], the returned
-<a href=#1949 id=1949 data-nosnippet>1949</a>    /// data is authenticated: the commit's signature has been verified.
-<a href=#1950 id=1950 data-nosnippet>1950</a>    ///
-<a href=#1951 id=1951 data-nosnippet>1951</a>    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`]:
-<a href=#1952 id=1952 data-nosnippet>1952</a>    ///     crate::framing::PublicMessageIn::unverified_app_ephemeral_proposals
-<a href=#1953 id=1953 data-nosnippet>1953</a>    </span><span class="kw">pub fn </span>app_ephemeral_proposals_for_component_id(
-<a href=#1954 id=1954 data-nosnippet>1954</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#1955 id=1955 data-nosnippet>1955</a>        component_id: ComponentId,
-<a href=#1956 id=1956 data-nosnippet>1956</a>    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>AppEphemeralProposal&gt; {
-<a href=#1957 id=1957 data-nosnippet>1957</a>        <span class="kw">let </span>proposals = <span class="kw">match </span><span class="self">self</span>.content.content() {
-<a href=#1958 id=1958 data-nosnippet>1958</a>            FramedContentBody::Commit(commit) =&gt; commit.proposals.as_slice(),
-<a href=#1959 id=1959 data-nosnippet>1959</a>            <span class="comment">// `process_commit` only constructs staged joins from commits.
-<a href=#1960 id=1960 data-nosnippet>1960</a>            </span><span class="kw">_ </span>=&gt; <span class="kw-2">&amp;</span>[],
-<a href=#1961 id=1961 data-nosnippet>1961</a>        };
-<a href=#1962 id=1962 data-nosnippet>1962</a>        proposals
-<a href=#1963 id=1963 data-nosnippet>1963</a>            .iter()
-<a href=#1964 id=1964 data-nosnippet>1964</a>            .filter_map(<span class="kw">move </span>|proposal_or_ref| <span class="kw">match </span>proposal_or_ref {
-<a href=#1965 id=1965 data-nosnippet>1965</a>                ProposalOrRef::Proposal(proposal) =&gt; <span class="kw">match </span>proposal.as_ref() {
-<a href=#1966 id=1966 data-nosnippet>1966</a>                    Proposal::AppEphemeral(app_ephemeral)
-<a href=#1967 id=1967 data-nosnippet>1967</a>                        <span class="kw">if </span>app_ephemeral.component_id() == component_id =&gt;
-<a href=#1968 id=1968 data-nosnippet>1968</a>                    {
-<a href=#1969 id=1969 data-nosnippet>1969</a>                        <span class="prelude-val">Some</span>(app_ephemeral.as_ref())
-<a href=#1970 id=1970 data-nosnippet>1970</a>                    }
-<a href=#1971 id=1971 data-nosnippet>1971</a>                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-<a href=#1972 id=1972 data-nosnippet>1972</a>                },
-<a href=#1973 id=1973 data-nosnippet>1973</a>                ProposalOrRef::Reference(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
-<a href=#1974 id=1974 data-nosnippet>1974</a>            })
-<a href=#1975 id=1975 data-nosnippet>1975</a>    }
-<a href=#1976 id=1976 data-nosnippet>1976</a>
-<a href=#1977 id=1977 data-nosnippet>1977</a>    <span class="doccomment">/// Returns a helper for computing the [`AppDataUpdates`], seeded with
-<a href=#1978 id=1978 data-nosnippet>1978</a>    /// the app data dictionary of the prior-epoch group context.
-<a href=#1979 id=1979 data-nosnippet>1979</a>    </span><span class="kw">pub fn </span>app_data_dictionary_updater(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AppDataDictionaryUpdater&lt;<span class="lifetime">'_</span>&gt; {
-<a href=#1980 id=1980 data-nosnippet>1980</a>        AppDataDictionaryUpdater::new(<span class="self">self</span>.group.context().app_data_dict())
+<a href=#1849 id=1849 data-nosnippet>1849</a>            .verify(
+<a href=#1850 id=1850 data-nosnippet>1850</a>                group.ciphersuite(),
+<a href=#1851 id=1851 data-nosnippet>1851</a>                provider.crypto(),
+<a href=#1852 id=1852 data-nosnippet>1852</a>                group.version(),
+<a href=#1853 id=1853 data-nosnippet>1853</a>                <span class="comment">// An external commit carries no Add proposals.
+<a href=#1854 id=1854 data-nosnippet>1854</a>                </span>LeafNodeLifetimePolicy::Verify,
+<a href=#1855 id=1855 data-nosnippet>1855</a>            )
+<a href=#1856 id=1856 data-nosnippet>1856</a>            .map_err(ProcessMessageError::from)<span class="question-mark">?</span>;
+<a href=#1857 id=1857 data-nosnippet>1857</a>        <span class="kw">if </span>!<span class="macro">matches!</span>(verified.content.sender(), Sender::NewMemberCommit) {
+<a href=#1858 id=1858 data-nosnippet>1858</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NotAnExternalCommit);
+<a href=#1859 id=1859 data-nosnippet>1859</a>        }
+<a href=#1860 id=1860 data-nosnippet>1860</a>        <span class="kw">let </span>content = verified.content;
+<a href=#1861 id=1861 data-nosnippet>1861</a>        <span class="kw">let </span>FramedContentBody::Commit(commit) = content.content() <span class="kw">else </span>{
+<a href=#1862 id=1862 data-nosnippet>1862</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NotAnExternalCommit);
+<a href=#1863 id=1863 data-nosnippet>1863</a>        };
+<a href=#1864 id=1864 data-nosnippet>1864</a>
+<a href=#1865 id=1865 data-nosnippet>1865</a>        <span class="comment">// Check the commit's derivation info without consuming an operation
+<a href=#1866 id=1866 data-nosnippet>1866</a>        // secret generation: presence and the emulation epoch binding are
+<a href=#1867 id=1867 data-nosnippet>1867</a>        // validated here, decryption and the consume-once secret derivation
+<a href=#1868 id=1868 data-nosnippet>1868</a>        // happen in `StagedVcExternalCommitJoin::into_group`.
+<a href=#1869 id=1869 data-nosnippet>1869</a>        </span><span class="kw">let </span>derivation_info = commit
+<a href=#1870 id=1870 data-nosnippet>1870</a>            .path
+<a href=#1871 id=1871 data-nosnippet>1871</a>            .as_ref()
+<a href=#1872 id=1872 data-nosnippet>1872</a>            .map(|path| path.leaf_node().vc_derivation_info())
+<a href=#1873 id=1873 data-nosnippet>1873</a>            .transpose()<span class="question-mark">?
+<a href=#1874 id=1874 data-nosnippet>1874</a>            </span>.flatten()
+<a href=#1875 id=1875 data-nosnippet>1875</a>            .ok_or(Error::MissingDerivationInfo)<span class="question-mark">?</span>;
+<a href=#1876 id=1876 data-nosnippet>1876</a>        <span class="kw">if </span>derivation_info.epoch_id() != <span class="kw-2">&amp;</span>epoch_id {
+<a href=#1877 id=1877 data-nosnippet>1877</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::EpochIdMismatch);
+<a href=#1878 id=1878 data-nosnippet>1878</a>        }
+<a href=#1879 id=1879 data-nosnippet>1879</a>
+<a href=#1880 id=1880 data-nosnippet>1880</a>        <span class="comment">// The AppDataUpdate proposals covered by the commit, for the
+<a href=#1881 id=1881 data-nosnippet>1881</a>        // application to resolve before completing the join. The transient
+<a href=#1882 id=1882 data-nosnippet>1882</a>        // group's proposal store is empty, so only by-value proposals
+<a href=#1883 id=1883 data-nosnippet>1883</a>        // resolve. An external commit cannot reference proposals a
+<a href=#1884 id=1884 data-nosnippet>1884</a>        // non-member could hold.
+<a href=#1885 id=1885 data-nosnippet>1885</a>        </span><span class="kw">let </span>app_data_update_proposals =
+<a href=#1886 id=1886 data-nosnippet>1886</a>            committed_app_data_update_proposals(commit, group.proposal_store());
+<a href=#1887 id=1887 data-nosnippet>1887</a>
+<a href=#1888 id=1888 data-nosnippet>1888</a>        <span class="prelude-val">Ok</span>(StagedVcExternalCommitJoin {
+<a href=#1889 id=1889 data-nosnippet>1889</a>            group,
+<a href=#1890 id=1890 data-nosnippet>1890</a>            content,
+<a href=#1891 id=1891 data-nosnippet>1891</a>            app_data_update_proposals,
+<a href=#1892 id=1892 data-nosnippet>1892</a>            app_data_updates: <span class="prelude-val">None</span>,
+<a href=#1893 id=1893 data-nosnippet>1893</a>        })
+<a href=#1894 id=1894 data-nosnippet>1894</a>    }
+<a href=#1895 id=1895 data-nosnippet>1895</a>}
+<a href=#1896 id=1896 data-nosnippet>1896</a>
+<a href=#1897 id=1897 data-nosnippet>1897</a><span class="doccomment">/// A verified sibling external commit, ready to be joined. Returned by
+<a href=#1898 id=1898 data-nosnippet>1898</a>/// [`VcExternalCommitJoinBuilder::process_commit`].
+<a href=#1899 id=1899 data-nosnippet>1899</a>///
+<a href=#1900 id=1900 data-nosnippet>1900</a>/// The commit's signature has been verified against the prior-epoch group,
+<a href=#1901 id=1901 data-nosnippet>1901</a>/// so the proposals exposed here are authenticated. If the commit covers
+<a href=#1902 id=1902 data-nosnippet>1902</a>/// AppDataUpdate proposals, the application must interpret them (with the
+<a href=#1903 id=1903 data-nosnippet>1903</a>/// help of [`Self::app_data_dictionary_updater`]) and supply the resulting
+<a href=#1904 id=1904 data-nosnippet>1904</a>/// [`AppDataUpdates`] via [`Self::with_app_data_dictionary_updates`] before
+<a href=#1905 id=1905 data-nosnippet>1905</a>/// calling [`Self::into_group`], exactly as it would for
+<a href=#1906 id=1906 data-nosnippet>1906</a>/// [`MlsGroup::resolve_app_data_commit`] when processing the same commit as
+<a href=#1907 id=1907 data-nosnippet>1907</a>/// a member.
+<a href=#1908 id=1908 data-nosnippet>1908</a>///
+<a href=#1909 id=1909 data-nosnippet>1909</a>/// Dropping this value discards the join. No operation secret generation is
+<a href=#1910 id=1910 data-nosnippet>1910</a>/// consumed before [`Self::into_group`], so a discarded join can be started
+<a href=#1911 id=1911 data-nosnippet>1911</a>/// over by processing the same commit again.
+<a href=#1912 id=1912 data-nosnippet>1912</a></span><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#1913 id=1913 data-nosnippet>1913</a></span><span class="kw">pub struct </span>StagedVcExternalCommitJoin {
+<a href=#1914 id=1914 data-nosnippet>1914</a>    <span class="doccomment">/// Transient reconstruction of the group at the prior epoch.
+<a href=#1915 id=1915 data-nosnippet>1915</a>    </span>group: MlsGroup,
+<a href=#1916 id=1916 data-nosnippet>1916</a>    <span class="doccomment">/// The verified commit content.
+<a href=#1917 id=1917 data-nosnippet>1917</a>    </span>content: AuthenticatedContent,
+<a href=#1918 id=1918 data-nosnippet>1918</a>    <span class="doccomment">/// The by-value AppDataUpdate proposals covered by the commit, sorted by
+<a href=#1919 id=1919 data-nosnippet>1919</a>    /// component id.
+<a href=#1920 id=1920 data-nosnippet>1920</a>    </span>app_data_update_proposals: Vec&lt;AppDataUpdateProposal&gt;,
+<a href=#1921 id=1921 data-nosnippet>1921</a>    <span class="doccomment">/// The application-resolved updates for the commit's AppDataUpdate
+<a href=#1922 id=1922 data-nosnippet>1922</a>    /// proposals, if any.
+<a href=#1923 id=1923 data-nosnippet>1923</a>    </span>app_data_updates: <span class="prelude-ty">Option</span>&lt;AppDataUpdates&gt;,
+<a href=#1924 id=1924 data-nosnippet>1924</a>}
+<a href=#1925 id=1925 data-nosnippet>1925</a>
+<a href=#1926 id=1926 data-nosnippet>1926</a><span class="attr">#[cfg(feature = <span class="string">"virtual-clients-draft"</span>)]
+<a href=#1927 id=1927 data-nosnippet>1927</a></span><span class="kw">impl </span>StagedVcExternalCommitJoin {
+<a href=#1928 id=1928 data-nosnippet>1928</a>    <span class="doccomment">/// Returns the [`GroupContext`] of the group at the epoch *before* the
+<a href=#1929 id=1929 data-nosnippet>1929</a>    /// external commit. The commit's changes (including any AppDataUpdate
+<a href=#1930 id=1930 data-nosnippet>1930</a>    /// proposals) are not applied to it. The joined group's context is
+<a href=#1931 id=1931 data-nosnippet>1931</a>    /// available on the [`MlsGroup`] returned by [`Self::into_group`].
+<a href=#1932 id=1932 data-nosnippet>1932</a>    </span><span class="kw">pub fn </span>prior_group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
+<a href=#1933 id=1933 data-nosnippet>1933</a>        <span class="self">self</span>.group.context()
+<a href=#1934 id=1934 data-nosnippet>1934</a>    }
+<a href=#1935 id=1935 data-nosnippet>1935</a>
+<a href=#1936 id=1936 data-nosnippet>1936</a>    <span class="doccomment">/// Returns an iterator over the [`Member`]s of the group at the epoch
+<a href=#1937 id=1937 data-nosnippet>1937</a>    /// *before* the external commit. The commit's changes are not applied:
+<a href=#1938 id=1938 data-nosnippet>1938</a>    /// the committing sibling's virtual-client leaf is absent and members
+<a href=#1939 id=1939 data-nosnippet>1939</a>    /// the commit inline-removes are still present.
+<a href=#1940 id=1940 data-nosnippet>1940</a>    </span><span class="kw">pub fn </span>prior_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">'_ </span>{
+<a href=#1941 id=1941 data-nosnippet>1941</a>        <span class="self">self</span>.group.members()
+<a href=#1942 id=1942 data-nosnippet>1942</a>    }
+<a href=#1943 id=1943 data-nosnippet>1943</a>
+<a href=#1944 id=1944 data-nosnippet>1944</a>    <span class="doccomment">/// Returns the AppDataUpdate proposals covered by the commit, sorted by
+<a href=#1945 id=1945 data-nosnippet>1945</a>    /// component id. The application interprets them to compute the
+<a href=#1946 id=1946 data-nosnippet>1946</a>    /// [`AppDataUpdates`] that [`Self::into_group`] requires.
+<a href=#1947 id=1947 data-nosnippet>1947</a>    </span><span class="kw">pub fn </span>app_data_update_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>AppDataUpdateProposal&gt; {
+<a href=#1948 id=1948 data-nosnippet>1948</a>        <span class="self">self</span>.app_data_update_proposals.iter()
+<a href=#1949 id=1949 data-nosnippet>1949</a>    }
+<a href=#1950 id=1950 data-nosnippet>1950</a>
+<a href=#1951 id=1951 data-nosnippet>1951</a>    <span class="doccomment">/// Returns the AppEphemeral proposals for `component_id` that the commit
+<a href=#1952 id=1952 data-nosnippet>1952</a>    /// carries by value, in the order they appear in the commit, for example
+<a href=#1953 id=1953 data-nosnippet>1953</a>    /// to decide how to follow the join. Unlike
+<a href=#1954 id=1954 data-nosnippet>1954</a>    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`], the returned
+<a href=#1955 id=1955 data-nosnippet>1955</a>    /// data is authenticated: the commit's signature has been verified.
+<a href=#1956 id=1956 data-nosnippet>1956</a>    ///
+<a href=#1957 id=1957 data-nosnippet>1957</a>    /// [`PublicMessageIn::unverified_app_ephemeral_proposals`]:
+<a href=#1958 id=1958 data-nosnippet>1958</a>    ///     crate::framing::PublicMessageIn::unverified_app_ephemeral_proposals
+<a href=#1959 id=1959 data-nosnippet>1959</a>    </span><span class="kw">pub fn </span>app_ephemeral_proposals_for_component_id(
+<a href=#1960 id=1960 data-nosnippet>1960</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#1961 id=1961 data-nosnippet>1961</a>        component_id: ComponentId,
+<a href=#1962 id=1962 data-nosnippet>1962</a>    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>AppEphemeralProposal&gt; {
+<a href=#1963 id=1963 data-nosnippet>1963</a>        <span class="kw">let </span>proposals = <span class="kw">match </span><span class="self">self</span>.content.content() {
+<a href=#1964 id=1964 data-nosnippet>1964</a>            FramedContentBody::Commit(commit) =&gt; commit.proposals.as_slice(),
+<a href=#1965 id=1965 data-nosnippet>1965</a>            <span class="comment">// `process_commit` only constructs staged joins from commits.
+<a href=#1966 id=1966 data-nosnippet>1966</a>            </span><span class="kw">_ </span>=&gt; <span class="kw-2">&amp;</span>[],
+<a href=#1967 id=1967 data-nosnippet>1967</a>        };
+<a href=#1968 id=1968 data-nosnippet>1968</a>        proposals
+<a href=#1969 id=1969 data-nosnippet>1969</a>            .iter()
+<a href=#1970 id=1970 data-nosnippet>1970</a>            .filter_map(<span class="kw">move </span>|proposal_or_ref| <span class="kw">match </span>proposal_or_ref {
+<a href=#1971 id=1971 data-nosnippet>1971</a>                ProposalOrRef::Proposal(proposal) =&gt; <span class="kw">match </span>proposal.as_ref() {
+<a href=#1972 id=1972 data-nosnippet>1972</a>                    Proposal::AppEphemeral(app_ephemeral)
+<a href=#1973 id=1973 data-nosnippet>1973</a>                        <span class="kw">if </span>app_ephemeral.component_id() == component_id =&gt;
+<a href=#1974 id=1974 data-nosnippet>1974</a>                    {
+<a href=#1975 id=1975 data-nosnippet>1975</a>                        <span class="prelude-val">Some</span>(app_ephemeral.as_ref())
+<a href=#1976 id=1976 data-nosnippet>1976</a>                    }
+<a href=#1977 id=1977 data-nosnippet>1977</a>                    <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+<a href=#1978 id=1978 data-nosnippet>1978</a>                },
+<a href=#1979 id=1979 data-nosnippet>1979</a>                ProposalOrRef::Reference(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+<a href=#1980 id=1980 data-nosnippet>1980</a>            })
 <a href=#1981 id=1981 data-nosnippet>1981</a>    }
 <a href=#1982 id=1982 data-nosnippet>1982</a>
-<a href=#1983 id=1983 data-nosnippet>1983</a>    <span class="doccomment">/// Sets the [`AppDataUpdates`] that contain the changes made by the
-<a href=#1984 id=1984 data-nosnippet>1984</a>    /// commit's AppDataUpdate proposals. Updates must be set exactly when
-<a href=#1985 id=1985 data-nosnippet>1985</a>    /// the commit covers AppDataUpdate proposals.
-<a href=#1986 id=1986 data-nosnippet>1986</a>    </span><span class="kw">pub fn </span>with_app_data_dictionary_updates(<span class="kw-2">&amp;mut </span><span class="self">self</span>, app_data_updates: <span class="prelude-ty">Option</span>&lt;AppDataUpdates&gt;) {
-<a href=#1987 id=1987 data-nosnippet>1987</a>        <span class="self">self</span>.app_data_updates = app_data_updates;
-<a href=#1988 id=1988 data-nosnippet>1988</a>    }
-<a href=#1989 id=1989 data-nosnippet>1989</a>
-<a href=#1990 id=1990 data-nosnippet>1990</a>    <span class="doccomment">/// Completes the join and returns the joined [`MlsGroup`]. If the commit
-<a href=#1991 id=1991 data-nosnippet>1991</a>    /// covers AppDataUpdate proposals, the resolved updates must have been
-<a href=#1992 id=1992 data-nosnippet>1992</a>    /// set via [`Self::with_app_data_dictionary_updates`]. Absent updates
-<a href=#1993 id=1993 data-nosnippet>1993</a>    /// are rejected before the consume-once operation secret generation is
-<a href=#1994 id=1994 data-nosnippet>1994</a>    /// spent, so the join can be started over. Updates that do not reproduce
-<a href=#1995 id=1995 data-nosnippet>1995</a>    /// the committing sibling's dictionary fail with a confirmation tag
-<a href=#1996 id=1996 data-nosnippet>1996</a>    /// mismatch after the generation is consumed, so they should be computed
-<a href=#1997 id=1997 data-nosnippet>1997</a>    /// deterministically from the proposals rather than guessed.
-<a href=#1998 id=1998 data-nosnippet>1998</a>    </span><span class="attr">#[openmls_traits::maybe_async]
-<a href=#1999 id=1999 data-nosnippet>1999</a>    </span><span class="kw">pub async fn </span>into_group&lt;Provider: OpenMlsProvider&gt;(
-<a href=#2000 id=2000 data-nosnippet>2000</a>        <span class="self">self</span>,
-<a href=#2001 id=2001 data-nosnippet>2001</a>        provider: <span class="kw-2">&amp;</span>Provider,
-<a href=#2002 id=2002 data-nosnippet>2002</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, VcExternalCommitJoinError&lt;Provider::StorageError&gt;&gt; {
-<a href=#2003 id=2003 data-nosnippet>2003</a>        <span class="kw">type </span>Error&lt;S&gt; = VcExternalCommitJoinError&lt;S&gt;;
-<a href=#2004 id=2004 data-nosnippet>2004</a>
-<a href=#2005 id=2005 data-nosnippet>2005</a>        <span class="kw">let </span><span class="self">Self </span>{
-<a href=#2006 id=2006 data-nosnippet>2006</a>            <span class="kw-2">mut </span>group,
-<a href=#2007 id=2007 data-nosnippet>2007</a>            content,
-<a href=#2008 id=2008 data-nosnippet>2008</a>            app_data_update_proposals,
-<a href=#2009 id=2009 data-nosnippet>2009</a>            app_data_updates,
-<a href=#2010 id=2010 data-nosnippet>2010</a>        } = <span class="self">self</span>;
-<a href=#2011 id=2011 data-nosnippet>2011</a>
-<a href=#2012 id=2012 data-nosnippet>2012</a>        <span class="comment">// An application that has not resolved the commit's AppDataUpdate
-<a href=#2013 id=2013 data-nosnippet>2013</a>        // proposals yet is rejected before the operation secret generation
-<a href=#2014 id=2014 data-nosnippet>2014</a>        // is consumed, so it can compute the updates and process the commit
-<a href=#2015 id=2015 data-nosnippet>2015</a>        // again. Staging repeats this check. Superfluous updates are only
-<a href=#2016 id=2016 data-nosnippet>2016</a>        // rejected there.
-<a href=#2017 id=2017 data-nosnippet>2017</a>        </span><span class="kw">if </span>!app_data_update_proposals.is_empty() &amp;&amp; app_data_updates.is_none() {
-<a href=#2018 id=2018 data-nosnippet>2018</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::ApplyAppDataUpdateError(
-<a href=#2019 id=2019 data-nosnippet>2019</a>                ApplyAppDataUpdateError::MissingAppDataUpdates,
-<a href=#2020 id=2020 data-nosnippet>2020</a>            )
-<a href=#2021 id=2021 data-nosnippet>2021</a>            .into());
-<a href=#2022 id=2022 data-nosnippet>2022</a>        }
-<a href=#2023 id=2023 data-nosnippet>2023</a>
-<a href=#2024 id=2024 data-nosnippet>2024</a>        <span class="kw">let </span>FramedContentBody::Commit(commit) = content.content() <span class="kw">else </span>{
-<a href=#2025 id=2025 data-nosnippet>2025</a>            <span class="comment">// `process_commit` only constructs staged joins from commits.
-<a href=#2026 id=2026 data-nosnippet>2026</a>            </span><span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">"staged join without commit content"</span>).into());
-<a href=#2027 id=2027 data-nosnippet>2027</a>        };
-<a href=#2028 id=2028 data-nosnippet>2028</a>
-<a href=#2029 id=2029 data-nosnippet>2029</a>        <span class="comment">// Recover the sibling-VC commit material (operation secret + emulation
-<a href=#2030 id=2030 data-nosnippet>2030</a>        // epoch id + carried external init secret) from the leaf's derivation
-<a href=#2031 id=2031 data-nosnippet>2031</a>        // info, then stage and merge the commit through the sibling-VC path.
-<a href=#2032 id=2032 data-nosnippet>2032</a>        </span><span class="kw">let </span>material = group
-<a href=#2033 id=2033 data-nosnippet>2033</a>            .load_vc_commit_material(provider, commit)
-<a href=#2034 id=2034 data-nosnippet>2034</a>            .<span class="kw">await</span><span class="question-mark">?
-<a href=#2035 id=2035 data-nosnippet>2035</a>            </span>.ok_or(Error::MissingDerivationInfo)<span class="question-mark">?</span>;
-<a href=#2036 id=2036 data-nosnippet>2036</a>        <span class="kw">let </span>staged = group
-<a href=#2037 id=2037 data-nosnippet>2037</a>            .stage_commit_with_app_data_updates(
-<a href=#2038 id=2038 data-nosnippet>2038</a>                <span class="kw-2">&amp;</span>content,
-<a href=#2039 id=2039 data-nosnippet>2039</a>                <span class="macro">vec!</span>[],
-<a href=#2040 id=2040 data-nosnippet>2040</a>                <span class="macro">vec!</span>[],
-<a href=#2041 id=2041 data-nosnippet>2041</a>                app_data_updates,
-<a href=#2042 id=2042 data-nosnippet>2042</a>                provider,
-<a href=#2043 id=2043 data-nosnippet>2043</a>                <span class="prelude-val">Some</span>(material),
-<a href=#2044 id=2044 data-nosnippet>2044</a>            )
-<a href=#2045 id=2045 data-nosnippet>2045</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#2046 id=2046 data-nosnippet>2046</a>        group.merge_staged_commit(provider, staged).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#2047 id=2047 data-nosnippet>2047</a>        <span class="kw">let </span>deletion_policy = group.mls_group_config.past_epoch_deletion_policy().clone();
-<a href=#2048 id=2048 data-nosnippet>2048</a>        group.resize_message_secrets_store(<span class="kw-2">&amp;</span>deletion_policy);
-<a href=#2049 id=2049 data-nosnippet>2049</a>        group
-<a href=#2050 id=2050 data-nosnippet>2050</a>            .store(provider.storage())
-<a href=#2051 id=2051 data-nosnippet>2051</a>            .<span class="kw">await
-<a href=#2052 id=2052 data-nosnippet>2052</a>            </span>.map_err(Error::StorageError)<span class="question-mark">?</span>;
-<a href=#2053 id=2053 data-nosnippet>2053</a>        <span class="prelude-val">Ok</span>(group)
-<a href=#2054 id=2054 data-nosnippet>2054</a>    }
-<a href=#2055 id=2055 data-nosnippet>2055</a>}
-<a href=#2056 id=2056 data-nosnippet>2056</a>
-<a href=#2057 id=2057 data-nosnippet>2057</a><span class="doccomment">/// Verify or skip the validation of leaf node lifetimes in the ratchet tree
-<a href=#2058 id=2058 data-nosnippet>2058</a>/// when joining a group.
-<a href=#2059 id=2059 data-nosnippet>2059</a></span><span class="attr">#[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-<a href=#2060 id=2060 data-nosnippet>2060</a></span><span class="kw">pub enum </span>LeafNodeLifetimePolicy {
-<a href=#2061 id=2061 data-nosnippet>2061</a>    <span class="doccomment">/// Verify the lifetime of leaf nodes in the ratchet tree.
-<a href=#2062 id=2062 data-nosnippet>2062</a>    ///
-<a href=#2063 id=2063 data-nosnippet>2063</a>    /// **NOTE:** Only leaf nodes that have never been updated have a lifetime.
-<a href=#2064 id=2064 data-nosnippet>2064</a>    </span><span class="attr">#[default]
-<a href=#2065 id=2065 data-nosnippet>2065</a>    </span>Verify,
-<a href=#2066 id=2066 data-nosnippet>2066</a>
-<a href=#2067 id=2067 data-nosnippet>2067</a>    <span class="doccomment">/// Skip the verification of the lifeimte in leaf nodes in the ratchet tree.
-<a href=#2068 id=2068 data-nosnippet>2068</a>    </span>Skip,
-<a href=#2069 id=2069 data-nosnippet>2069</a>}
-<a href=#2070 id=2070 data-nosnippet>2070</a>
-<a href=#2071 id=2071 data-nosnippet>2071</a><span class="doccomment">/// Builder for joining a group.
-<a href=#2072 id=2072 data-nosnippet>2072</a>///
-<a href=#2073 id=2073 data-nosnippet>2073</a>/// Create this with [`StagedWelcome::build_from_welcome`].
-<a href=#2074 id=2074 data-nosnippet>2074</a></span><span class="kw">pub struct </span>JoinBuilder&lt;<span class="lifetime">'a</span>, Provider: OpenMlsProvider&gt; {
-<a href=#2075 id=2075 data-nosnippet>2075</a>    provider: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Provider,
-<a href=#2076 id=2076 data-nosnippet>2076</a>    processed_welcome: ProcessedWelcome,
-<a href=#2077 id=2077 data-nosnippet>2077</a>    ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
-<a href=#2078 id=2078 data-nosnippet>2078</a>    validate_lifetimes: LeafNodeLifetimePolicy,
-<a href=#2079 id=2079 data-nosnippet>2079</a>    replace_old_group: bool,
-<a href=#2080 id=2080 data-nosnippet>2080</a>    <span class="doccomment">/// Set when joining a subgroup branch (see [`StagedWelcome::build_from_branch`]).
-<a href=#2081 id=2081 data-nosnippet>2081</a>    /// Triggers the receiver checks in [`Self::build`].
-<a href=#2082 id=2082 data-nosnippet>2082</a>    </span>branch: <span class="prelude-ty">Option</span>&lt;BranchInfo&gt;,
-<a href=#2083 id=2083 data-nosnippet>2083</a>    <span class="doccomment">/// Set when joining a reinitialized group (see [`StagedWelcome::build_from_reinit`]).
-<a href=#2084 id=2084 data-nosnippet>2084</a>    /// Triggers the receiver checks in [`Self::build`].
-<a href=#2085 id=2085 data-nosnippet>2085</a>    </span>reinit: <span class="prelude-ty">Option</span>&lt;ReInitInfo&gt;,
-<a href=#2086 id=2086 data-nosnippet>2086</a>    <span class="doccomment">/// Whether to check the new group's members against the parent or old
-<a href=#2087 id=2087 data-nosnippet>2087</a>    /// group by credential. Only relevant when [`Self::branch`] or [`Self::reinit`] is set.
-<a href=#2088 id=2088 data-nosnippet>2088</a>    /// Defaults to `true`.
-<a href=#2089 id=2089 data-nosnippet>2089</a>    </span>check_members: bool,
-<a href=#2090 id=2090 data-nosnippet>2090</a>}
-<a href=#2091 id=2091 data-nosnippet>2091</a>
-<a href=#2092 id=2092 data-nosnippet>2092</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, Provider: OpenMlsProvider&gt; JoinBuilder&lt;<span class="lifetime">'a</span>, Provider&gt; {
-<a href=#2093 id=2093 data-nosnippet>2093</a>    <span class="doccomment">/// Create a new builder for the [`JoinBuilder`].
-<a href=#2094 id=2094 data-nosnippet>2094</a>    </span><span class="kw">pub fn </span>new(provider: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Provider, processed_welcome: ProcessedWelcome) -&gt; <span class="self">Self </span>{
-<a href=#2095 id=2095 data-nosnippet>2095</a>        <span class="self">Self </span>{
-<a href=#2096 id=2096 data-nosnippet>2096</a>            provider,
-<a href=#2097 id=2097 data-nosnippet>2097</a>            processed_welcome,
-<a href=#2098 id=2098 data-nosnippet>2098</a>            ratchet_tree: <span class="prelude-val">None</span>,
-<a href=#2099 id=2099 data-nosnippet>2099</a>            replace_old_group: <span class="bool-val">false</span>,
-<a href=#2100 id=2100 data-nosnippet>2100</a>            validate_lifetimes: LeafNodeLifetimePolicy::Verify,
-<a href=#2101 id=2101 data-nosnippet>2101</a>            branch: <span class="prelude-val">None</span>,
-<a href=#2102 id=2102 data-nosnippet>2102</a>            reinit: <span class="prelude-val">None</span>,
-<a href=#2103 id=2103 data-nosnippet>2103</a>            check_members: <span class="bool-val">true</span>,
-<a href=#2104 id=2104 data-nosnippet>2104</a>        }
-<a href=#2105 id=2105 data-nosnippet>2105</a>    }
-<a href=#2106 id=2106 data-nosnippet>2106</a>
-<a href=#2107 id=2107 data-nosnippet>2107</a>    <span class="doccomment">/// Seed this builder with the parent group's [`BranchInfo`], turning it into
-<a href=#2108 id=2108 data-nosnippet>2108</a>    /// a subgroup-branch join (see [`StagedWelcome::build_from_branch`]).
-<a href=#2109 id=2109 data-nosnippet>2109</a>    </span><span class="kw">fn </span>with_branch_info(<span class="kw-2">mut </span><span class="self">self</span>, branch_info: BranchInfo) -&gt; <span class="self">Self </span>{
-<a href=#2110 id=2110 data-nosnippet>2110</a>        <span class="self">self</span>.branch = <span class="prelude-val">Some</span>(branch_info);
-<a href=#2111 id=2111 data-nosnippet>2111</a>        <span class="self">self
-<a href=#2112 id=2112 data-nosnippet>2112</a>    </span>}
-<a href=#2113 id=2113 data-nosnippet>2113</a>
-<a href=#2114 id=2114 data-nosnippet>2114</a>    <span class="doccomment">/// Seed this builder with the old group's [`ReInitInfo`], turning it into
-<a href=#2115 id=2115 data-nosnippet>2115</a>    /// a reinit join (see [`StagedWelcome::build_from_reinit`]).
-<a href=#2116 id=2116 data-nosnippet>2116</a>    </span><span class="kw">fn </span>with_reinit_info(<span class="kw-2">mut </span><span class="self">self</span>, reinit_info: ReInitInfo) -&gt; <span class="self">Self </span>{
-<a href=#2117 id=2117 data-nosnippet>2117</a>        <span class="self">self</span>.reinit = <span class="prelude-val">Some</span>(reinit_info);
-<a href=#2118 id=2118 data-nosnippet>2118</a>        <span class="self">self
-<a href=#2119 id=2119 data-nosnippet>2119</a>    </span>}
-<a href=#2120 id=2120 data-nosnippet>2120</a>
-<a href=#2121 id=2121 data-nosnippet>2121</a>    <span class="doccomment">/// When joining a subgroup branch or a reinitialized group, controls
-<a href=#2122 id=2122 data-nosnippet>2122</a>    /// whether [`Self::build`] checks the new group's members by credential
-<a href=#2123 id=2123 data-nosnippet>2123</a>    /// equality. Defaults to `true`.
-<a href=#2124 id=2124 data-nosnippet>2124</a>    /// **Note**: This is a shortcut for members that are identical if and only if
-<a href=#2125 id=2125 data-nosnippet>2125</a>    /// credentials are identical.
-<a href=#2126 id=2126 data-nosnippet>2126</a>    /// For more complex member equivalence conditions, the application must disable
-<a href=#2127 id=2127 data-nosnippet>2127</a>    /// this and perform the equivalence check itself.
-<a href=#2128 id=2128 data-nosnippet>2128</a>    ///
-<a href=#2129 id=2129 data-nosnippet>2129</a>    /// For a subgroup branch, every subgroup member must also be a member of
-<a href=#2130 id=2130 data-nosnippet>2130</a>    /// the parent group (receiver check (c)). For a reinit, the new group's
-<a href=#2131 id=2131 data-nosnippet>2131</a>    /// member credentials must be identical to the old group's.
-<a href=#2132 id=2132 data-nosnippet>2132</a>    ///
-<a href=#2133 id=2133 data-nosnippet>2133</a>    /// This has no effect on a regular (non-branch, non-reinit) join.
-<a href=#2134 id=2134 data-nosnippet>2134</a>    </span><span class="kw">pub fn </span>check_members(<span class="kw-2">mut </span><span class="self">self</span>, check_members: bool) -&gt; <span class="self">Self </span>{
-<a href=#2135 id=2135 data-nosnippet>2135</a>        <span class="self">self</span>.check_members = check_members;
-<a href=#2136 id=2136 data-nosnippet>2136</a>        <span class="self">self
-<a href=#2137 id=2137 data-nosnippet>2137</a>    </span>}
-<a href=#2138 id=2138 data-nosnippet>2138</a>
-<a href=#2139 id=2139 data-nosnippet>2139</a>    <span class="doccomment">/// The ratchet tree to use for the new group.
-<a href=#2140 id=2140 data-nosnippet>2140</a>    </span><span class="kw">pub fn </span>with_ratchet_tree(<span class="kw-2">mut </span><span class="self">self</span>, ratchet_tree: RatchetTreeIn) -&gt; <span class="self">Self </span>{
-<a href=#2141 id=2141 data-nosnippet>2141</a>        <span class="self">self</span>.ratchet_tree = <span class="prelude-val">Some</span>(ratchet_tree);
-<a href=#2142 id=2142 data-nosnippet>2142</a>        <span class="self">self
-<a href=#2143 id=2143 data-nosnippet>2143</a>    </span>}
-<a href=#2144 id=2144 data-nosnippet>2144</a>
-<a href=#2145 id=2145 data-nosnippet>2145</a>    <span class="doccomment">/// Instruct the builder to replace any existing group with the same ID.
-<a href=#2146 id=2146 data-nosnippet>2146</a>    </span><span class="kw">pub fn </span>replace_old_group(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-<a href=#2147 id=2147 data-nosnippet>2147</a>        <span class="self">self</span>.replace_old_group = <span class="bool-val">true</span>;
-<a href=#2148 id=2148 data-nosnippet>2148</a>        <span class="self">self
-<a href=#2149 id=2149 data-nosnippet>2149</a>    </span>}
-<a href=#2150 id=2150 data-nosnippet>2150</a>
-<a href=#2151 id=2151 data-nosnippet>2151</a>    <span class="doccomment">/// Skip the validation of lifetimes in leaf nodes in the ratchet tree.
-<a href=#2152 id=2152 data-nosnippet>2152</a>    /// Note that only the leaf nodes are checked that were never updated.
-<a href=#2153 id=2153 data-nosnippet>2153</a>    ///
-<a href=#2154 id=2154 data-nosnippet>2154</a>    /// By default they are validated.
-<a href=#2155 id=2155 data-nosnippet>2155</a>    </span><span class="kw">pub fn </span>skip_lifetime_validation(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-<a href=#2156 id=2156 data-nosnippet>2156</a>        <span class="self">self</span>.validate_lifetimes = LeafNodeLifetimePolicy::Skip;
+<a href=#1983 id=1983 data-nosnippet>1983</a>    <span class="doccomment">/// Returns a helper for computing the [`AppDataUpdates`], seeded with
+<a href=#1984 id=1984 data-nosnippet>1984</a>    /// the app data dictionary of the prior-epoch group context.
+<a href=#1985 id=1985 data-nosnippet>1985</a>    </span><span class="kw">pub fn </span>app_data_dictionary_updater(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AppDataDictionaryUpdater&lt;<span class="lifetime">'_</span>&gt; {
+<a href=#1986 id=1986 data-nosnippet>1986</a>        AppDataDictionaryUpdater::new(<span class="self">self</span>.group.context().app_data_dict())
+<a href=#1987 id=1987 data-nosnippet>1987</a>    }
+<a href=#1988 id=1988 data-nosnippet>1988</a>
+<a href=#1989 id=1989 data-nosnippet>1989</a>    <span class="doccomment">/// Sets the [`AppDataUpdates`] that contain the changes made by the
+<a href=#1990 id=1990 data-nosnippet>1990</a>    /// commit's AppDataUpdate proposals. Updates must be set exactly when
+<a href=#1991 id=1991 data-nosnippet>1991</a>    /// the commit covers AppDataUpdate proposals.
+<a href=#1992 id=1992 data-nosnippet>1992</a>    </span><span class="kw">pub fn </span>with_app_data_dictionary_updates(<span class="kw-2">&amp;mut </span><span class="self">self</span>, app_data_updates: <span class="prelude-ty">Option</span>&lt;AppDataUpdates&gt;) {
+<a href=#1993 id=1993 data-nosnippet>1993</a>        <span class="self">self</span>.app_data_updates = app_data_updates;
+<a href=#1994 id=1994 data-nosnippet>1994</a>    }
+<a href=#1995 id=1995 data-nosnippet>1995</a>
+<a href=#1996 id=1996 data-nosnippet>1996</a>    <span class="doccomment">/// Completes the join and returns the joined [`MlsGroup`]. If the commit
+<a href=#1997 id=1997 data-nosnippet>1997</a>    /// covers AppDataUpdate proposals, the resolved updates must have been
+<a href=#1998 id=1998 data-nosnippet>1998</a>    /// set via [`Self::with_app_data_dictionary_updates`]. Absent updates
+<a href=#1999 id=1999 data-nosnippet>1999</a>    /// are rejected before the consume-once operation secret generation is
+<a href=#2000 id=2000 data-nosnippet>2000</a>    /// spent, so the join can be started over. Updates that do not reproduce
+<a href=#2001 id=2001 data-nosnippet>2001</a>    /// the committing sibling's dictionary fail with a confirmation tag
+<a href=#2002 id=2002 data-nosnippet>2002</a>    /// mismatch after the generation is consumed, so they should be computed
+<a href=#2003 id=2003 data-nosnippet>2003</a>    /// deterministically from the proposals rather than guessed.
+<a href=#2004 id=2004 data-nosnippet>2004</a>    </span><span class="attr">#[openmls_traits::maybe_async]
+<a href=#2005 id=2005 data-nosnippet>2005</a>    </span><span class="kw">pub async fn </span>into_group&lt;Provider: OpenMlsProvider&gt;(
+<a href=#2006 id=2006 data-nosnippet>2006</a>        <span class="self">self</span>,
+<a href=#2007 id=2007 data-nosnippet>2007</a>        provider: <span class="kw-2">&amp;</span>Provider,
+<a href=#2008 id=2008 data-nosnippet>2008</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, VcExternalCommitJoinError&lt;Provider::StorageError&gt;&gt; {
+<a href=#2009 id=2009 data-nosnippet>2009</a>        <span class="kw">type </span>Error&lt;S&gt; = VcExternalCommitJoinError&lt;S&gt;;
+<a href=#2010 id=2010 data-nosnippet>2010</a>
+<a href=#2011 id=2011 data-nosnippet>2011</a>        <span class="kw">let </span><span class="self">Self </span>{
+<a href=#2012 id=2012 data-nosnippet>2012</a>            <span class="kw-2">mut </span>group,
+<a href=#2013 id=2013 data-nosnippet>2013</a>            content,
+<a href=#2014 id=2014 data-nosnippet>2014</a>            app_data_update_proposals,
+<a href=#2015 id=2015 data-nosnippet>2015</a>            app_data_updates,
+<a href=#2016 id=2016 data-nosnippet>2016</a>        } = <span class="self">self</span>;
+<a href=#2017 id=2017 data-nosnippet>2017</a>
+<a href=#2018 id=2018 data-nosnippet>2018</a>        <span class="comment">// An application that has not resolved the commit's AppDataUpdate
+<a href=#2019 id=2019 data-nosnippet>2019</a>        // proposals yet is rejected before the operation secret generation
+<a href=#2020 id=2020 data-nosnippet>2020</a>        // is consumed, so it can compute the updates and process the commit
+<a href=#2021 id=2021 data-nosnippet>2021</a>        // again. Staging repeats this check. Superfluous updates are only
+<a href=#2022 id=2022 data-nosnippet>2022</a>        // rejected there.
+<a href=#2023 id=2023 data-nosnippet>2023</a>        </span><span class="kw">if </span>!app_data_update_proposals.is_empty() &amp;&amp; app_data_updates.is_none() {
+<a href=#2024 id=2024 data-nosnippet>2024</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::ApplyAppDataUpdateError(
+<a href=#2025 id=2025 data-nosnippet>2025</a>                ApplyAppDataUpdateError::MissingAppDataUpdates,
+<a href=#2026 id=2026 data-nosnippet>2026</a>            )
+<a href=#2027 id=2027 data-nosnippet>2027</a>            .into());
+<a href=#2028 id=2028 data-nosnippet>2028</a>        }
+<a href=#2029 id=2029 data-nosnippet>2029</a>
+<a href=#2030 id=2030 data-nosnippet>2030</a>        <span class="kw">let </span>FramedContentBody::Commit(commit) = content.content() <span class="kw">else </span>{
+<a href=#2031 id=2031 data-nosnippet>2031</a>            <span class="comment">// `process_commit` only constructs staged joins from commits.
+<a href=#2032 id=2032 data-nosnippet>2032</a>            </span><span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">"staged join without commit content"</span>).into());
+<a href=#2033 id=2033 data-nosnippet>2033</a>        };
+<a href=#2034 id=2034 data-nosnippet>2034</a>
+<a href=#2035 id=2035 data-nosnippet>2035</a>        <span class="comment">// Recover the sibling-VC commit material (operation secret + emulation
+<a href=#2036 id=2036 data-nosnippet>2036</a>        // epoch id + carried external init secret) from the leaf's derivation
+<a href=#2037 id=2037 data-nosnippet>2037</a>        // info, then stage and merge the commit through the sibling-VC path.
+<a href=#2038 id=2038 data-nosnippet>2038</a>        </span><span class="kw">let </span>material = group
+<a href=#2039 id=2039 data-nosnippet>2039</a>            .load_vc_commit_material(provider, commit)
+<a href=#2040 id=2040 data-nosnippet>2040</a>            .<span class="kw">await</span><span class="question-mark">?
+<a href=#2041 id=2041 data-nosnippet>2041</a>            </span>.ok_or(Error::MissingDerivationInfo)<span class="question-mark">?</span>;
+<a href=#2042 id=2042 data-nosnippet>2042</a>        <span class="kw">let </span>staged = group
+<a href=#2043 id=2043 data-nosnippet>2043</a>            .stage_commit_with_app_data_updates(
+<a href=#2044 id=2044 data-nosnippet>2044</a>                <span class="kw-2">&amp;</span>content,
+<a href=#2045 id=2045 data-nosnippet>2045</a>                <span class="macro">vec!</span>[],
+<a href=#2046 id=2046 data-nosnippet>2046</a>                <span class="macro">vec!</span>[],
+<a href=#2047 id=2047 data-nosnippet>2047</a>                app_data_updates,
+<a href=#2048 id=2048 data-nosnippet>2048</a>                provider,
+<a href=#2049 id=2049 data-nosnippet>2049</a>                <span class="comment">// An external commit carries no Add proposals.
+<a href=#2050 id=2050 data-nosnippet>2050</a>                </span>LeafNodeLifetimePolicy::Verify,
+<a href=#2051 id=2051 data-nosnippet>2051</a>                <span class="prelude-val">Some</span>(material),
+<a href=#2052 id=2052 data-nosnippet>2052</a>            )
+<a href=#2053 id=2053 data-nosnippet>2053</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#2054 id=2054 data-nosnippet>2054</a>        group.merge_staged_commit(provider, staged).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#2055 id=2055 data-nosnippet>2055</a>        <span class="kw">let </span>deletion_policy = group.mls_group_config.past_epoch_deletion_policy().clone();
+<a href=#2056 id=2056 data-nosnippet>2056</a>        group.resize_message_secrets_store(<span class="kw-2">&amp;</span>deletion_policy);
+<a href=#2057 id=2057 data-nosnippet>2057</a>        group
+<a href=#2058 id=2058 data-nosnippet>2058</a>            .store(provider.storage())
+<a href=#2059 id=2059 data-nosnippet>2059</a>            .<span class="kw">await
+<a href=#2060 id=2060 data-nosnippet>2060</a>            </span>.map_err(Error::StorageError)<span class="question-mark">?</span>;
+<a href=#2061 id=2061 data-nosnippet>2061</a>        <span class="prelude-val">Ok</span>(group)
+<a href=#2062 id=2062 data-nosnippet>2062</a>    }
+<a href=#2063 id=2063 data-nosnippet>2063</a>}
+<a href=#2064 id=2064 data-nosnippet>2064</a>
+<a href=#2065 id=2065 data-nosnippet>2065</a><span class="doccomment">/// How the lifetime of a leaf node is checked.
+<a href=#2066 id=2066 data-nosnippet>2066</a></span><span class="attr">#[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+<a href=#2067 id=2067 data-nosnippet>2067</a></span><span class="kw">pub enum </span>LeafNodeLifetimePolicy {
+<a href=#2068 id=2068 data-nosnippet>2068</a>    <span class="doccomment">/// Check the lifetime against the current time.
+<a href=#2069 id=2069 data-nosnippet>2069</a>    </span><span class="attr">#[default]
+<a href=#2070 id=2070 data-nosnippet>2070</a>    </span>Verify,
+<a href=#2071 id=2071 data-nosnippet>2071</a>
+<a href=#2072 id=2072 data-nosnippet>2072</a>    <span class="doccomment">/// Do not check the lifetime.
+<a href=#2073 id=2073 data-nosnippet>2073</a>    </span>Skip,
+<a href=#2074 id=2074 data-nosnippet>2074</a>
+<a href=#2075 id=2075 data-nosnippet>2075</a>    <span class="doccomment">/// Check the lifetime against the given time, in seconds since the Unix
+<a href=#2076 id=2076 data-nosnippet>2076</a>    /// epoch, instead of the current time.
+<a href=#2077 id=2077 data-nosnippet>2077</a>    </span>VerifyAt(u64),
+<a href=#2078 id=2078 data-nosnippet>2078</a>}
+<a href=#2079 id=2079 data-nosnippet>2079</a>
+<a href=#2080 id=2080 data-nosnippet>2080</a><span class="doccomment">/// Builder for joining a group.
+<a href=#2081 id=2081 data-nosnippet>2081</a>///
+<a href=#2082 id=2082 data-nosnippet>2082</a>/// Create this with [`StagedWelcome::build_from_welcome`].
+<a href=#2083 id=2083 data-nosnippet>2083</a></span><span class="kw">pub struct </span>JoinBuilder&lt;<span class="lifetime">'a</span>, Provider: OpenMlsProvider&gt; {
+<a href=#2084 id=2084 data-nosnippet>2084</a>    provider: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Provider,
+<a href=#2085 id=2085 data-nosnippet>2085</a>    processed_welcome: ProcessedWelcome,
+<a href=#2086 id=2086 data-nosnippet>2086</a>    ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTreeIn&gt;,
+<a href=#2087 id=2087 data-nosnippet>2087</a>    validate_lifetimes: LeafNodeLifetimePolicy,
+<a href=#2088 id=2088 data-nosnippet>2088</a>    replace_old_group: bool,
+<a href=#2089 id=2089 data-nosnippet>2089</a>    <span class="doccomment">/// Set when joining a subgroup branch (see [`StagedWelcome::build_from_branch`]).
+<a href=#2090 id=2090 data-nosnippet>2090</a>    /// Triggers the receiver checks in [`Self::build`].
+<a href=#2091 id=2091 data-nosnippet>2091</a>    </span>branch: <span class="prelude-ty">Option</span>&lt;BranchInfo&gt;,
+<a href=#2092 id=2092 data-nosnippet>2092</a>    <span class="doccomment">/// Set when joining a reinitialized group (see [`StagedWelcome::build_from_reinit`]).
+<a href=#2093 id=2093 data-nosnippet>2093</a>    /// Triggers the receiver checks in [`Self::build`].
+<a href=#2094 id=2094 data-nosnippet>2094</a>    </span>reinit: <span class="prelude-ty">Option</span>&lt;ReInitInfo&gt;,
+<a href=#2095 id=2095 data-nosnippet>2095</a>    <span class="doccomment">/// Whether to check the new group's members against the parent or old
+<a href=#2096 id=2096 data-nosnippet>2096</a>    /// group by credential. Only relevant when [`Self::branch`] or [`Self::reinit`] is set.
+<a href=#2097 id=2097 data-nosnippet>2097</a>    /// Defaults to `true`.
+<a href=#2098 id=2098 data-nosnippet>2098</a>    </span>check_members: bool,
+<a href=#2099 id=2099 data-nosnippet>2099</a>}
+<a href=#2100 id=2100 data-nosnippet>2100</a>
+<a href=#2101 id=2101 data-nosnippet>2101</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, Provider: OpenMlsProvider&gt; JoinBuilder&lt;<span class="lifetime">'a</span>, Provider&gt; {
+<a href=#2102 id=2102 data-nosnippet>2102</a>    <span class="doccomment">/// Create a new builder for the [`JoinBuilder`].
+<a href=#2103 id=2103 data-nosnippet>2103</a>    </span><span class="kw">pub fn </span>new(provider: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Provider, processed_welcome: ProcessedWelcome) -&gt; <span class="self">Self </span>{
+<a href=#2104 id=2104 data-nosnippet>2104</a>        <span class="self">Self </span>{
+<a href=#2105 id=2105 data-nosnippet>2105</a>            provider,
+<a href=#2106 id=2106 data-nosnippet>2106</a>            processed_welcome,
+<a href=#2107 id=2107 data-nosnippet>2107</a>            ratchet_tree: <span class="prelude-val">None</span>,
+<a href=#2108 id=2108 data-nosnippet>2108</a>            replace_old_group: <span class="bool-val">false</span>,
+<a href=#2109 id=2109 data-nosnippet>2109</a>            validate_lifetimes: LeafNodeLifetimePolicy::Verify,
+<a href=#2110 id=2110 data-nosnippet>2110</a>            branch: <span class="prelude-val">None</span>,
+<a href=#2111 id=2111 data-nosnippet>2111</a>            reinit: <span class="prelude-val">None</span>,
+<a href=#2112 id=2112 data-nosnippet>2112</a>            check_members: <span class="bool-val">true</span>,
+<a href=#2113 id=2113 data-nosnippet>2113</a>        }
+<a href=#2114 id=2114 data-nosnippet>2114</a>    }
+<a href=#2115 id=2115 data-nosnippet>2115</a>
+<a href=#2116 id=2116 data-nosnippet>2116</a>    <span class="doccomment">/// Seed this builder with the parent group's [`BranchInfo`], turning it into
+<a href=#2117 id=2117 data-nosnippet>2117</a>    /// a subgroup-branch join (see [`StagedWelcome::build_from_branch`]).
+<a href=#2118 id=2118 data-nosnippet>2118</a>    </span><span class="kw">fn </span>with_branch_info(<span class="kw-2">mut </span><span class="self">self</span>, branch_info: BranchInfo) -&gt; <span class="self">Self </span>{
+<a href=#2119 id=2119 data-nosnippet>2119</a>        <span class="self">self</span>.branch = <span class="prelude-val">Some</span>(branch_info);
+<a href=#2120 id=2120 data-nosnippet>2120</a>        <span class="self">self
+<a href=#2121 id=2121 data-nosnippet>2121</a>    </span>}
+<a href=#2122 id=2122 data-nosnippet>2122</a>
+<a href=#2123 id=2123 data-nosnippet>2123</a>    <span class="doccomment">/// Seed this builder with the old group's [`ReInitInfo`], turning it into
+<a href=#2124 id=2124 data-nosnippet>2124</a>    /// a reinit join (see [`StagedWelcome::build_from_reinit`]).
+<a href=#2125 id=2125 data-nosnippet>2125</a>    </span><span class="kw">fn </span>with_reinit_info(<span class="kw-2">mut </span><span class="self">self</span>, reinit_info: ReInitInfo) -&gt; <span class="self">Self </span>{
+<a href=#2126 id=2126 data-nosnippet>2126</a>        <span class="self">self</span>.reinit = <span class="prelude-val">Some</span>(reinit_info);
+<a href=#2127 id=2127 data-nosnippet>2127</a>        <span class="self">self
+<a href=#2128 id=2128 data-nosnippet>2128</a>    </span>}
+<a href=#2129 id=2129 data-nosnippet>2129</a>
+<a href=#2130 id=2130 data-nosnippet>2130</a>    <span class="doccomment">/// When joining a subgroup branch or a reinitialized group, controls
+<a href=#2131 id=2131 data-nosnippet>2131</a>    /// whether [`Self::build`] checks the new group's members by credential
+<a href=#2132 id=2132 data-nosnippet>2132</a>    /// equality. Defaults to `true`.
+<a href=#2133 id=2133 data-nosnippet>2133</a>    /// **Note**: This is a shortcut for members that are identical if and only if
+<a href=#2134 id=2134 data-nosnippet>2134</a>    /// credentials are identical.
+<a href=#2135 id=2135 data-nosnippet>2135</a>    /// For more complex member equivalence conditions, the application must disable
+<a href=#2136 id=2136 data-nosnippet>2136</a>    /// this and perform the equivalence check itself.
+<a href=#2137 id=2137 data-nosnippet>2137</a>    ///
+<a href=#2138 id=2138 data-nosnippet>2138</a>    /// For a subgroup branch, every subgroup member must also be a member of
+<a href=#2139 id=2139 data-nosnippet>2139</a>    /// the parent group (receiver check (c)). For a reinit, the new group's
+<a href=#2140 id=2140 data-nosnippet>2140</a>    /// member credentials must be identical to the old group's.
+<a href=#2141 id=2141 data-nosnippet>2141</a>    ///
+<a href=#2142 id=2142 data-nosnippet>2142</a>    /// This has no effect on a regular (non-branch, non-reinit) join.
+<a href=#2143 id=2143 data-nosnippet>2143</a>    </span><span class="kw">pub fn </span>check_members(<span class="kw-2">mut </span><span class="self">self</span>, check_members: bool) -&gt; <span class="self">Self </span>{
+<a href=#2144 id=2144 data-nosnippet>2144</a>        <span class="self">self</span>.check_members = check_members;
+<a href=#2145 id=2145 data-nosnippet>2145</a>        <span class="self">self
+<a href=#2146 id=2146 data-nosnippet>2146</a>    </span>}
+<a href=#2147 id=2147 data-nosnippet>2147</a>
+<a href=#2148 id=2148 data-nosnippet>2148</a>    <span class="doccomment">/// The ratchet tree to use for the new group.
+<a href=#2149 id=2149 data-nosnippet>2149</a>    </span><span class="kw">pub fn </span>with_ratchet_tree(<span class="kw-2">mut </span><span class="self">self</span>, ratchet_tree: RatchetTreeIn) -&gt; <span class="self">Self </span>{
+<a href=#2150 id=2150 data-nosnippet>2150</a>        <span class="self">self</span>.ratchet_tree = <span class="prelude-val">Some</span>(ratchet_tree);
+<a href=#2151 id=2151 data-nosnippet>2151</a>        <span class="self">self
+<a href=#2152 id=2152 data-nosnippet>2152</a>    </span>}
+<a href=#2153 id=2153 data-nosnippet>2153</a>
+<a href=#2154 id=2154 data-nosnippet>2154</a>    <span class="doccomment">/// Instruct the builder to replace any existing group with the same ID.
+<a href=#2155 id=2155 data-nosnippet>2155</a>    </span><span class="kw">pub fn </span>replace_old_group(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+<a href=#2156 id=2156 data-nosnippet>2156</a>        <span class="self">self</span>.replace_old_group = <span class="bool-val">true</span>;
 <a href=#2157 id=2157 data-nosnippet>2157</a>        <span class="self">self
 <a href=#2158 id=2158 data-nosnippet>2158</a>    </span>}
 <a href=#2159 id=2159 data-nosnippet>2159</a>
-<a href=#2160 id=2160 data-nosnippet>2160</a>    <span class="doccomment">/// Get a reference to the [`ProcessedWelcome`].
-<a href=#2161 id=2161 data-nosnippet>2161</a>    ///
-<a href=#2162 id=2162 data-nosnippet>2162</a>    /// Use this to inspect the [`Welcome`] message before validation.
-<a href=#2163 id=2163 data-nosnippet>2163</a>    </span><span class="kw">pub fn </span>processed_welcome(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProcessedWelcome {
-<a href=#2164 id=2164 data-nosnippet>2164</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.processed_welcome
-<a href=#2165 id=2165 data-nosnippet>2165</a>    }
-<a href=#2166 id=2166 data-nosnippet>2166</a>
-<a href=#2167 id=2167 data-nosnippet>2167</a>    <span class="doccomment">/// Build the [`StagedWelcome`].
-<a href=#2168 id=2168 data-nosnippet>2168</a>    </span><span class="attr">#[openmls_traits::maybe_async]
-<a href=#2169 id=2169 data-nosnippet>2169</a>    </span><span class="kw">pub async fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;StagedWelcome, WelcomeError&lt;Provider::StorageError&gt;&gt; {
-<a href=#2170 id=2170 data-nosnippet>2170</a>        <span class="comment">// Receiver checks (a) and (b): when joining a subgroup branch, the
-<a href=#2171 id=2171 data-nosnippet>2171</a>        // version and ciphersuite must match the parent group, and the subgroup
-<a href=#2172 id=2172 data-nosnippet>2172</a>        // must be at epoch 1.
-<a href=#2173 id=2173 data-nosnippet>2173</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(branch_info) = <span class="kw-2">&amp;</span><span class="self">self</span>.branch {
-<a href=#2174 id=2174 data-nosnippet>2174</a>            <span class="kw">let </span>group_info = <span class="self">self</span>.processed_welcome.unverified_group_info();
-<a href=#2175 id=2175 data-nosnippet>2175</a>            <span class="kw">if </span>group_info.group_context().protocol_version() != branch_info.version()
-<a href=#2176 id=2176 data-nosnippet>2176</a>                || group_info.ciphersuite() != branch_info.ciphersuite()
-<a href=#2177 id=2177 data-nosnippet>2177</a>            {
-<a href=#2178 id=2178 data-nosnippet>2178</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::SubgroupParameterMismatch);
-<a href=#2179 id=2179 data-nosnippet>2179</a>            }
-<a href=#2180 id=2180 data-nosnippet>2180</a>            <span class="kw">if </span>group_info.group_context().epoch().as_u64() != <span class="number">1 </span>{
-<a href=#2181 id=2181 data-nosnippet>2181</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::SubgroupEpochInvalid);
-<a href=#2182 id=2182 data-nosnippet>2182</a>            }
-<a href=#2183 id=2183 data-nosnippet>2183</a>        }
-<a href=#2184 id=2184 data-nosnippet>2184</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(reinit_info) = <span class="kw-2">&amp;</span><span class="self">self</span>.reinit {
-<a href=#2185 id=2185 data-nosnippet>2185</a>            <span class="comment">// RFC 9420 §11.2 receiver checks: the successor's parameters must match
-<a href=#2186 id=2186 data-nosnippet>2186</a>            // the ReInit proposal, and it must be at epoch 1.
-<a href=#2187 id=2187 data-nosnippet>2187</a>            </span><span class="kw">let </span>group_info = <span class="self">self</span>.processed_welcome.unverified_group_info();
-<a href=#2188 id=2188 data-nosnippet>2188</a>            <span class="kw">let </span>group_context = group_info.group_context();
-<a href=#2189 id=2189 data-nosnippet>2189</a>            <span class="kw">let </span>reinit_proposal = reinit_info.proposal();
-<a href=#2190 id=2190 data-nosnippet>2190</a>            <span class="comment">// https://validation.openmls.tech/#valn1413 (parameters match the ReInit
-<a href=#2191 id=2191 data-nosnippet>2191</a>            // proposal).
-<a href=#2192 id=2192 data-nosnippet>2192</a>            </span><span class="kw">if </span>group_context.protocol_version() != reinit_proposal.version()
-<a href=#2193 id=2193 data-nosnippet>2193</a>                || group_context.ciphersuite() != reinit_proposal.ciphersuite()
-<a href=#2194 id=2194 data-nosnippet>2194</a>                || group_context.group_id() != reinit_proposal.group_id()
-<a href=#2195 id=2195 data-nosnippet>2195</a>                || group_context.extensions() != reinit_proposal.extensions()
-<a href=#2196 id=2196 data-nosnippet>2196</a>            {
-<a href=#2197 id=2197 data-nosnippet>2197</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ReInitParameterMismatch);
-<a href=#2198 id=2198 data-nosnippet>2198</a>            }
-<a href=#2199 id=2199 data-nosnippet>2199</a>            <span class="comment">// https://validation.openmls.tech/#valn1412 (reinit/branch PSK =&gt; epoch 1).
-<a href=#2200 id=2200 data-nosnippet>2200</a>            </span><span class="kw">if </span>group_context.epoch().as_u64() != <span class="number">1 </span>{
-<a href=#2201 id=2201 data-nosnippet>2201</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ReInitEpochInvalid);
-<a href=#2202 id=2202 data-nosnippet>2202</a>            }
-<a href=#2203 id=2203 data-nosnippet>2203</a>        }
-<a href=#2204 id=2204 data-nosnippet>2204</a>
-<a href=#2205 id=2205 data-nosnippet>2205</a>        <span class="kw">let </span>staged_welcome = <span class="self">self
-<a href=#2206 id=2206 data-nosnippet>2206</a>            </span>.processed_welcome
-<a href=#2207 id=2207 data-nosnippet>2207</a>            .into_staged_welcome_inner(
-<a href=#2208 id=2208 data-nosnippet>2208</a>                <span class="self">self</span>.provider,
-<a href=#2209 id=2209 data-nosnippet>2209</a>                <span class="self">self</span>.ratchet_tree,
-<a href=#2210 id=2210 data-nosnippet>2210</a>                <span class="self">self</span>.validate_lifetimes,
-<a href=#2211 id=2211 data-nosnippet>2211</a>                <span class="self">self</span>.replace_old_group,
-<a href=#2212 id=2212 data-nosnippet>2212</a>            )
-<a href=#2213 id=2213 data-nosnippet>2213</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#2214 id=2214 data-nosnippet>2214</a>
-<a href=#2215 id=2215 data-nosnippet>2215</a>        <span class="comment">// Receiver check (c): every LeafNode in the subgroup must
-<a href=#2216 id=2216 data-nosnippet>2216</a>        // match a LeafNode in the parent group. For a reinit, the members
-<a href=#2217 id=2217 data-nosnippet>2217</a>        // must be identical to the old group's.
-<a href=#2218 id=2218 data-nosnippet>2218</a>        // Member equivalence is an application responsibility.
-<a href=#2219 id=2219 data-nosnippet>2219</a>        // This is a shortcut for a simple case, matching by credential.
-<a href=#2220 id=2220 data-nosnippet>2220</a>        </span><span class="kw">if </span><span class="self">self</span>.check_members {
-<a href=#2221 id=2221 data-nosnippet>2221</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(branch_info) = <span class="kw-2">&amp;</span><span class="self">self</span>.branch {
-<a href=#2222 id=2222 data-nosnippet>2222</a>                <span class="kw">for </span>member <span class="kw">in </span>staged_welcome.members() {
-<a href=#2223 id=2223 data-nosnippet>2223</a>                    <span class="kw">if </span>!branch_info
-<a href=#2224 id=2224 data-nosnippet>2224</a>                        .member_credentials()
-<a href=#2225 id=2225 data-nosnippet>2225</a>                        .contains(<span class="kw-2">&amp;</span>member.credential)
-<a href=#2226 id=2226 data-nosnippet>2226</a>                    {
-<a href=#2227 id=2227 data-nosnippet>2227</a>                        <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::SubgroupLeafMismatch);
-<a href=#2228 id=2228 data-nosnippet>2228</a>                    }
-<a href=#2229 id=2229 data-nosnippet>2229</a>                }
-<a href=#2230 id=2230 data-nosnippet>2230</a>            }
-<a href=#2231 id=2231 data-nosnippet>2231</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(reinit_info) = <span class="kw-2">&amp;</span><span class="self">self</span>.reinit {
-<a href=#2232 id=2232 data-nosnippet>2232</a>                <span class="kw">let </span>old_credentials = reinit_info.member_credentials();
-<a href=#2233 id=2233 data-nosnippet>2233</a>                <span class="kw">let </span><span class="kw-2">mut </span>unseen_old_credentials = old_credentials.to_vec();
-<a href=#2234 id=2234 data-nosnippet>2234</a>                <span class="kw">for </span>member <span class="kw">in </span>staged_welcome.members() {
-<a href=#2235 id=2235 data-nosnippet>2235</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(position) = unseen_old_credentials
-<a href=#2236 id=2236 data-nosnippet>2236</a>                        .iter()
-<a href=#2237 id=2237 data-nosnippet>2237</a>                        .position(|c| <span class="kw-2">*</span>c == member.credential)
-<a href=#2238 id=2238 data-nosnippet>2238</a>                    {
-<a href=#2239 id=2239 data-nosnippet>2239</a>                        unseen_old_credentials.remove(position);
-<a href=#2240 id=2240 data-nosnippet>2240</a>                    } <span class="kw">else </span>{
-<a href=#2241 id=2241 data-nosnippet>2241</a>                        <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ReInitLeafMismatch);
-<a href=#2242 id=2242 data-nosnippet>2242</a>                    }
-<a href=#2243 id=2243 data-nosnippet>2243</a>                }
-<a href=#2244 id=2244 data-nosnippet>2244</a>                <span class="comment">// The members must be identical for reinit.
-<a href=#2245 id=2245 data-nosnippet>2245</a>                </span><span class="kw">if </span>!unseen_old_credentials.is_empty() {
-<a href=#2246 id=2246 data-nosnippet>2246</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ReInitLeavesMissing(unseen_old_credentials));
-<a href=#2247 id=2247 data-nosnippet>2247</a>                }
-<a href=#2248 id=2248 data-nosnippet>2248</a>            }
-<a href=#2249 id=2249 data-nosnippet>2249</a>        }
-<a href=#2250 id=2250 data-nosnippet>2250</a>
-<a href=#2251 id=2251 data-nosnippet>2251</a>        <span class="prelude-val">Ok</span>(staged_welcome)
-<a href=#2252 id=2252 data-nosnippet>2252</a>    }
-<a href=#2253 id=2253 data-nosnippet>2253</a>}
+<a href=#2160 id=2160 data-nosnippet>2160</a>    <span class="doccomment">/// Skip the validation of lifetimes in leaf nodes in the ratchet tree.
+<a href=#2161 id=2161 data-nosnippet>2161</a>    /// Note that only the leaf nodes are checked that were never updated.
+<a href=#2162 id=2162 data-nosnippet>2162</a>    ///
+<a href=#2163 id=2163 data-nosnippet>2163</a>    /// By default they are validated.
+<a href=#2164 id=2164 data-nosnippet>2164</a>    </span><span class="kw">pub fn </span>skip_lifetime_validation(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+<a href=#2165 id=2165 data-nosnippet>2165</a>        <span class="self">self</span>.validate_lifetimes = LeafNodeLifetimePolicy::Skip;
+<a href=#2166 id=2166 data-nosnippet>2166</a>        <span class="self">self
+<a href=#2167 id=2167 data-nosnippet>2167</a>    </span>}
+<a href=#2168 id=2168 data-nosnippet>2168</a>
+<a href=#2169 id=2169 data-nosnippet>2169</a>    <span class="doccomment">/// Sets how the lifetimes of leaf nodes in the ratchet tree are checked.
+<a href=#2170 id=2170 data-nosnippet>2170</a>    /// [`Self::skip_lifetime_validation`] is the same as passing
+<a href=#2171 id=2171 data-nosnippet>2171</a>    /// [`LeafNodeLifetimePolicy::Skip`].
+<a href=#2172 id=2172 data-nosnippet>2172</a>    </span><span class="kw">pub fn </span>leaf_node_lifetime_policy(<span class="kw-2">mut </span><span class="self">self</span>, lifetime_policy: LeafNodeLifetimePolicy) -&gt; <span class="self">Self </span>{
+<a href=#2173 id=2173 data-nosnippet>2173</a>        <span class="self">self</span>.validate_lifetimes = lifetime_policy;
+<a href=#2174 id=2174 data-nosnippet>2174</a>        <span class="self">self
+<a href=#2175 id=2175 data-nosnippet>2175</a>    </span>}
+<a href=#2176 id=2176 data-nosnippet>2176</a>
+<a href=#2177 id=2177 data-nosnippet>2177</a>    <span class="doccomment">/// Get a reference to the [`ProcessedWelcome`].
+<a href=#2178 id=2178 data-nosnippet>2178</a>    ///
+<a href=#2179 id=2179 data-nosnippet>2179</a>    /// Use this to inspect the [`Welcome`] message before validation.
+<a href=#2180 id=2180 data-nosnippet>2180</a>    </span><span class="kw">pub fn </span>processed_welcome(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProcessedWelcome {
+<a href=#2181 id=2181 data-nosnippet>2181</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.processed_welcome
+<a href=#2182 id=2182 data-nosnippet>2182</a>    }
+<a href=#2183 id=2183 data-nosnippet>2183</a>
+<a href=#2184 id=2184 data-nosnippet>2184</a>    <span class="doccomment">/// Build the [`StagedWelcome`].
+<a href=#2185 id=2185 data-nosnippet>2185</a>    </span><span class="attr">#[openmls_traits::maybe_async]
+<a href=#2186 id=2186 data-nosnippet>2186</a>    </span><span class="kw">pub async fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;StagedWelcome, WelcomeError&lt;Provider::StorageError&gt;&gt; {
+<a href=#2187 id=2187 data-nosnippet>2187</a>        <span class="comment">// Receiver checks (a) and (b): when joining a subgroup branch, the
+<a href=#2188 id=2188 data-nosnippet>2188</a>        // version and ciphersuite must match the parent group, and the subgroup
+<a href=#2189 id=2189 data-nosnippet>2189</a>        // must be at epoch 1.
+<a href=#2190 id=2190 data-nosnippet>2190</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(branch_info) = <span class="kw-2">&amp;</span><span class="self">self</span>.branch {
+<a href=#2191 id=2191 data-nosnippet>2191</a>            <span class="kw">let </span>group_info = <span class="self">self</span>.processed_welcome.unverified_group_info();
+<a href=#2192 id=2192 data-nosnippet>2192</a>            <span class="kw">if </span>group_info.group_context().protocol_version() != branch_info.version()
+<a href=#2193 id=2193 data-nosnippet>2193</a>                || group_info.ciphersuite() != branch_info.ciphersuite()
+<a href=#2194 id=2194 data-nosnippet>2194</a>            {
+<a href=#2195 id=2195 data-nosnippet>2195</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::SubgroupParameterMismatch);
+<a href=#2196 id=2196 data-nosnippet>2196</a>            }
+<a href=#2197 id=2197 data-nosnippet>2197</a>            <span class="kw">if </span>group_info.group_context().epoch().as_u64() != <span class="number">1 </span>{
+<a href=#2198 id=2198 data-nosnippet>2198</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::SubgroupEpochInvalid);
+<a href=#2199 id=2199 data-nosnippet>2199</a>            }
+<a href=#2200 id=2200 data-nosnippet>2200</a>        }
+<a href=#2201 id=2201 data-nosnippet>2201</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(reinit_info) = <span class="kw-2">&amp;</span><span class="self">self</span>.reinit {
+<a href=#2202 id=2202 data-nosnippet>2202</a>            <span class="comment">// RFC 9420 §11.2 receiver checks: the successor's parameters must match
+<a href=#2203 id=2203 data-nosnippet>2203</a>            // the ReInit proposal, and it must be at epoch 1.
+<a href=#2204 id=2204 data-nosnippet>2204</a>            </span><span class="kw">let </span>group_info = <span class="self">self</span>.processed_welcome.unverified_group_info();
+<a href=#2205 id=2205 data-nosnippet>2205</a>            <span class="kw">let </span>group_context = group_info.group_context();
+<a href=#2206 id=2206 data-nosnippet>2206</a>            <span class="kw">let </span>reinit_proposal = reinit_info.proposal();
+<a href=#2207 id=2207 data-nosnippet>2207</a>            <span class="comment">// https://validation.openmls.tech/#valn1413 (parameters match the ReInit
+<a href=#2208 id=2208 data-nosnippet>2208</a>            // proposal).
+<a href=#2209 id=2209 data-nosnippet>2209</a>            </span><span class="kw">if </span>group_context.protocol_version() != reinit_proposal.version()
+<a href=#2210 id=2210 data-nosnippet>2210</a>                || group_context.ciphersuite() != reinit_proposal.ciphersuite()
+<a href=#2211 id=2211 data-nosnippet>2211</a>                || group_context.group_id() != reinit_proposal.group_id()
+<a href=#2212 id=2212 data-nosnippet>2212</a>                || group_context.extensions() != reinit_proposal.extensions()
+<a href=#2213 id=2213 data-nosnippet>2213</a>            {
+<a href=#2214 id=2214 data-nosnippet>2214</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ReInitParameterMismatch);
+<a href=#2215 id=2215 data-nosnippet>2215</a>            }
+<a href=#2216 id=2216 data-nosnippet>2216</a>            <span class="comment">// https://validation.openmls.tech/#valn1412 (reinit/branch PSK =&gt; epoch 1).
+<a href=#2217 id=2217 data-nosnippet>2217</a>            </span><span class="kw">if </span>group_context.epoch().as_u64() != <span class="number">1 </span>{
+<a href=#2218 id=2218 data-nosnippet>2218</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ReInitEpochInvalid);
+<a href=#2219 id=2219 data-nosnippet>2219</a>            }
+<a href=#2220 id=2220 data-nosnippet>2220</a>        }
+<a href=#2221 id=2221 data-nosnippet>2221</a>
+<a href=#2222 id=2222 data-nosnippet>2222</a>        <span class="kw">let </span>staged_welcome = <span class="self">self
+<a href=#2223 id=2223 data-nosnippet>2223</a>            </span>.processed_welcome
+<a href=#2224 id=2224 data-nosnippet>2224</a>            .into_staged_welcome_inner(
+<a href=#2225 id=2225 data-nosnippet>2225</a>                <span class="self">self</span>.provider,
+<a href=#2226 id=2226 data-nosnippet>2226</a>                <span class="self">self</span>.ratchet_tree,
+<a href=#2227 id=2227 data-nosnippet>2227</a>                <span class="self">self</span>.validate_lifetimes,
+<a href=#2228 id=2228 data-nosnippet>2228</a>                <span class="self">self</span>.replace_old_group,
+<a href=#2229 id=2229 data-nosnippet>2229</a>            )
+<a href=#2230 id=2230 data-nosnippet>2230</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#2231 id=2231 data-nosnippet>2231</a>
+<a href=#2232 id=2232 data-nosnippet>2232</a>        <span class="comment">// Receiver check (c): every LeafNode in the subgroup must
+<a href=#2233 id=2233 data-nosnippet>2233</a>        // match a LeafNode in the parent group. For a reinit, the members
+<a href=#2234 id=2234 data-nosnippet>2234</a>        // must be identical to the old group's.
+<a href=#2235 id=2235 data-nosnippet>2235</a>        // Member equivalence is an application responsibility.
+<a href=#2236 id=2236 data-nosnippet>2236</a>        // This is a shortcut for a simple case, matching by credential.
+<a href=#2237 id=2237 data-nosnippet>2237</a>        </span><span class="kw">if </span><span class="self">self</span>.check_members {
+<a href=#2238 id=2238 data-nosnippet>2238</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(branch_info) = <span class="kw-2">&amp;</span><span class="self">self</span>.branch {
+<a href=#2239 id=2239 data-nosnippet>2239</a>                <span class="kw">for </span>member <span class="kw">in </span>staged_welcome.members() {
+<a href=#2240 id=2240 data-nosnippet>2240</a>                    <span class="kw">if </span>!branch_info
+<a href=#2241 id=2241 data-nosnippet>2241</a>                        .member_credentials()
+<a href=#2242 id=2242 data-nosnippet>2242</a>                        .contains(<span class="kw-2">&amp;</span>member.credential)
+<a href=#2243 id=2243 data-nosnippet>2243</a>                    {
+<a href=#2244 id=2244 data-nosnippet>2244</a>                        <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::SubgroupLeafMismatch);
+<a href=#2245 id=2245 data-nosnippet>2245</a>                    }
+<a href=#2246 id=2246 data-nosnippet>2246</a>                }
+<a href=#2247 id=2247 data-nosnippet>2247</a>            }
+<a href=#2248 id=2248 data-nosnippet>2248</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(reinit_info) = <span class="kw-2">&amp;</span><span class="self">self</span>.reinit {
+<a href=#2249 id=2249 data-nosnippet>2249</a>                <span class="kw">let </span>old_credentials = reinit_info.member_credentials();
+<a href=#2250 id=2250 data-nosnippet>2250</a>                <span class="kw">let </span><span class="kw-2">mut </span>unseen_old_credentials = old_credentials.to_vec();
+<a href=#2251 id=2251 data-nosnippet>2251</a>                <span class="kw">for </span>member <span class="kw">in </span>staged_welcome.members() {
+<a href=#2252 id=2252 data-nosnippet>2252</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(position) = unseen_old_credentials
+<a href=#2253 id=2253 data-nosnippet>2253</a>                        .iter()
+<a href=#2254 id=2254 data-nosnippet>2254</a>                        .position(|c| <span class="kw-2">*</span>c == member.credential)
+<a href=#2255 id=2255 data-nosnippet>2255</a>                    {
+<a href=#2256 id=2256 data-nosnippet>2256</a>                        unseen_old_credentials.remove(position);
+<a href=#2257 id=2257 data-nosnippet>2257</a>                    } <span class="kw">else </span>{
+<a href=#2258 id=2258 data-nosnippet>2258</a>                        <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ReInitLeafMismatch);
+<a href=#2259 id=2259 data-nosnippet>2259</a>                    }
+<a href=#2260 id=2260 data-nosnippet>2260</a>                }
+<a href=#2261 id=2261 data-nosnippet>2261</a>                <span class="comment">// The members must be identical for reinit.
+<a href=#2262 id=2262 data-nosnippet>2262</a>                </span><span class="kw">if </span>!unseen_old_credentials.is_empty() {
+<a href=#2263 id=2263 data-nosnippet>2263</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ReInitLeavesMissing(unseen_old_credentials));
+<a href=#2264 id=2264 data-nosnippet>2264</a>                }
+<a href=#2265 id=2265 data-nosnippet>2265</a>            }
+<a href=#2266 id=2266 data-nosnippet>2266</a>        }
+<a href=#2267 id=2267 data-nosnippet>2267</a>
+<a href=#2268 id=2268 data-nosnippet>2268</a>        <span class="prelude-val">Ok</span>(staged_welcome)
+<a href=#2269 id=2269 data-nosnippet>2269</a>    }
+<a href=#2270 id=2270 data-nosnippet>2270</a>}
 </code></pre></div></section></main></body></html>
