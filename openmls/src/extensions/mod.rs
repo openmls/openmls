@@ -393,6 +393,10 @@ pub enum Extension {
 pub struct UnknownExtension(pub Vec<u8>);
 
 /// A Extension for Object of type T
+///
+/// Deserializing `Extensions` with serde does not run the checks of
+/// [`Extensions::from_vec`]. Only deserialize data that was serialized by this
+/// application.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Extensions<T> {
     unique: Vec<Extension>,
