@@ -78,7 +78,7 @@ pub enum PskError {
     DifferentGroupId {
         /// Group ID for which PSKs are being loaded
         expected: GroupId,
-        /// Got Group ID in PreSharedKeyId
+        /// Group ID found in PreSharedKeyId
         got: GroupId,
     },
 }

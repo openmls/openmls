@@ -47,7 +47,7 @@ Commit the proposal:
 When committing from the proposal queue, the application itself must make sure
 that the ReInit proposal is the only one in the commit. If it accepts other
 proposals, building the commit will throw an error. [RFC 9420 §12.2] states that
-other proposals SHOULD be preferrred over ReInit. Applications that follow this
+other proposals SHOULD be preferred over ReInit. Applications that follow this
 advice must reject the ReInit proposal in `f` of `CommitBuilder::build` if there
 are other proposals.
 
@@ -67,7 +67,6 @@ passing the ReInit proposal the suspending commit covered. `reinit_info` returns
 reinit, so the old group can be discarded. The info carries the old group's
 resumption PSK secret and must be handled as sensitive key material.
 
-
 The committer or any other member uses [`MlsGroupBuilder::reinit`](https://docs.rs/openmls/latest/openmls/group/struct.MlsGroupBuilder.html)
 to seed the new group. The application is responsible for
 seeding only a single successor from a suspended group:
@@ -84,7 +83,7 @@ This injects the old group's resumption PSK and verifies that the reinit PSK in
 the Welcome references the old group and its final epoch; otherwise it fails with
 `WelcomeError::ReInitPredecessorMismatch`. The remaining checks run when `build`
 is called on the returned `JoinBuilder`: the successor's protocol version,
-ciphersuite, group id and extensions must match the ReInit proposal, the
+ciphersuite, group id and extensions must match the ReInit proposal, and the
 successor must be at epoch 1.
 
 New group's members must be identical to the old group's. A simple membership check by
