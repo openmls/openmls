@@ -127,8 +127,8 @@
 <a href=#127 id=127 data-nosnippet>127</a>    /// does not return an error, and then converting the value into
 <a href=#128 id=128 data-nosnippet>128</a>    /// `Self::VerifiedStruct`.
 <a href=#129 id=129 data-nosnippet>129</a>    ///
-<a href=#130 id=130 data-nosnippet>130</a>    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
-<a href=#131 id=131 data-nosnippet>131</a>    /// `CredentialError::InvalidSignature` otherwise.
+<a href=#130 id=130 data-nosnippet>130</a>    /// Returns `Ok(Self::VerifiedStruct)` if the signature is valid and
+<a href=#131 id=131 data-nosnippet>131</a>    /// [`SignatureError::VerificationError`] otherwise.
 <a href=#132 id=132 data-nosnippet>132</a>    </span><span class="kw">fn </span>verify(
 <a href=#133 id=133 data-nosnippet>133</a>        <span class="self">self</span>,
 <a href=#134 id=134 data-nosnippet>134</a>        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,

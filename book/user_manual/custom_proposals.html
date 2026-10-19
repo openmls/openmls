@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-c24e8b80.js";
+            window.path_to_searchindex_js = "../searchindex-7421945f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5c7e1a74.js"></script>
@@ -175,7 +175,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="custom-proposals"><a class="header" href="#custom-proposals">Custom proposals</a></h1>
-<p>OpenMLS allows the creation and use of application-defined proposals. To create such a proposal, the application needs to define a Proposal Type in such a way that its value doesn’t collide with any Proposal Types defined in Section 17.4. of RFC 9420. If the proposal is meant to be used only inside of a particular application, the value of the Proposal Type is recommended to be in the range between <code>0xF000</code> and <code>0xFFFF</code>, as that range is reserved for private use.</p>
+<p>OpenMLS allows the creation and use of application-defined proposals. To create such a proposal, the application needs to define a Proposal Type in such a way that its value doesn’t collide with any Proposal Types defined in Section 17.4. of RFC 9420, with GREASE values, or with other Proposal Types supported by OpenMLS. Custom proposals with a colliding Proposal Type fail to encode. If the proposal is meant to be used only inside of a particular application, the value of the Proposal Type is recommended to be in the range between <code>0xF000</code> and <code>0xFFFF</code>, as that range is reserved for private use.</p>
 <p>Custom proposals can contain arbitrary octet-strings as defined by the application. Any policy decisions based on custom proposals will have to be made by the application, such as the decision to include a given custom proposal in a commit, or whether to accept a commit that includes one or more custom proposals. To decide the latter, applications can inspect the queued proposals in a <code>ProcessedMessageContent::StagedCommitMessage(staged_commit)</code>.</p>
 <p>Example on how to use custom proposals:</p>
 <pre><code class="language-rust no_run noplayground">    // Define a custom proposal type
