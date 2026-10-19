@@ -782,7 +782,7 @@ impl GroupContextExtensionProposal {
 ///
 /// Type of Proposal, either by value or by reference
 /// We only implement the values (1, 2), other values are not valid
-/// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
+/// and will yield `tls_codec::Error::UnknownValue` when decoded.
 #[derive(
     PartialEq,
     Clone,

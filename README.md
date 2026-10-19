@@ -72,7 +72,7 @@ OpenMLS provides the following features
 - **backtrace**: enable backtraces
 - **content-debug**: allow printing sensitive content of messages for debugging
 - **crypto-debug**: allow printing cryptographic key material for debugging
-- **test-util**: test utilities
+- **test-utils**: test utilities
 
 </details>
 
