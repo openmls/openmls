@@ -12,7 +12,6 @@ pub use super::mls_group::errors::*;
 use super::public_group::errors::CreationFromExternalError;
 use crate::{
     ciphersuite::signable::SignatureError,
-    credentials::Credential,
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::MessageDecryptionError,
