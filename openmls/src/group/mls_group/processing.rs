@@ -1251,6 +1251,26 @@ impl MlsGroup {
                     emulator_sender_leaf_index,
                 ))
             }
+            #[cfg(feature = "extensions-draft")]
+            FramedContentBody::Proposal(Proposal::AppDataUpdate(_)) => {
+                let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                    QueuedProposal::from_authenticated_content_by_ref(
+                        self.ciphersuite(),
+                        provider.crypto(),
+                        content,
+                    )?,
+                ));
+                Ok(ProcessedMessage::new(
+                    self.group_id().clone(),
+                    self.context().epoch(),
+                    sender,
+                    data,
+                    content,
+                    credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    emulator_sender_leaf_index,
+                ))
+            }
             // TODO #151/#106
             FramedContentBody::Proposal(_) => Err(ProcessMessageError::UnsupportedProposalType),
             FramedContentBody::Commit(_) => {

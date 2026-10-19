@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2257](https://github.com/openmls/openmls/pull/2257): Added `PublicGroup::from_external_with_lifetime_policy`, which checks the lifetimes of the leaf nodes in the ratchet tree under the given `LeafNodeLifetimePolicy`.
 - [#2257](https://github.com/openmls/openmls/pull/2257): Added `leaf_node_lifetime_policy` to `CommitBuilder`, `BranchGroupBuilder`, `JoinBuilder` and `ExternalCommitBuilder`. On the first two it applies to the key packages of the new members when the commit is built, on the other two to the leaf nodes in the ratchet tree.
 - [#2257](https://github.com/openmls/openmls/pull/2257): Added `KeyPackageIn::validate_with_lifetime_policy` and `PublicGroup::validate_key_package_for_add_with_lifetime_policy`. They work like `validate` and `validate_key_package_for_add`, but check the lifetime under the given `LeafNodeLifetimePolicy`.
+- [#2290](https://github.com/openmls/openmls/issues/2290): `ExternalProposal::new_app_data_update` (`extensions-draft`) builds an AppDataUpdate proposal from an external sender.
 
 ### Changed
 
@@ -41,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#2290](https://github.com/openmls/openmls/issues/2290): With `extensions-draft`, `MlsGroup` and `PublicGroup` accept AppDataUpdate proposals from external senders (draft-ietf-mls-extensions-10 §4.7). They were rejected with `UnsupportedProposalType`.
 - [#2284](https://github.com/openmls/openmls/issues/2284): `ComponentType::from` now maps component IDs 0x8A8A, 0x9A9A, 0xAAAA, 0xBABA, 0xCACA, 0xDADA and 0xEAEA to `ComponentType::Private`. They are in the private-use range of the MLS Component Types registry, which has only the GREASE values 0x0A0A to 0x7A7A. The variants `ComponentType::Grease8A8A` to `ComponentType::GreaseEAEA` are removed.
 - [#2162](https://github.com/openmls/openmls/pull/2162): `Extensions::unknown()` now finds a GREASE extension that is present in the set, where it previously returned `None`.
 - [#2127](https://github.com/openmls/openmls/pull/2127): `MlsGroup` and `PublicGroup` message processing now accept `PreSharedKey` proposals from external senders. Previously they were rejected with `UnsupportedProposalType`.
