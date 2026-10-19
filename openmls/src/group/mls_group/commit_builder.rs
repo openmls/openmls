@@ -1964,8 +1964,6 @@ mod tests {
         let bob_provider = &Provider::default();
         let parent_provider = &Provider::default();
 
-        // `alice_group` is at epoch 1 after adding Bob, so a branch PSK in a
-        // commit on it must be rejected.
         let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
             setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
@@ -1979,6 +1977,8 @@ mod tests {
             .build(parent_provider, &parent_signer, parent_cwk)
             .unwrap();
 
+        // `alice_group` is at epoch 1 so it must reject branch PSK proposals.
+        assert_eq!(alice_group.epoch(), 1.into());
         let result = alice_group
             .commit_builder()
             .branch(alice_provider.rand(), &parent_group.branch_info())
@@ -2016,8 +2016,6 @@ mod tests {
         let bob_provider = &Provider::default();
         let old_provider = &Provider::default();
 
-        // `alice_group` is at epoch 1 after adding Bob, so a branch PSK in a
-        // commit on it must be rejected.
         let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
             setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
@@ -2033,6 +2031,8 @@ mod tests {
             .resumption_psk_secret() // or however BranchInfo/ReInitInfo gets it
             .clone();
 
+        // `alice_group` is at epoch 1 so it must reject branch PSK proposals.
+        assert_eq!(alice_group.epoch(), 1.into());
         let result = alice_group
             .commit_builder()
             .reinit(
