@@ -139,7 +139,7 @@ impl ProposalType {
     /// GREASE values are used to ensure implementations properly handle unknown
     /// proposal types. See [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
     pub fn is_grease(&self) -> bool {
-        matches!(self, ProposalType::Grease(_))
+        matches!(self, ProposalType::Grease(v) if crate::grease::is_grease_value(*v))
     }
 }
 
@@ -163,7 +163,15 @@ impl TlsDeserializeTrait for ProposalType {
 
 impl TlsSerializeTrait for ProposalType {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        writer.write_all(&u16::from(*self).to_be_bytes())?;
+        let value = u16::from(*self);
+        // `Custom` and `Grease` accept any value. Refuse to encode one that
+        // would decode as a different proposal type.
+        if ProposalType::from(value) != *self {
+            return Err(Error::EncodingError(format!(
+                "{self:?} is encoded as {value:#06x}, which decodes as a different proposal type"
+            )));
+        }
+        writer.write_all(&value.to_be_bytes())?;
 
         Ok(2)
     }
@@ -947,6 +955,11 @@ pub struct CustomProposal {
 
 impl CustomProposal {
     /// Generate a new custom proposal.
+    ///
+    /// `proposal_type` must not be a proposal type registered in RFC 9420
+    /// (or supported by OpenMLS) and must not be a GREASE value. Otherwise
+    /// encoding the proposal fails, because it would decode as a different
+    /// proposal.
     pub fn new(proposal_type: u16, payload: Vec<u8>) -> Self {
         Self {
             proposal_type,
@@ -994,5 +1007,31 @@ mod tests {
             let got_serialized = got.tls_serialize_detached().unwrap();
             assert_eq!(test, got_serialized);
         }
+    }
+
+    #[test]
+    fn non_canonical_proposal_types_are_not_serialized() {
+        for proposal_type in [
+            ProposalType::Custom(1),
+            ProposalType::Custom(6),
+            ProposalType::Custom(0x0A0A),
+            ProposalType::Grease(1),
+            ProposalType::Grease(0x1234),
+        ] {
+            assert!(
+                proposal_type.tls_serialize_detached().is_err(),
+                "{proposal_type:?} must not be serialized"
+            );
+        }
+
+        let proposal = super::Proposal::custom(super::CustomProposal::new(3, vec![9, 8, 7]));
+        assert!(proposal.tls_serialize_detached().is_err());
+    }
+
+    #[test]
+    fn is_grease_checks_the_value() {
+        assert!(ProposalType::Grease(0x0A0A).is_grease());
+        assert!(!ProposalType::Grease(0x1234).is_grease());
+        assert!(!ProposalType::Custom(0x0A0A).is_grease());
     }
 }

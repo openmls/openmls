@@ -524,6 +524,25 @@ fn unknown_extensions(n: usize) -> Vec<Extension> {
         .collect()
 }
 
+#[test]
+fn non_canonical_extension_types_are_not_serialized() {
+    for extension_type in [
+        ExtensionType::Unknown(1),
+        ExtensionType::Unknown(10),
+        ExtensionType::Unknown(0x0A0A),
+        ExtensionType::Grease(1),
+        ExtensionType::Grease(0x1234),
+    ] {
+        assert!(
+            extension_type.tls_serialize_detached().is_err(),
+            "{extension_type:?} must not be serialized"
+        );
+    }
+
+    assert!(ExtensionType::Grease(0x0A0A).is_grease());
+    assert!(!ExtensionType::Grease(0x1234).is_grease());
+}
+
 // A single unauthenticated message can carry tens of thousands of distinct
 // extensions. Decoding must stay linear in that number, so this test would
 // take minutes with the previous quadratic duplicate check. There is no timing

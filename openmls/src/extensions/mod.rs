@@ -242,7 +242,7 @@ impl ExtensionType {
     /// GREASE values are used to ensure implementations properly handle unknown
     /// extension types. See [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
     pub fn is_grease(&self) -> bool {
-        matches!(self, ExtensionType::Grease(_))
+        matches!(self, ExtensionType::Grease(v) if crate::grease::is_grease_value(*v))
     }
 }
 
@@ -277,7 +277,15 @@ impl DeserializeBytes for ExtensionType {
 
 impl TlsSerializeTrait for ExtensionType {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        writer.write_all(&u16::from(*self).to_be_bytes())?;
+        let value = u16::from(*self);
+        // `Unknown` and `Grease` accept any value. Refuse to encode one that
+        // would decode as a different extension type.
+        if ExtensionType::from(value) != *self {
+            return Err(Error::EncodingError(format!(
+                "{self:?} is encoded as {value:#06x}, which decodes as a different extension type"
+            )));
+        }
+        writer.write_all(&value.to_be_bytes())?;
 
         Ok(2)
     }
