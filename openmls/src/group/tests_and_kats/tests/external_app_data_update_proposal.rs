@@ -176,6 +176,7 @@ fn external_app_data_update_proposal_should_succeed() {
             alice_group.epoch(),
             &ds_credential_with_key.signer,
             SenderExtensionIndex::new(0),
+            vec![],
         )
         .unwrap(),
     );
@@ -295,6 +296,86 @@ fn external_app_data_update_proposal_should_succeed() {
     }
 }
 
+// The authenticated_data of an external AppDataUpdate proposal reaches a
+// member and a PublicGroup unchanged, and is covered by the signature.
+#[openmls_test]
+fn external_app_data_update_proposal_authenticated_data_is_signed() {
+    use tls_codec::{Deserialize as _, Serialize as _};
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let public_provider = &Provider::default();
+    let ds_provider = &Provider::default();
+
+    let ds_credential_with_key = generate_credential_with_key(
+        "delivery-service".into(),
+        ciphersuite.signature_algorithm(),
+        ds_provider,
+    );
+    let (_alice_group, _alice_credential, mut bob_group, public_group) = validation_test_setup(
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        public_provider,
+        &ds_credential_with_key,
+    );
+
+    let aad = b"ds aad";
+    let bytes = ExternalProposal::new_app_data_update(
+        COMPONENT_ID,
+        AppDataUpdateOperation::Update(b"ds data".to_vec().into()),
+        bob_group.group_id().clone(),
+        bob_group.epoch(),
+        &ds_credential_with_key.signer,
+        SenderExtensionIndex::new(0),
+        aad.to_vec(),
+    )
+    .unwrap()
+    .tls_serialize_detached()
+    .unwrap();
+    let decode = |bytes: &[u8]| -> PublicMessageIn {
+        match MlsMessageIn::tls_deserialize_exact(bytes)
+            .unwrap()
+            .try_into_protocol_message()
+            .unwrap()
+        {
+            ProtocolMessage::PublicMessage(public_message) => *public_message,
+            ProtocolMessage::PrivateMessage(_) => panic!("Unexpected message type."),
+        }
+    };
+
+    let processed_message = bob_group
+        .process_message(bob_provider, decode(&bytes))
+        .unwrap();
+    assert_eq!(processed_message.aad(), aad);
+    let processed_message = public_group
+        .process_message(public_provider.crypto(), decode(&bytes))
+        .unwrap();
+    assert_eq!(processed_message.aad(), aad);
+
+    // Changing one byte of the authenticated_data breaks the signature
+    let at = bytes
+        .windows(aad.len())
+        .position(|window| window == aad)
+        .unwrap();
+    let mut tampered = bytes.clone();
+    tampered[at] ^= 0x01;
+    let error = bob_group
+        .process_message(bob_provider, decode(&tampered))
+        .unwrap_err();
+    assert_eq!(
+        error,
+        ProcessMessageError::ValidationError(ValidationError::InvalidSignature)
+    );
+    let error = public_group
+        .process_message(public_provider.crypto(), decode(&tampered))
+        .unwrap_err();
+    assert_eq!(
+        error,
+        PublicProcessMessageError::ValidationError(ValidationError::InvalidSignature)
+    );
+}
+
 // An AppDataUpdate proposal from a party that is not a configured external
 // sender is refused by a member and by a PublicGroup.
 #[openmls_test]
@@ -336,6 +417,7 @@ fn external_app_data_update_proposal_should_fail_when_not_an_external_sender() {
                 bob_group.epoch(),
                 &intruder_credential_with_key.signer,
                 SenderExtensionIndex::new(sender_index),
+                vec![],
             )
             .unwrap(),
         );
