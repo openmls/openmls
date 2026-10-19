@@ -2,8 +2,7 @@
 // extern crate clap;
 // use clap::App;
 
-use std::io::{stdin, stdout, StdoutLock, Write};
-use termion::input::TermRead;
+use std::io::{stdin, stdout, BufRead, StdoutLock, Write};
 
 mod backend;
 mod conversation;
@@ -50,8 +49,7 @@ fn main() {
 
     let stdout = stdout();
     let mut stdout = stdout.lock();
-    let stdin = stdin();
-    let mut stdin = stdin.lock();
+    let mut lines = stdin().lock().lines();
 
     stdout
         .write_all(b" >>> Welcome to the OpenMLS CLI :)\nType help to get a list of commands\n\n")
@@ -60,7 +58,10 @@ fn main() {
 
     loop {
         stdout.flush().unwrap();
-        let op = stdin.read_line().unwrap().unwrap();
+        let Some(op) = lines.next() else {
+            return;
+        };
+        let op = op.unwrap();
 
         // Register a client.
         // There's no persistence. So once the client app stops you have to
@@ -161,7 +162,10 @@ fn main() {
                 loop {
                     stdout.write_all(b" > ").unwrap();
                     stdout.flush().unwrap();
-                    let op2 = stdin.read_line().unwrap().unwrap();
+                    let Some(op2) = lines.next() else {
+                        return;
+                    };
+                    let op2 = op2.unwrap();
 
                     // Send a message to the group.
                     if let Some(msg) = op2.strip_prefix("send ") {
