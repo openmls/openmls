@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2262](https://github.com/openmls/openmls/pull/2262): Added `TreeSync::leaf` to get a `LeafNode` at a given index.
 - [#2275](https://github.com/openmls/openmls/pull/2275): Made `VerifiableGroupInfo::signer` public and added `GroupInfo::signer`. Both return the leaf index of the member that signed the group info.
 - [#2175](https://github.com/openmls/openmls/pull/2175): Added `CommitBuilder::with_aad`, which allows setting the AAD used for the commit.
+- [#2277](https://github.com/openmls/openmls/pull/2277): Added `ExternalCommitBuilder::verify_group`, which verifies the group info and ratchet tree of the group to be joined without building an external commit. It returns a `VerifiedExternalCommitBuilder` that exposes the verified `GroupInfo` and `GroupContext`, and whose `build_group` builds the external commit as before. `ExternalCommitBuilder::build_group` is unchanged and runs both steps.
 
 ### Changed
 
