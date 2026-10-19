@@ -165,12 +165,19 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .unwrap();
 
     let alice_leaf_node = {
+        // The leaf must advertise the ciphersuite it is actually built with,
+        // which is the one this test is parameterized over — a fixed list
+        // would exclude every ciphersuite outside it.
+        let mut ciphersuites = vec![
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        ];
+        if !ciphersuites.contains(&ciphersuite) {
+            ciphersuites.push(ciphersuite);
+        }
         let capabilities = Capabilities::builder()
-            .ciphersuites(vec![
-                Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
-                Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            ])
+            .ciphersuites(ciphersuites)
             .credentials(vec![CredentialType::Basic])
             .build();
 

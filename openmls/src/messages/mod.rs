@@ -128,7 +128,8 @@ impl Welcome {
     /// Read-only: nothing is deleted or consumed, in contrast to
     /// [`crate::group::ProcessedWelcome::new_from_welcome`]. Returns `None` if no secret addresses
     /// this client (not found in the provider's storage).
-    pub fn resolve_own_key_material<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn resolve_own_key_material<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
     ) -> Result<Option<WelcomeKeyMaterial>, WelcomeError<Provider::StorageError>> {
@@ -138,6 +139,7 @@ impl Welcome {
             if let Some(bundle) = provider
                 .storage()
                 .key_package(&hash_ref)
+                .await
                 .map_err(WelcomeError::StorageError)?
             {
                 return Ok(Some(WelcomeKeyMaterial::with_key_package_bundle(bundle)));
@@ -145,7 +147,8 @@ impl Welcome {
 
             #[cfg(feature = "virtual-clients-draft")]
             if let Some(material) =
-                crate::group::resolve_vc_welcome_material(provider, self.ciphersuite(), &hash_ref)?
+                crate::group::resolve_vc_welcome_material(provider, self.ciphersuite(), &hash_ref)
+                    .await?
             {
                 return Ok(Some(WelcomeKeyMaterial::with_vc_welcome_material(material)));
             }

@@ -31,7 +31,10 @@ use crate::{
     error::LibraryError,
     extensions::ExternalSendersExtension,
     group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
-    tree::sender_ratchet::SenderRatchetConfiguration,
+    tree::{
+        secret_tree::{DecryptionSecret, SecretType},
+        sender_ratchet::SenderRatchetConfiguration,
+    },
     versions::ProtocolVersion,
 };
 
@@ -40,7 +43,6 @@ use crate::{
     component::ComponentId,
     framing::safe_aad::SafeAad,
     group::{
-        errors::StageCommitError,
         mls_group::{errors::ResolveAppDataCommitError, processing::UnresolvedAppDataCommit},
         ExportedSecret, StagedCommitSafeExport,
     },
@@ -171,8 +173,9 @@ impl DecryptedMessage {
         // decryptable when there is an emulator context for this epoch: a
         // sibling emulator client shares the leaf, and the dual-use ratchet
         // retains the secrets of unconfirmed own sends. In that case we still
-        // attempt decryption below, and only its failure surfaces the message
-        // as an own private message.
+        // look up the secret below. The message only surfaces as an own
+        // private message when the lookup finds that this client confirmed
+        // the send.
         //
         // Without an emulator context the group does not use virtual clients
         // (which is the case for the emulation group) so an own message is
@@ -196,17 +199,38 @@ impl DecryptedMessage {
         let message_secrets = group
             .message_secrets_for_epoch_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let decrypt_result = ciphertext.to_verifiable_content(
+        let generation = sender_data.generation;
+        let decryption_secret = message_secrets.secret_tree_mut().secret_for_decryption(
             ciphersuite,
             crypto,
-            message_secrets,
             sender_data.leaf_index,
+            SecretType::from(&ciphertext.content_type()),
+            generation,
             sender_ratchet_configuration,
+        );
+        let ratchet_key_material = match decryption_secret {
+            Ok(DecryptionSecret::Available(ratchet_key_material)) => ratchet_key_material,
+            #[cfg(feature = "virtual-clients-draft")]
+            Ok(DecryptionSecret::OwnMessageConfirmed) => {
+                log::debug!("  Own generation {generation} was already confirmed.");
+                return Ok(InboundDecryptionResult::OwnPrivateMessage {
+                    epoch: ciphertext.epoch(),
+                    authenticated_data: ciphertext.aad().to_vec(),
+                });
+            }
+            Err(e) => {
+                log::error!("  Ciphertext generation out of bounds {generation}\n\t{e:?}");
+                return Err(MessageDecryptionError::SecretTreeError(e).into());
+            }
+        };
+        let decrypted = ciphertext.to_verifiable_content(
+            crypto,
+            message_secrets,
+            ratchet_key_material,
             sender_data,
             #[cfg(feature = "virtual-clients-draft")]
             effective_emulator_ctx,
-        );
-        let decrypted = decrypt_result?;
+        )?;
         Self::from_verifiable_content(
             decrypted.verifiable,
             #[cfg(feature = "virtual-clients-draft")]
@@ -436,24 +460,31 @@ impl ProcessedMessage {
         }
     }
 
-    /// Swaps an [`ProcessedMessageContent::UnresolvedAppDataCommit`] for the
-    /// [`StagedCommit`] produced by `stage`, keeping all other fields (sender,
-    /// credential, authenticated data, Safe AAD state) intact.
+    /// Splits off the [`UnresolvedAppDataCommit`] this message carries so the
+    /// caller can stage it. The returned function puts the [`StagedCommit`]
+    /// back as [`ProcessedMessageContent::StagedCommitMessage`] content and
+    /// keeps all other fields (sender, credential, authenticated data, Safe AAD
+    /// state) intact. Staging may be sync or async, so we return the pieces
+    /// rather than take a staging closure.
     ///
-    /// Returns an error if the content is not an unresolved app data commit;
-    /// the message is consumed either way.
+    /// Returns an error if the content is not an unresolved app data commit.
+    /// The message is consumed either way.
     #[cfg(feature = "extensions-draft")]
-    pub(crate) fn resolve_app_data_commit(
-        mut self,
-        stage: impl FnOnce(UnresolvedAppDataCommit) -> Result<StagedCommit, StageCommitError>,
-    ) -> Result<Self, ResolveAppDataCommitError> {
+    pub(crate) fn split_unresolved_app_data_commit(
+        self,
+    ) -> Result<
+        (UnresolvedAppDataCommit, impl FnOnce(StagedCommit) -> Self),
+        ResolveAppDataCommitError,
+    > {
         let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) = self.content
         else {
             return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
         };
-        let staged_commit = stage(*unresolved_commit)?;
-        self.content = ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
-        Ok(self)
+        let with_staged_commit = move |staged_commit: StagedCommit| Self {
+            content: ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit)),
+            ..self
+        };
+        Ok((*unresolved_commit, with_staged_commit))
     }
 
     /// Parse the Safe AAD prefix at the start of `authenticated_data` and
@@ -650,11 +681,26 @@ pub enum ProcessedMessageContent {
     /// With the `virtual-clients-draft` feature, own-leaf messages are
     /// decryptable while their secrets are retained: unconfirmed own sends
     /// and messages from sibling emulator clients decrypt and process
-    /// normally. This variant is then only returned in groups that do not
-    /// use virtual clients (no derivation epoch state registered for the
-    /// message's epoch), when decryption of an own message fails, e.g. because
-    /// the send was already confirmed via
-    /// `MlsGroup::confirm_application_message()`.
+    /// normally. This variant is then returned in two cases:
+    ///
+    /// - The group does not use virtual clients, i.e. no derivation epoch
+    ///   state is registered for the message's epoch.
+    /// - This client confirmed its own send at the message's generation via
+    ///   `MlsGroup::confirm_application_message()` or
+    ///   `MlsGroup::confirm_handshake_message()`, so the message is the echo
+    ///   of that send.
+    ///
+    /// The second case relies on the Delivery Service rejecting a second
+    /// message at a generation it already accepted from this leaf (see the
+    /// `generation_id` returned when creating unconfirmed messages). Other
+    /// own-leaf messages that cannot be decrypted fail instead. A generation
+    /// already used for a decryption attempt fails with
+    /// [`SecretTreeError::SecretReuseError`](crate::framing::errors::SecretTreeError::SecretReuseError),
+    /// like a duplicate from any other member, since that attempt may not
+    /// have succeeded. A generation that fell out of the receive window fails
+    /// with
+    /// [`SecretTreeError::TooDistantInThePast`](crate::framing::errors::SecretTreeError::TooDistantInThePast),
+    /// since it may be a sibling's message that was never processed.
     OwnPrivateMessage,
     /// A Commit message covering AppDataUpdate proposals.
     ///

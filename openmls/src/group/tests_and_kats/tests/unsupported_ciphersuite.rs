@@ -11,8 +11,9 @@ use crate::{
         ExternalCommitBuilderError, MlsGroup, MlsGroupJoinConfig, NewGroupError, StagedWelcome,
         PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
-    prelude::KeyPackageBundle,
-    test_utils::restricted_provider::RestrictedProvider,
+    key_packages::errors::KeyPackageVerifyError,
+    prelude::{Extensions, KeyPackageBundle, KeyPackageIn, ProtocolVersion},
+    test_utils::{minimal_capabilities_for, restricted_provider::RestrictedProvider},
 };
 
 const GROUP_CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -33,6 +34,7 @@ fn group_create_rejects_unsupported_ciphersuite() {
 
     let err = MlsGroup::builder()
         .ciphersuite(GROUP_CIPHERSUITE)
+        .with_capabilities(minimal_capabilities_for(GROUP_CIPHERSUITE).build())
         .build(
             &provider,
             &credential.signer,
@@ -57,6 +59,7 @@ fn welcome_rejects_unsupported_ciphersuite() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(GROUP_CIPHERSUITE)
+        .with_capabilities(minimal_capabilities_for(GROUP_CIPHERSUITE).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -131,6 +134,7 @@ fn external_commit_rejects_unsupported_ciphersuite() {
 
     let alice_group = MlsGroup::builder()
         .ciphersuite(GROUP_CIPHERSUITE)
+        .with_capabilities(minimal_capabilities_for(GROUP_CIPHERSUITE).build())
         .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build(
             alice_provider,
@@ -166,4 +170,29 @@ fn external_commit_rejects_unsupported_ciphersuite() {
         err,
         ExternalCommitBuilderError::UnsupportedCiphersuite(cs) if cs == GROUP_CIPHERSUITE
     ));
+}
+
+#[test]
+fn key_package_validate_rejects_unsupported_ciphersuite() {
+    let provider = restricted_provider();
+    let credential = generate_credential_with_key(
+        "Bob".into(),
+        GROUP_CIPHERSUITE.signature_algorithm(),
+        provider.inner(),
+    );
+    let key_package = generate_key_package(
+        GROUP_CIPHERSUITE,
+        Extensions::empty(),
+        provider.inner(),
+        credential,
+    );
+
+    let err = KeyPackageIn::from(key_package)
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        KeyPackageVerifyError::UnsupportedCiphersuite(GROUP_CIPHERSUITE)
+    );
 }

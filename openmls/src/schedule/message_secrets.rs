@@ -148,7 +148,7 @@ impl MessageSecrets {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn replace_secret_tree(&mut self, secret_tree: SecretTree) -> SecretTree {
         std::mem::replace(&mut self.secret_tree, secret_tree)
     }

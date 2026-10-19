@@ -2,8 +2,6 @@ use hpke_rs_libcrux::HpkeLibcrux;
 
 use std::sync::Mutex;
 
-#[cfg(feature = "targeted-messages-draft")]
-use openmls_traits::crypto::HpkeSealPskResolvedAadError;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
     AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
@@ -67,7 +65,7 @@ impl OpenMlsCrypto for CryptoProvider {
         }?;
 
         match ciphersuite.signature_algorithm() {
-            SignatureScheme::ED25519 => Ok(()),
+            SignatureScheme::ED25519 | SignatureScheme::ECDSA_SECP256R1_SHA256 => Ok(()),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
                 Ok(())
@@ -110,13 +108,20 @@ impl OpenMlsCrypto for CryptoProvider {
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+            Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_P256,
+            #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
-            // TODO: enable
-            //Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         ]
     }
 
@@ -145,7 +150,8 @@ impl OpenMlsCrypto for CryptoProvider {
         message: &[u8],
     ) -> Result<SecretVLBytes, CryptoError> {
         let alg = hash_alg(hash_type);
-        let out = libcrux_hmac::hmac(alg, key, message, None);
+        let mut out = vec![0u8; libcrux_hmac::tag_size(alg)];
+        libcrux_hmac::hmac(alg, key, message, &mut out);
         Ok(out.into())
     }
 
@@ -288,6 +294,22 @@ impl OpenMlsCrypto for CryptoProvider {
 
                 Ok((sk.to_vec(), pk.to_vec()))
             }
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                let mut drbg = self
+                    .rng
+                    .lock()
+                    .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let sk = libcrux_ecdsa::p256::PrivateKey::random(&mut *drbg)
+                    .map_err(|_| CryptoError::SigningError)?;
+                // Same wire format as the RustCrypto provider: the private key
+                // is the raw 32-byte scalar, the public key the uncompressed
+                // SEC1 point.
+                let pk = sk.public_key().map_err(|_| CryptoError::SigningError)?;
+                let mut pk_sec1 = Vec::with_capacity(65);
+                pk_sec1.push(0x04);
+                pk_sec1.extend_from_slice(pk.as_ref());
+                Ok((AsRef::<[u8; 32]>::as_ref(&sk).to_vec(), pk_sec1))
+            }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
                 // Same wire format as the RustCrypto provider: the private key
@@ -320,6 +342,19 @@ impl OpenMlsCrypto for CryptoProvider {
                     _ => CryptoError::SigningError,
                 })
             }
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                let pk = libcrux_ecdsa::p256::uncompressed_to_coordinates(pk)
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                let signature = libcrux_ecdsa::p256::Signature::from_der(signature)
+                    .map_err(|_| CryptoError::InvalidSignature)?;
+                libcrux_ecdsa::p256::verify(
+                    libcrux_ecdsa::DigestAlgorithm::Sha256,
+                    data,
+                    &signature,
+                    &libcrux_ecdsa::p256::PublicKey(pk),
+                )
+                .map_err(|_| CryptoError::InvalidSignature)
+            }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
                 ml_dsa::verify(alg, pk, data, signature)
@@ -335,6 +370,24 @@ impl OpenMlsCrypto for CryptoProvider {
                 libcrux_ed25519::sign(data, key)
                     .map_err(|_| CryptoError::SigningError)
                     .map(|sig| sig.to_vec())
+            }
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                let sk = libcrux_ecdsa::p256::PrivateKey::try_from(key)
+                    .map_err(|_| CryptoError::InvalidLength)?;
+                // The ECDSA nonce is rejection-sampled inside libcrux through
+                // the provider DRBG; a randomness failure surfaces as an error.
+                let mut drbg = self
+                    .rng
+                    .lock()
+                    .map_err(|_| CryptoError::CryptoLibraryError)?;
+                let signature = libcrux_ecdsa::p256::rand::sign(
+                    libcrux_ecdsa::DigestAlgorithm::Sha256,
+                    data,
+                    &sk,
+                    &mut *drbg,
+                )
+                .map_err(|_| CryptoError::SigningError)?;
+                Ok(signature.to_der().as_bytes().to_vec())
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             SignatureScheme::MLDSA44 | SignatureScheme::MLDSA65 | SignatureScheme::MLDSA87 => {
@@ -454,6 +507,11 @@ impl OpenMlsCrypto for CryptoProvider {
         config: HpkeConfig,
         ikm: &[u8],
     ) -> Result<HpkeKeyPair, CryptoError> {
+        #[cfg(feature = "legacy-pq-key-derivation")]
+        if is_legacy_xwing_config(&config) {
+            return derive_legacy_xwing_keypair(ikm);
+        }
+
         let config = hpke_config(config);
 
         let key_pair: hpke_rs::HpkeKeyPair = config.derive_key_pair(ikm).map_err(|e| match e {
@@ -495,36 +553,27 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 
     #[cfg(feature = "targeted-messages-draft")]
-    fn hpke_seal_psk_resolved_aad<F, E>(
+    fn hpke_seal_psk(
         &self,
         config: HpkeConfig,
         pk_r: &[u8],
         info: &[u8],
+        aad: &[u8],
         ptxt: &[u8],
         psk: &[u8],
         psk_id: &[u8],
-        aad_builder: F,
-    ) -> Result<HpkeCiphertext, HpkeSealPskResolvedAadError<E>>
-    where
-        F: FnOnce(&[u8]) -> Result<Vec<u8>, E>,
-    {
-        let mut hpke = hpke_psk_from_config(config);
-        // Split the single-shot seal into setup and seal so the AAD can be built
-        // from the KEM output. The setup and seal must share the same context.
-        let (kem_output, mut context) = hpke
-            .setup_sender(&pk_r.into(), info, Some(psk), Some(psk_id), None)
-            .map_err(|_| HpkeSealPskResolvedAadError::CryptoError(CryptoError::SenderSetupError))?;
-        let aad = aad_builder(kem_output.as_slice())
-            .map_err(HpkeSealPskResolvedAadError::AadBuildError)?;
-        let ciphertext = context.seal(&aad, ptxt).map_err(|e| match e {
-            hpke_rs::HpkeError::InvalidInput => {
-                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InvalidLength)
-            }
-            hpke_rs::HpkeError::InsufficientRandomness => {
-                HpkeSealPskResolvedAadError::CryptoError(CryptoError::InsufficientRandomness)
-            }
-            _ => HpkeSealPskResolvedAadError::CryptoError(CryptoError::HpkeEncryptionError),
-        })?;
+    ) -> Result<HpkeCiphertext, CryptoError> {
+        let mut config = hpke_psk_from_config(config);
+
+        let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
+
+        let (kem_output, ciphertext) = config
+            .seal(&pk_r, info, aad, ptxt, Some(psk), Some(psk_id), None)
+            .map_err(|e| match e {
+                hpke_rs::HpkeError::InvalidConfig => CryptoError::SenderSetupError,
+                _ => CryptoError::HpkeEncryptionError,
+            })?;
+
         Ok(HpkeCiphertext {
             kem_output: kem_output.into(),
             ciphertext: ciphertext.into(),
@@ -565,6 +614,40 @@ fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs_crypto::types::KdfAlgorithm {
         HpkeKdfType::HkdfSha384 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha384,
         HpkeKdfType::HkdfSha512 => hpke_rs_crypto::types::KdfAlgorithm::HkdfSha512,
     }
+}
+
+/// The HPKE configuration of `MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519`
+/// (0x004D). No draft-ietf-mls-pq-ciphersuites suite uses this combination
+/// (TBD1 uses AES-128-GCM, TBD9 HKDF-SHA384), so matching on it only affects
+/// the legacy suite.
+#[cfg(feature = "legacy-pq-key-derivation")]
+fn is_legacy_xwing_config(config: &HpkeConfig) -> bool {
+    matches!(
+        config,
+        HpkeConfig(
+            HpkeKemType::XWingKemDraft6,
+            HpkeKdfType::HkdfSha256,
+            HpkeAeadType::ChaCha20Poly1305,
+        )
+    )
+}
+
+/// openmls_libcrux_crypto 0.4.0 derived X-Wing key pairs from the unlabeled `SHAKE256(ikm, 32)`
+/// rather than draft-ietf-hpke-pq's `SHAKE256.LabeledDerive`. The private key
+/// is the 32-byte X-Wing seed in both cases, so only the derivation differs.
+#[cfg(feature = "legacy-pq-key-derivation")]
+fn derive_legacy_xwing_keypair(ikm: &[u8]) -> Result<HpkeKeyPair, CryptoError> {
+    use hpke_rs_crypto::HpkeCrypto;
+
+    let seed = libcrux_sha3::shake256::<32>(ikm);
+    let (public, private) =
+        <HpkeLibcrux>::kem_key_gen_derand(hpke_rs_crypto::types::KemAlgorithm::XWingDraft06, &seed)
+            .map_err(|_| CryptoError::CryptoLibraryError)?;
+
+    Ok(HpkeKeyPair {
+        private: private.into(),
+        public,
+    })
 }
 
 fn hpke_kem(kem: HpkeKemType) -> hpke_rs_crypto::types::KemAlgorithm {
@@ -687,6 +770,79 @@ mod tests {
                 "{ciphersuite:?}: hpke round trip"
             );
         }
+    }
+
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    fn hex(s: &str) -> Vec<u8> {
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    /// Checks `derive_hpke_keypair` against `sk` and `SHA-256(pk)`.
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    fn assert_derived_keypair(
+        provider: &CryptoProvider,
+        ciphersuite: Ciphersuite,
+        ikm: &str,
+        sk: &str,
+        pk_sha256: &str,
+    ) {
+        let key_pair = provider
+            .derive_hpke_keypair(ciphersuite.hpke_config(), &hex(ikm))
+            .unwrap_or_else(|e| panic!("{ciphersuite:?}: derive_hpke_keypair failed: {e:?}"));
+        assert_eq!(&key_pair.private[..], hex(sk), "{ciphersuite:?}: sk");
+        let pk_hash = provider.hash(HashType::Sha2_256, &key_pair.public).unwrap();
+        assert_eq!(pk_hash, hex(pk_sha256), "{ciphersuite:?}: pk");
+    }
+
+    /// `ikmR`/`skRm`/`pkRm` from the draft-ietf-hpke-pq test vectors
+    /// (https://github.com/hpkewg/hpke-pq/blob/main/test-vectors.json).
+    /// DeriveKeyPair depends only on the KEM, so the KDF/AEAD of the chosen
+    /// ciphersuite need not match the vector's.
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+    #[test]
+    fn derive_hpke_keypair_matches_hpke_pq_kat() {
+        let provider = CryptoProvider::new().unwrap();
+        // MLKEM768-X25519 (0x647a)
+        assert_derived_keypair(
+            &provider,
+            Ciphersuite::MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519,
+            "c8575d137deab99ac98fb0873048c83c3a1f47ef5b409f609c0ca652f58c83e0",
+            "b6bfa0299b955e85224df2e468f29eeab377ff3b96d4462b39447a22d32b91be",
+            "ad42b3d8669605eb351273b945e2f4bfe62986517b411e606c225d96d4de9099",
+        );
+        // ML-KEM-768 (0x0041)
+        assert_derived_keypair(
+            &provider,
+            Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519,
+            "a60b35f174ce9ac7a4ff5b9f81e38125b03506ecbd56a3a55c31ece0f59070520729773a61a499d5137daaef824b493848b6e4dd332a815ff19aa9f58a381eb8",
+            "80008d036609972cf761d7e2d3b831e48d3e941cda94fbf9bae09bca87373f9bb7411f58fd3324ba1d0daa5a7b42768c5b53e1df29c28d4f5428a8233a905089",
+            "80aabb142999e683475598517f3bca6b9b8c8f01109ec8f861b450d2a8b9148d",
+        );
+        // ML-KEM-1024 (0x0042)
+        assert_derived_keypair(
+            &provider,
+            Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87,
+            "d6688a981deeff1d1273426af8a44aab877c50b6e8ac74b11e01a5960d97c03bffd9634894d255c424c80c74e0930b85b9f4c60e22a3efb09f4bad4749be427b",
+            "73a9ffe155d39edcc023b11171ad6cf541ff85eff68c33b521ba25cbb1b7079bf848b63f5b8ca53f809255b51f1bef24b342d706a77cb460981e16b2ce737552",
+            "b45440fa44f6a7046ecf45d77fdd4fd9f02982defa787501ba365f0c264d9f73",
+        );
+    }
+
+    /// Expected values were produced by openmls_libcrux_crypto 0.4.0 (openmls 0.9.0).
+    #[cfg(feature = "legacy-pq-key-derivation")]
+    #[test]
+    fn legacy_xwing_derivation_matches_v0_4() {
+        let provider = CryptoProvider::new().unwrap();
+        assert_derived_keypair(
+            &provider,
+            Ciphersuite::MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519,
+            "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "69f07c8840ce80024db30939882c3d5bbc9c98b3e31e4513ebd2ca9b4503cdd3",
+            "e735f8e75ba7883aae5d6456ae03c14086b769d73502147370f2963b397e4d4a",
+        );
     }
 }
 

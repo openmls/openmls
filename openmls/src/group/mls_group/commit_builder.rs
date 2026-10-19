@@ -16,8 +16,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, ExternalPubExtension, GroupContext,
-        ProposalQueue, ProposalQueueError, QueuedProposal, RatchetTreeExtension, StagedCommit,
-        WireFormatPolicy,
+        GroupEpoch, GroupId, ProposalQueue, ProposalQueueError, QueuedProposal,
+        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -29,11 +29,11 @@ use crate::{
         NewSignerBundle, PreSharedKeyProposal,
     },
     schedule::{
+        errors::PskError,
         psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
-        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
+        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk, ResumptionPskSecret,
     },
     storage::{OpenMlsProvider, StorageProvider},
-    treesync::errors::LeafNodeValidationError,
     versions::ProtocolVersion,
 };
 #[cfg(feature = "virtual-clients-draft")]
@@ -46,7 +46,6 @@ use crate::{
     },
     components::vc_operation_tree::OperationSecretTree,
     extensions::AppDataDictionary,
-    group::GroupId,
 };
 #[cfg(feature = "extensions-draft")]
 use crate::{
@@ -99,7 +98,6 @@ use super::HandshakeConfirmationData;
 
 #[derive(Debug)]
 struct ExternalCommitInfo {
-    aad: Vec<u8>,
     /// The authoritative credential and signature key for the external
     /// committer's leaf. `build_internal` folds it into the leaf node
     /// parameters and rejects parameters that pin a different credential.
@@ -122,6 +120,10 @@ pub struct Initial {
     leaf_node_parameters: LeafNodeParameters,
     external_commit_info: Option<ExternalCommitInfo>,
 
+    /// The bare AAD to use for this commit. If it is set, the one from the group is not used for
+    /// this commit, but it is still reset by `stage_commit`.
+    bare_aad: Option<Vec<u8>>,
+
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
@@ -135,6 +137,7 @@ impl Default for Initial {
             leaf_node_parameters: LeafNodeParameters::default(),
             own_proposals: vec![],
             external_commit_info: None,
+            bare_aad: None,
         }
     }
 }
@@ -153,6 +156,10 @@ pub struct LoadedPsks {
 
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
+
+    /// The bare AAD to use for this commit. If it is set, the one from the group is not used for
+    /// this commit, but it is still reset by `stage_commit`.
+    bare_aad: Option<Vec<u8>>,
 
     #[cfg(feature = "extensions-draft")]
     app_data_dictionary_updates: Option<AppDataUpdates>,
@@ -347,10 +354,39 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// Adds a PreSharedKey proposal for the provided [`PreSharedKeyId`]s to the
     /// list of proposals to be committed.
     ///
-    /// Note that this should not be used for sub-group branching, as those PSKs
-    /// are not allowed in regular proposals. Please use
-    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) instead.
-    pub fn propose_psks(mut self, psk_ids: impl IntoIterator<Item = PreSharedKeyId>) -> Self {
+    /// Note that this should not be used for sub-group branching or reinit, as
+    /// those PSKs are not allowed in regular proposals. Please use
+    /// [`MlsGroupBuilder::branch`](crate::group::MlsGroupBuilder::branch) or
+    /// [`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit) instead.
+    pub fn propose_psks(
+        mut self,
+        psk_ids: impl IntoIterator<Item = PreSharedKeyId>,
+    ) -> Result<Self, CreateCommitError> {
+        for psk_id in psk_ids {
+            if let Psk::Resumption(resumption_psk) = psk_id.psk() {
+                let usage = resumption_psk.usage();
+                if matches!(
+                    usage,
+                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit
+                ) {
+                    return Err(PskError::UsageMismatch {
+                        allowed: vec![ResumptionPskUsage::Application],
+                        got: usage,
+                    }
+                    .into());
+                }
+            }
+            self.stage
+                .own_proposals
+                .push(Proposal::psk(PreSharedKeyProposal::new(psk_id)));
+        }
+        Ok(self)
+    }
+
+    pub(crate) fn propose_psks_unchecked(
+        mut self,
+        psk_ids: impl IntoIterator<Item = PreSharedKeyId>,
+    ) -> Self {
         self.stage.own_proposals.extend(
             psk_ids
                 .into_iter()
@@ -393,7 +429,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             )),
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
-        self = self.propose_psks([psk_id]);
+        self = self.propose_psks_unchecked([psk_id]);
 
         // The branch PSK secret comes from a different group, so we clear this
         // group's resumption PSK store and inject it at the sentinel epoch 0,
@@ -404,6 +440,51 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             .borrow_mut()
             .resumption_psk_store
             .add(0.into(), secret);
+        Ok(self)
+    }
+
+    /// Reinitializes a group into this freshly created group, as described in [RFC 9420 §11.2].
+    ///
+    /// Information about the old group comes from `reinit_info`, which the
+    /// predecessor exports with [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
+    /// We acept only the required parts here to avoid unnecessary `clone`.
+    ///
+    /// This adds a resumption [`PreSharedKeyId`] of usage `Reinit` to the initial
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
+    /// the old group's resumption PSK secret so it is mixed into this
+    /// new group's key schedule.
+    ///
+    /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
+    pub(crate) fn reinit(
+        mut self,
+        rand: &impl OpenMlsRand,
+        old_group_id: GroupId,
+        old_group_epoch: GroupEpoch,
+        resumption_psk_secret: ResumptionPskSecret,
+    ) -> Result<Self, CreateCommitError> {
+        // Sample a fresh random nonce of length KDF.Nh. Unlike branching, the
+        // successor group may use a different ciphersuite than the old group, so
+        // the nonce length is that of the successor group's ciphersuite.
+        let psk_id = PreSharedKeyId::new(
+            self.group.ciphersuite(),
+            rand,
+            Psk::Resumption(ResumptionPsk::new(
+                ResumptionPskUsage::Reinit,
+                old_group_id,
+                old_group_epoch,
+            )),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
+        self = self.propose_psks_unchecked([psk_id]);
+
+        // The reinit PSK secret comes from a different group, so we clear this
+        // group's resumption PSK store and inject it at the sentinel epoch 0,
+        // where `load_psks` looks it up for reinit usage.
+        self.group.borrow_mut().resumption_psk_store.clear();
+        self.group
+            .borrow_mut()
+            .resumption_psk_store
+            .add(0.into(), resumption_psk_secret);
         Ok(self)
     }
 
@@ -443,6 +524,21 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// self-update takes place.
     pub fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
         self.stage.leaf_node_parameters = leaf_node_parameters;
+        self
+    }
+
+    /// The AAD to use for this commit. If it is set, the AAD set on the group via
+    /// [`MlsGroup::set_aad`] is not used for this commit. It is still reset when the commit is
+    /// staged, just as it would be if this method had not been called.
+    #[cfg_attr(
+        feature = "extensions-draft",
+        doc = "",
+        doc = "When the GroupContext requires Safe AAD, this sets the tail only. The Safe AAD",
+        doc = "items staged on the group via [`MlsGroup::set_safe_aad`] are still prefixed to it,",
+        doc = "and are also reset when the commit is staged."
+    )]
+    pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
+        self.stage.bare_aad = Some(aad);
         self
     }
 
@@ -501,14 +597,15 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// Implies that a self-update takes place: the commit will always have
     /// a path even if no other proposals are queued.
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn vc_emulation<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         self,
         crypto: &Crypto,
         storage: &Storage,
         emulation_group_id: &GroupId,
     ) -> Result<Self, CreateCommitError> {
-        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group_id)?;
-        self.vc_emulation_internal(crypto, storage, epoch_id)
+        let epoch_id = require_newest_vc_derivation_epoch(storage, emulation_group_id).await?;
+        self.vc_emulation_internal(crypto, storage, epoch_id).await
     }
 
     /// Test-only variant of [`Self::vc_emulation`] that commits from the named
@@ -520,17 +617,19 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// construct scenarios that an application must not produce, such as a
     /// sibling that acts on a stale emulation-group state.
     #[cfg(all(feature = "virtual-clients-draft", any(test, feature = "test-utils")))]
-    pub fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn vc_emulation_at_epoch<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         self,
         crypto: &Crypto,
         storage: &Storage,
         epoch_id: EpochId,
     ) -> Result<Self, CreateCommitError> {
-        self.vc_emulation_internal(crypto, storage, epoch_id)
+        self.vc_emulation_internal(crypto, storage, epoch_id).await
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_internal<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    async fn vc_emulation_internal<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         mut self,
         crypto: &Crypto,
         storage: &Storage,
@@ -538,6 +637,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     ) -> Result<Self, CreateCommitError> {
         let state: VcDerivationEpochState = storage
             .vc_derivation_epoch_state(&epoch_id)
+            .await
             .map_err(|e| {
                 log::error!("vc: load derivation epoch state in vc_emulation failed: {e:?}");
                 CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
@@ -545,6 +645,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .ok_or(VirtualClientsError::MissingDerivationEpochState)?;
         let mut operation_tree: OperationSecretTree = storage
             .vc_operation_tree(&epoch_id)
+            .await
             .map_err(|e| {
                 log::error!("vc: load operation tree in vc_emulation failed: {e:?}");
                 CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
@@ -584,6 +685,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
         // be observed on the wire before it is persisted.
         storage
             .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .await
             .map_err(|e| {
                 log::error!("vc: persist advanced operation tree failed: {e:?}");
                 CreateCommitError::VirtualClientsError(VirtualClientsError::StorageError)
@@ -631,7 +733,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     }
 
     /// Loads the PSKs for the PskProposals marked for inclusion and moves on to the next phase.
-    pub fn load_psks<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn load_psks<Storage: StorageProvider>(
         self,
         storage: &'a Storage,
     ) -> Result<CommitBuilder<'a, LoadedPsks, G>, CreateCommitError> {
@@ -653,7 +756,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .collect();
 
         // Load the PSKs and make the PskIds owned.
-        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)?
+        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)
+            .await?
             .into_iter()
             .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
             .collect();
@@ -681,6 +785,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         force_self_update: stage.force_self_update,
                         leaf_node_parameters: stage.leaf_node_parameters,
                         consume_proposal_store: stage.consume_proposal_store,
+                        bare_aad: stage.bare_aad,
                         group_info_config,
                         external_commit_info: stage.external_commit_info,
                         #[cfg(feature = "extensions-draft")]
@@ -738,6 +843,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// Validates the inputs and builds the commit. The last argument `f` is a function that lets
     /// the caller filter the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
+    ///
+    /// **Note**: ReInit proposals MUST be the only proposal in the list, others SHOULD be
+    /// preferred. It is the application's responsibility to filter out either all reinit
+    /// or all non-reinit proposals when building a commit.
     pub fn build<S: Signer>(
         self,
         rand: &impl OpenMlsRand,
@@ -748,7 +857,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         self.build_internal(rand, crypto, signer, None::<NewSignerBundle<'_, S>>, f)
     }
 
-    /// Just like `build`, this function validates the inputs and builds the
+    /// Just like [`Self::build`], this function validates the inputs and builds the
     /// commit. The last argument `f` is a function that lets the caller filter
     /// the proposals that are considered for inclusion. This provides a way for
     /// the application to enforce custom policies in the creation of commits.
@@ -941,6 +1050,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         group
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
+        // https://validation.openmls.tech/#valn0309
+        // https://validation.openmls.tech/#valn0901
+        group
+            .public_group
+            .validate_reinit_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
         // ValSem110
         // ValSem111
@@ -1036,6 +1150,12 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 } else {
                     CommitType::Member
                 };
+                // Build the leaf node constraints from the old state and add
+                // group context extensions as they may change.
+                let mut leaf_node_constraints = group.public_group.leaf_node_constraints();
+                if let Some(extensions) = &apply_proposals_values.extensions {
+                    leaf_node_constraints.add_group_context_extensions(extensions);
+                }
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
                 // tree hash.
@@ -1049,6 +1169,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         &cur_stage.leaf_node_parameters,
                         new_signer,
                         apply_proposals_values.extensions.clone(),
+                        leaf_node_constraints,
                         own_update_override,
                     )?,
                     None => diff.compute_path(
@@ -1060,6 +1181,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         &cur_stage.leaf_node_parameters,
                         old_signer,
                         apply_proposals_values.extensions.clone(),
+                        leaf_node_constraints,
                         own_update_override,
                     )?,
                 }
@@ -1075,67 +1197,38 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             .as_ref()
             .map(|path| path.leaf_node().clone());
 
-        // Validate that the update path leaf node's capabilities
-        if let Some(ref leaf_node) = update_path_leaf_node {
-            // Check that all extension types in the group context that are valid in leaf nodes
-            // are supported by the leaf node
-            //
-            // This is currently not required by the RFC, likely by mistake:
-            // https://mailarchive.ietf.org/arch/msg/mls/k18P4FP7dfS2cBmP0kL6Uh50-ok/
-            if !diff
-                .group_context()
-                .extensions()
-                .iter()
-                .map(Extension::extension_type)
-                .all(|ext_type| leaf_node.supports_extension(&ext_type))
-            {
-                return Err(CreateCommitError::LeafNodeValidation(
-                    LeafNodeValidationError::UnsupportedExtensions,
-                ));
-            }
-
-            // Check that the leaf node supports everything listed in the required capabilities.
-            // https://validation.openmls.tech/#valn0103
-            if let Some(required_capabilities) =
-                diff.group_context().extensions().required_capabilities()
-            {
-                leaf_node
-                    .capabilities()
-                    .supports_required_capabilities(required_capabilities)?
-            }
-        }
-
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list,
             path: path_computation_result.encrypted_path,
         };
 
-        let (outgoing_aad, wire_format): (Vec<u8>, WireFormat) =
-            match &cur_stage.external_commit_info {
-                None => (
-                    group.outgoing_authenticated_data()?,
-                    group.outgoing_wire_format(),
-                ),
-                Some(ExternalCommitInfo { aad, .. }) => {
-                    // The spec requires the SafeAAD prefix even with zero items
-                    // when the target GroupContext has `safe_aad` present, so a
-                    // bare `aad` would be rejected by SafeAAD-aware receivers.
-                    // The joining group carries no application-staged items, so
-                    // the prefix is empty unless the builder staged the
-                    // virtual-clients marker.
-                    #[cfg(feature = "extensions-draft")]
-                    let aad_bytes = if group.context().safe_aad_required() {
-                        crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, aad)
-                            .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
-                    } else {
-                        aad.clone()
-                    };
-                    #[cfg(not(feature = "extensions-draft"))]
-                    let aad_bytes = aad.clone();
-                    (aad_bytes, WireFormat::PublicMessage)
-                }
-            };
+        let wire_format = if cur_stage.external_commit_info.is_some() {
+            WireFormat::PublicMessage
+        } else {
+            group.outgoing_wire_format()
+        };
+
+        let outgoing_aad = if let Some(aad) = cur_stage.bare_aad {
+            // The spec requires the SafeAAD prefix even with zero items
+            // when the target GroupContext has `safe_aad` present, so a
+            // bare `aad` would be rejected by SafeAAD-aware receivers.
+            // The joining group carries no application-staged items, so
+            // the prefix is empty unless the builder staged the
+            // virtual-clients marker.
+            #[cfg(feature = "extensions-draft")]
+            if group.context().safe_aad_required() {
+                crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, &aad)
+                    .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
+            } else {
+                aad
+            }
+
+            #[cfg(not(feature = "extensions-draft"))]
+            aad
+        } else {
+            group.outgoing_authenticated_data()?
+        };
 
         let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
@@ -1420,7 +1513,8 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
     }
 
     /// Stages the commit and returns the protocol messages.
-    pub fn stage_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn stage_commit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<CommitMessageBundle, CommitBuilderStageError<Provider::StorageError>> {
@@ -1443,6 +1537,7 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
         provider
             .storage()
             .write_group_state(group.group_id(), &group.group_state)
+            .await
             .map_err(CommitBuilderStageError::KeyStoreError)?;
 
         group.reset_aad();
@@ -1452,7 +1547,9 @@ impl CommitBuilder<'_, Complete, &mut MlsGroup> {
         //
         // Note that this performs writes to the storage, so we should do that here, rather than
         // when working with the result.
-        let framing = group.content_to_mls_message(create_commit_result.commit, provider)?;
+        let framing = group
+            .content_to_mls_message(create_commit_result.commit, provider)
+            .await?;
 
         Ok(CommitMessageBundle {
             version: group.version(),

@@ -1,6 +1,11 @@
+use tls_codec::{Deserialize as _, Serialize as _};
+
 use crate::prelude::*;
-use crate::test_utils::single_group_test_framework::*;
-use crate::treesync::errors::LeafNodeValidationError;
+use crate::test_utils::{frankenstein, single_group_test_framework::*};
+use crate::treesync::{
+    errors::{ApplyOwnUpdatePathError, LeafNodeValidationError},
+    node::leaf_node::LeafNodeBuildError,
+};
 
 // Helper macro for checking error matches a provided pattern
 macro_rules! assert_err_matches {
@@ -96,6 +101,7 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
 
         let new_capabilities = Capabilities::builder()
             .versions(capabilities.versions().to_vec())
+            .ciphersuites(vec![ciphersuite])
             .extensions(capabilities.extensions().to_vec())
             .proposals(capabilities.proposals().to_vec())
             .credentials(credential_types.clone())
@@ -153,17 +159,28 @@ impl<'a, 'b: 'a, Provider: OpenMlsProvider> PreGroupPartyState<'b, Provider> {
 
         // Update only the new credential
         self.credential_with_key.credential = new_credential.clone();
-        self.key_package_bundle = generate_key_package(
-            ciphersuite,
-            CredentialWithKey {
-                credential: new_credential,
-                signature_key: self.signer.to_public_vec().into(),
-            },
-            Extensions::default(),
-            &self.core_state.provider,
-            None,
-            &self.signer,
-        );
+        // `generate_key_package` leaves capabilities unset, so they'd be
+        // derived from the leaf. Here they have to be stated, because the
+        // point is to control exactly which credential types the leaf
+        // advertises.
+        self.key_package_bundle = KeyPackage::builder()
+            .key_package_extensions(Extensions::default())
+            .leaf_node_capabilities(
+                Capabilities::builder()
+                    .ciphersuites(vec![ciphersuite])
+                    .credentials(vec![credential_type])
+                    .build(),
+            )
+            .build(
+                ciphersuite,
+                &self.core_state.provider,
+                &self.signer,
+                CredentialWithKey {
+                    credential: new_credential,
+                    signature_key: self.signer.to_public_vec().into(),
+                },
+            )
+            .unwrap();
     }
 }
 
@@ -308,13 +325,16 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
         })
         .expect("Could not add member");
 
-    // Case with no credential capabilities; should fail
+    // Case with only Dave's own credential type (Basic) in his capabilities;
+    // should fail because he doesn't support Alice's Other(3) credential.
+    // A leaf must list its own credential type, so an empty list can't be
+    // tested here; the next case covers insufficient capabilities.
     // Alice adds Dave
     expect_valn0104_error::<Provider>(group_state.add_member_with_credential_capabilities(
         &dave_party,
         "alice",
         ciphersuite,
-        Vec::new(),
+        vec![CredentialType::Basic],
     ));
 
     // Case with wrong capabilities; should fail
@@ -355,6 +375,371 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
         .expect("Should succeed");
 }
 
+// A member's own new leaf needs to be valid according to valn0104 when it is built.
+// Switching to a credential type another member doesn't support is rejected.
+#[openmls_test::openmls_test]
+fn test_valn0104_own_update_credential_not_supported_by_member() {
+    // Alice only supports Basic.
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+
+    // Bob supports Basic and Other(3), and uses Basic.
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    bob_pre_group.update_credential_capabilities(
+        vec![CredentialType::Basic, CredentialType::Other(3)],
+        ciphersuite,
+    );
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config,
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [bob] = group_state.members_mut(&["bob"]);
+
+    // Same signature key, but a credential type Alice doesn't support.
+    let other_credential = CredentialWithKey {
+        credential: Credential::new(
+            CredentialType::Other(3),
+            bob.party
+                .credential_with_key
+                .credential
+                .serialized_content()
+                .to_vec(),
+        ),
+        signature_key: bob.party.credential_with_key.signature_key.clone(),
+    };
+    let leaf_node_parameters = || {
+        LeafNodeParameters::builder()
+            .with_credential_with_key(other_credential.clone())
+            .build()
+    };
+
+    let err = bob
+        .group
+        .propose_self_update(
+            &bob.party.core_state.provider,
+            &bob.party.signer,
+            leaf_node_parameters(),
+        )
+        .expect_err("Alice doesn't support Other(3)");
+    assert!(
+        matches!(
+            err,
+            ProposeSelfUpdateError::LeafNodeUpdateError(
+                crate::treesync::node::leaf_node::LeafNodeUpdateError::Validation(
+                    LeafNodeValidationError::LeafNodeCredentialNotSupportedByMember
+                )
+            )
+        ),
+        "unexpected error: {err:?}"
+    );
+
+    let err = bob
+        .build_commit_and_stage(|builder| {
+            builder
+                .force_self_update(true)
+                .leaf_node_parameters(leaf_node_parameters())
+        })
+        .expect_err("Alice doesn't support Other(3)");
+    assert!(
+        matches!(
+            err,
+            GroupError::<Provider>::CreateCommit(CreateCommitError::ApplyOwnUpdatePath(
+                ApplyOwnUpdatePathError::LeafNodeBuild(LeafNodeBuildError::Validation(
+                    LeafNodeValidationError::LeafNodeCredentialNotSupportedByMember
+                ))
+            ))
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+// The other direction of valn0104 for a member's own new leaf: dropping
+// support for a credential type another member uses is rejected when the leaf
+// is built.
+#[openmls_test::openmls_test]
+fn test_valn0104_own_update_drops_member_credential() {
+    // Alice supports Basic and Other(3), and uses Other(3).
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let mut alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let alice_capabilities = alice_pre_group.update_credential_capabilities(
+        vec![CredentialType::Basic, CredentialType::Other(3)],
+        ciphersuite,
+    );
+    alice_pre_group.update_credential_type(CredentialType::Other(3), ciphersuite);
+
+    // Bob supports Basic and Other(3), and uses Basic.
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    bob_pre_group.update_credential_capabilities(
+        vec![CredentialType::Basic, CredentialType::Other(3)],
+        ciphersuite,
+    );
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .capabilities(alice_capabilities)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group],
+            join_config: mls_group_join_config,
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [bob] = group_state.members_mut(&["bob"]);
+
+    // Bob stops advertising Other(3), which Alice uses.
+    let leaf_node_parameters = || {
+        LeafNodeParameters::builder()
+            .with_capabilities(
+                Capabilities::builder()
+                    .ciphersuites(vec![ciphersuite])
+                    .credentials(vec![CredentialType::Basic])
+                    .build(),
+            )
+            .build()
+    };
+
+    let err = bob
+        .group
+        .propose_self_update(
+            &bob.party.core_state.provider,
+            &bob.party.signer,
+            leaf_node_parameters(),
+        )
+        .expect_err("Bob must keep supporting Alice's Other(3)");
+    assert!(
+        matches!(
+            err,
+            ProposeSelfUpdateError::LeafNodeUpdateError(
+                crate::treesync::node::leaf_node::LeafNodeUpdateError::Validation(
+                    LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode
+                )
+            )
+        ),
+        "unexpected error: {err:?}"
+    );
+
+    let err = bob
+        .build_commit_and_stage(|builder| {
+            builder
+                .force_self_update(true)
+                .leaf_node_parameters(leaf_node_parameters())
+        })
+        .expect_err("Bob must keep supporting Alice's Other(3)");
+    assert!(
+        matches!(
+            err,
+            GroupError::<Provider>::CreateCommit(CreateCommitError::ApplyOwnUpdatePath(
+                ApplyOwnUpdatePathError::LeafNodeBuild(LeafNodeBuildError::Validation(
+                    LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode
+                ))
+            ))
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+// The receiving side of valn0104 for an Update proposal. An honest client
+// can't build such a leaf (see the tests above), so the proposal is tampered
+// with, and the commit covering it is crafted too, since an honest committer
+// would refuse to include it.
+#[openmls_test::openmls_test]
+fn test_valn0104_incoming_update_credential_not_supported_by_member() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let charlie_party = CorePartyState::<Provider>::new("charlie");
+
+    // Only Bob supports Other(3); everyone uses Basic.
+    let alice_pre_group = alice_party.generate_pre_group(ciphersuite);
+    let mut bob_pre_group = bob_party.generate_pre_group(ciphersuite);
+    bob_pre_group.update_credential_capabilities(
+        vec![CredentialType::Basic, CredentialType::Other(3)],
+        ciphersuite,
+    );
+    let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .use_ratchet_tree_extension(true)
+        .build();
+    let mls_group_join_config = mls_group_create_config.join_config().clone();
+
+    let group_id = GroupId::from_slice(b"test");
+    let mut group_state =
+        GroupState::new_from_party(group_id, alice_pre_group, mls_group_create_config).unwrap();
+    group_state
+        .add_member(AddMemberConfig {
+            adder: "alice",
+            addees: vec![bob_pre_group, charlie_pre_group],
+            join_config: mls_group_join_config,
+            tree: None,
+        })
+        .expect("Could not add member");
+
+    let [alice, bob, charlie] = group_state.members_mut(&["alice", "bob", "charlie"]);
+
+    let to_protocol_message = |message: frankenstein::FrankenMlsMessage| {
+        MlsMessageIn::tls_deserialize(&mut message.tls_serialize_detached().unwrap().as_slice())
+            .unwrap()
+            .into_protocol_message()
+            .unwrap()
+    };
+
+    let (update, _) = bob
+        .group
+        .propose_self_update(
+            &bob.party.core_state.provider,
+            &bob.party.signer,
+            LeafNodeParameters::default(),
+        )
+        .unwrap();
+
+    let frankenstein::FrankenMlsMessage {
+        version,
+        body:
+            frankenstein::FrankenMlsMessageBody::PublicMessage(frankenstein::FrankenPublicMessage {
+                content: mut proposal_content,
+                ..
+            }),
+    } = frankenstein::FrankenMlsMessage::from(update)
+    else {
+        unreachable!("the group uses plaintext handshake messages")
+    };
+    let frankenstein::FrankenFramedContent {
+        body:
+            frankenstein::FrankenFramedContentBody::Proposal(frankenstein::FrankenProposal::Update(
+                frankenstein::FrankenUpdateProposal { leaf_node },
+            )),
+        ..
+    } = &mut proposal_content
+    else {
+        unreachable!("this is an update proposal")
+    };
+
+    // Switch Bob's leaf to Other(3). His own capabilities cover it, so the
+    // leaf stays self-consistent, but Alice and Charlie don't support it.
+    leaf_node.payload.credential = Credential::new(
+        CredentialType::Other(3),
+        bob.party
+            .credential_with_key
+            .credential
+            .serialized_content()
+            .to_vec(),
+    )
+    .into();
+    leaf_node.resign(
+        Some(frankenstein::FrankenTreePosition {
+            group_id: bob.group.group_id().as_slice().to_vec().into(),
+            leaf_index: bob.group.own_leaf_index().u32(),
+        }),
+        &bob.party.signer,
+    );
+
+    let tampered_update = frankenstein::FrankenMlsMessage {
+        version,
+        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+            frankenstein::FrankenPublicMessage::auth(
+                &bob.party.core_state.provider,
+                ciphersuite,
+                &bob.party.signer,
+                proposal_content.clone(),
+                Some(&bob.group.export_group_context().clone().into()),
+                Some(bob.group.message_secrets().membership_key().as_slice()),
+                None,
+            ),
+        ),
+    };
+
+    // The leaf is only checked against the group once a commit covers the
+    // proposal, so Charlie accepts the proposal itself.
+    let processed = charlie
+        .group
+        .process_message(
+            &charlie.party.core_state.provider,
+            to_protocol_message(tampered_update),
+        )
+        .expect("proposals aren't checked against the group on receipt");
+    let ProcessedMessageContent::ProposalMessage(proposal) = processed.into_content() else {
+        panic!("expected a proposal");
+    };
+    let proposal_ref = proposal.proposal_reference();
+    charlie
+        .group
+        .store_pending_proposal(charlie.party.core_state.provider.storage(), *proposal)
+        .unwrap();
+
+    let commit_content = frankenstein::FrankenFramedContent {
+        sender: frankenstein::FrankenSender::Member(alice.group.own_leaf_index().u32()),
+        body: frankenstein::FrankenFramedContentBody::Commit(frankenstein::FrankenCommit {
+            proposals: vec![frankenstein::FrankenProposalOrRef::Reference(
+                proposal_ref.as_slice().to_vec().into(),
+            )],
+            path: None,
+        }),
+        ..proposal_content
+    };
+    let commit = frankenstein::FrankenMlsMessage {
+        version,
+        body: frankenstein::FrankenMlsMessageBody::PublicMessage(
+            frankenstein::FrankenPublicMessage::auth(
+                &alice.party.core_state.provider,
+                ciphersuite,
+                &alice.party.signer,
+                commit_content,
+                Some(&alice.group.export_group_context().clone().into()),
+                Some(alice.group.message_secrets().membership_key().as_slice()),
+                // Proposal validation fails before the tag is checked.
+                Some(vec![0; 32].into()),
+            ),
+        ),
+    };
+
+    let err = charlie
+        .group
+        .process_message(
+            &charlie.party.core_state.provider,
+            to_protocol_message(commit),
+        )
+        .expect_err("Charlie doesn't support Other(3)");
+    // Caught by the ValSem109 capabilities check, which reports any
+    // capability mismatch of an Update leaf this way.
+    assert!(
+        matches!(
+            err,
+            ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                ProposalValidationError::InsufficientCapabilities
+            ))
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
 // Ensure that removed members are skipped in the capabilities check
 //   - Test that when removing a member from the group, their capabilities are no longer
 //     considered when using a new proposal/extension/credential.
@@ -371,6 +756,7 @@ fn valn0311_removed_member_capabilities_skipped_in_check() {
     let capabilities = Capabilities::builder()
         .ciphersuites(vec![ciphersuite])
         .proposals(vec![non_default_proposal_type])
+        .credentials(vec![CredentialType::Basic])
         .build();
 
     // Alice and Bob support the non-default proposal type
@@ -385,6 +771,21 @@ fn valn0311_removed_member_capabilities_skipped_in_check() {
 
     // Charlie only supports the basic proposal types
     let charlie_pre_group = charlie_party.generate_pre_group(ciphersuite);
+
+    // Negative control: this test only means anything while Charlie does *not*
+    // advertise the proposal type. That holds because `minimal_capabilities_for`
+    // (the fallback behind `generate_pre_group`) is contractually limited to
+    // ciphersuite and credential, and must stay that way.
+    assert!(
+        !charlie_pre_group
+            .key_package_bundle
+            .key_package()
+            .leaf_node()
+            .capabilities()
+            .proposals()
+            .contains(&non_default_proposal_type),
+        "Charlie must not advertise the non-default proposal type"
+    );
 
     // Create config
     let mls_group_create_config = MlsGroupCreateConfig::builder()

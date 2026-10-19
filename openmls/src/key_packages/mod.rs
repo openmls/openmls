@@ -88,6 +88,8 @@
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
 
+#[cfg(not(feature = "extensions-draft"))]
+use crate::extensions::LastResortExtension;
 use crate::{
     ciphersuite::{
         hash_ref::{make_key_package_ref, KeyPackageRef},
@@ -96,16 +98,24 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{Extension, ExtensionType, Extensions, LastResortExtension},
+    extensions::{Extension, ExtensionType, Extensions},
     storage::OpenMlsProvider,
     treesync::{
         node::{
             encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
-            leaf_node::{Capabilities, LeafNodeSource, NewLeafNodeParams, TreeInfoTbs},
+            leaf_node::{
+                resolve_capabilities, Capabilities, CapabilitiesPolicy, LeafNodeConstraints,
+                LeafNodeSource, NewLeafNodeParams, TreeInfoTbs,
+            },
         },
         LeafNode,
     },
     versions::ProtocolVersion,
+};
+#[cfg(feature = "extensions-draft")]
+use crate::{
+    component::{ComponentId, ComponentType},
+    extensions::AppDataDictionaryExtension,
 };
 use openmls_traits::{
     crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider, types::Ciphersuite,
@@ -223,11 +233,36 @@ impl SignedStruct<KeyPackageTbs> for KeyPackage {
 
 const SIGNATURE_KEY_PACKAGE_LABEL: &str = "KeyPackageTBS";
 
+#[cfg(feature = "extensions-draft")]
+fn last_resort_component_id() -> ComponentId {
+    ComponentType::LastResortKeyPackage.into()
+}
+
+/// Check whether KeyPackage extensions carry a last-resort marker. See
+/// [`KeyPackage::last_resort`].
+pub(crate) fn has_last_resort_marker(extensions: &Extensions<KeyPackage>) -> bool {
+    #[cfg(feature = "extensions-draft")]
+    if matches!(
+        extensions
+            .app_data_dictionary()
+            .and_then(|extension| extension.dictionary().get(&last_resort_component_id())),
+        Some(data) if data.is_empty()
+    ) {
+        return true;
+    }
+
+    extensions.contains(ExtensionType::LastResort)
+}
+
 /// The leaf-node-specific parameters used when creating a [`KeyPackage`].
 pub(crate) struct KeyPackageLeafNodeParams {
     pub(crate) lifetime: Lifetime,
     pub(crate) capabilities: Capabilities,
     pub(crate) extensions: Extensions<LeafNode>,
+    /// How `capabilities` is treated when it doesn't cover what the leaf
+    /// needs. A bare `KeyPackage` has no group context, so there are no
+    /// required capabilities to check against.
+    pub(crate) capabilities_policy: CapabilitiesPolicy,
 }
 
 /// Helper struct containing the results of building a new [`KeyPackage`].
@@ -355,9 +390,14 @@ impl KeyPackage {
 
         let KeyPackageLeafNodeParams {
             lifetime,
-            capabilities,
+            mut capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         } = leaf_node_params;
+
+        if matches!(capabilities_policy, CapabilitiesPolicy::Widen) {
+            capabilities.widen_for_key_package(&extensions);
+        }
 
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
@@ -366,6 +406,10 @@ impl KeyPackage {
             capabilities,
             extensions: leaf_node_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            // A bare KeyPackage has no group context to source required
+            // capabilities from.
+            constraints: LeafNodeConstraints::default(),
+            capabilities_policy,
         };
 
         let (leaf_node, encryption_key_pair) =
@@ -402,9 +446,14 @@ impl KeyPackage {
     ) -> Result<(Self, EncryptionKeyPair), KeyPackageNewError> {
         let KeyPackageLeafNodeParams {
             lifetime,
-            capabilities,
+            mut capabilities,
             extensions: leaf_node_extensions,
+            capabilities_policy,
         } = leaf_node_params;
+
+        if matches!(capabilities_policy, CapabilitiesPolicy::Widen) {
+            capabilities.widen_for_key_package(&extensions);
+        }
 
         let new_leaf_node_params = NewLeafNodeParams {
             ciphersuite,
@@ -413,6 +462,10 @@ impl KeyPackage {
             capabilities,
             extensions: leaf_node_extensions,
             tree_info_tbs: TreeInfoTbs::KeyPackage,
+            // A bare KeyPackage has no group context to source required
+            // capabilities from.
+            constraints: LeafNodeConstraints::default(),
+            capabilities_policy,
         };
 
         let (leaf_node, encryption_key_pair) = LeafNode::new_with_encryption_key_pair(
@@ -483,9 +536,25 @@ impl KeyPackage {
         &self.payload.init_key
     }
 
-    /// Check if this KeyPackage is a last resort key package.
+    /// Check if this KeyPackage is a last-resort KeyPackage.
+    ///
+    /// When the `extensions-draft` feature is enabled, this recognizes the
+    /// `last_resort_key_package` component in the KeyPackage's
+    /// `app_data_dictionary`. The obsolete `last_resort` extension is also
+    /// recognized so that previously stored KeyPackages remain usable.
     pub fn last_resort(&self) -> bool {
-        self.payload.extensions.contains(ExtensionType::LastResort)
+        has_last_resort_marker(&self.payload.extensions)
+    }
+
+    #[cfg(feature = "extensions-draft")]
+    fn has_malformed_last_resort_component(&self) -> bool {
+        matches!(
+            self.payload
+                .extensions
+                .app_data_dictionary()
+                .and_then(|extension| extension.dictionary().get(&last_resort_component_id())),
+            Some(data) if !data.is_empty()
+        )
     }
 
     /// Get the lifetime of the KeyPackage
@@ -513,6 +582,7 @@ pub struct KeyPackageBuilder {
     leaf_node_capabilities: Option<Capabilities>,
     leaf_node_extensions: Option<Extensions<LeafNode>>,
     last_resort: bool,
+    capabilities_policy: Option<CapabilitiesPolicy>,
 }
 
 impl KeyPackageBuilder {
@@ -524,6 +594,7 @@ impl KeyPackageBuilder {
             leaf_node_capabilities: None,
             leaf_node_extensions: None,
             last_resort: false,
+            capabilities_policy: None,
         }
     }
 
@@ -539,7 +610,17 @@ impl KeyPackageBuilder {
         self
     }
 
-    /// Mark the key package as a last-resort key package via a [`LastResortExtension`].
+    /// Mark the KeyPackage as a last-resort KeyPackage.
+    ///
+    /// With the `extensions-draft` feature enabled, this adds the
+    /// `last_resort_key_package` component to the KeyPackage's
+    /// `app_data_dictionary`. Otherwise, it adds the legacy `last_resort`
+    /// extension.
+    ///
+    /// The leaf node capabilities must advertise support for the corresponding
+    /// extension. Unset capabilities, or capabilities under
+    /// [`CapabilitiesPolicy::Widen`], are widened to include it. Otherwise,
+    /// building fails with [`KeyPackageNewError::MissingLastResortCapability`].
     pub fn mark_as_last_resort(mut self) -> Self {
         self.last_resort = true;
         self
@@ -559,22 +640,96 @@ impl KeyPackageBuilder {
         self
     }
 
-    /// Ensure that a last-resort extension is present in the key package if the
-    /// `last_resort` flag is set.
-    fn ensure_last_resort(&mut self) {
-        if self.last_resort {
-            let last_resort_extension = Extension::LastResort(LastResortExtension::default());
-            if let Some(extensions) = self.key_package_extensions.as_mut() {
-                extensions
-                    .add_or_replace(last_resort_extension)
-                    .expect("LastResort extensions are allowed in key packages");
-            } else {
-                self.key_package_extensions = Some(
-                    Extensions::single(last_resort_extension)
-                        .expect("LastResort extensions are allowed in key packages"),
-                );
-            }
+    /// Set how the leaf node's capabilities are treated when they don't cover
+    /// what the leaf itself or the KeyPackage's extensions use.
+    ///
+    /// If never called, capabilities set via
+    /// [`KeyPackageBuilder::leaf_node_capabilities`] are held to exactly what
+    /// was listed and unset capabilities are derived from the leaf.
+    pub fn capabilities_policy(mut self, policy: CapabilitiesPolicy) -> Self {
+        self.capabilities_policy = Some(policy);
+        self
+    }
+
+    /// Under [`CapabilitiesPolicy::Reject`], fail early if the leaf node
+    /// capabilities don't advertise the extension that carries the last-resort
+    /// marker. Under [`CapabilitiesPolicy::Widen`], it is added along with the
+    /// KeyPackage's other extensions.
+    fn ensure_last_resort_capability(
+        &self,
+        extension_type: ExtensionType,
+    ) -> Result<(), KeyPackageNewError> {
+        let (capabilities, capabilities_policy) = resolve_capabilities(
+            self.leaf_node_capabilities.clone(),
+            self.capabilities_policy,
+        );
+        if matches!(capabilities_policy, CapabilitiesPolicy::Reject)
+            && !capabilities.extensions().contains(&extension_type)
+        {
+            return Err(KeyPackageNewError::MissingLastResortCapability(
+                extension_type,
+            ));
         }
+        Ok(())
+    }
+
+    /// Ensure that a last-resort marker is present in the KeyPackage if the
+    /// `last_resort` flag is set.
+    ///
+    /// A `last_resort` extension the caller set explicitly is kept alongside
+    /// the component, so that applications can emit both while not all
+    /// clients understand the component yet.
+    #[cfg(feature = "extensions-draft")]
+    fn ensure_last_resort(&mut self) -> Result<(), KeyPackageNewError> {
+        if !self.last_resort {
+            return Ok(());
+        }
+
+        self.ensure_last_resort_capability(ExtensionType::AppDataDictionary)?;
+
+        let mut dictionary = self
+            .key_package_extensions
+            .as_ref()
+            .and_then(Extensions::app_data_dictionary)
+            .map(|extension| extension.dictionary().clone())
+            .unwrap_or_default();
+        dictionary.insert(last_resort_component_id(), Vec::new());
+
+        let last_resort_component =
+            Extension::AppDataDictionary(AppDataDictionaryExtension::new(dictionary));
+        if let Some(extensions) = self.key_package_extensions.as_mut() {
+            extensions
+                .add_or_replace(last_resort_component)
+                .expect("AppDataDictionary extensions are allowed in KeyPackages");
+        } else {
+            self.key_package_extensions = Some(
+                Extensions::single(last_resort_component)
+                    .expect("AppDataDictionary extensions are allowed in KeyPackages"),
+            );
+        }
+        Ok(())
+    }
+
+    #[cfg(not(feature = "extensions-draft"))]
+    fn ensure_last_resort(&mut self) -> Result<(), KeyPackageNewError> {
+        if !self.last_resort {
+            return Ok(());
+        }
+
+        self.ensure_last_resort_capability(ExtensionType::LastResort)?;
+
+        let last_resort_extension = Extension::LastResort(LastResortExtension::default());
+        if let Some(extensions) = self.key_package_extensions.as_mut() {
+            extensions
+                .add_or_replace(last_resort_extension)
+                .expect("LastResort extensions are allowed in KeyPackages");
+        } else {
+            self.key_package_extensions = Some(
+                Extensions::single(last_resort_extension)
+                    .expect("LastResort extensions are allowed in KeyPackages"),
+            );
+        }
+        Ok(())
     }
 
     #[cfg(test)]
@@ -585,11 +740,14 @@ impl KeyPackageBuilder {
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError> {
-        self.ensure_last_resort();
+        self.ensure_last_resort()?;
+        let (capabilities, capabilities_policy) =
+            resolve_capabilities(self.leaf_node_capabilities, self.capabilities_policy);
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: self.key_package_lifetime.unwrap_or_default(),
-            capabilities: self.leaf_node_capabilities.unwrap_or_default(),
+            capabilities,
             extensions: self.leaf_node_extensions.unwrap_or_default(),
+            capabilities_policy,
         };
         KeyPackage::create(
             ciphersuite,
@@ -602,19 +760,23 @@ impl KeyPackageBuilder {
     }
 
     /// Finalize and build the key package.
-    pub fn build(
+    #[openmls_traits::maybe_async]
+    pub async fn build(
         mut self,
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageBundle, KeyPackageNewError> {
-        self.ensure_last_resort();
+        self.ensure_last_resort()?;
 
+        let (capabilities, capabilities_policy) =
+            resolve_capabilities(self.leaf_node_capabilities, self.capabilities_policy);
         let leaf_node_params = KeyPackageLeafNodeParams {
             lifetime: self.key_package_lifetime.unwrap_or_default(),
-            capabilities: self.leaf_node_capabilities.unwrap_or_default(),
+            capabilities,
             extensions: self.leaf_node_extensions.unwrap_or_default(),
+            capabilities_policy,
         };
         let KeyPackageCreationResult {
             key_package,
@@ -639,6 +801,7 @@ impl KeyPackageBuilder {
         provider
             .storage()
             .write_key_package(&full_kp.key_package.hash_ref(provider.crypto())?, &full_kp)
+            .await
             .map_err(|_| KeyPackageNewError::StorageError)?;
 
         Ok(full_kp)
@@ -684,7 +847,8 @@ impl KeyPackageBuilder {
     /// Returns [`KeyPackageNewError::EmptyBatch`] when `count` is 0, before
     /// loading any state or consuming a generation.
     #[cfg(feature = "virtual-clients-draft")]
-    pub fn build_vc_batch(
+    #[openmls_traits::maybe_async]
+    pub async fn build_vc_batch(
         self,
         ciphersuite: Ciphersuite,
         provider: &impl OpenMlsProvider,
@@ -704,7 +868,7 @@ impl KeyPackageBuilder {
             return Err(KeyPackageNewError::EmptyBatch);
         }
         let mut builder =
-            VcKeyPackageBatchBuilder::with_capacity(provider, emulation_group_id, count)?;
+            VcKeyPackageBatchBuilder::with_capacity(provider, emulation_group_id, count).await?;
         for _ in 0..count {
             builder.add_key_package(
                 self.clone(),
@@ -714,7 +878,7 @@ impl KeyPackageBuilder {
                 credential_with_key.clone(),
             )?;
         }
-        builder.finalize(provider)
+        builder.finalize(provider).await
     }
 }
 
@@ -786,6 +950,12 @@ impl KeyPackageBundle {
         credential_with_key: CredentialWithKey,
     ) -> Self {
         KeyPackage::builder()
+            .leaf_node_capabilities(
+                Capabilities::builder()
+                    .ciphersuites(vec![ciphersuite])
+                    .credentials(vec![CredentialType::Basic])
+                    .build(),
+            )
             .build(ciphersuite, provider, signer, credential_with_key)
             .unwrap()
     }

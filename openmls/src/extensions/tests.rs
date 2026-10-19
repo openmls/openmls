@@ -47,6 +47,34 @@ fn application_id_in_leaf_node_extensions() {
         .build();
 }
 
+// `Extensions::unknown()` has to find GREASE extensions, not only unknown ones.
+#[test]
+fn grease_extension_is_available_through_unknown_getter() {
+    const GREASE: u16 = 0x8A8A;
+    let payload = vec![0xca, 0xfe];
+
+    let extensions = Extensions::<AnyObject>::single(Extension::Unknown(
+        GREASE,
+        UnknownExtension(payload.clone()),
+    ))
+    .expect("failed to create GREASE extension list");
+
+    assert_eq!(extensions.unknown(GREASE), Some(&UnknownExtension(payload)));
+}
+
+// The per-context validators also run on deserialization, so they have to
+// accept GREASE wherever they accept an unknown extension type.
+#[test]
+fn grease_extension_validators_match_unknown_handling() {
+    const GREASE: u16 = 0x8A8A;
+    let grease = Extension::Unknown(GREASE, UnknownExtension(vec![0xca, 0xfe]));
+
+    assert!(Extensions::<GroupContext>::single(grease.clone()).is_ok());
+    assert!(Extensions::<GroupInfo>::single(grease.clone()).is_ok());
+    assert!(Extensions::<LeafNode>::single(grease.clone()).is_ok());
+    assert!(Extensions::<KeyPackage>::single(grease).is_ok());
+}
+
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[openmls_test::openmls_test]
@@ -62,6 +90,11 @@ fn ratchet_tree_extension() {
     let (bob_credential_with_key, bob_signature_keys) =
         test_utils::new_credential(bob_provider, b"Bob", ciphersuite.signature_algorithm());
 
+    let capabilities = Capabilities::builder()
+        .ciphersuites(vec![ciphersuite])
+        .credentials(vec![CredentialType::Basic])
+        .build();
+
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::generate(
         bob_provider,
@@ -74,6 +107,7 @@ fn ratchet_tree_extension() {
     // === Alice creates a group with the ratchet tree extension ===
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(capabilities.clone())
         .use_ratchet_tree_extension(true)
         .build(
             alice_provider,
@@ -130,6 +164,7 @@ fn ratchet_tree_extension() {
 
     let mut alice_group = MlsGroup::builder()
         .ciphersuite(ciphersuite)
+        .with_capabilities(capabilities)
         .use_ratchet_tree_extension(false)
         .build(
             alice_provider,
@@ -220,9 +255,17 @@ fn with_group_context_extensions() {
     let alice_credential_with_key_and_signer =
         generate_credential_with_key("Alice".into(), ciphersuite.signature_algorithm(), provider);
 
+    // The must support every GroupContext extension.
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .with_group_context_extensions(extensions)
         .ciphersuite(ciphersuite)
+        .capabilities(
+            Capabilities::builder()
+                .ciphersuites(vec![ciphersuite])
+                .extensions(vec![ExtensionType::Unknown(0xf023)])
+                .credentials(vec![CredentialType::Basic])
+                .build(),
+        )
         .build();
 
     // === Alice creates a group ===
@@ -309,15 +352,15 @@ fn last_resort_extension() {
         Extensions::single(last_resort).expect("failed to create single-element extensions list");
     let capabilities = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         // Add last resort extension as supported extension
         Some(&[ExtensionType::LastResort]),
         None,
-        None,
+        Some(&[CredentialType::Basic]),
     );
     let kp = KeyPackage::builder()
         .key_package_extensions(extensions)
-        .leaf_node_capabilities(capabilities)
+        .leaf_node_capabilities(capabilities.clone())
         .build(
             ciphersuite,
             bob_provider,
@@ -350,6 +393,7 @@ fn last_resort_extension() {
 
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
+        .capabilities(capabilities)
         .build();
 
     // === Alice creates a group ===

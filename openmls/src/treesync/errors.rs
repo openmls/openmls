@@ -6,7 +6,8 @@ use thiserror::Error;
 
 use super::*;
 use crate::{
-    binary_tree::MlsBinaryTreeDiffError, ciphersuite::signable::SignatureError, error::LibraryError,
+    binary_tree::MlsBinaryTreeDiffError, ciphersuite::signable::SignatureError,
+    error::LibraryError, treesync::node::leaf_node::LeafNodeBuildError,
 };
 
 // === Public errors ===
@@ -131,7 +132,7 @@ pub(crate) enum DerivePathError {
     PublicKeyMismatch,
 }
 
-/// TreeSync set path error
+/// TreeSync add leaf error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum TreeSyncAddLeaf {
     /// See [`LibraryError`] for more details.
@@ -140,6 +141,32 @@ pub enum TreeSyncAddLeaf {
     /// The tree is full, we cannot add any more leaves.
     #[error("The tree is full, we cannot add any more leaves.")]
     TreeFull,
+}
+
+/// Error applying this client's own update path.
+///
+/// Distinct from [`TreeSyncAddLeaf`] because applying an own update path also
+/// *builds* the new leaf, which inserting an already-signed one does not.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ApplyOwnUpdatePathError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The tree is full, we cannot add any more leaves.
+    #[error("The tree is full, we cannot add any more leaves.")]
+    TreeFull,
+    /// The leaf node's capabilities don't cover what the leaf itself uses.
+    #[error(transparent)]
+    LeafNodeBuild(#[from] LeafNodeBuildError),
+}
+
+impl From<TreeSyncAddLeaf> for ApplyOwnUpdatePathError {
+    fn from(e: TreeSyncAddLeaf) -> Self {
+        match e {
+            TreeSyncAddLeaf::LibraryError(e) => Self::LibraryError(e),
+            TreeSyncAddLeaf::TreeFull => Self::TreeFull,
+        }
+    }
 }
 
 /// TreeSync from nodes error

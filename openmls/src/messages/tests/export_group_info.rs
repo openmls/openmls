@@ -1,9 +1,12 @@
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::signable::Verifiable,
+    ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey},
     extensions::{errors::InvalidExtensionError, *},
-    group::{mls_group::tests_and_kats::utils::setup_alice_group, ExportGroupInfoError},
+    group::{
+        mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_alice_group},
+        ExportGroupInfoError,
+    },
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
     prelude::{ExtensionType, ExtensionTypeNotValidInGroupInfoError, MlsMessageBodyOut},
 };
@@ -34,6 +37,32 @@ fn export_group_info() {
         .expect("signature verification should succeed");
 
     assert!(group_info.extensions().contains(ExtensionType::ExternalPub))
+}
+
+#[openmls_test::openmls_test]
+fn group_info_signer_is_exporting_member() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (_alice_group, _, bob_group, bob_signer, _, _) =
+        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+    let bob_leaf_index = bob_group.own_leaf_index();
+
+    let verifiable_group_info = bob_group
+        .export_group_info(bob_provider.crypto(), &bob_signer, true)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+    assert_eq!(verifiable_group_info.signer(), bob_leaf_index);
+
+    let bob_pk = OpenMlsSignaturePublicKey::new(
+        bob_signer.to_public_vec().into(),
+        ciphersuite.signature_algorithm(),
+    )
+    .unwrap();
+    let group_info: GroupInfo = verifiable_group_info
+        .verify(bob_provider.crypto(), &bob_pk)
+        .expect("signature verification should succeed");
+    assert_eq!(group_info.signer(), bob_leaf_index);
 }
 
 #[openmls_test::openmls_test]

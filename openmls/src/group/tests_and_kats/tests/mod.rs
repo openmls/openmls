@@ -8,6 +8,7 @@ mod safe_aad;
 
 mod capabilities_check;
 mod commit_validation;
+mod creator_leaf_node_capabilities;
 mod encoding;
 mod external_add_proposal;
 mod external_commit;
@@ -17,6 +18,7 @@ mod external_commit_validation;
 mod external_group_context_extensions_proposal;
 mod external_join_add_proposal;
 mod external_psk_proposal;
+mod external_reinit_proposal;
 mod external_remove_proposal;
 mod framing;
 mod framing_validation;
@@ -32,4 +34,6 @@ mod unsupported_ciphersuite;
     feature = "draft-ietf-mls-pq-ciphersuites"
 ))]
 mod virtual_clients;
+mod welcome_validation;
+
 mod wire_format_policy;
