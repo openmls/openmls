@@ -186,6 +186,26 @@ impl AuthenticatedContent {
         signer: &impl Signer,
         sender_index: SenderExtensionIndex,
     ) -> Result<Self, LibraryError> {
+        Self::new_external_proposal_with_aad(
+            proposal,
+            group_id,
+            epoch,
+            signer,
+            sender_index,
+            vec![],
+        )
+    }
+
+    /// This constructor builds an `PublicMessage` containing an External Proposal
+    /// with the given `authenticated_data`.
+    pub(crate) fn new_external_proposal_with_aad(
+        proposal: Proposal,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        signer: &impl Signer,
+        sender_index: SenderExtensionIndex,
+        authenticated_data: Vec<u8>,
+    ) -> Result<Self, LibraryError> {
         let body = FramedContentBody::Proposal(proposal);
 
         let content_tbs = FramedContentTbs::new(
@@ -193,7 +213,7 @@ impl AuthenticatedContent {
             group_id,
             epoch,
             Sender::External(sender_index),
-            vec![].into(),
+            authenticated_data.into(),
             body,
         );
 

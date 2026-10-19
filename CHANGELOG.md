@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- [#2290](https://github.com/openmls/openmls/issues/2290): `ExternalProposal::new_app_data_update` (`extensions-draft`) builds an AppDataUpdate proposal from an external sender.
+- [#2290](https://github.com/openmls/openmls/issues/2290): `ExternalProposal::new_app_data_update` (`extensions-draft`) builds an AppDataUpdate proposal from an external sender. It takes the `authenticated_data`, so it can carry the SafeAAD struct that draft-ietf-mls-extensions-10 §4.9 requires in groups with `safe_aad`.
 
 ### Fixed
 
