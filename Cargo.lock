@@ -2594,6 +2594,7 @@ dependencies = [
  "libcrux-hmac-drbg",
  "libcrux-ml-dsa",
  "libcrux-sha2",
+ "libcrux-sha3",
  "libcrux-traits",
  "openmls_memory_storage",
  "openmls_rust_crypto",
