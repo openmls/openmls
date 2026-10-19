@@ -112,6 +112,38 @@ fn serialization() {
     assert_eq!(key_package.key_package(), &decoded_key_package);
 }
 
+/// A writer that accepts at most one byte per `write` call, as
+/// `std::io::Write` allows.
+struct OneByteWriter(Vec<u8>);
+
+impl std::io::Write for OneByteWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let Some(byte) = buf.first() else {
+            return Ok(0);
+        };
+        self.0.push(*byte);
+        Ok(1)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[openmls_test::openmls_test]
+fn serialization_with_short_writes() {
+    let provider = &Provider::default();
+    let (key_package, _, _) = key_package(ciphersuite, provider);
+    let key_package = key_package.key_package();
+
+    let mut writer = OneByteWriter(Vec::new());
+    let written = key_package.tls_serialize(&mut writer).unwrap();
+
+    let expected = key_package.tls_serialize_detached().unwrap();
+    assert_eq!(writer.0, expected);
+    assert_eq!(written, expected.len());
+}
+
 #[openmls_test::openmls_test]
 fn application_id_extension() {
     let provider = &Provider::default();

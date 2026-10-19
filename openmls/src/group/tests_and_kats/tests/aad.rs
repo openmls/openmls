@@ -861,8 +861,10 @@ fn test_aad_propose_group_context_extensions() {
 
     group.set_aad(TEST_AAD.to_vec());
 
-    let extensions =
-        Extensions::from_vec(vec![Extension::Unknown(1, UnknownExtension(Vec::new()))]).unwrap();
+    let extensions = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[], &[], &[]),
+    )])
+    .unwrap();
 
     let (message, _proposal_ref) = group
         .propose_group_context_extensions(provider, extensions, &signer)
@@ -998,8 +1000,10 @@ fn test_aad_propose_dispatch() {
 
     let (_, charlie_pkb, _, _) = setup_client("Charlie", ciphersuite, &Provider::default());
 
-    let extensions =
-        Extensions::from_vec(vec![Extension::Unknown(1, UnknownExtension(Vec::new()))]).unwrap();
+    let extensions = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[], &[], &[]),
+    )])
+    .unwrap();
 
     let proposals = [
         Propose::Add(charlie_pkb.key_package.clone()),

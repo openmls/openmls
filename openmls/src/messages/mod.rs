@@ -378,11 +378,11 @@ pub struct ConfirmationTag(pub(crate) Mac);
 
 /// PathSecret
 ///
-/// > 11.2.2. Welcoming New Members
+/// > RFC 9420 12.4.3.1. Joining via Welcome Message
 ///
 /// ```text
 /// struct {
-///   opaque path_secret<1..255>;
+///   opaque path_secret<V>;
 /// } PathSecret;
 /// ```
 #[derive(
