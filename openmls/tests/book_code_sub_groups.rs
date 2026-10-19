@@ -155,7 +155,7 @@ fn book_example_sub_group_branching() {
 
     // Finish the join.
     // `build_from_branch` checks that the branch PSK references the same parent
-    // group/epoch as the `BranchInfo`, and that version, ciphersuite, sub-group
+    // group/epoch as the `BranchInfo`. `build` checks that version, ciphersuite, sub-group
     // epoch match.
     let bob_staged_welcome = pending
         .build_from_branch(bob_provider, bob_branch_info)

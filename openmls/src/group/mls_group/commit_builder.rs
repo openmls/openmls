@@ -130,6 +130,8 @@ pub struct Initial {
 
     /// How the lifetimes of the key packages in Add proposals are checked.
     lifetime_policy: LeafNodeLifetimePolicy,
+
+    /// Resumption secret for branch or reinit
     foreign_resumption_psk: Option<(PreSharedKeyId, ResumptionPskSecret)>,
 }
 
@@ -416,9 +418,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info).
     ///
     /// This adds a resumption [`PreSharedKeyId`] of usage `Branch` to the initial
-    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
-    /// the parent group's resumption PSK secret so it is mixed into this
-    /// subgroup's key schedule.
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh.
     ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
     pub(crate) fn branch(
@@ -447,12 +447,10 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     ///
     /// Information about the old group comes from `reinit_info`, which the
     /// predecessor exports with [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
-    /// We acept only the required parts here to avoid unnecessary `clone`.
+    /// We accept only the required parts here to avoid unnecessary `clone`.
     ///
     /// This adds a resumption [`PreSharedKeyId`] of usage `Reinit` to the initial
-    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
-    /// the old group's resumption PSK secret so it is mixed into this
-    /// new group's key schedule.
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh.
     ///
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
     pub(crate) fn reinit(
@@ -1060,9 +1058,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         group
             .public_group
             .validate_remove_proposals(&proposal_queue)?;
-        // Also validates branch PSK proposals: a resumption PSK of usage `Branch`
-        // is only accepted at epoch 0 (i.e. in the initial commit of a subgroup),
-        // see `validate_pre_shared_key_proposals`.
+        // Also validates branch PSK proposals: a resumption PSK of usage `Branch` or `ReInit`
+        // is only accepted at epoch 0 (i.e. in the initial commit),
         group
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
@@ -2003,7 +2000,7 @@ mod tests {
         );
     }
 
-    /// A resumption PSK of usage `ReInit` must only appear in the initial commit
+    /// A resumption PSK of usage `Reinit` must only appear in the initial commit
     /// of a group (i.e. at epoch 0). Using it in any later commit must be
     /// rejected.
     ///
@@ -2019,19 +2016,17 @@ mod tests {
         let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
             setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
-        // An arbitrary group serves as the "old" group whose resumption PSK is
-        // injected, so that `load_psks` succeeds and validation is reached.
+        // An arbitrary group serves as the "old" group whose resumption PSK serves as predecessor,
+        // so that `load_psks` succeeds and validation is reached.
         let (old_cwk, _old_kpb, old_signer, _old_pk) =
             setup_client("Old", ciphersuite, old_provider);
         let old_group = MlsGroup::builder()
             .ciphersuite(ciphersuite)
             .build(old_provider, &old_signer, old_cwk)
             .unwrap();
-        let old_secret = old_group
-            .resumption_psk_secret() // or however BranchInfo/ReInitInfo gets it
-            .clone();
+        let old_secret = old_group.resumption_psk_secret().clone();
 
-        // `alice_group` is at epoch 1 so it must reject branch PSK proposals.
+        // `alice_group` is at epoch 1 so it must reject reinit PSK proposals.
         assert_eq!(alice_group.epoch(), 1.into());
         let result = alice_group
             .commit_builder()
