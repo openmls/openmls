@@ -200,7 +200,8 @@ impl TlsSerializeTrait for KeyPackage {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let mut written = 0;
         if let Some(ref bytes) = self.serialized_payload {
-            written += writer.write(bytes)?;
+            writer.write_all(bytes)?;
+            written += bytes.len();
         } else {
             written += self.payload.tls_serialize(writer)?;
         }

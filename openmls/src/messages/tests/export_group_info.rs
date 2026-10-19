@@ -39,6 +39,52 @@ fn export_group_info() {
     assert!(group_info.extensions().contains(ExtensionType::ExternalPub))
 }
 
+/// A writer that accepts at most one byte per `write` call, as
+/// `std::io::Write` allows.
+struct OneByteWriter(Vec<u8>);
+
+impl std::io::Write for OneByteWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let Some(byte) = buf.first() else {
+            return Ok(0);
+        };
+        self.0.push(*byte);
+        Ok(1)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// A signed group info serializes completely into a writer that writes
+/// partially, and equals the group info obtained by decoding and verifying it.
+#[openmls_test::openmls_test]
+fn signed_group_info_serialization_and_equality() {
+    let provider = &Provider::default();
+    let (alice_group, _, signer, pk) = setup_alice_group(ciphersuite, provider);
+
+    let group_info_message = alice_group
+        .export_group_info(provider.crypto(), &signer, true)
+        .unwrap();
+    let MlsMessageBodyOut::GroupInfo(group_info) = group_info_message.body() else {
+        panic!("Wrong message type")
+    };
+
+    let serialized = group_info.tls_serialize_detached().unwrap();
+    let mut writer = OneByteWriter(Vec::new());
+    let written = group_info.tls_serialize(&mut writer).unwrap();
+    assert_eq!(writer.0, serialized);
+    assert_eq!(written, serialized.len());
+
+    let verified_group_info: GroupInfo =
+        VerifiableGroupInfo::tls_deserialize(&mut serialized.as_slice())
+            .unwrap()
+            .verify(provider.crypto(), &pk)
+            .unwrap();
+    assert_eq!(&verified_group_info, group_info);
+}
+
 #[openmls_test::openmls_test]
 fn group_info_signer_is_exporting_member() {
     let alice_provider = &Provider::default();

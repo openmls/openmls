@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [GHSA-gc79-23g3-8g52](https://github.com/openmls/openmls/security/advisories/GHSA-gc79-23g3-8g52): Unbounded recursion while decoding invalid nested extensions can abort the process.
 - Encoding a `ProposalType`, `ExtensionType`, `CredentialType` or `ProtocolVersion` now fails with `tls_codec::Error::EncodingError` when the value would decode as a different variant, for example `ProposalType::Custom(6)` (`ExternalInit`), `ExtensionType::Unknown(1)` (`ApplicationId`), a non-GREASE value in a `Grease` variant, or `ProtocolVersion::Other(1)`. Previously such a value was encoded silently, so a custom proposal with a registered proposal type reached the other members as that registered proposal. Proposing or committing such a custom proposal now fails with a `LibraryError`.
 - `ProposalType::is_grease`, `ExtensionType::is_grease` and `CredentialType::is_grease` now return `true` only for the GREASE values defined in RFC 9420, not for every `Grease` variant.
+- `GroupInfo::tls_serialize` and `KeyPackage::tls_serialize` now use `write_all` for the cached signed payload. Previously a writer that wrote only part of the payload produced truncated output and the call still returned `Ok`.
+- `GroupInfo` equality no longer depends on whether the signed payload is cached, so a signed `GroupInfo` now equals the same `GroupInfo` after decoding and verifying it.
 
 ## 0.9.0 (2026-08-25)
 
