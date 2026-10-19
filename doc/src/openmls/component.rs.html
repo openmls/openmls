@@ -111,162 +111,134 @@
 <a href=#111 id=111 data-nosnippet>111</a>    </span>Grease6A6A = <span class="number">0x6a6a</span>,
 <a href=#112 id=112 data-nosnippet>112</a>    <span class="doccomment">/// The GREASE component with ID 0x7A7A.
 <a href=#113 id=113 data-nosnippet>113</a>    </span>Grease7A7A = <span class="number">0x7a7a</span>,
-<a href=#114 id=114 data-nosnippet>114</a>    <span class="doccomment">/// The GREASE component with ID 0x8A8A.
-<a href=#115 id=115 data-nosnippet>115</a>    </span>Grease8A8A = <span class="number">0x8a8a</span>,
-<a href=#116 id=116 data-nosnippet>116</a>    <span class="doccomment">/// The GREASE component with ID 0x9A9A.
-<a href=#117 id=117 data-nosnippet>117</a>    </span>Grease9A9A = <span class="number">0x9a9a</span>,
-<a href=#118 id=118 data-nosnippet>118</a>    <span class="doccomment">/// The GREASE component with ID 0xAAAA.
-<a href=#119 id=119 data-nosnippet>119</a>    </span>GreaseAAAA = <span class="number">0xaaaa</span>,
-<a href=#120 id=120 data-nosnippet>120</a>    <span class="doccomment">/// The GREASE component with ID 0xBABA.
-<a href=#121 id=121 data-nosnippet>121</a>    </span>GreaseBABA = <span class="number">0xbaba</span>,
-<a href=#122 id=122 data-nosnippet>122</a>    <span class="doccomment">/// The GREASE component with ID 0xCACA.
-<a href=#123 id=123 data-nosnippet>123</a>    </span>GreaseCACA = <span class="number">0xcaca</span>,
-<a href=#124 id=124 data-nosnippet>124</a>    <span class="doccomment">/// The GREASE component with ID 0xDADA.
-<a href=#125 id=125 data-nosnippet>125</a>    </span>GreaseDADA = <span class="number">0xdada</span>,
-<a href=#126 id=126 data-nosnippet>126</a>    <span class="doccomment">/// The GREASE component with ID 0xEAEA.
-<a href=#127 id=127 data-nosnippet>127</a>    </span>GreaseEAEA = <span class="number">0xeaea</span>,
-<a href=#128 id=128 data-nosnippet>128</a>
-<a href=#129 id=129 data-nosnippet>129</a>    <span class="doccomment">/// An unknown component id in the standardized range (0x0000-0x7fff)
-<a href=#130 id=130 data-nosnippet>130</a>    </span>Unknown(UnknownComponentId),
-<a href=#131 id=131 data-nosnippet>131</a>
-<a href=#132 id=132 data-nosnippet>132</a>    <span class="doccomment">/// A component id from the private range (0x8000-0xffff)
-<a href=#133 id=133 data-nosnippet>133</a>    </span>Private(PrivateComponentId),
-<a href=#134 id=134 data-nosnippet>134</a>}
-<a href=#135 id=135 data-nosnippet>135</a>
-<a href=#136 id=136 data-nosnippet>136</a><span class="kw">impl </span>From&lt;ComponentId&gt; <span class="kw">for </span>ComponentType {
-<a href=#137 id=137 data-nosnippet>137</a>    <span class="kw">fn </span>from(value: ComponentId) -&gt; <span class="self">Self </span>{
-<a href=#138 id=138 data-nosnippet>138</a>        <span class="comment">// We allow this here because we use the overlapping one at the bottom (..0x8000) as a catch-all.
-<a href=#139 id=139 data-nosnippet>139</a>        // This would be annoying to do explicitly because of the sparse GREASE values.
-<a href=#140 id=140 data-nosnippet>140</a>        </span><span class="attr">#[allow(clippy::match_overlapping_arm)]
-<a href=#141 id=141 data-nosnippet>141</a>        </span><span class="kw">match </span>value {
-<a href=#142 id=142 data-nosnippet>142</a>            <span class="number">0 </span>=&gt; <span class="self">Self</span>::Reserved,
-<a href=#143 id=143 data-nosnippet>143</a>            <span class="number">1 </span>=&gt; <span class="self">Self</span>::AppComponents,
-<a href=#144 id=144 data-nosnippet>144</a>            <span class="number">2 </span>=&gt; <span class="self">Self</span>::SafeAad,
-<a href=#145 id=145 data-nosnippet>145</a>            <span class="number">3 </span>=&gt; <span class="self">Self</span>::ComponentMediaTypes,
-<a href=#146 id=146 data-nosnippet>146</a>            <span class="number">4 </span>=&gt; <span class="self">Self</span>::LastResortKeyPackage,
-<a href=#147 id=147 data-nosnippet>147</a>            <span class="number">5 </span>=&gt; <span class="self">Self</span>::AppAck,
-<a href=#148 id=148 data-nosnippet>148</a>
-<a href=#149 id=149 data-nosnippet>149</a>            <span class="number">0x0a0a </span>=&gt; <span class="self">Self</span>::Grease0A0A,
-<a href=#150 id=150 data-nosnippet>150</a>            <span class="number">0x1a1a </span>=&gt; <span class="self">Self</span>::Grease1A1A,
-<a href=#151 id=151 data-nosnippet>151</a>            <span class="number">0x2a2a </span>=&gt; <span class="self">Self</span>::Grease2A2A,
-<a href=#152 id=152 data-nosnippet>152</a>            <span class="number">0x3a3a </span>=&gt; <span class="self">Self</span>::Grease3A3A,
-<a href=#153 id=153 data-nosnippet>153</a>            <span class="number">0x4a4a </span>=&gt; <span class="self">Self</span>::Grease4A4A,
-<a href=#154 id=154 data-nosnippet>154</a>            <span class="number">0x5a5a </span>=&gt; <span class="self">Self</span>::Grease5A5A,
-<a href=#155 id=155 data-nosnippet>155</a>            <span class="number">0x6a6a </span>=&gt; <span class="self">Self</span>::Grease6A6A,
-<a href=#156 id=156 data-nosnippet>156</a>            <span class="number">0x7a7a </span>=&gt; <span class="self">Self</span>::Grease7A7A,
-<a href=#157 id=157 data-nosnippet>157</a>            <span class="number">0x8a8a </span>=&gt; <span class="self">Self</span>::Grease8A8A,
-<a href=#158 id=158 data-nosnippet>158</a>            <span class="number">0x9a9a </span>=&gt; <span class="self">Self</span>::Grease9A9A,
-<a href=#159 id=159 data-nosnippet>159</a>            <span class="number">0xaaaa </span>=&gt; <span class="self">Self</span>::GreaseAAAA,
-<a href=#160 id=160 data-nosnippet>160</a>            <span class="number">0xbaba </span>=&gt; <span class="self">Self</span>::GreaseBABA,
-<a href=#161 id=161 data-nosnippet>161</a>            <span class="number">0xcaca </span>=&gt; <span class="self">Self</span>::GreaseCACA,
-<a href=#162 id=162 data-nosnippet>162</a>            <span class="number">0xdada </span>=&gt; <span class="self">Self</span>::GreaseDADA,
-<a href=#163 id=163 data-nosnippet>163</a>            <span class="number">0xeaea </span>=&gt; <span class="self">Self</span>::GreaseEAEA,
-<a href=#164 id=164 data-nosnippet>164</a>
-<a href=#165 id=165 data-nosnippet>165</a>            <span class="number">6</span>..<span class="number">0x8000 </span>=&gt; <span class="self">Self</span>::Unknown(UnknownComponentId(value)),
-<a href=#166 id=166 data-nosnippet>166</a>            <span class="number">0x8000</span>.. =&gt; <span class="self">Self</span>::Private(PrivateComponentId(value)),
-<a href=#167 id=167 data-nosnippet>167</a>        }
-<a href=#168 id=168 data-nosnippet>168</a>    }
-<a href=#169 id=169 data-nosnippet>169</a>}
-<a href=#170 id=170 data-nosnippet>170</a>
-<a href=#171 id=171 data-nosnippet>171</a><span class="kw">impl </span>From&lt;ComponentType&gt; <span class="kw">for </span>ComponentId {
-<a href=#172 id=172 data-nosnippet>172</a>    <span class="kw">fn </span>from(value: ComponentType) -&gt; <span class="self">Self </span>{
-<a href=#173 id=173 data-nosnippet>173</a>        <span class="kw">match </span>value {
-<a href=#174 id=174 data-nosnippet>174</a>            ComponentType::Reserved =&gt; <span class="number">0</span>,
-<a href=#175 id=175 data-nosnippet>175</a>            ComponentType::AppComponents =&gt; <span class="number">1</span>,
-<a href=#176 id=176 data-nosnippet>176</a>            ComponentType::SafeAad =&gt; <span class="number">2</span>,
-<a href=#177 id=177 data-nosnippet>177</a>            ComponentType::ComponentMediaTypes =&gt; <span class="number">3</span>,
-<a href=#178 id=178 data-nosnippet>178</a>            ComponentType::LastResortKeyPackage =&gt; <span class="number">4</span>,
-<a href=#179 id=179 data-nosnippet>179</a>            ComponentType::AppAck =&gt; <span class="number">5</span>,
-<a href=#180 id=180 data-nosnippet>180</a>
-<a href=#181 id=181 data-nosnippet>181</a>            ComponentType::Grease0A0A =&gt; <span class="number">0x0a0a</span>,
-<a href=#182 id=182 data-nosnippet>182</a>            ComponentType::Grease1A1A =&gt; <span class="number">0x1a1a</span>,
-<a href=#183 id=183 data-nosnippet>183</a>            ComponentType::Grease2A2A =&gt; <span class="number">0x2a2a</span>,
-<a href=#184 id=184 data-nosnippet>184</a>            ComponentType::Grease3A3A =&gt; <span class="number">0x3a3a</span>,
-<a href=#185 id=185 data-nosnippet>185</a>            ComponentType::Grease4A4A =&gt; <span class="number">0x4a4a</span>,
-<a href=#186 id=186 data-nosnippet>186</a>            ComponentType::Grease5A5A =&gt; <span class="number">0x5a5a</span>,
-<a href=#187 id=187 data-nosnippet>187</a>            ComponentType::Grease6A6A =&gt; <span class="number">0x6a6a</span>,
-<a href=#188 id=188 data-nosnippet>188</a>            ComponentType::Grease7A7A =&gt; <span class="number">0x7a7a</span>,
-<a href=#189 id=189 data-nosnippet>189</a>            ComponentType::Grease8A8A =&gt; <span class="number">0x8a8a</span>,
-<a href=#190 id=190 data-nosnippet>190</a>            ComponentType::Grease9A9A =&gt; <span class="number">0x9a9a</span>,
-<a href=#191 id=191 data-nosnippet>191</a>            ComponentType::GreaseAAAA =&gt; <span class="number">0xaaaa</span>,
-<a href=#192 id=192 data-nosnippet>192</a>            ComponentType::GreaseBABA =&gt; <span class="number">0xbaba</span>,
-<a href=#193 id=193 data-nosnippet>193</a>            ComponentType::GreaseCACA =&gt; <span class="number">0xcaca</span>,
-<a href=#194 id=194 data-nosnippet>194</a>            ComponentType::GreaseDADA =&gt; <span class="number">0xdada</span>,
-<a href=#195 id=195 data-nosnippet>195</a>            ComponentType::GreaseEAEA =&gt; <span class="number">0xeaea</span>,
-<a href=#196 id=196 data-nosnippet>196</a>
-<a href=#197 id=197 data-nosnippet>197</a>            ComponentType::Unknown(UnknownComponentId(id)) =&gt; id,
-<a href=#198 id=198 data-nosnippet>198</a>            ComponentType::Private(PrivateComponentId(id)) =&gt; id,
-<a href=#199 id=199 data-nosnippet>199</a>        }
-<a href=#200 id=200 data-nosnippet>200</a>    }
-<a href=#201 id=201 data-nosnippet>201</a>}
-<a href=#202 id=202 data-nosnippet>202</a>
-<a href=#203 id=203 data-nosnippet>203</a><span class="doccomment">/// A list of [`ComponentId`]s.
-<a href=#204 id=204 data-nosnippet>204</a>///
-<a href=#205 id=205 data-nosnippet>205</a>/// Used as the body of the `safe_aad` component in the `app_data_dictionary`
-<a href=#206 id=206 data-nosnippet>206</a>/// extension. When present in a LeafNode it lists supported components. When
-<a href=#207 id=207 data-nosnippet>207</a>/// present in the GroupContext it lists components whose Safe AAD must be
-<a href=#208 id=208 data-nosnippet>208</a>/// understood by the entire group.
-<a href=#209 id=209 data-nosnippet>209</a>///
-<a href=#210 id=210 data-nosnippet>210</a>/// ```tls
-<a href=#211 id=211 data-nosnippet>211</a>/// struct {
-<a href=#212 id=212 data-nosnippet>212</a>///     ComponentID component_ids&lt;V&gt;;
-<a href=#213 id=213 data-nosnippet>213</a>/// } ComponentsList;
-<a href=#214 id=214 data-nosnippet>214</a>/// ```
-<a href=#215 id=215 data-nosnippet>215</a></span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#216 id=216 data-nosnippet>216</a>#[derive(
-<a href=#217 id=217 data-nosnippet>217</a>    PartialEq,
-<a href=#218 id=218 data-nosnippet>218</a>    Eq,
-<a href=#219 id=219 data-nosnippet>219</a>    Clone,
-<a href=#220 id=220 data-nosnippet>220</a>    Debug,
-<a href=#221 id=221 data-nosnippet>221</a>    Default,
-<a href=#222 id=222 data-nosnippet>222</a>    Serialize,
-<a href=#223 id=223 data-nosnippet>223</a>    Deserialize,
-<a href=#224 id=224 data-nosnippet>224</a>    TlsSerialize,
-<a href=#225 id=225 data-nosnippet>225</a>    TlsDeserialize,
-<a href=#226 id=226 data-nosnippet>226</a>    TlsDeserializeBytes,
-<a href=#227 id=227 data-nosnippet>227</a>    TlsSize,
-<a href=#228 id=228 data-nosnippet>228</a>)]
-<a href=#229 id=229 data-nosnippet>229</a></span><span class="kw">pub struct </span>ComponentsList {
-<a href=#230 id=230 data-nosnippet>230</a>    component_ids: Vec&lt;ComponentId&gt;,
-<a href=#231 id=231 data-nosnippet>231</a>}
-<a href=#232 id=232 data-nosnippet>232</a>
-<a href=#233 id=233 data-nosnippet>233</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
-<a href=#234 id=234 data-nosnippet>234</a></span><span class="kw">impl </span>ComponentsList {
-<a href=#235 id=235 data-nosnippet>235</a>    <span class="doccomment">/// Create a new [`ComponentsList`] from a vector of [`ComponentId`]s.
-<a href=#236 id=236 data-nosnippet>236</a>    </span><span class="kw">pub fn </span>new(component_ids: Vec&lt;ComponentId&gt;) -&gt; <span class="self">Self </span>{
-<a href=#237 id=237 data-nosnippet>237</a>        <span class="self">Self </span>{ component_ids }
-<a href=#238 id=238 data-nosnippet>238</a>    }
-<a href=#239 id=239 data-nosnippet>239</a>
-<a href=#240 id=240 data-nosnippet>240</a>    <span class="doccomment">/// Access the underlying ids.
-<a href=#241 id=241 data-nosnippet>241</a>    </span><span class="kw">pub fn </span>ids(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[ComponentId] {
-<a href=#242 id=242 data-nosnippet>242</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.component_ids
-<a href=#243 id=243 data-nosnippet>243</a>    }
-<a href=#244 id=244 data-nosnippet>244</a>
-<a href=#245 id=245 data-nosnippet>245</a>    <span class="doccomment">/// Consume self and return the ids.
-<a href=#246 id=246 data-nosnippet>246</a>    </span><span class="kw">pub fn </span>into_ids(<span class="self">self</span>) -&gt; Vec&lt;ComponentId&gt; {
-<a href=#247 id=247 data-nosnippet>247</a>        <span class="self">self</span>.component_ids
-<a href=#248 id=248 data-nosnippet>248</a>    }
-<a href=#249 id=249 data-nosnippet>249</a>}
-<a href=#250 id=250 data-nosnippet>250</a>
-<a href=#251 id=251 data-nosnippet>251</a><span class="doccomment">/// Label for safe encryption/decryption as defined in Section 4.2 of the MLS Extensions draft
-<a href=#252 id=252 data-nosnippet>252</a></span><span class="attr">#[derive(Debug, TlsSerialize, TlsSize)]
-<a href=#253 id=253 data-nosnippet>253</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ComponentOperationLabel {
-<a href=#254 id=254 data-nosnippet>254</a>    <span class="doccomment">/// "Application"
-<a href=#255 id=255 data-nosnippet>255</a>    </span>base_label: VLBytes,
-<a href=#256 id=256 data-nosnippet>256</a>    component_id: ComponentId,
-<a href=#257 id=257 data-nosnippet>257</a>    label: VLBytes,
-<a href=#258 id=258 data-nosnippet>258</a>}
-<a href=#259 id=259 data-nosnippet>259</a>
-<a href=#260 id=260 data-nosnippet>260</a><span class="kw">const </span>COMPONENT_OPERATION_BASE_LABEL: <span class="kw-2">&amp;</span>[u8] = <span class="string">b"Application"</span>;
-<a href=#261 id=261 data-nosnippet>261</a>
-<a href=#262 id=262 data-nosnippet>262</a><span class="kw">impl </span>ComponentOperationLabel {
-<a href=#263 id=263 data-nosnippet>263</a>    <span class="doccomment">/// Creates a new ComponentOperationLabel, prefixed with "Application"
-<a href=#264 id=264 data-nosnippet>264</a>    </span><span class="kw">pub fn </span>new(component_id: ComponentId, label: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
-<a href=#265 id=265 data-nosnippet>265</a>        <span class="self">Self </span>{
-<a href=#266 id=266 data-nosnippet>266</a>            base_label: COMPONENT_OPERATION_BASE_LABEL.into(),
-<a href=#267 id=267 data-nosnippet>267</a>            component_id,
-<a href=#268 id=268 data-nosnippet>268</a>            label: label.as_bytes().into(),
-<a href=#269 id=269 data-nosnippet>269</a>        }
-<a href=#270 id=270 data-nosnippet>270</a>    }
-<a href=#271 id=271 data-nosnippet>271</a>}
+<a href=#114 id=114 data-nosnippet>114</a>
+<a href=#115 id=115 data-nosnippet>115</a>    <span class="doccomment">/// An unknown component id in the standardized range (0x0000-0x7fff)
+<a href=#116 id=116 data-nosnippet>116</a>    </span>Unknown(UnknownComponentId),
+<a href=#117 id=117 data-nosnippet>117</a>
+<a href=#118 id=118 data-nosnippet>118</a>    <span class="doccomment">/// A component id from the private range (0x8000-0xffff)
+<a href=#119 id=119 data-nosnippet>119</a>    </span>Private(PrivateComponentId),
+<a href=#120 id=120 data-nosnippet>120</a>}
+<a href=#121 id=121 data-nosnippet>121</a>
+<a href=#122 id=122 data-nosnippet>122</a><span class="kw">impl </span>From&lt;ComponentId&gt; <span class="kw">for </span>ComponentType {
+<a href=#123 id=123 data-nosnippet>123</a>    <span class="kw">fn </span>from(value: ComponentId) -&gt; <span class="self">Self </span>{
+<a href=#124 id=124 data-nosnippet>124</a>        <span class="comment">// We allow this here because we use the overlapping one at the bottom (..0x8000) as a catch-all.
+<a href=#125 id=125 data-nosnippet>125</a>        // This would be annoying to do explicitly because of the sparse GREASE values.
+<a href=#126 id=126 data-nosnippet>126</a>        </span><span class="attr">#[allow(clippy::match_overlapping_arm)]
+<a href=#127 id=127 data-nosnippet>127</a>        </span><span class="kw">match </span>value {
+<a href=#128 id=128 data-nosnippet>128</a>            <span class="number">0 </span>=&gt; <span class="self">Self</span>::Reserved,
+<a href=#129 id=129 data-nosnippet>129</a>            <span class="number">1 </span>=&gt; <span class="self">Self</span>::AppComponents,
+<a href=#130 id=130 data-nosnippet>130</a>            <span class="number">2 </span>=&gt; <span class="self">Self</span>::SafeAad,
+<a href=#131 id=131 data-nosnippet>131</a>            <span class="number">3 </span>=&gt; <span class="self">Self</span>::ComponentMediaTypes,
+<a href=#132 id=132 data-nosnippet>132</a>            <span class="number">4 </span>=&gt; <span class="self">Self</span>::LastResortKeyPackage,
+<a href=#133 id=133 data-nosnippet>133</a>            <span class="number">5 </span>=&gt; <span class="self">Self</span>::AppAck,
+<a href=#134 id=134 data-nosnippet>134</a>
+<a href=#135 id=135 data-nosnippet>135</a>            <span class="number">0x0a0a </span>=&gt; <span class="self">Self</span>::Grease0A0A,
+<a href=#136 id=136 data-nosnippet>136</a>            <span class="number">0x1a1a </span>=&gt; <span class="self">Self</span>::Grease1A1A,
+<a href=#137 id=137 data-nosnippet>137</a>            <span class="number">0x2a2a </span>=&gt; <span class="self">Self</span>::Grease2A2A,
+<a href=#138 id=138 data-nosnippet>138</a>            <span class="number">0x3a3a </span>=&gt; <span class="self">Self</span>::Grease3A3A,
+<a href=#139 id=139 data-nosnippet>139</a>            <span class="number">0x4a4a </span>=&gt; <span class="self">Self</span>::Grease4A4A,
+<a href=#140 id=140 data-nosnippet>140</a>            <span class="number">0x5a5a </span>=&gt; <span class="self">Self</span>::Grease5A5A,
+<a href=#141 id=141 data-nosnippet>141</a>            <span class="number">0x6a6a </span>=&gt; <span class="self">Self</span>::Grease6A6A,
+<a href=#142 id=142 data-nosnippet>142</a>            <span class="number">0x7a7a </span>=&gt; <span class="self">Self</span>::Grease7A7A,
+<a href=#143 id=143 data-nosnippet>143</a>
+<a href=#144 id=144 data-nosnippet>144</a>            <span class="number">6</span>..<span class="number">0x8000 </span>=&gt; <span class="self">Self</span>::Unknown(UnknownComponentId(value)),
+<a href=#145 id=145 data-nosnippet>145</a>            <span class="number">0x8000</span>.. =&gt; <span class="self">Self</span>::Private(PrivateComponentId(value)),
+<a href=#146 id=146 data-nosnippet>146</a>        }
+<a href=#147 id=147 data-nosnippet>147</a>    }
+<a href=#148 id=148 data-nosnippet>148</a>}
+<a href=#149 id=149 data-nosnippet>149</a>
+<a href=#150 id=150 data-nosnippet>150</a><span class="kw">impl </span>From&lt;ComponentType&gt; <span class="kw">for </span>ComponentId {
+<a href=#151 id=151 data-nosnippet>151</a>    <span class="kw">fn </span>from(value: ComponentType) -&gt; <span class="self">Self </span>{
+<a href=#152 id=152 data-nosnippet>152</a>        <span class="kw">match </span>value {
+<a href=#153 id=153 data-nosnippet>153</a>            ComponentType::Reserved =&gt; <span class="number">0</span>,
+<a href=#154 id=154 data-nosnippet>154</a>            ComponentType::AppComponents =&gt; <span class="number">1</span>,
+<a href=#155 id=155 data-nosnippet>155</a>            ComponentType::SafeAad =&gt; <span class="number">2</span>,
+<a href=#156 id=156 data-nosnippet>156</a>            ComponentType::ComponentMediaTypes =&gt; <span class="number">3</span>,
+<a href=#157 id=157 data-nosnippet>157</a>            ComponentType::LastResortKeyPackage =&gt; <span class="number">4</span>,
+<a href=#158 id=158 data-nosnippet>158</a>            ComponentType::AppAck =&gt; <span class="number">5</span>,
+<a href=#159 id=159 data-nosnippet>159</a>
+<a href=#160 id=160 data-nosnippet>160</a>            ComponentType::Grease0A0A =&gt; <span class="number">0x0a0a</span>,
+<a href=#161 id=161 data-nosnippet>161</a>            ComponentType::Grease1A1A =&gt; <span class="number">0x1a1a</span>,
+<a href=#162 id=162 data-nosnippet>162</a>            ComponentType::Grease2A2A =&gt; <span class="number">0x2a2a</span>,
+<a href=#163 id=163 data-nosnippet>163</a>            ComponentType::Grease3A3A =&gt; <span class="number">0x3a3a</span>,
+<a href=#164 id=164 data-nosnippet>164</a>            ComponentType::Grease4A4A =&gt; <span class="number">0x4a4a</span>,
+<a href=#165 id=165 data-nosnippet>165</a>            ComponentType::Grease5A5A =&gt; <span class="number">0x5a5a</span>,
+<a href=#166 id=166 data-nosnippet>166</a>            ComponentType::Grease6A6A =&gt; <span class="number">0x6a6a</span>,
+<a href=#167 id=167 data-nosnippet>167</a>            ComponentType::Grease7A7A =&gt; <span class="number">0x7a7a</span>,
+<a href=#168 id=168 data-nosnippet>168</a>
+<a href=#169 id=169 data-nosnippet>169</a>            ComponentType::Unknown(UnknownComponentId(id)) =&gt; id,
+<a href=#170 id=170 data-nosnippet>170</a>            ComponentType::Private(PrivateComponentId(id)) =&gt; id,
+<a href=#171 id=171 data-nosnippet>171</a>        }
+<a href=#172 id=172 data-nosnippet>172</a>    }
+<a href=#173 id=173 data-nosnippet>173</a>}
+<a href=#174 id=174 data-nosnippet>174</a>
+<a href=#175 id=175 data-nosnippet>175</a><span class="doccomment">/// A list of [`ComponentId`]s.
+<a href=#176 id=176 data-nosnippet>176</a>///
+<a href=#177 id=177 data-nosnippet>177</a>/// Used as the body of the `safe_aad` component in the `app_data_dictionary`
+<a href=#178 id=178 data-nosnippet>178</a>/// extension. When present in a LeafNode it lists supported components. When
+<a href=#179 id=179 data-nosnippet>179</a>/// present in the GroupContext it lists components whose Safe AAD must be
+<a href=#180 id=180 data-nosnippet>180</a>/// understood by the entire group.
+<a href=#181 id=181 data-nosnippet>181</a>///
+<a href=#182 id=182 data-nosnippet>182</a>/// ```tls
+<a href=#183 id=183 data-nosnippet>183</a>/// struct {
+<a href=#184 id=184 data-nosnippet>184</a>///     ComponentID component_ids&lt;V&gt;;
+<a href=#185 id=185 data-nosnippet>185</a>/// } ComponentsList;
+<a href=#186 id=186 data-nosnippet>186</a>/// ```
+<a href=#187 id=187 data-nosnippet>187</a></span><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#188 id=188 data-nosnippet>188</a>#[derive(
+<a href=#189 id=189 data-nosnippet>189</a>    PartialEq,
+<a href=#190 id=190 data-nosnippet>190</a>    Eq,
+<a href=#191 id=191 data-nosnippet>191</a>    Clone,
+<a href=#192 id=192 data-nosnippet>192</a>    Debug,
+<a href=#193 id=193 data-nosnippet>193</a>    Default,
+<a href=#194 id=194 data-nosnippet>194</a>    Serialize,
+<a href=#195 id=195 data-nosnippet>195</a>    Deserialize,
+<a href=#196 id=196 data-nosnippet>196</a>    TlsSerialize,
+<a href=#197 id=197 data-nosnippet>197</a>    TlsDeserialize,
+<a href=#198 id=198 data-nosnippet>198</a>    TlsDeserializeBytes,
+<a href=#199 id=199 data-nosnippet>199</a>    TlsSize,
+<a href=#200 id=200 data-nosnippet>200</a>)]
+<a href=#201 id=201 data-nosnippet>201</a></span><span class="kw">pub struct </span>ComponentsList {
+<a href=#202 id=202 data-nosnippet>202</a>    component_ids: Vec&lt;ComponentId&gt;,
+<a href=#203 id=203 data-nosnippet>203</a>}
+<a href=#204 id=204 data-nosnippet>204</a>
+<a href=#205 id=205 data-nosnippet>205</a><span class="attr">#[cfg(feature = <span class="string">"extensions-draft"</span>)]
+<a href=#206 id=206 data-nosnippet>206</a></span><span class="kw">impl </span>ComponentsList {
+<a href=#207 id=207 data-nosnippet>207</a>    <span class="doccomment">/// Create a new [`ComponentsList`] from a vector of [`ComponentId`]s.
+<a href=#208 id=208 data-nosnippet>208</a>    </span><span class="kw">pub fn </span>new(component_ids: Vec&lt;ComponentId&gt;) -&gt; <span class="self">Self </span>{
+<a href=#209 id=209 data-nosnippet>209</a>        <span class="self">Self </span>{ component_ids }
+<a href=#210 id=210 data-nosnippet>210</a>    }
+<a href=#211 id=211 data-nosnippet>211</a>
+<a href=#212 id=212 data-nosnippet>212</a>    <span class="doccomment">/// Access the underlying ids.
+<a href=#213 id=213 data-nosnippet>213</a>    </span><span class="kw">pub fn </span>ids(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[ComponentId] {
+<a href=#214 id=214 data-nosnippet>214</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.component_ids
+<a href=#215 id=215 data-nosnippet>215</a>    }
+<a href=#216 id=216 data-nosnippet>216</a>
+<a href=#217 id=217 data-nosnippet>217</a>    <span class="doccomment">/// Consume self and return the ids.
+<a href=#218 id=218 data-nosnippet>218</a>    </span><span class="kw">pub fn </span>into_ids(<span class="self">self</span>) -&gt; Vec&lt;ComponentId&gt; {
+<a href=#219 id=219 data-nosnippet>219</a>        <span class="self">self</span>.component_ids
+<a href=#220 id=220 data-nosnippet>220</a>    }
+<a href=#221 id=221 data-nosnippet>221</a>}
+<a href=#222 id=222 data-nosnippet>222</a>
+<a href=#223 id=223 data-nosnippet>223</a><span class="doccomment">/// Label for safe encryption/decryption as defined in Section 4.2 of the MLS Extensions draft
+<a href=#224 id=224 data-nosnippet>224</a></span><span class="attr">#[derive(Debug, TlsSerialize, TlsSize)]
+<a href=#225 id=225 data-nosnippet>225</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ComponentOperationLabel {
+<a href=#226 id=226 data-nosnippet>226</a>    <span class="doccomment">/// "Application"
+<a href=#227 id=227 data-nosnippet>227</a>    </span>base_label: VLBytes,
+<a href=#228 id=228 data-nosnippet>228</a>    component_id: ComponentId,
+<a href=#229 id=229 data-nosnippet>229</a>    label: VLBytes,
+<a href=#230 id=230 data-nosnippet>230</a>}
+<a href=#231 id=231 data-nosnippet>231</a>
+<a href=#232 id=232 data-nosnippet>232</a><span class="kw">const </span>COMPONENT_OPERATION_BASE_LABEL: <span class="kw-2">&amp;</span>[u8] = <span class="string">b"Application"</span>;
+<a href=#233 id=233 data-nosnippet>233</a>
+<a href=#234 id=234 data-nosnippet>234</a><span class="kw">impl </span>ComponentOperationLabel {
+<a href=#235 id=235 data-nosnippet>235</a>    <span class="doccomment">/// Creates a new ComponentOperationLabel, prefixed with "Application"
+<a href=#236 id=236 data-nosnippet>236</a>    </span><span class="kw">pub fn </span>new(component_id: ComponentId, label: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+<a href=#237 id=237 data-nosnippet>237</a>        <span class="self">Self </span>{
+<a href=#238 id=238 data-nosnippet>238</a>            base_label: COMPONENT_OPERATION_BASE_LABEL.into(),
+<a href=#239 id=239 data-nosnippet>239</a>            component_id,
+<a href=#240 id=240 data-nosnippet>240</a>            label: label.as_bytes().into(),
+<a href=#241 id=241 data-nosnippet>241</a>        }
+<a href=#242 id=242 data-nosnippet>242</a>    }
+<a href=#243 id=243 data-nosnippet>243</a>}
 </code></pre></div></section></main></body></html>
