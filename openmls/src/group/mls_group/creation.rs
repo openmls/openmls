@@ -2230,7 +2230,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
                     if !unseen_old_credentials.is_empty() {
                         let missing: Vec<_> = unseen_old_credentials
                             .into_iter()
-                            .map(Clone::clone)
+                            .cloned()
                             .collect();
                         return Err(WelcomeError::ReInitLeavesMissing(missing));
                     }
