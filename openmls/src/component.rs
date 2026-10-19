@@ -111,20 +111,6 @@ pub enum ComponentType {
     Grease6A6A = 0x6a6a,
     /// The GREASE component with ID 0x7A7A.
     Grease7A7A = 0x7a7a,
-    /// The GREASE component with ID 0x8A8A.
-    Grease8A8A = 0x8a8a,
-    /// The GREASE component with ID 0x9A9A.
-    Grease9A9A = 0x9a9a,
-    /// The GREASE component with ID 0xAAAA.
-    GreaseAAAA = 0xaaaa,
-    /// The GREASE component with ID 0xBABA.
-    GreaseBABA = 0xbaba,
-    /// The GREASE component with ID 0xCACA.
-    GreaseCACA = 0xcaca,
-    /// The GREASE component with ID 0xDADA.
-    GreaseDADA = 0xdada,
-    /// The GREASE component with ID 0xEAEA.
-    GreaseEAEA = 0xeaea,
 
     /// An unknown component id in the standardized range (0x0000-0x7fff)
     Unknown(UnknownComponentId),
@@ -154,13 +140,6 @@ impl From<ComponentId> for ComponentType {
             0x5a5a => Self::Grease5A5A,
             0x6a6a => Self::Grease6A6A,
             0x7a7a => Self::Grease7A7A,
-            0x8a8a => Self::Grease8A8A,
-            0x9a9a => Self::Grease9A9A,
-            0xaaaa => Self::GreaseAAAA,
-            0xbaba => Self::GreaseBABA,
-            0xcaca => Self::GreaseCACA,
-            0xdada => Self::GreaseDADA,
-            0xeaea => Self::GreaseEAEA,
 
             6..0x8000 => Self::Unknown(UnknownComponentId(value)),
             0x8000.. => Self::Private(PrivateComponentId(value)),
@@ -186,13 +165,6 @@ impl From<ComponentType> for ComponentId {
             ComponentType::Grease5A5A => 0x5a5a,
             ComponentType::Grease6A6A => 0x6a6a,
             ComponentType::Grease7A7A => 0x7a7a,
-            ComponentType::Grease8A8A => 0x8a8a,
-            ComponentType::Grease9A9A => 0x9a9a,
-            ComponentType::GreaseAAAA => 0xaaaa,
-            ComponentType::GreaseBABA => 0xbaba,
-            ComponentType::GreaseCACA => 0xcaca,
-            ComponentType::GreaseDADA => 0xdada,
-            ComponentType::GreaseEAEA => 0xeaea,
 
             ComponentType::Unknown(UnknownComponentId(id)) => id,
             ComponentType::Private(PrivateComponentId(id)) => id,

@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#2284](https://github.com/openmls/openmls/issues/2284): `ComponentType::from` now maps component IDs 0x8A8A, 0x9A9A, 0xAAAA, 0xBABA, 0xCACA, 0xDADA and 0xEAEA to `ComponentType::Private`. They are in the private-use range of the MLS Component Types registry, which has only the GREASE values 0x0A0A to 0x7A7A. The variants `ComponentType::Grease8A8A` to `ComponentType::GreaseEAEA` are removed.
 - [#2162](https://github.com/openmls/openmls/pull/2162): `Extensions::unknown()` now finds a GREASE extension that is present in the set, where it previously returned `None`.
 - [#2127](https://github.com/openmls/openmls/pull/2127): `MlsGroup` and `PublicGroup` message processing now accept `PreSharedKey` proposals from external senders. Previously they were rejected with `UnsupportedProposalType`.
 - [#2127](https://github.com/openmls/openmls/pull/2127): `Extension::extension_type()` now maps a GREASE-valued extension to `ExtensionType::Grease(_)` instead of `ExtensionType::Unknown(_)`, consistent with `ExtensionType::from(u16)`. GREASE is tolerated (like an unknown extension type) in leaf-node, key-package, group-info and group-context validation, without exempting it from the check that an extension be declared in `capabilities`. Previously a GREASE-valued extension was reported as `Unknown`, so this GREASE-aware validation did not recognize it and could reject peers that decorate leaf/key-package extensions with GREASE.
