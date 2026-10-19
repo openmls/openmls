@@ -146,11 +146,6 @@ impl PublicGroup {
 
     /// Like [`Self::from_external`], but checks the lifetimes of the leaf nodes
     /// in the ratchet tree under `lifetime_policy`.
-    ///
-    /// A leaf node keeps the lifetime of its key package until its member
-    /// sends an Update or a commit with a path, so the ratchet tree can contain
-    /// expired leaf nodes. RFC 9420, Section 7.3, recommends the check for
-    /// received leaf nodes but does not require it.
     #[openmls_traits::maybe_async]
     pub async fn from_external_with_lifetime_policy<StorageProvider, StorageError>(
         crypto: &impl OpenMlsCrypto,

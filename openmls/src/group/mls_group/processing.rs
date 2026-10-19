@@ -266,12 +266,6 @@ impl MlsGroup {
     /// packages in Add proposals under `lifetime_policy`.
     /// [`Self::process_message`] uses [`LeafNodeLifetimePolicy::Verify`].
     ///
-    /// The policy is not stored on the group. A member that was offline can,
-    /// for example, process an older commit with
-    /// [`LeafNodeLifetimePolicy::Skip`] if the key package it adds has expired
-    /// in the meantime. An Add proposal committed by reference is checked
-    /// again when the commit is processed, under the policy of that call.
-    ///
     #[cfg_attr(
         feature = "extensions-draft",
         doc = "If the call returns a [`ProcessedMessageContent::UnresolvedAppDataCommit`],\n\

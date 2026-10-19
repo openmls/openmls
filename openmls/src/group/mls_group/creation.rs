@@ -2063,10 +2063,6 @@ impl StagedVcExternalCommitJoin {
 }
 
 /// How the lifetime of a leaf node is checked.
-///
-/// Only leaf nodes from key packages carry a lifetime: the key package in an
-/// Add proposal, and a leaf node in the ratchet tree that has not been
-/// replaced by an Update or a commit path since its member was added.
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LeafNodeLifetimePolicy {
     /// Check the lifetime against the current time.
