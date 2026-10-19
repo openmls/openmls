@@ -541,6 +541,26 @@ impl PublicGroup {
                     None,
                 ))
             }
+            #[cfg(feature = "extensions-draft")]
+            FramedContentBody::Proposal(Proposal::AppDataUpdate(_)) => {
+                let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                    QueuedProposal::from_authenticated_content_by_ref(
+                        self.ciphersuite(),
+                        crypto,
+                        content,
+                    )?,
+                ));
+                Ok(ProcessedMessage::new(
+                    self.group_id().clone(),
+                    self.group_context().epoch(),
+                    sender,
+                    data,
+                    content,
+                    credential,
+                    #[cfg(feature = "virtual-clients-draft")]
+                    None,
+                ))
+            }
             // TODO #151/#106
             FramedContentBody::Proposal(_) => {
                 Err(PublicProcessMessageError::UnsupportedProposalType)
