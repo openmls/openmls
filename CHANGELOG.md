@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [#2291](https://github.com/openmls/openmls/issues/2291): With `extensions-draft`, the component operation `base_label` is "MLS Component" (draft-ietf-mls-extensions-10 §4.1), not "Application". SafeEncrypt/SafeDecrypt ciphertexts change.
 - [#2284](https://github.com/openmls/openmls/issues/2284): `ComponentType::from` now maps component IDs 0x8A8A, 0x9A9A, 0xAAAA, 0xBABA, 0xCACA, 0xDADA and 0xEAEA to `ComponentType::Private`. They are in the private-use range of the MLS Component Types registry, which has only the GREASE values 0x0A0A to 0x7A7A. The variants `ComponentType::Grease8A8A` to `ComponentType::GreaseEAEA` are removed.
 - [#2162](https://github.com/openmls/openmls/pull/2162): `Extensions::unknown()` now finds a GREASE extension that is present in the set, where it previously returned `None`.
 - [#2127](https://github.com/openmls/openmls/pull/2127): `MlsGroup` and `PublicGroup` message processing now accept `PreSharedKey` proposals from external senders. Previously they were rejected with `UnsupportedProposalType`.
