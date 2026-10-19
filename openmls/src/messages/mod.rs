@@ -20,7 +20,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     framing::SenderContext,
-    group::{errors::ValidationError, WelcomeError, WelcomeKeyMaterial},
+    group::{errors::ValidationError, LeafNodeLifetimePolicy, WelcomeError, WelcomeKeyMaterial},
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     storage::OpenMlsProvider,
     treesync::{
@@ -280,11 +280,12 @@ impl CommitIn {
         crypto: &impl OpenMlsCrypto,
         sender_context: SenderContext,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<Commit, ValidationError> {
         let proposals = self
             .proposals
             .into_iter()
-            .map(|p| p.validate(crypto, ciphersuite, protocol_version))
+            .map(|p| p.validate(crypto, ciphersuite, protocol_version, lifetime_policy))
             .collect::<Result<Vec<_>, _>>()?;
 
         let path = if let Some(path) = self.path {
@@ -377,11 +378,11 @@ pub struct ConfirmationTag(pub(crate) Mac);
 
 /// PathSecret
 ///
-/// > 11.2.2. Welcoming New Members
+/// > RFC 9420 12.4.3.1. Joining via Welcome Message
 ///
 /// ```text
 /// struct {
-///   opaque path_secret<1..255>;
+///   opaque path_secret<V>;
 /// } PathSecret;
 /// ```
 #[derive(

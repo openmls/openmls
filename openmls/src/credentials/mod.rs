@@ -111,7 +111,7 @@ impl CredentialType {
     /// GREASE values are used to ensure implementations properly handle unknown
     /// credential types. See [RFC 9420 Section 13.5](https://www.rfc-editor.org/rfc/rfc9420.html#section-13.5).
     pub fn is_grease(&self) -> bool {
-        matches!(self, CredentialType::Grease(_))
+        matches!(self, CredentialType::Grease(v) if crate::grease::is_grease_value(*v))
     }
 }
 
@@ -135,7 +135,15 @@ impl TlsDeserializeTrait for CredentialType {
 
 impl TlsSerializeTrait for CredentialType {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
-        writer.write_all(&u16::from(*self).to_be_bytes())?;
+        let value = u16::from(*self);
+        // `Other` and `Grease` accept any value. Refuse to encode one that
+        // would decode as a different credential type.
+        if CredentialType::from(value) != *self {
+            return Err(Error::EncodingError(format!(
+                "{self:?} is encoded as {value:#06x}, which decodes as a different credential type"
+            )));
+        }
+        writer.write_all(&value.to_be_bytes())?;
 
         Ok(2)
     }

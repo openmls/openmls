@@ -345,7 +345,7 @@ fn test_valn0104_new_member_capabilities_not_support_all_credential_types() {
         &dave_party,
         "alice",
         ciphersuite,
-        vec![CredentialType::Basic, CredentialType::Other(2)],
+        vec![CredentialType::Basic, CredentialType::Other(4)],
     ));
 
     // Case with right capabilities; should succeed
