@@ -2208,7 +2208,7 @@ fn reinit_group() {
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
         .build();
-    let bob_successor = StagedWelcome::build_from_reinit(
+    let bob_staged_welcome = StagedWelcome::build_from_reinit(
         bob_provider,
         &join_config,
         successor_welcome,
@@ -2216,10 +2216,12 @@ fn reinit_group() {
     )
     .unwrap()
     .with_ratchet_tree(alice_successor.export_ratchet_tree().into())
+    // .check_members(false) // optional; the membership check is on by default
     .build()
-    .unwrap()
-    .into_group(bob_provider)
     .unwrap();
+    // when setting .check_members(false): check that `bob_staged_welcome.members()`
+    // represents the same members as `bob_reinit_info.member_credentials()`.
+    let bob_successor = bob_staged_welcome.into_group(bob_provider).unwrap();
     // ANCHOR_END: reinit_join
 
     assert_eq!(

@@ -562,7 +562,7 @@ impl From<Secret> for PskSecret {
 ///
 /// * `storage` - Storage provider to fetch `External` PSKs from
 /// * `resumption_psk_store` - past application resumption PSKs of this group
-/// * `group_id_option` - application resumption PSKs must match this `psk_group_id`.
+/// * `group_id` - application resumption PSKs must match this `psk_group_id`.
 ///   If None, no resumption PSKs of type `application` are allowed.
 /// * `foreign_resumption_psk` - resumption PSK of use `reinit` or `branch` from predecessor/parent group
 /// * `psk_ids` - IDs to load

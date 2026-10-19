@@ -1,7 +1,7 @@
 # Sub-group branching
 
 Sometimes a subset of the members in a group want to continue in a separate, smaller
-group without setting up an new group from scratch. MLS supports this with
+group without setting up a new group from scratch. MLS supports this with
 *sub-group branching* ([RFC 9420 §11.3]): a new group is created with the same
 parameters as an existing (parent) group, and its key schedule is seeded with a
 resumption PSK derived from the parent. This cryptographically ties the new
@@ -63,7 +63,7 @@ was taken and when its `Welcome` arrives, so the receiver first needs to find ou
 the `Welcome`'s encrypted `GroupSecrets`, so reading it requires decrypting the
 `Welcome`.
 
-`StagedWelcome::process_resuming_welcome` does exactly one decryption and returns a
+`StagedWelcome::process_resuming_welcome` does one decryption and returns a
 `PendingResumingWelcome`. Call `required_resumption_secret()` on it to get the branch
 resumption PSK, which holds the parent `(group_id, epoch)` the branch was taken
 from (see [RFC 9420 §8.4]). Its `usage()` is `ResumptionPskUsage::Branch` for a
@@ -85,9 +85,9 @@ must be at epoch 1.
 Every sub-group member must also be a member of the parent group.
 A simple membership check by equal credential is on by default and can be disabled with
 `JoinBuilder::check_members(false)`. In that case, the application **must** ensure that the new
-member credentials match old ones captured in `BranchInfo::member_credentials()`.
-This is the case when the application uses credentials that don't allow checking
-equivalence of members by checking exact equality of credentials.
+member credentials in `StagedWelcome::members()` match old ones captured in
+`BranchInfo::member_credentials()`. Use this path when the application uses credentials
+that don't allow checking equivalence of members by checking exact equality of credentials.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_sub_groups.rs:receiver_peek_branch}}
