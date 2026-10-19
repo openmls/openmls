@@ -115,7 +115,6 @@ fn subgroup_branching() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .build();
 
     let ((alice_credential, alice_signer), (bob_credential, bob_signer), alice_group, bob_group) =
@@ -136,7 +135,6 @@ fn subgroup_branching() {
     // operation. The sub-group uses the parent's ciphersuite automatically.
     let (mut alice_bob_sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -190,7 +188,6 @@ fn subgroup_branch_rejects_non_matching_leaf() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .build();
 
     let ((alice_credential, alice_signer), (bob_credential, bob_signer), alice_group, bob_group) =
@@ -219,7 +216,6 @@ fn subgroup_branch_rejects_non_matching_leaf() {
     // Alice branches a subgroup that (incorrectly) also adds Dave.
     let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -270,7 +266,6 @@ fn subgroup_branch_rejects_parent_epoch_mismatch() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .build();
 
     let (
@@ -293,7 +288,6 @@ fn subgroup_branch_rejects_parent_epoch_mismatch() {
 
     let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -348,7 +342,6 @@ fn build_from_branch_rejects_non_branch_welcome() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .build();
 
     let ((_, alice_signer), _, mut alice_group, bob_group) = setup_group(
@@ -411,7 +404,6 @@ fn subgroup_branch_peek_parent_then_build() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .build();
 
     let ((alice_credential, alice_signer), (bob_credential, bob_signer), alice_group, bob_group) =
@@ -433,7 +425,6 @@ fn subgroup_branch_peek_parent_then_build() {
 
     let (mut alice_bob_sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -503,7 +494,6 @@ fn subgroup_branch_carrier_rejects_wrong_epoch() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .build();
 
     let (
@@ -525,7 +515,6 @@ fn subgroup_branch_carrier_rejects_wrong_epoch() {
 
     let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .branch(alice_group.branch_info())
         .build_branch(
             alice_provider,
@@ -578,7 +567,6 @@ fn process_resuming_welcome_no_resumption_psk_for_plain_welcome() {
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .build();
 
     let ((_, alice_signer), _, mut alice_group, _bob_group) = setup_group(

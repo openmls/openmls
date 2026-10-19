@@ -123,7 +123,6 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
     let old_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .build();
 
     let (
@@ -257,7 +256,6 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
 
     let (mut alice_successor, bundle) = MlsGroup::builder()
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .reinit(alice_reinit_info)
         .build_reinit(
             &alice_successor_provider,
@@ -282,7 +280,6 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
 
     let successor_join_config = MlsGroupJoinConfig::builder()
         .use_ratchet_tree_extension(true)
-        .number_of_resumption_psks(5)
         .build();
     let bob_successor = StagedWelcome::build_from_reinit(
         bob_successor_provider,
