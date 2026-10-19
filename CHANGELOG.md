@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- [#2290](https://github.com/openmls/openmls/issues/2290): `ExternalProposal::new_app_data_update` (`extensions-draft`) builds an AppDataUpdate proposal from an external sender.
+
+### Fixed
+
+- [#2290](https://github.com/openmls/openmls/issues/2290): With `extensions-draft`, `MlsGroup` and `PublicGroup` accept AppDataUpdate proposals from external senders (draft-ietf-mls-extensions-10 §4.7). They were rejected with `UnsupportedProposalType`.
+
 ## 0.10.0 (2026-11-23)
 
 ### Added
