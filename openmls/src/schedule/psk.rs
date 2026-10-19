@@ -561,7 +561,7 @@ impl From<Secret> for PskSecret {
 /// # Arguments
 ///
 /// * `storage` - Storage provider to fetch PSK secrets from
-/// * `group_id_option` - group ID to fetch resumption PSKs from.
+/// * `group_id` - group ID to fetch application resumption PSKs for.
 ///     Application resumption PSKs must match this `psk_group_id`.
 ///     If `None`, no resumption PSKs of type `application` are allowed.
 /// * `psk_ids` - IDs to load

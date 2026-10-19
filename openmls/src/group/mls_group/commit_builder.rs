@@ -414,9 +414,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info).
     ///
     /// This adds a resumption [`PreSharedKeyId`] of usage `Branch` to the initial
-    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
-    /// the parent group's resumption PSK secret so it is mixed into this
-    /// subgroup's key schedule.
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh.
     ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
     pub(crate) fn branch(
@@ -441,14 +439,12 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
 
     /// Reinitializes a group into this freshly created group, as described in [RFC 9420 §11.2].
     ///
-    /// Information about the old group comes from `reinit_info`, which the
+    /// Information about the old group comes from a [`ReInitInfo`](crate::group::ReInitInfo), which the
     /// predecessor exports with [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
-    /// We acept only the required parts here to avoid unnecessary `clone`.
+    /// We accept only the required fields here to avoid unnecessary `clone`.
     ///
     /// This adds a resumption [`PreSharedKeyId`] of usage `Reinit` to the initial
-    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
-    /// the old group's resumption PSK secret so it is mixed into this
-    /// new group's key schedule.
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh.
     ///
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
     pub(crate) fn reinit(

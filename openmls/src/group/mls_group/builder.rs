@@ -607,7 +607,7 @@ pub enum BranchError<StorageError> {
 /// step, as described in [RFC 9420 §11.2].
 ///
 /// This overrides the group_id, ciphersuite and group_context.extensions of the group_builder
-/// with value from the ReInit proposal.
+/// with values from the ReInit proposal.
 ///
 /// Create this with [`MlsGroupBuilder::reinit`].
 ///

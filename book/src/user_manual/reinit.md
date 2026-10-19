@@ -44,12 +44,11 @@ Commit the proposal:
 {{#include ../../../openmls/tests/book_code.rs:reinit_commit}}
 ```
 
-When commiting from the proposal queue, the application itself must make sure
+When committing from the proposal queue, the application itself must make sure
 that the ReInit proposal is the only one in the commit. If it accepts other
 proposals, building the commit will throw an error. [RFC 9420 §12.2] states that
-other proposals SHOULD be preferrred over ReInit. Applications that follow this
-advice must reject the ReInit proposal in `f` of `CommitBuilder::build` if there
-are other proposals.
+other proposals SHOULD be preferred over ReInit. Applications that follow this
+advice must reject the ReInit proposal in `f` of `CommitBuilder::build`.
 
 Every other member processes and merges the commit, which suspends their view of
 the group as well:
@@ -63,12 +62,14 @@ the group as well:
 All members export a `ReInitInfo` from their suspended old group
 with [`MlsGroup::reinit_info`](https://docs.rs/openmls/latest/openmls/group/struct.MlsGroup.html),
 passing the ReInit proposal the suspending commit covered. `reinit_info` returns
-`None` if the group is still active. The `ReInitInfo` contains all details needed to complete the
-reinit, so the old group can be discarded. The info carries the old group's
-resumption PSK secret and must be handled as sensitive key material.
+`None` if the group is still active. The `ReInitInfo` contains metadata needed to complete the
+reinit, but not the old group's resumption PSK secret.
+For this secret, the old group must remain in storage until the new group is fully initialized and
+`number_of_resumption_psks` must be at least 1.
 
-The committer or any ther member uses [`CommitBuilder::reinit`](https://docs.rs/openmls/latest/openmls/group/struct.CommitBuilder.html)
-to seed the new group with it. The application is responsible for
+
+The committer or any other member uses [`MlsGroupBuilder::reinit`](https://docs.rs/openmls/latest/openmls/group/struct.MlsGroupBuilder.html)
+to seed the new group. The application is responsible for
 seeding only a single successor from a suspended group:
 
 ```rust,no_run,noplayground
@@ -79,19 +80,16 @@ seeding only a single successor from a suspended group:
 
 The other members then join the successor group from the Welcome with
 [`StagedWelcome::build_from_reinit`](https://docs.rs/openmls/latest/openmls/group/struct.StagedWelcome.html).
-This injects the old group's resumption PSK and verifies that the reinit PSK in
-the Welcome references the old group and its final epoch; otherwise it fails with
-`WelcomeError::ReInitPredecessorMismatch`. The remaining checks run when `build`
-is called on the returned `JoinBuilder`: the successor's protocol version,
-ciphersuite, group id and extensions must match the ReInit proposal, the
-successor must be at epoch 1.
+This loads the old group's resumption PSK and verifies that the reinit PSK in
+the Welcome references the old group and its final epoch, and that the new group matches
+parameters set in the `ReInitProposal`.
 
-New group's members must be identical to the old group's. A simple membership check by
+The new group's members must be identical to the old group's. A simple membership check by
 equal credential is on by default and can be disabled with
 `JoinBuilder::check_members(false)`. In that case, the application **must** ensure that the new
-member credentials match the old ones captured in `ReInitInfo::member_credentials()`.
-This is the case when the application uses credentials that don't allow checking
-equivalence of members by checking exact equality of credentials.
+member credentials in `StagedWelcome::members()` match the old ones captured in
+`ReInitInfo::member_credentials()`. Use this path when the application uses credentials
+that don't allow checking equivalence of members by checking exact equality of credentials.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:reinit_join}}

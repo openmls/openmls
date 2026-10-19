@@ -167,7 +167,7 @@ pub enum WelcomeError<StorageError> {
     #[error("Got BranchInfo for non-Branch Welcome.")]
     NotABranch,
     /// The Welcome contains no ReInit resumption PSK but a ReInitInfo was given.
-    #[error("Got ReInitInfo for ReInit Welcome.")]
+    #[error("Got ReInitInfo for non-ReInit Welcome.")]
     NotAReInit,
 }
 
