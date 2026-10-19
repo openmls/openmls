@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-7421945f.js";
+            window.path_to_searchindex_js = "../searchindex-07a88673.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5c7e1a74.js"></script>
@@ -263,17 +263,17 @@ pub enum HpkeKemType {
     #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     MlKem1024 = 0x0042,
 
-    /// XWing combiner for ML-KEM and X25519
+    /// ML-KEM-768 + P-256 hybrid KEM
     ///</code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">    /// HKDF SHA 256
-    HkdfSha256 = 0x0001,
-
-    /// HKDF SHA 384</code></pre>
-<pre><code class="language-rust no_run noplayground">    HkdfSha512 = 0x0003,
-}
-
-/// AEAD Types for HPKE.</code></pre>
+<pre><code class="language-rust no_run noplayground">    ///
+    /// [draft-ietf-hpke-pq]: https://datatracker.ietf.org/doc/html/draft-ietf-hpke-pq
+    /// [draft-irtf-cfrg-concrete-hybrid-kems]: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-concrete-hybrid-kems
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]</code></pre>
+<pre><code class="language-rust no_run noplayground">    ///
+    /// Code point from [draft-ietf-hpke-pq], which registers it as
+    /// `MLKEM768-X25519`.
+    ///</code></pre>
 
                     </main>
 

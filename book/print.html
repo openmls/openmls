@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7421945f.js";
+            window.path_to_searchindex_js = "searchindex-07a88673.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5c7e1a74.js"></script>
@@ -3261,7 +3261,38 @@ A crypto provider backed by the high-assurance cryptography library [libcrux].</
 <ul>
 <li>MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</li>
 <li>MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519</li>
-<li>MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519</li>
+<li>MLS_128_DHKEMP256_AES128GCM_SHA256_P256</li>
+</ul>
+<p><strong>Post-quantum ciphersuites</strong>
+With the <code>draft-ietf-mls-pq-ciphersuites</code> feature, both providers additionally
+support ciphersuites from <a href="https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites">draft-ietf-mls-pq-ciphersuites</a>. The draft has no
+IANA code points yet, so OpenMLS uses provisional ones that may change.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Draft</th><th>Ciphersuite</th><th>Code point</th><th>Rust Crypto</th><th>Libcrux</th></tr>
+</thead>
+<tbody>
+<tr><td>TBD1</td><td>MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519</td><td>0x004F</td><td>✓</td><td>✓</td></tr>
+<tr><td>TBD2</td><td>MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519</td><td>0x004E</td><td>✓</td><td>✓</td></tr>
+<tr><td>TBD3</td><td>MLS_128_MLKEM768P256_AES128GCM_SHA256_P256</td><td>0xF050</td><td>✗ (1)</td><td>✓</td></tr>
+<tr><td>TBD4</td><td>MLS_128_MLKEM768P256_AES256GCM_SHA384_P256</td><td>0xF051</td><td>✗ (1)</td><td>✓</td></tr>
+<tr><td>TBD5</td><td>MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384</td><td>0xF052</td><td>✗ (1)</td><td>✗ (2)</td></tr>
+<tr><td>TBD6</td><td>MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519</td><td>0xF042</td><td>✓</td><td>✓</td></tr>
+<tr><td>TBD7</td><td>MLS_128_MLKEM768_AES256GCM_SHA384_P256</td><td>0x0050</td><td>✓</td><td>✓</td></tr>
+<tr><td>TBD8</td><td>MLS_192_MLKEM1024_AES256GCM_SHA384_P384</td><td>0x0042</td><td>✓</td><td>✗ (2)</td></tr>
+<tr><td>TBD9</td><td>MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44</td><td>0x0052</td><td>✓</td><td>✓</td></tr>
+<tr><td>TBD10</td><td>MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65</td><td>0x0051</td><td>✓</td><td>✓</td></tr>
+<tr><td>TBD11</td><td>MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87</td><td>0x0907</td><td>✓</td><td>✓</td></tr>
+<tr><td>–</td><td>MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87</td><td>0x0906</td><td>✓</td><td>✓</td></tr>
+<tr><td>–</td><td>MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519 (legacy)</td><td>0x004D</td><td>✗</td><td>✓</td></tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li>(1) The RustCrypto HPKE backend does not implement the MLKEM768-P256 and
+MLKEM1024-P384 hybrid KEMs.</li>
+<li>(2) libcrux has no ECDSA P-384 implementation yet.</li>
 </ul>
 <h2 id="the-traits"><a class="header" href="#the-traits">The Traits</a></h2>
 <p>There are 4 different traits defined in the <a href="https://crates.io/crates/openmls_traits">OpenMLS traits crate</a>.</p>
@@ -3520,17 +3551,17 @@ pub enum HpkeKemType {
     #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
     MlKem1024 = 0x0042,
 
-    /// XWing combiner for ML-KEM and X25519
+    /// ML-KEM-768 + P-256 hybrid KEM
     ///</code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">    /// HKDF SHA 256
-    HkdfSha256 = 0x0001,
-
-    /// HKDF SHA 384</code></pre>
-<pre><code class="language-rust no_run noplayground">    HkdfSha512 = 0x0003,
-}
-
-/// AEAD Types for HPKE.</code></pre>
+<pre><code class="language-rust no_run noplayground">    ///
+    /// [draft-ietf-hpke-pq]: https://datatracker.ietf.org/doc/html/draft-ietf-hpke-pq
+    /// [draft-irtf-cfrg-concrete-hybrid-kems]: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-concrete-hybrid-kems
+    #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]</code></pre>
+<pre><code class="language-rust no_run noplayground">    ///
+    /// Code point from [draft-ietf-hpke-pq], which registers it as
+    /// `MLKEM768-X25519`.
+    ///</code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <p>OpenMLS implements a variety of syntactical and semantical checks, both when parsing and processing incoming commits and when creating own commits.</p>
