@@ -604,20 +604,28 @@ impl PublicGroup {
             // https://validation.openmls.tech/#valn0801
             // https://validation.openmls.tech/#valn0802
             if let Psk::Resumption(psk) = psk_id.psk() {
-                if matches!(
-                    psk.usage(),
-                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit
-                ) {
-                    // https://validation.openmls.tech/#valn0801
-                    // https://validation.openmls.tech/#valn0802
-                    // Branching and reinit PSKs must only be processed as part
-                    // of the initial commit of the new sub-group resp. successor
-                    // group, adding the other members.
-                    if self.group_context.epoch().as_u64() != 0 {
-                        return Err(PskError::NotAllowed.into());
+                match psk.usage() {
+                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit => {
+                        // https://validation.openmls.tech/#valn0801
+                        // https://validation.openmls.tech/#valn0802
+                        // Branching and reinit PSKs must only be processed as part
+                        // of the initial commit of the new sub-group resp. successor
+                        // group, adding the other members.
+                        if self.group_context.epoch().as_u64() != 0 {
+                            return Err(PskError::NotAllowed.into());
+                        }
+                        // Note: branch/reinit exclusivity (valn1401) is enforced for
+                        // the Welcome PSK list in `PreSharedKeyId::validate_in_welcome`.
                     }
-                    // Note: branch/reinit exclusivity (valn1401) is enforced for
-                    // the Welcome PSK list in `PreSharedKeyId::validate_in_welcome`.
+                    ResumptionPskUsage::Application => {
+                        if self.group_id() != psk.psk_group_id() {
+                            return Err(PskError::DifferentGroupId {
+                                expected: self.group_id().to_owned(),
+                                got: psk.psk_group_id().to_owned(),
+                            }
+                            .into());
+                        }
+                    }
                 }
             }
 
