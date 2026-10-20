@@ -1941,11 +1941,14 @@ impl IntoIterator for CommitMessageBundle {
 #[cfg(test)]
 mod tests {
     use crate::{
+        binary_tree::LeafNodeIndex,
+        framing::Sender,
         group::{
             mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
-            CreateCommitError, MlsGroup, ProposalValidationError,
+            CreateCommitError, GroupId, MlsGroup, ProposalValidationError, QueuedProposal,
         },
-        schedule::errors::PskError,
+        messages::proposals::{PreSharedKeyProposal, Proposal},
+        schedule::{errors::PskError, psk::ResumptionPskUsage, PreSharedKeyId},
     };
 
     /// A resumption PSK of usage `Branch` must only appear in the initial commit
@@ -2054,6 +2057,163 @@ mod tests {
                 ))
             ),
             "expected a reinit PSK outside the initial commit to be rejected, got {result:?}"
+        );
+    }
+
+    /// An Application resumption PSK that refers to a different group must be
+    /// rejected by proposal validation, like the other PSK proposal checks.
+    #[openmls_test::openmls_test]
+    fn application_psk_of_other_group_is_proposal_validation_error() {
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+
+        let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
+            setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+        let other_group_id = GroupId::from_slice(b"some other group");
+        let psk_id = PreSharedKeyId::resumption(
+            ResumptionPskUsage::Application,
+            other_group_id.clone(),
+            0.into(),
+            vec![0; ciphersuite.hash_length()],
+        );
+
+        let result = alice_group
+            .commit_builder()
+            .propose_psks([psk_id])
+            .unwrap()
+            .load_psks(alice_provider.storage())
+            .and_then(|builder| {
+                builder.build(
+                    alice_provider.rand(),
+                    alice_provider.crypto(),
+                    &alice_signer,
+                    |_| true,
+                )
+            });
+
+        assert!(
+            matches!(
+                &result,
+                Err(CreateCommitError::ProposalValidationError(
+                    ProposalValidationError::Psk(PskError::DifferentGroupId { got, .. })
+                )) if got == &other_group_id
+            ),
+            "expected a proposal validation error, got {result:?}"
+        );
+    }
+
+    /// A by-reference Branch PSK proposal in the proposal store at epoch > 0
+    /// must be rejected as `NotAllowed`, not reported as a missing key.
+    #[openmls_test::openmls_test]
+    fn branch_psk_from_proposal_store_is_not_allowed() {
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+
+        let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
+            setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+        assert_eq!(alice_group.epoch(), 1.into());
+
+        let psk_id = PreSharedKeyId::resumption(
+            ResumptionPskUsage::Branch,
+            GroupId::from_slice(b"parent group"),
+            0.into(),
+            vec![0; ciphersuite.hash_length()],
+        );
+        let queued_proposal = QueuedProposal::from_proposal_and_sender(
+            ciphersuite,
+            alice_provider.crypto(),
+            Proposal::psk(PreSharedKeyProposal::new(psk_id)),
+            &Sender::build_member(LeafNodeIndex::new(1)),
+        )
+        .unwrap();
+        alice_group
+            .store_pending_proposal(alice_provider.storage(), queued_proposal)
+            .unwrap();
+
+        let result = alice_group
+            .commit_builder()
+            .consume_proposal_store(true)
+            .load_psks(alice_provider.storage())
+            .and_then(|builder| {
+                builder.build(
+                    alice_provider.rand(),
+                    alice_provider.crypto(),
+                    &alice_signer,
+                    |_| true,
+                )
+            });
+
+        assert!(
+            matches!(
+                result,
+                Err(CreateCommitError::ProposalValidationError(
+                    ProposalValidationError::Psk(PskError::NotAllowed)
+                ))
+            ),
+            "expected NotAllowed, got {result:?}"
+        );
+    }
+
+    /// A Reinit PSK proposal that appears twice in the initial commit must be
+    /// rejected as a duplicate, not reported as a missing key.
+    #[openmls_test::openmls_test]
+    fn duplicate_reinit_psk_is_duplicate_error() {
+        let alice_provider = &Provider::default();
+        let old_provider = &Provider::default();
+
+        let (alice_cwk, _alice_kpb, alice_signer, _alice_pk) =
+            setup_client("Alice", ciphersuite, alice_provider);
+        let mut alice_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .build(alice_provider, &alice_signer, alice_cwk)
+            .unwrap();
+        assert_eq!(alice_group.epoch(), 0.into());
+
+        let (old_cwk, _old_kpb, old_signer, _old_pk) =
+            setup_client("Old", ciphersuite, old_provider);
+        let old_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .build(old_provider, &old_signer, old_cwk)
+            .unwrap();
+
+        let builder = alice_group
+            .commit_builder()
+            .reinit(
+                alice_provider.rand(),
+                old_group.group_id().clone(),
+                old_group.epoch(),
+                old_group.resumption_psk_secret().clone(),
+            )
+            .unwrap();
+        let reinit_psk_id = builder
+            .stage
+            .foreign_resumption_psk
+            .as_ref()
+            .unwrap()
+            .0
+            .clone();
+
+        let result = builder
+            .propose_psks_unchecked([reinit_psk_id])
+            .load_psks(alice_provider.storage())
+            .and_then(|builder| {
+                builder.build(
+                    alice_provider.rand(),
+                    alice_provider.crypto(),
+                    &alice_signer,
+                    |_| true,
+                )
+            });
+
+        assert!(
+            matches!(
+                result,
+                Err(CreateCommitError::ProposalValidationError(
+                    ProposalValidationError::Psk(PskError::Duplicate { .. })
+                ))
+            ),
+            "expected Duplicate, got {result:?}"
         );
     }
 }
