@@ -2206,39 +2206,41 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
         // match a LeafNode in the parent group. For a reinit, the members
         // must be identical to the old group's.
         // Member equivalence is an application responsibility.
-        // This is a shortcut for a simple case, matching by credential.
+        // This is a shortcut for a simple case, matching credentials with multiset semantics.
         if self.check_members {
-            match &self.resumption_info {
-                Some(ResumptionInfo::Branch(branch_info)) => {
-                    for member in staged_welcome.members() {
-                        if !branch_info
-                            .member_credentials()
-                            .contains(&member.credential)
-                        {
-                            return Err(WelcomeError::SubgroupLeafMismatch);
+            if let Some(resumption_info) = &self.resumption_info {
+                let mut remaining_staged_credentials: Vec<_> = staged_welcome.members().collect();
+                match resumption_info {
+                    ResumptionInfo::Branch(branch_info) => {
+                        for parent_credential in branch_info.member_credentials() {
+                            if let Some(parent_index) = remaining_staged_credentials
+                                .iter()
+                                .position(|m| &m.credential == parent_credential)
+                            {
+                                remaining_staged_credentials.swap_remove(parent_index);
+                            } else {
+                                return Err(WelcomeError::SubgroupLeafMismatch);
+                            }
                         }
                     }
-                }
-                Some(ResumptionInfo::ReInit(reinit_info)) => {
-                    // The members must be identical for reinit.
-                    for member in staged_welcome.members() {
-                        if !reinit_info
-                            .member_credentials()
-                            .contains(&member.credential)
-                        {
+                    ResumptionInfo::ReInit(reinit_info) => {
+                        for predecessor_credential in reinit_info.member_credentials() {
+                            if let Some(parent_index) = remaining_staged_credentials
+                                .iter()
+                                .position(|m| &m.credential == predecessor_credential)
+                            {
+                                remaining_staged_credentials.swap_remove(parent_index);
+                            } else {
+                                // The new group contains a member the predecessor didn't.
+                                return Err(WelcomeError::ReInitLeafMismatch);
+                            }
+                        }
+                        if !remaining_staged_credentials.is_empty() {
+                            // The predecessor contained a member that is missing in the new group.
                             return Err(WelcomeError::ReInitLeafMismatch);
                         }
                     }
-                    for credential in reinit_info.member_credentials() {
-                        if !staged_welcome
-                            .members()
-                            .any(|member| &member.credential == credential)
-                        {
-                            return Err(WelcomeError::ReInitLeafMismatch);
-                        }
-                    }
                 }
-                None => {}
             }
         }
 

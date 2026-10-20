@@ -323,3 +323,129 @@ fn reinit_cross_ciphersuite() {
     let new_ciphersuite = alternate_ciphersuite(ciphersuite, &provider);
     run_reinit_flow::<Provider>(ciphersuite, new_ciphersuite, false);
 }
+
+/// A joiner must reject a reinit Welcome whose members are unequal those of the successor.
+///
+/// This test checks the multiset semantics [A, A, B] != [A, B, B]
+#[openmls_test]
+fn reinit_rejects_different_leaves() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let alice_provider_2 = &Provider::default();
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    // Group with [A, A, B] credentials
+    let (
+        (alice_credential, alice_signer),
+        (bob_credential, bob_signer),
+        mut alice_group,
+        mut bob_group,
+    ) = setup_group(
+        ciphersuite,
+        &mls_group_create_config,
+        alice_provider,
+        bob_provider,
+    );
+
+    // Another member joins that also uses with Alice's credential.
+    let (alice_credential_2, _alice_signer_2) = generate_credential(
+        b"Alice".to_vec(),
+        ciphersuite.signature_algorithm(),
+        alice_provider_2,
+    );
+    assert_eq!(alice_credential.credential, alice_credential_2.credential);
+
+    // Reinit group
+    let reinit_proposal = ReInitProposal::new(
+        GroupId::random(alice_provider.rand()),
+        ProtocolVersion::Mls10,
+        ciphersuite,
+        Extensions::empty(),
+    );
+    let bundle = alice_group
+        .commit_builder()
+        .add_proposal(Proposal::re_init(reinit_proposal.clone()))
+        .load_psks(alice_provider.storage())
+        .unwrap()
+        .use_ratchet_tree_extension(true)
+        .build(
+            alice_provider.rand(),
+            alice_provider.crypto(),
+            &alice_signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(alice_provider)
+        .unwrap();
+    let reinit_commit = bundle.commit();
+
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    let alice_reinit_info = alice_group
+        .reinit_info(reinit_proposal.clone())
+        .expect("group not reinitialized");
+
+    let processed = bob_group
+        .process_message(
+            bob_provider,
+            reinit_commit.clone().into_protocol_message().unwrap(),
+        )
+        .unwrap();
+    match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged) => {
+            bob_group
+                .merge_staged_commit(bob_provider, *staged)
+                .unwrap();
+        }
+        other => panic!("expected a staged commit message, got {other:?}"),
+    }
+    let bob_reinit_info = bob_group
+        .reinit_info(reinit_proposal)
+        .expect("group not reinitialized");
+
+    let bob_new_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .unwrap();
+
+    // Alice reinits a new group that incorrectly adds Bob twice instead of Alice.
+    let (mut reinit_group, commit_message_bundle) = MlsGroup::builder()
+        .use_ratchet_tree_extension(true)
+        .reinit(alice_reinit_info)
+        .build_reinit(
+            alice_provider,
+            &alice_signer,
+            alice_credential,
+            vec![
+                bob_new_key_package.key_package().clone(),
+                bob_new_key_package.key_package().clone(),
+            ],
+        )
+        .unwrap();
+    reinit_group.merge_pending_commit(alice_provider).unwrap();
+
+    let welcome = MlsMessageOut::from_welcome(
+        commit_message_bundle.welcome().unwrap().clone(),
+        ProtocolVersion::Mls10,
+    );
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome.into_welcome().unwrap();
+
+    // Bob checks the subgroup against his view of the parent group and must
+    // reject it because Dave has no matching leaf there.
+    let result = StagedWelcome::build_from_reinit(
+        bob_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+        bob_reinit_info,
+    )
+    .expect("Bob could not process the reinit welcome")
+    .build();
+
+    assert!(
+        matches!(result, Err(WelcomeError::SubgroupLeafMismatch)),
+        "expected a reinit group with a original-parent member to be rejected, got {result:?}"
+    );
+}
