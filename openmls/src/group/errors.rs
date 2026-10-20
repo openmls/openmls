@@ -145,7 +145,7 @@ pub enum WelcomeError<StorageError> {
     /// (RFC 9420 §11.2).
     #[error("The successor group is not at epoch 1.")]
     ReInitEpochInvalid,
-    /// Members of the successor group do not match those member of the old
+    /// Members of the successor group do not match those of the old
     /// group (RFC 9420 §11.2).
     #[error("Members of the successor group do not match those of the old group.")]
     ReInitLeafMismatch,
