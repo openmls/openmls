@@ -2101,7 +2101,7 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     /// whether [`Self::build`] checks the new group's members by credential
     /// equality. Defaults to `true`.
     ///
-    /// **Note**: This is a shortcut for members that are equivalence when credentials
+    /// **Note**: This is a shortcut for members that are equivalent when credentials
     /// are equal. For more complex member equivalence conditions, the application must disable
     /// this and perform the equivalence check itself.
     ///
