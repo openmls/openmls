@@ -175,3 +175,67 @@ fn test_safe_hpke_seal_open() {
         CryptoError::HpkeDecryptionError
     );
 }
+
+// Known-answer test for SafeDecryptWithLabel (draft-ietf-mls-extensions-10,
+// Sections 4.1 and 4.2) with ciphersuite
+// MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519.
+//
+// The HPKE info is the EncryptContext of RFC 9420, Section 5.1.3, with the
+// encoded ComponentOperationLabel as Label:
+//
+//   23                                  label<V>, 35 bytes
+//     4d4c5320312e3020                  "MLS 1.0 "
+//     0d                                base_label<V>, 13 bytes
+//       4d4c5320436f6d706f6e656e74      "MLS Component"
+//     0102                              component_id
+//     0a                                label<V>, 10 bytes
+//       74657374206c6162656c            "test label"
+//   0c                                  context<V>, 12 bytes
+//     7465737420636f6e74657874          "test context"
+//
+// The vector was generated outside OpenMLS with the `hpke` crate 0.13.0
+// (https://github.com/rozbb/rust-hpke), which does not share code with
+// hpke-rs, using the info above and an empty AAD:
+//
+//   let (sk, pk) = X25519HkdfSha256::derive_keypair(
+//       b"mls-extensions-10 component label KAT");
+//   let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(0); // 0.9.0
+//   let (kem_output, ciphertext) =
+//       hpke::single_shot_seal::<AesGcm128, HkdfSha256, X25519HkdfSha256, _>(
+//           &OpModeS::Base, &pk, &info, b"component plaintext", &[], &mut rng)?;
+#[cfg(feature = "extensions-draft")]
+#[test]
+fn test_safe_hpke_decrypt_kat() {
+    use openmls_rust_crypto::OpenMlsRustCrypto;
+    use openmls_traits::OpenMlsProvider;
+
+    let provider = OpenMlsRustCrypto::default();
+    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+    let private_key =
+        hex::decode("d7f23c75f4e16bdaa40a032e3e8afa3d6d5c7dc154cf94c90556f1099530d465").unwrap();
+    let ciphertext = HpkeCiphertext {
+        kem_output: hex::decode("98ed6abc1e7d0eb8b4a7695af96e4b3b42d2276ca74d6a232c7298234324af50")
+            .unwrap()
+            .into(),
+        ciphertext: hex::decode(
+            "ecd8f3c62dbb8b2f9ac6bd5efe66c70ef9765f0994aca0bab31e0b4bc32ce10fc69cd1",
+        )
+        .unwrap()
+        .into(),
+    };
+
+    let plaintext = hpke::safe_decrypt_with_label(
+        &private_key,
+        &ciphertext,
+        ciphersuite,
+        SafeEncryptionContext {
+            component_id: 0x0102,
+            label: "test label",
+            context: b"test context",
+        },
+        provider.crypto(),
+    )
+    .expect("Failed to decrypt the known-answer ciphertext.");
+    assert_eq!(plaintext, b"component plaintext");
+}

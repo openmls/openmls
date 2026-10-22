@@ -220,19 +220,19 @@ impl ComponentsList {
     }
 }
 
-/// Label for safe encryption/decryption as defined in Section 4.2 of the MLS Extensions draft
+/// Label for safe encryption/decryption as defined in Section 4.1 of the MLS Extensions draft
 #[derive(Debug, TlsSerialize, TlsSize)]
 pub(crate) struct ComponentOperationLabel {
-    /// "Application"
+    /// "MLS Component"
     base_label: VLBytes,
     component_id: ComponentId,
     label: VLBytes,
 }
 
-const COMPONENT_OPERATION_BASE_LABEL: &[u8] = b"Application";
+const COMPONENT_OPERATION_BASE_LABEL: &[u8] = b"MLS Component";
 
 impl ComponentOperationLabel {
-    /// Creates a new ComponentOperationLabel, prefixed with "Application"
+    /// Creates a new ComponentOperationLabel, prefixed with "MLS Component"
     pub fn new(component_id: ComponentId, label: &str) -> Self {
         Self {
             base_label: COMPONENT_OPERATION_BASE_LABEL.into(),
