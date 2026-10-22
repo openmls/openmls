@@ -253,6 +253,90 @@ fn subgroup_branch_rejects_non_matching_leaf() {
     );
 }
 
+/// A joiner must reject a subgroup whose members do not all match members of the
+/// parent group (RFC 9420 §11.3 receiver check c).
+/// This tests multiset semantics on the credentials. [A, B, C] -> [A, B, B] must be rejected.
+#[openmls_test]
+fn subgroup_branch_rejects_missing_duplicate_leaf_credential() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    let ((alice_credential, alice_signer), (bob_credential, bob_signer), alice_group, bob_group) =
+        setup_group(
+            ciphersuite,
+            &mls_group_create_config,
+            alice_provider,
+            bob_provider,
+            charlie_provider,
+        );
+
+    // Alice tires to add another member with her credential.
+    let (alice_credential_2, alice_signer_2) = generate_credential(
+        b"Alice".to_vec(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+    assert_eq!(alice_credential.credential, alice_credential_2.credential);
+    let alice_new_key_package = KeyPackage::builder()
+        .build(
+            ciphersuite,
+            alice_provider,
+            &alice_signer_2,
+            alice_credential_2,
+        )
+        .unwrap();
+    let bob_new_key_package = KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
+        .unwrap();
+
+    assert_eq!(alice_group.members().count(), bob_group.members().count());
+
+    // Alice branches a subgroup that (incorrectly) adds both her signers.
+    let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
+        .use_ratchet_tree_extension(true)
+        .branch(alice_group.branch_info())
+        .build_branch(
+            alice_provider,
+            &alice_signer,
+            alice_credential,
+            vec![
+                bob_new_key_package.key_package().clone(),
+                alice_new_key_package.key_package().clone(),
+            ],
+        )
+        .unwrap();
+    sub_group.merge_pending_commit(alice_provider).unwrap();
+
+    let welcome = MlsMessageOut::from_welcome(
+        commit_message_bundle.welcome().unwrap().clone(),
+        ProtocolVersion::Mls10,
+    );
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome.into_welcome().unwrap();
+
+    // Bob checks the subgroup against his view of the parent group and must
+    // reject it because Alice had only one leaf there.
+    let result = StagedWelcome::build_from_branch(
+        bob_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+        bob_group.branch_info(),
+    )
+    .expect("Bob could not process the branch welcome")
+    .build();
+
+    assert!(
+        matches!(result, Err(WelcomeError::SubgroupLeafMismatch)),
+        "expected a subgroup with duplicated member to be rejected, got {result:?}"
+    );
+}
+
 /// A joiner must reject a branch whose branch PSK references a different parent
 /// epoch than the `BranchInfo` the joiner supplies (RFC 9420 §11.3). This happens
 /// when the joiner's view of the parent group has advanced (an unrelated commit
