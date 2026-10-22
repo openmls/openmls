@@ -634,6 +634,7 @@ pub fn run_test_vector(
                     sender_data,
                 )
                 .expect("Error decrypting PrivateMessage")
+                .0
                 .into();
             assert!(matches!(
                 mls_plaintext_application.content(),
@@ -710,6 +711,7 @@ pub fn run_test_vector(
                     sender_data,
                 )
                 .expect("Error decrypting PrivateMessage")
+                .0
                 .into();
 
             assert!(matches!(
@@ -785,6 +787,7 @@ pub fn run_test_vector(
                     sender_data,
                 )
                 .expect("Error decrypting PrivateMessage")
+                .0
                 .into();
 
             assert!(matches!(

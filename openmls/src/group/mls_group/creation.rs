@@ -408,7 +408,6 @@ impl ProcessedWelcome {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", public_group.confirmation_tag());
-            debug_assert!(false, "Confirmation tag mismatch");
 
             // in some tests we need to be able to proceed despite the tag being wrong,
             // e.g. to test whether a later validation check is performed correctly.

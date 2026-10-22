@@ -354,7 +354,7 @@ pub fn run_test_vector(
             let sender_ratchet_config = SenderRatchetConfiguration::new(10, 10);
 
             // check that the commit in commit_pub == commit
-            let decrypted_message = group
+            let (decrypted_message, _) = group
                 .decrypt_message(
                     provider.crypto(),
                     commit_pub.into_protocol_message().unwrap(),

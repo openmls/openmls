@@ -31,7 +31,7 @@ use crate::{
     error::LibraryError,
     extensions::ExternalSendersExtension,
     group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
-    tree::sender_ratchet::SenderRatchetConfiguration,
+    tree::{secret_tree::PendingRatchetUpdate, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
 
@@ -93,12 +93,16 @@ impl DecryptedMessage {
 
     /// Constructs a [DecryptedMessage] from a [PrivateMessage] by attempting to decrypt it
     /// to a [VerifiableAuthenticatedContent] first.
+    ///
+    /// Also returns the sender ratchet change that marks the message's
+    /// generation as used. It must only be applied once the message is
+    /// processed successfully.
     pub(crate) fn from_inbound_ciphertext(
         ciphertext: PrivateMessageIn,
         crypto: &impl OpenMlsCrypto,
         group: &mut MlsGroup,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<Self, ValidationError> {
+    ) -> Result<(Self, PendingRatchetUpdate), ValidationError> {
         // This will be refactored with #265.
         let ciphersuite = group.ciphersuite();
         // TODO: #819 The old leaves should not be needed any more.
@@ -114,7 +118,7 @@ impl DecryptedMessage {
         let message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let verifiable_content = ciphertext.to_verifiable_content(
+        let (verifiable_content, ratchet_update) = ciphertext.to_verifiable_content(
             ciphersuite,
             crypto,
             message_secrets,
@@ -122,7 +126,8 @@ impl DecryptedMessage {
             sender_ratchet_configuration,
             sender_data,
         )?;
-        Self::from_verifiable_content(verifiable_content)
+        let message = Self::from_verifiable_content(verifiable_content)?;
+        Ok((message, ratchet_update))
     }
 
     // Internal constructor function. Does the following checks:

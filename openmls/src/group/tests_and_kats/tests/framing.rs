@@ -326,14 +326,16 @@ fn bad_padding() {
             .sender_data(&message_secrets, provider.crypto(), ciphersuite)
             .expect("Could not decrypt sender data.");
 
-        let verifiable_plaintext_result = tampered_ciphertext.to_verifiable_content(
-            ciphersuite,
-            provider.crypto(),
-            &mut message_secrets,
-            LeafNodeIndex::new(0),
-            &SenderRatchetConfiguration::default(),
-            sender_data,
-        );
+        let verifiable_plaintext_result = tampered_ciphertext
+            .to_verifiable_content(
+                ciphersuite,
+                provider.crypto(),
+                &mut message_secrets,
+                LeafNodeIndex::new(0),
+                &SenderRatchetConfiguration::default(),
+                sender_data,
+            )
+            .map(|(verifiable_plaintext, _)| verifiable_plaintext);
 
         if should_fail && calculated_padding_length > 0 {
             // Decryption should fail because the padding contains a non-zero byte.

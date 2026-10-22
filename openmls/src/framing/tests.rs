@@ -212,7 +212,8 @@ fn wire_format_checks() {
             configuration,
             sender_data,
         )
-        .expect("Could not decrypt PrivateMessage.");
+        .expect("Could not decrypt PrivateMessage.")
+        .0;
 
     assert_eq!(
         verifiable_plaintext.wire_format(),
@@ -256,7 +257,8 @@ fn wire_format_checks() {
             configuration,
             sender_data,
         )
-        .expect("Could not decrypt PrivateMessage.");
+        .expect("Could not decrypt PrivateMessage.")
+        .0;
 
     // We expect the signature to fail since the original content was signed with a different wire format.
     let result: Result<AuthenticatedContentIn, SignatureError> =

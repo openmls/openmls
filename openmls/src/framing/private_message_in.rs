@@ -13,7 +13,10 @@ use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
     framing::mls_content_in::FramedContentIn,
-    tree::{secret_tree::SecretType, sender_ratchet::SenderRatchetConfiguration},
+    tree::{
+        secret_tree::{PendingRatchetUpdate, SecretType},
+        sender_ratchet::SenderRatchetConfiguration,
+    },
 };
 
 use super::*;
@@ -133,7 +136,6 @@ impl PrivateMessageIn {
             )
             .map_err(|_| {
                 log::error!("  Ciphertext decryption error");
-                debug_assert!(false, "Ciphertext decryption failed");
                 MessageDecryptionError::AeadError
             })?;
         log_content!(
@@ -151,6 +153,10 @@ impl PrivateMessageIn {
     /// This function decrypts a [`PrivateMessage`] into a
     /// [`VerifiableAuthenticatedContent`]. In order to get an
     /// [`FramedContent`] the result must be verified.
+    ///
+    /// The sender's ratchet is not changed. The returned
+    /// [`PendingRatchetUpdate`] marks the generation as used. It must only be
+    /// applied once the message is processed successfully.
     pub(crate) fn to_verifiable_content(
         &self,
         ciphersuite: Ciphersuite,
@@ -159,12 +165,13 @@ impl PrivateMessageIn {
         sender_index: LeafNodeIndex,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
-    ) -> Result<VerifiableAuthenticatedContentIn, MessageDecryptionError> {
+    ) -> Result<(VerifiableAuthenticatedContentIn, PendingRatchetUpdate), MessageDecryptionError>
+    {
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
-        let (ratchet_key, ratchet_nonce) = message_secrets
+        let ((ratchet_key, ratchet_nonce), ratchet_update) = message_secrets
             .secret_tree_mut()
-            .secret_for_decryption(
+            .prepare_decryption(
                 ciphersuite,
                 crypto,
                 sender_index,
@@ -203,7 +210,7 @@ impl PrivateMessageIn {
             Some(message_secrets.serialized_context().to_vec()),
             private_message_content.auth,
         );
-        Ok(verifiable)
+        Ok((verifiable, ratchet_update))
     }
 
     /// Get the `group_id` in the `PrivateMessage`.

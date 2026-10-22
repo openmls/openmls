@@ -10,7 +10,7 @@ use crate::{
     group::{errors::MergeCommitError, StageCommitError, ValidationError},
     messages::group_info::GroupInfo,
     storage::OpenMlsProvider,
-    tree::sender_ratchet::SenderRatchetConfiguration,
+    tree::{secret_tree::PendingRatchetUpdate, sender_ratchet::SenderRatchetConfiguration},
 };
 
 #[cfg(feature = "extensions-draft-08")]
@@ -24,6 +24,14 @@ use crate::{
 use std::collections::BTreeMap;
 
 use super::{errors::ProcessMessageError, *};
+
+/// A sender ratchet change from decrypting a PrivateMessage and the epoch of
+/// the secret tree it belongs to. It must only be applied once the message is
+/// processed successfully.
+pub(crate) struct EpochRatchetUpdate {
+    epoch: GroupEpoch,
+    update: PendingRatchetUpdate,
+}
 
 #[cfg(feature = "extensions-draft-08")]
 /// Keeps the old dictionary as well as the values that are being overwritten
@@ -121,7 +129,8 @@ impl MlsGroup {
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError<Provider::StorageError>> {
-        let unverified_message = self.unprotect_message(provider, message)?;
+        let (unverified_message, ratchet_update) =
+            self.unprotect_message_without_ratchet_update(provider.crypto(), message)?;
 
         // Check if the commit contains AppDataUpdate proposals - if so, the caller
         // must use process_unverified_message_with_app_data_updates instead
@@ -135,7 +144,13 @@ impl MlsGroup {
                 }
             }
         }
-        self.process_unverified_message(provider, unverified_message)
+        let processed = self.process_unverified_message(provider, unverified_message)?;
+
+        if let Some(ratchet_update) = ratchet_update {
+            self.apply_ratchet_update(provider, ratchet_update)?;
+        }
+
+        Ok(processed)
     }
 
     #[cfg(feature = "extensions-draft-08")]
@@ -146,11 +161,32 @@ impl MlsGroup {
 
     /// Parses and deprotects incoming messages from the DS. Checks for syntactic errors, but only
     /// performs limited semantic checks.
+    ///
+    /// If the message is a PrivateMessage, its generation in the sender's
+    /// ratchet is marked as used once it decrypts. [`Self::process_message`]
+    /// does this only after the message was processed successfully.
     pub fn unprotect_message<Provider: OpenMlsProvider>(
         &mut self,
         provider: &Provider,
         message: impl Into<ProtocolMessage>,
     ) -> Result<UnverifiedMessage, ProcessMessageError<Provider::StorageError>> {
+        let (unverified_message, ratchet_update) =
+            self.unprotect_message_without_ratchet_update(provider.crypto(), message)?;
+        if let Some(ratchet_update) = ratchet_update {
+            self.apply_ratchet_update(provider, ratchet_update)?;
+        }
+        Ok(unverified_message)
+    }
+
+    /// Like [`Self::unprotect_message`], but leaves the sender's ratchet
+    /// unchanged and returns the change that marks the generation of a
+    /// PrivateMessage as used.
+    fn unprotect_message_without_ratchet_update<StorageError>(
+        &mut self,
+        crypto: &impl OpenMlsCrypto,
+        message: impl Into<ProtocolMessage>,
+    ) -> Result<(UnverifiedMessage, Option<EpochRatchetUpdate>), ProcessMessageError<StorageError>>
+    {
         // Make sure we are still a member of the group
         if !self.is_active() {
             return Err(ProcessMessageError::GroupStateError(
@@ -174,32 +210,48 @@ impl MlsGroup {
         // Parse the message
         let sender_ratchet_configuration = *self.configuration().sender_ratchet_configuration();
 
-        // Check if this message will modify the secret tree when decrypting a
-        // private message
-        let will_modify_secret_tree = matches!(message, ProtocolMessage::PrivateMessage(_));
+        let epoch = message.epoch();
 
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        let decrypted_message =
-            self.decrypt_message(provider.crypto(), message, &sender_ratchet_configuration)?;
-
-        // Persist the secret tree if it was modified to ensure forward secrecy
-        if will_modify_secret_tree {
-            provider
-                .storage()
-                .write_message_secrets(self.group_id(), &self.message_secrets_store)
-                .map_err(ProcessMessageError::StorageError)?;
-        }
+        let (decrypted_message, ratchet_update) =
+            self.decrypt_message(crypto, message, &sender_ratchet_configuration)?;
 
         let unverified_message = self
             .public_group
             .parse_message(decrypted_message, &self.message_secrets_store)
             .map_err(ProcessMessageError::from)?;
 
-        Ok(unverified_message)
+        Ok((
+            unverified_message,
+            ratchet_update.map(|update| EpochRatchetUpdate { epoch, update }),
+        ))
+    }
+
+    /// Applies a sender ratchet change from decrypting a PrivateMessage and
+    /// persists the message secrets.
+    fn apply_ratchet_update<Provider: OpenMlsProvider>(
+        &mut self,
+        provider: &Provider,
+        ratchet_update: EpochRatchetUpdate,
+    ) -> Result<(), ProcessMessageError<Provider::StorageError>> {
+        let sender_ratchet_configuration = *self.configuration().sender_ratchet_configuration();
+        self.message_secrets_mut(ratchet_update.epoch)
+            .and_then(|message_secrets| {
+                message_secrets
+                    .secret_tree_mut()
+                    .apply_decryption_update(ratchet_update.update, &sender_ratchet_configuration)
+            })
+            .map_err(|_| {
+                LibraryError::custom("Message secrets of a decrypted message are missing")
+            })?;
+        provider
+            .storage()
+            .write_message_secrets(self.group_id(), &self.message_secrets_store)
+            .map_err(ProcessMessageError::StorageError)
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
@@ -645,7 +697,8 @@ impl MlsGroup {
     /// Performs framing validation and, if necessary, decrypts the given message.
     ///
     /// Returns the [`DecryptedMessage`] if processing is successful, or a
-    /// [`ValidationError`] if it is not.
+    /// [`ValidationError`] if it is not. For a PrivateMessage, also returns
+    /// the sender ratchet change that marks its generation as used.
     ///
     /// Checks the following semantic validation:
     ///  - ValSem002
@@ -658,7 +711,7 @@ impl MlsGroup {
         crypto: &impl OpenMlsCrypto,
         message: ProtocolMessage,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<DecryptedMessage, ValidationError> {
+    ) -> Result<(DecryptedMessage, Option<PendingRatchetUpdate>), ValidationError> {
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
@@ -687,6 +740,7 @@ impl MlsGroup {
                     crypto,
                     self.ciphersuite(),
                 )
+                .map(|message| (message, None))
             }
             ProtocolMessage::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
@@ -696,6 +750,7 @@ impl MlsGroup {
                     self,
                     sender_ratchet_configuration,
                 )
+                .map(|(message, ratchet_update)| (message, Some(ratchet_update)))
             }
         }
     }

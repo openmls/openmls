@@ -70,6 +70,23 @@ impl From<&PublicMessage> for SecretType {
     }
 }
 
+/// A sender ratchet change computed by [`SecretTree::prepare_decryption`],
+/// not yet applied to the tree.
+pub(crate) struct PendingRatchetUpdate {
+    index: LeafNodeIndex,
+    secret_type: SecretType,
+    peeked: Box<PeekedGeneration>,
+}
+
+impl std::fmt::Debug for PendingRatchetUpdate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PendingRatchetUpdate")
+            .field("index", &self.index)
+            .field("secret_type", &self.secret_type)
+            .finish_non_exhaustive()
+    }
+}
+
 pub(crate) fn derive_child_secrets(
     parent_secret: &Secret,
     crypto: &impl OpenMlsCrypto,
@@ -194,6 +211,15 @@ impl SecretTree {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn sender_ratchet(
+        &self,
+        index: LeafNodeIndex,
+        secret_type: SecretType,
+    ) -> Option<&SenderRatchet> {
+        self.ratchet_opt(index, secret_type).ok().flatten()
+    }
+
     /// Initializes a specific SenderRatchet pair for a given index by
     /// calculating and deleting the appropriate values in the SecretTree
     fn initialize_sender_ratchets(
@@ -313,10 +339,16 @@ impl SecretTree {
         self.set_node(index.into(), None)
     }
 
-    /// Return RatchetSecrets for a given index and generation. This should be
-    /// called when decrypting an PrivateMessage received from another member.
+    /// Returns the RatchetSecrets for a given index and generation without
+    /// changing the sender's ratchet, together with the change that
+    /// [`Self::apply_decryption_update`] applies to mark the generation as
+    /// used. Until then, the generation can be requested again.
+    ///
+    /// The sender's ratchets are initialized in the tree if they weren't
+    /// before.
+    ///
     /// Returns an error if index or generation are out of bound.
-    pub(crate) fn secret_for_decryption(
+    pub(crate) fn prepare_decryption(
         &mut self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
@@ -324,7 +356,7 @@ impl SecretTree {
         secret_type: SecretType,
         generation: u32,
         configuration: &SenderRatchetConfiguration,
-    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
+    ) -> Result<(RatchetKeyMaterial, PendingRatchetUpdate), SecretTreeError> {
         log::debug!(
             "Generating {secret_type:?} decryption secret for {index:?} in generation {generation} with {ciphersuite}",
         );
@@ -337,16 +369,61 @@ impl SecretTree {
             log::trace!("   initialize sender ratchets");
             self.initialize_sender_ratchets(ciphersuite, crypto, index)?;
         }
-        match self.ratchet_mut(index, secret_type)? {
+        let (ratchet_key_material, peeked) = match self.ratchet_mut(index, secret_type)? {
             SenderRatchet::EncryptionRatchet(_) => {
                 log::error!("This is the wrong ratchet type.");
-                Err(SecretTreeError::RatchetTypeError)
+                return Err(SecretTreeError::RatchetTypeError);
             }
             SenderRatchet::DecryptionRatchet(dec_ratchet) => {
                 log::trace!("   getting secret for decryption");
-                dec_ratchet.secret_for_decryption(ciphersuite, crypto, generation, configuration)
+                dec_ratchet.peek(ciphersuite, crypto, generation, configuration)?
             }
+        };
+        let update = PendingRatchetUpdate {
+            index,
+            secret_type,
+            peeked: Box::new(peeked),
+        };
+        Ok((ratchet_key_material, update))
+    }
+
+    /// Marks the generation in `update` as used in the sender's ratchet.
+    pub(crate) fn apply_decryption_update(
+        &mut self,
+        update: PendingRatchetUpdate,
+        configuration: &SenderRatchetConfiguration,
+    ) -> Result<(), SecretTreeError> {
+        match self.ratchet_mut(update.index, update.secret_type)? {
+            SenderRatchet::DecryptionRatchet(dec_ratchet) => {
+                dec_ratchet.consume(*update.peeked, configuration)
+            }
+            SenderRatchet::EncryptionRatchet(_) => Err(SecretTreeError::RatchetTypeError),
         }
+    }
+
+    /// Return RatchetSecrets for a given index and generation and mark the
+    /// generation as used.
+    /// Returns an error if index or generation are out of bound.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn secret_for_decryption(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        index: LeafNodeIndex,
+        secret_type: SecretType,
+        generation: u32,
+        configuration: &SenderRatchetConfiguration,
+    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
+        let (ratchet_key_material, update) = self.prepare_decryption(
+            ciphersuite,
+            crypto,
+            index,
+            secret_type,
+            generation,
+            configuration,
+        )?;
+        self.apply_decryption_update(update, configuration)?;
+        Ok(ratchet_key_material)
     }
 
     /// Return the next RatchetSecrets that should be used for encryption and
