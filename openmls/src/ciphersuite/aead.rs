@@ -6,12 +6,8 @@ use super::*;
 pub(crate) const NONCE_BYTES: usize = 12;
 
 /// AEAD keys holding the plain key value and the AEAD algorithm type.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Eq))]
-#[cfg_attr(
-    any(feature = "test-utils", feature = "virtual-clients-draft", test),
-    derive(Clone)
-)]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub struct AeadKey {
     aead_mode: AeadType,

@@ -3,7 +3,10 @@ use openmls_traits::random::OpenMlsRand;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     schedule::EncryptionSecret,
-    tree::{secret_tree::*, sender_ratchet::SenderRatchetConfiguration},
+    tree::{
+        secret_tree::*,
+        sender_ratchet::{SenderRatchet, SenderRatchetConfiguration},
+    },
 };
 use std::collections::HashMap;
 
@@ -151,6 +154,148 @@ fn test_boundaries() {
         ),
         Err(SecretTreeError::IndexOutOfBounds)
     );
+}
+
+#[openmls_test::openmls_test]
+fn prepare_decryption_leaves_ratchet_unchanged() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let mut secret_tree = SecretTree::new(
+        EncryptionSecret::random(ciphersuite, provider.rand()),
+        TreeSize::from_leaf_count(2u32),
+        LeafNodeIndex::new(1u32),
+    );
+    let sender = LeafNodeIndex::new(0u32);
+    let secret_type = SecretType::ApplicationSecret;
+
+    let (first_secret, _) = secret_tree
+        .prepare_decryption(
+            ciphersuite,
+            provider.crypto(),
+            sender,
+            secret_type,
+            10,
+            configuration,
+        )
+        .unwrap();
+    let ratchet = secret_tree.sender_ratchet(sender, secret_type).cloned();
+    assert_eq!(secret_tree.generation(sender, secret_type), 0);
+
+    let (second_secret, _) = secret_tree
+        .prepare_decryption(
+            ciphersuite,
+            provider.crypto(),
+            sender,
+            secret_type,
+            10,
+            configuration,
+        )
+        .unwrap();
+    assert_eq!(first_secret, second_secret);
+    assert_eq!(
+        secret_tree.sender_ratchet(sender, secret_type),
+        ratchet.as_ref()
+    );
+}
+
+#[openmls_test::openmls_test]
+fn prepare_and_apply_match_sender_ratchet() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let mut secret_tree = SecretTree::new(
+        EncryptionSecret::random(ciphersuite, provider.rand()),
+        TreeSize::from_leaf_count(2u32),
+        LeafNodeIndex::new(1u32),
+    );
+    let sender = LeafNodeIndex::new(0u32);
+    let secret_type = SecretType::HandshakeSecret;
+    secret_tree
+        .prepare_decryption(
+            ciphersuite,
+            provider.crypto(),
+            sender,
+            secret_type,
+            0,
+            configuration,
+        )
+        .unwrap();
+    let Some(SenderRatchet::DecryptionRatchet(mut sender_ratchet)) =
+        secret_tree.sender_ratchet(sender, secret_type).cloned()
+    else {
+        panic!("expected a decryption ratchet");
+    };
+
+    // Current, forward, current, window, reuse, window, forward, too old and
+    // too far ahead.
+    for generation in [0, 3, 4, 1, 1, 2, 10, 2, 2_000] {
+        let expected = sender_ratchet.secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            generation,
+            configuration,
+        );
+        let actual = secret_tree.secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            sender,
+            secret_type,
+            generation,
+            configuration,
+        );
+        assert_eq!(actual, expected, "generation {generation}");
+        assert_eq!(
+            secret_tree.sender_ratchet(sender, secret_type),
+            Some(&SenderRatchet::DecryptionRatchet(sender_ratchet.clone())),
+            "generation {generation}"
+        );
+    }
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn prepare_decryption_leaves_own_dual_use_ratchet_unchanged() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let own_index = LeafNodeIndex::new(0u32);
+    let mut secret_tree = SecretTree::new(
+        EncryptionSecret::random(ciphersuite, provider.rand()),
+        TreeSize::from_leaf_count(2u32),
+        own_index,
+    );
+    let secret_type = SecretType::ApplicationSecret;
+    let (_, sent_secret) = secret_tree
+        .secret_for_encryption(ciphersuite, provider.crypto(), own_index, secret_type)
+        .unwrap();
+    let ratchet = secret_tree.sender_ratchet(own_index, secret_type).cloned();
+
+    for generation in [0, 5] {
+        secret_tree
+            .prepare_decryption(
+                ciphersuite,
+                provider.crypto(),
+                own_index,
+                secret_type,
+                generation,
+                configuration,
+            )
+            .unwrap();
+        assert_eq!(
+            secret_tree.sender_ratchet(own_index, secret_type),
+            ratchet.as_ref()
+        );
+    }
+
+    let decryption_secret = secret_tree
+        .secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            own_index,
+            secret_type,
+            0,
+            configuration,
+        )
+        .unwrap();
+    assert_eq!(decryption_secret, sent_secret);
 }
 
 // This tests if the generation gets incremented correctly and that the returned

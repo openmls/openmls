@@ -13,7 +13,10 @@ use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
     framing::mls_content_in::FramedContentIn,
-    tree::{secret_tree::SecretType, sender_ratchet::SenderRatchetConfiguration},
+    tree::{
+        secret_tree::{PendingRatchetUpdate, SecretType},
+        sender_ratchet::SenderRatchetConfiguration,
+    },
 };
 
 use super::*;
@@ -48,6 +51,9 @@ pub struct PrivateMessageIn {
 /// Return value of [`PrivateMessageIn::to_verifiable_content`].
 pub(crate) struct DecryptedContent {
     pub(crate) verifiable: VerifiableAuthenticatedContentIn,
+    /// The sender ratchet change that marks the message's generation as used.
+    /// It must only be applied once the message is processed successfully.
+    pub(crate) ratchet_update: PendingRatchetUpdate,
     #[cfg(feature = "virtual-clients-draft")]
     pub(crate) emulator_sender_leaf_index: Option<LeafNodeIndex>,
 }
@@ -158,6 +164,9 @@ impl PrivateMessageIn {
     /// [`VerifiableAuthenticatedContent`]. In order to get an
     /// [`FramedContent`] the result must be verified.
     ///
+    /// The sender's ratchet is not changed. The returned
+    /// [`DecryptedContent::ratchet_update`] marks the generation as used.
+    ///
     /// When called with `emulator_ctx = Some(_)`, also inverts the
     /// virtual-clients reuse guard to recover the sender's emulation-group
     /// leaf index.
@@ -176,9 +185,9 @@ impl PrivateMessageIn {
     ) -> Result<DecryptedContent, MessageDecryptionError> {
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
-        let (ratchet_key, ratchet_nonce) = message_secrets
+        let ((ratchet_key, ratchet_nonce), ratchet_update) = message_secrets
             .secret_tree_mut()
-            .secret_for_decryption(
+            .prepare_decryption(
                 ciphersuite,
                 crypto,
                 sender_index,
@@ -253,6 +262,7 @@ impl PrivateMessageIn {
         );
         Ok(DecryptedContent {
             verifiable,
+            ratchet_update,
             #[cfg(feature = "virtual-clients-draft")]
             emulator_sender_leaf_index,
         })
