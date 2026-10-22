@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.9.2 (2026-10-22)
+
+### Fixed
+
+- [GHSA-p276-g3f3-wwgh](https://github.com/openmls/openmls/security/advisories/GHSA-p276-g3f3-wwgh): Rejected private messages can advance the sender ratchet and block later messages from that sender
+- [GHSA-94v4-rg25-x625](https://github.com/openmls/openmls/security/advisories/GHSA-94v4-rg25-x625): Removed leaves reappear when an external commit truncates and regrows the ratchet tree
+
 ## 0.9.1 (2026-10-07)
 
 ### Fixed
