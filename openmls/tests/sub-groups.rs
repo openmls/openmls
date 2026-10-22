@@ -679,7 +679,7 @@ fn run_branch_membership_check<Provider: openmls::storage::OpenMlsProvider + Def
     .expect("Receiver could not process the branch welcome")
     .check_members(true)
     .build()
-    .and_then(|welcome| {
+    .map(|welcome| {
         // Welcome succeeds if a `StagedWelcome` could be built
         let receiver_subgroup = welcome
             .into_group(receiver_provider)
@@ -689,7 +689,6 @@ fn run_branch_membership_check<Provider: openmls::storage::OpenMlsProvider + Def
             receiver_subgroup.epoch_authenticator(),
             sender_subgroup.epoch_authenticator()
         );
-        Ok(())
     })
 }
 

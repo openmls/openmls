@@ -516,7 +516,7 @@ fn run_reinit_membership_check<Provider: openmls::storage::OpenMlsProvider + Def
     .expect("Receiver could not process the reinit welcome")
     .check_members(true)
     .build()
-    .and_then(|welcome| {
+    .map(|welcome| {
         // Welcome succeeds if a `StagedWelcome` could be built
         let receiver_successor_group = welcome
             .into_group(receiver_provider)
@@ -526,7 +526,6 @@ fn run_reinit_membership_check<Provider: openmls::storage::OpenMlsProvider + Def
             receiver_successor_group.epoch_authenticator(),
             sender_successor_group.epoch_authenticator()
         );
-        Ok(())
     })
 }
 
