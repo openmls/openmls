@@ -176,167 +176,6 @@ fn subgroup_branching() {
     );
 }
 
-/// A joiner must reject a subgroup whose members do not all match members of the
-/// parent group (RFC 9420 §11.3 receiver check c).
-#[openmls_test]
-fn subgroup_branch_rejects_non_matching_leaf() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
-    let dave_provider = &Provider::default();
-
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true)
-        .build();
-
-    let ((alice_credential, alice_signer), (bob_credential, bob_signer), alice_group, bob_group) =
-        setup_group(
-            ciphersuite,
-            &mls_group_create_config,
-            alice_provider,
-            bob_provider,
-            charlie_provider,
-        );
-
-    // Dave is NOT a member of the original (parent) group.
-    let (dave_credential, dave_signer) = generate_credential(
-        b"Dave".to_vec(),
-        ciphersuite.signature_algorithm(),
-        dave_provider,
-    );
-    let dave_key_package = KeyPackage::builder()
-        .build(ciphersuite, dave_provider, &dave_signer, dave_credential)
-        .unwrap();
-
-    let bob_new_key_package = KeyPackage::builder()
-        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
-        .unwrap();
-
-    // Alice branches a subgroup that (incorrectly) also adds Dave.
-    let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
-        .use_ratchet_tree_extension(true)
-        .branch(alice_group.branch_info())
-        .build_branch(
-            alice_provider,
-            &alice_signer,
-            alice_credential,
-            vec![
-                bob_new_key_package.key_package().clone(),
-                dave_key_package.key_package().clone(),
-            ],
-        )
-        .unwrap();
-    sub_group.merge_pending_commit(alice_provider).unwrap();
-
-    let welcome = MlsMessageOut::from_welcome(
-        commit_message_bundle.welcome().unwrap().clone(),
-        ProtocolVersion::Mls10,
-    );
-    let welcome: MlsMessageIn = welcome.into();
-    let welcome = welcome.into_welcome().unwrap();
-
-    // Bob checks the subgroup against his view of the parent group and must
-    // reject it because Dave has no matching leaf there.
-    let result = StagedWelcome::build_from_branch(
-        bob_provider,
-        mls_group_create_config.join_config(),
-        welcome,
-        bob_group.branch_info(),
-    )
-    .expect("Bob could not process the branch welcome")
-    .build();
-
-    assert!(
-        matches!(result, Err(WelcomeError::SubgroupLeafMismatch)),
-        "expected a subgroup with a non-parent member to be rejected, got {result:?}"
-    );
-}
-
-/// A joiner must reject a subgroup whose members do not all match members of the
-/// parent group (RFC 9420 §11.3 receiver check c).
-/// This tests multiset semantics on the credentials. [A, B, C] -> [A, B, B] must be rejected.
-#[openmls_test]
-fn subgroup_branch_rejects_missing_duplicate_leaf_credential() {
-    let alice_provider = &Provider::default();
-    let bob_provider = &Provider::default();
-    let charlie_provider = &Provider::default();
-
-    let mls_group_create_config = MlsGroupCreateConfig::builder()
-        .ciphersuite(ciphersuite)
-        .use_ratchet_tree_extension(true)
-        .build();
-
-    let ((alice_credential, alice_signer), (bob_credential, bob_signer), alice_group, bob_group) =
-        setup_group(
-            ciphersuite,
-            &mls_group_create_config,
-            alice_provider,
-            bob_provider,
-            charlie_provider,
-        );
-
-    // Alice tires to add another member with her credential.
-    let (alice_credential_2, alice_signer_2) = generate_credential(
-        b"Alice".to_vec(),
-        ciphersuite.signature_algorithm(),
-        alice_provider,
-    );
-    assert_eq!(alice_credential.credential, alice_credential_2.credential);
-    let alice_new_key_package = KeyPackage::builder()
-        .build(
-            ciphersuite,
-            alice_provider,
-            &alice_signer_2,
-            alice_credential_2,
-        )
-        .unwrap();
-    let bob_new_key_package = KeyPackage::builder()
-        .build(ciphersuite, bob_provider, &bob_signer, bob_credential)
-        .unwrap();
-
-    assert_eq!(alice_group.members().count(), bob_group.members().count());
-
-    // Alice branches a subgroup that (incorrectly) adds both her signers.
-    let (mut sub_group, commit_message_bundle) = MlsGroup::builder()
-        .use_ratchet_tree_extension(true)
-        .branch(alice_group.branch_info())
-        .build_branch(
-            alice_provider,
-            &alice_signer,
-            alice_credential,
-            vec![
-                bob_new_key_package.key_package().clone(),
-                alice_new_key_package.key_package().clone(),
-            ],
-        )
-        .unwrap();
-    sub_group.merge_pending_commit(alice_provider).unwrap();
-
-    let welcome = MlsMessageOut::from_welcome(
-        commit_message_bundle.welcome().unwrap().clone(),
-        ProtocolVersion::Mls10,
-    );
-    let welcome: MlsMessageIn = welcome.into();
-    let welcome = welcome.into_welcome().unwrap();
-
-    // Bob checks the subgroup against his view of the parent group and must
-    // reject it because Alice had only one leaf there.
-    let result = StagedWelcome::build_from_branch(
-        bob_provider,
-        mls_group_create_config.join_config(),
-        welcome,
-        bob_group.branch_info(),
-    )
-    .expect("Bob could not process the branch welcome")
-    .build();
-
-    assert!(
-        matches!(result, Err(WelcomeError::SubgroupLeafMismatch)),
-        "expected a subgroup with duplicated member to be rejected, got {result:?}"
-    );
-}
-
 /// A joiner must reject a branch whose branch PSK references a different parent
 /// epoch than the `BranchInfo` the joiner supplies (RFC 9420 §11.3). This happens
 /// when the joiner's view of the parent group has advanced (an unrelated commit
@@ -696,6 +535,262 @@ fn process_resuming_welcome_no_resumption_psk_for_plain_welcome() {
         pending.required_resumption_secret().is_none(),
         "a plain welcome has no branch parent reference"
     );
+}
+
+/// Run a branch with the given identities in the parent and the subgroup.
+///
+/// - `parent_identities` are all members of the parent group.
+///   `parent_identities[0]` creates the parent group, branches the subgroup and creates the Welcome.
+/// - `subgroup_identities` are the members of the subgroup.
+///   `subgroup_identities.last()` processes the Welcome.
+///
+/// We need `parent_identities[0] == subgroup_identities[0]` for correct key package generation.
+fn run_branch_membership_check<Provider: openmls::storage::OpenMlsProvider + Default>(
+    ciphersuite: Ciphersuite,
+    parent_identities: &[&[u8]],
+    subgroup_identities: &[&[u8]],
+) -> Result<(), WelcomeError<Provider::StorageError>> {
+    assert_eq!(parent_identities[0], subgroup_identities[0]);
+
+    let sender_provider = &Provider::default();
+    let receiver_provider = &Provider::default();
+    // Holds the other members that don't take part.
+    let other_provider = &Provider::default();
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    // === Parent group ===
+    let (sender_credential, sender_signer) = generate_credential(
+        parent_identities[0].to_vec(),
+        ciphersuite.signature_algorithm(),
+        sender_provider,
+    );
+    let mut sender_group = MlsGroup::new(
+        sender_provider,
+        &sender_signer,
+        &mls_group_create_config,
+        sender_credential.clone(),
+    )
+    .unwrap();
+
+    // Use special provider for the first key package of the receiver
+    let receiver_index = parent_identities[1..]
+        .iter()
+        .position(|identity| identity == subgroup_identities.last().unwrap())
+        .expect("receiver not in parent");
+
+    let parent_key_packages: Vec<_> = parent_identities[1..]
+        .iter()
+        .enumerate()
+        .map(|(i, identity)| {
+            let provider = if i == receiver_index {
+                receiver_provider
+            } else {
+                other_provider
+            };
+            let (credential, signer) = generate_credential(
+                identity.to_vec(),
+                ciphersuite.signature_algorithm(),
+                provider,
+            );
+            KeyPackage::builder()
+                .build(ciphersuite, provider, &signer, credential)
+                .unwrap()
+                .key_package()
+                .clone()
+        })
+        .collect();
+
+    let (_, welcome, _) = sender_group
+        .add_members(sender_provider, &sender_signer, &parent_key_packages)
+        .expect("Could not add members to group");
+    sender_group.merge_pending_commit(sender_provider).unwrap();
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected the message to be a welcome message");
+
+    let receiver_group = StagedWelcome::new_from_welcome(
+        receiver_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+        Some(sender_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating StagedWelcome from Welcome")
+    .into_group(receiver_provider)
+    .expect("Error creating group from StagedWelcome");
+
+    // === Sender branches the subgroup ===
+    let subgroup_key_packages: Vec<_> = subgroup_identities[1..]
+        .iter()
+        .enumerate()
+        .map(|(i, identity)| {
+            // receiver is last, and first was skipped
+            let provider = if i == subgroup_identities.len() - 2 {
+                receiver_provider
+            } else {
+                other_provider
+            };
+            let (credential, signer) = generate_credential(
+                identity.to_vec(),
+                ciphersuite.signature_algorithm(),
+                provider,
+            );
+            KeyPackage::builder()
+                .build(ciphersuite, provider, &signer, credential)
+                .unwrap()
+                .key_package()
+                .clone()
+        })
+        .collect();
+
+    let (mut sender_subgroup, commit_message_bundle) = MlsGroup::builder()
+        .use_ratchet_tree_extension(true)
+        .branch(sender_group.branch_info())
+        .build_branch(
+            sender_provider,
+            &sender_signer,
+            sender_credential,
+            subgroup_key_packages,
+        )
+        .unwrap();
+    sender_subgroup
+        .merge_pending_commit(sender_provider)
+        .unwrap();
+
+    let welcome = MlsMessageOut::from_welcome(
+        commit_message_bundle.welcome().unwrap().clone(),
+        ProtocolVersion::Mls10,
+    );
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome.into_welcome().unwrap();
+
+    // === The receiver checks the subgroup against the parent ===
+    StagedWelcome::build_from_branch(
+        receiver_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+        receiver_group.branch_info(),
+    )
+    .expect("Receiver could not process the branch welcome")
+    .check_members(true)
+    .build()
+    .and_then(|welcome| {
+        // Welcome succeeds if a `StagedWelcome` could be built
+        let receiver_subgroup = welcome
+            .into_group(receiver_provider)
+            .expect("expected group creation to succeed");
+
+        assert_eq!(
+            receiver_subgroup.epoch_authenticator(),
+            sender_subgroup.epoch_authenticator()
+        );
+        Ok(())
+    })
+}
+
+#[openmls_test]
+fn branch_members_same() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(ciphersuite, &[b"A", b"B"], &[b"A", b"B"]),
+        Ok(())
+    )
+}
+
+#[openmls_test]
+fn branch_members_same_reordered() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(
+            ciphersuite,
+            &[b"A", b"B", b"C"],
+            &[b"A", b"C", b"B"]
+        ),
+        Ok(())
+    )
+}
+
+#[openmls_test]
+fn branch_members_subset() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(ciphersuite, &[b"A", b"B", b"C"], &[b"A", b"B"]),
+        Ok(())
+    )
+}
+
+#[openmls_test]
+fn branch_members_subset_reordered() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(
+            ciphersuite,
+            &[b"A", b"B", b"C", b"D"],
+            &[b"A", b"D", b"B"]
+        ),
+        Ok(())
+    )
+}
+
+#[openmls_test]
+fn branch_members_superset() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(ciphersuite, &[b"A", b"C"], &[b"A", b"B", b"C"]),
+        Err(WelcomeError::SubgroupLeafMismatch)
+    )
+}
+
+#[openmls_test]
+fn branch_members_disjoint_member() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(
+            ciphersuite,
+            &[b"A", b"B", b"C"],
+            &[b"A", b"D", b"B"]
+        ),
+        Err(WelcomeError::SubgroupLeafMismatch)
+    )
+}
+
+#[openmls_test]
+fn branch_members_same_multiset() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(
+            ciphersuite,
+            &[b"A", b"B", b"B"],
+            &[b"A", b"B", b"B"]
+        ),
+        Ok(())
+    )
+}
+
+#[openmls_test]
+fn branch_members_multisubset() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(ciphersuite, &[b"A", b"B", b"B"], &[b"A", b"B"]),
+        Ok(())
+    )
+}
+
+#[openmls_test]
+fn branch_members_multisuperset() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(ciphersuite, &[b"A", b"B"], &[b"A", b"B", b"B"]),
+        Err(WelcomeError::SubgroupLeafMismatch)
+    )
+}
+
+#[openmls_test]
+fn branch_members_different_multiset_but_same_set() {
+    assert_eq!(
+        run_branch_membership_check::<Provider>(
+            ciphersuite,
+            &[b"A", b"B", b"B"],
+            &[b"A", b"A", b"B"]
+        ),
+        Err(WelcomeError::SubgroupLeafMismatch)
+    )
 }
 
 // TODO: To test the following two error cases we'd need to build an invalid
