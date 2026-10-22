@@ -1022,9 +1022,19 @@ impl PendingResumingWelcome {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum ResumptionInfo {
     ReInit(ReInitInfo),
     Branch(BranchInfo),
+}
+
+impl ResumptionInfo {
+    pub(crate) fn member_credentials(&self) -> &[Credential] {
+        match self {
+            ResumptionInfo::Branch(branch_info) => branch_info.member_credentials(),
+            ResumptionInfo::ReInit(reinit_info) => reinit_info.member_credentials(),
+        }
+    }
 }
 
 /// Decrypt a `Welcome`'s `GroupSecrets`.
@@ -2209,37 +2219,27 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
         // This is a shortcut for a simple case, matching credentials with multiset semantics.
         if self.check_members {
             if let Some(resumption_info) = &self.resumption_info {
-                let mut remaining_staged_credentials: Vec<_> = staged_welcome.members().collect();
-                match resumption_info {
-                    ResumptionInfo::Branch(branch_info) => {
-                        for parent_credential in branch_info.member_credentials() {
-                            if let Some(parent_index) = remaining_staged_credentials
-                                .iter()
-                                .position(|m| &m.credential == parent_credential)
-                            {
-                                remaining_staged_credentials.swap_remove(parent_index);
-                            } else {
-                                return Err(WelcomeError::SubgroupLeafMismatch);
-                            }
-                        }
+                let mut unseen_old_credentials: Vec<_> =
+                    resumption_info.member_credentials().to_vec();
+                for new_member in staged_welcome.members() {
+                    if let Some(parent_index) = unseen_old_credentials
+                        .iter()
+                        .position(|m| m == &new_member.credential)
+                    {
+                        unseen_old_credentials.swap_remove(parent_index);
+                    } else {
+                        // The new group contains a member the source group doesn't.
+                        return match resumption_info {
+                            ResumptionInfo::Branch(_) => Err(WelcomeError::SubgroupLeafMismatch),
+                            ResumptionInfo::ReInit(_) => Err(WelcomeError::ReInitLeafMismatch),
+                        };
                     }
-                    ResumptionInfo::ReInit(reinit_info) => {
-                        for predecessor_credential in reinit_info.member_credentials() {
-                            if let Some(parent_index) = remaining_staged_credentials
-                                .iter()
-                                .position(|m| &m.credential == predecessor_credential)
-                            {
-                                remaining_staged_credentials.swap_remove(parent_index);
-                            } else {
-                                // The new group contains a member the predecessor didn't.
-                                return Err(WelcomeError::ReInitLeafMismatch);
-                            }
-                        }
-                        if !remaining_staged_credentials.is_empty() {
-                            // The predecessor contained a member that is missing in the new group.
-                            return Err(WelcomeError::ReInitLeafMismatch);
-                        }
-                    }
+                }
+                if matches!(resumption_info, ResumptionInfo::ReInit(_))
+                    && !unseen_old_credentials.is_empty()
+                {
+                    // The predecessor contained a member that is missing in the new group.
+                    return Err(WelcomeError::ReInitLeafMismatch);
                 }
             }
         }
