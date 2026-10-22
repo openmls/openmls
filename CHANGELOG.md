@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2289](https://github.com/openmls/openmls/pull/2289): `GroupInfo::tls_serialize` and `KeyPackage::tls_serialize` now use `write_all` for the cached signed payload. Previously a writer that wrote only part of the payload produced truncated output and the call still returned `Ok`.
 - [#2289](https://github.com/openmls/openmls/pull/2289): `GroupInfo` equality no longer depends on whether the signed payload is cached, so a signed `GroupInfo` now equals the same `GroupInfo` after decoding and verifying it.
 - [#2242](https://github.com/openmls/openmls/pull/2242): `CommitBuilder::load_psk` now checks that resumption PSKs of usage `Application` reference the correct group ID, and returns `CreateCommitError::PskError(PskError::DifferentGroupId)`. In earlier versions it would return `CreateCommitError::PskError(PskError::KeyNotFound)`
+- [#2295](https://github.com/openmls/openmls/pull/2295): `JoinBuilder::check_members(true)` now uses multiset semantics to check member credentials in subgroups and reinitialized groups.
 
 ## 0.9.0 (2026-08-25)
 
