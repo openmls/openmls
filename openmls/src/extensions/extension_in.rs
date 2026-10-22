@@ -71,7 +71,7 @@ impl<T: ExtensionValidator> Deserialize for ExtensionIn<T> {
         #[allow(deprecated)]
         T::really_validate_extension_type(extension_type)
             .map_err(T::error_to_string)
-            .map_err(|e| tls_codec::Error::DecodingError(e))?;
+            .map_err(tls_codec::Error::DecodingError)?;
 
         // Now deserialize the extension itself from the extension data.
         let extension_data = extension_data.as_slice();
