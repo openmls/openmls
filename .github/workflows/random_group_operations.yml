@@ -1,0 +1,47 @@
+name: Nightly random group operations
+
+# Runs the ignored `random_group_operations` test for three hours in several
+# parallel jobs, each from its own random seed. The shard number only labels
+# the job. See the test's module docs for how to replay a failing seed.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  random-group-operations:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    runs-on: ubuntu-latest
+    name: random group operations (shard ${{ matrix.shard }})
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The test can fail for many nights in a row, and the build shouldn't
+          # start cold every time.
+          cache-on-failure: true
+
+      - name: Random group operations
+        env:
+          OPENMLS_RANDOM_GROUP_OPS_DURATION_SECS: 10800
+        run: |
+          cargo test --release -p openmls --lib random_group_operations -- \
+            --ignored --nocapture
