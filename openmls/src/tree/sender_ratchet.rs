@@ -160,8 +160,8 @@ impl SenderRatchet {
 /// the ratchet chain, as well as its current [`Generation`]. It can be
 /// initialized with a given secret and then ratcheted forward, outputting
 /// [`RatchetKeyMaterial`] and increasing its [`Generation`] each time.
-#[derive(Debug, Serialize, Deserialize, Default)]
-#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub(crate) struct RatchetSecret {
     secret: Secret,
     generation: Generation,
@@ -269,16 +269,18 @@ impl DecryptionRatchet {
         &mut self.ratchet_head
     }
 
-    /// Gets a secret from the SenderRatchet. Returns an error if the generation
-    /// is out of bound.
-    pub(crate) fn secret_for_decryption(
-        &mut self,
+    /// Returns the secret for `generation` without changing the ratchet,
+    /// together with the change that [`Self::consume`] applies to mark the
+    /// generation as used. Returns an error if the generation is out of bound
+    /// or was used before.
+    pub(crate) fn peek(
+        &self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         generation: Generation,
         configuration: &SenderRatchetConfiguration,
-    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
-        log::debug!("secret_for_decryption");
+    ) -> Result<(RatchetKeyMaterial, PeekedGeneration), SecretTreeError> {
+        log::debug!("peek decryption secret");
         let head_generation = self.ratchet_head.generation();
         // If generation is too distant in the future
         if head_generation < u32::MAX - configuration.maximum_forward_distance()
@@ -295,50 +297,129 @@ impl DecryptionRatchet {
         }
         // If generation is the one the ratchet is currently at or in the future
         if generation >= head_generation {
-            // Ratchet the chain forward as far as necessary
+            let mut ratchet_head = self.ratchet_head.clone();
+            // Newest first. Only the newest `out_of_order_tolerance` skipped
+            // secrets can remain in the window after consuming.
+            let mut skipped_secrets = VecDeque::new();
             for _ in 0..(generation - head_generation) {
-                // Derive the key material
-                let ratchet_secrets = self
-                    .ratchet_head
+                let ratchet_secrets = ratchet_head
                     .ratchet_forward(crypto, ciphersuite)
                     .map(|(_, key_material)| key_material)?;
-                // Add it to the front of the queue
-                self.past_secrets.push_front(Some(ratchet_secrets));
+                skipped_secrets.push_front(ratchet_secrets);
+                skipped_secrets.truncate(configuration.out_of_order_tolerance() as usize);
             }
-            let ratchet_secrets = self
-                .ratchet_head
+            let ratchet_secrets = ratchet_head
                 .ratchet_forward(crypto, ciphersuite)
                 .map(|(_, key_material)| key_material)?;
-            // Add an entry to the past secrets queue to keep indexing consistent.
-            self.past_secrets.push_front(None);
-            self.past_secrets
-                .truncate(configuration.out_of_order_tolerance() as usize);
-            Ok(ratchet_secrets)
+            Ok((
+                ratchet_secrets,
+                PeekedGeneration::Forward {
+                    from_head: head_generation,
+                    ratchet_head,
+                    skipped_secrets,
+                },
+            ))
         } else {
-            // If the requested generation is within the window of past secrets,
-            // we should get a positive index.
-            let window_index = ((head_generation - generation) as i32) - 1;
-            // We might not have the key material (e.g. we might have discarded
-            // it when generating an encryption secret).
-            let index = if window_index >= 0 {
-                window_index as usize
-            } else {
-                log::error!("  Generation is too far in the past (not in the window).");
-                return Err(SecretTreeError::TooDistantInThePast);
-            };
-            // Get the relevant secrets from the past secrets queue.
-            self.past_secrets
-                .get_mut(index)
+            let index = self.past_secret_index(generation)?;
+            let ratchet_secrets = self
+                .past_secrets
+                .get(index)
                 .ok_or(SecretTreeError::IndexOutOfBounds)?
-                // We use take here to replace the entry in the `past_secrets`
-                // with `None`, thus achieving FS for that secret as soon as the
-                // caller of this function drops it.
-                .take()
+                .clone()
                 // If the requested generation was used to decrypt a message
                 // earlier, throw an error.
-                .ok_or(SecretTreeError::SecretReuseError)
+                .ok_or(SecretTreeError::SecretReuseError)?;
+            Ok((ratchet_secrets, PeekedGeneration::Past { generation }))
         }
     }
+
+    /// Marks a generation returned by [`Self::peek`] as used. Afterwards, the
+    /// generation's secret is deleted and the ratchet has moved forward as
+    /// far as needed. Returns an error if the ratchet changed in a way that
+    /// makes `peeked` stale.
+    pub(crate) fn consume(
+        &mut self,
+        peeked: PeekedGeneration,
+        configuration: &SenderRatchetConfiguration,
+    ) -> Result<(), SecretTreeError> {
+        match peeked {
+            PeekedGeneration::Forward {
+                from_head,
+                ratchet_head,
+                skipped_secrets,
+            } => {
+                if from_head != self.ratchet_head.generation() {
+                    log::error!("The ratchet moved since the generation was peeked.");
+                    return Err(SecretTreeError::LibraryError);
+                }
+                self.ratchet_head = ratchet_head;
+                for ratchet_secrets in skipped_secrets.into_iter().rev() {
+                    self.past_secrets.push_front(Some(ratchet_secrets));
+                }
+                // Add an entry to the past secrets queue to keep indexing consistent.
+                self.past_secrets.push_front(None);
+                self.past_secrets
+                    .truncate(configuration.out_of_order_tolerance() as usize);
+                Ok(())
+            }
+            PeekedGeneration::Past { generation } => {
+                let index = self.past_secret_index(generation)?;
+                self.past_secrets
+                    .get_mut(index)
+                    .ok_or(SecretTreeError::IndexOutOfBounds)?
+                    // We use take here to replace the entry in the
+                    // `past_secrets` with `None`, thus achieving FS for that
+                    // secret.
+                    .take()
+                    .map(|_| ())
+                    .ok_or(SecretTreeError::SecretReuseError)
+            }
+        }
+    }
+
+    /// Gets a secret from the SenderRatchet and marks it as used. Returns an
+    /// error if the generation is out of bound.
+    #[cfg(test)]
+    pub(crate) fn secret_for_decryption(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        generation: Generation,
+        configuration: &SenderRatchetConfiguration,
+    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
+        let (ratchet_secrets, peeked) =
+            self.peek(ciphersuite, crypto, generation, configuration)?;
+        self.consume(peeked, configuration)?;
+        Ok(ratchet_secrets)
+    }
+
+    /// Returns the index of a generation below the head in the past secrets
+    /// queue.
+    fn past_secret_index(&self, generation: Generation) -> Result<usize, SecretTreeError> {
+        // If the requested generation is within the window of past secrets,
+        // we should get a positive index.
+        let window_index = i64::from(self.ratchet_head.generation()) - i64::from(generation) - 1;
+        // We might not have the key material (e.g. we might have discarded
+        // it when generating an encryption secret).
+        usize::try_from(window_index).map_err(|_| {
+            log::error!("  Generation is too far in the past (not in the window).");
+            SecretTreeError::TooDistantInThePast
+        })
+    }
+}
+
+/// The change to a [`DecryptionRatchet`] that marks one generation as used,
+/// computed by [`DecryptionRatchet::peek`].
+pub(crate) enum PeekedGeneration {
+    /// The generation is at or after the head. The ratchet moves its head to
+    /// `ratchet_head` and keeps the skipped secrets that fit into its window.
+    Forward {
+        from_head: Generation,
+        ratchet_head: RatchetSecret,
+        skipped_secrets: VecDeque<RatchetKeyMaterial>,
+    },
+    /// The generation is in the window of past secrets.
+    Past { generation: Generation },
 }
 
 #[cfg(test)]

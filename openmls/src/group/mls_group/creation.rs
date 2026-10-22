@@ -1840,8 +1840,10 @@ impl VcExternalCommitJoinBuilder {
 
         // Parse and verify the external commit against the prior-epoch group.
         // A PrivateMessage claiming our own leaf cannot be an external commit.
-        let processing::UnprotectedMessage::Unverified(unverified) =
-            group.unprotect_message(provider, external_commit).await?
+        let processing::UnprotectedMessage::Unverified {
+            message: unverified,
+            ..
+        } = group.unprotect_message(provider, external_commit).await?
         else {
             return Err(Error::NotAnExternalCommit);
         };

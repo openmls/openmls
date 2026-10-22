@@ -34,7 +34,7 @@ use crate::{
         errors::ValidationError, mls_group::staged_commit::StagedCommit, LeafNodeLifetimePolicy,
     },
     tree::{
-        secret_tree::{DecryptionSecret, SecretType},
+        secret_tree::{DecryptionSecret, PendingRatchetUpdate, SecretType},
         sender_ratchet::SenderRatchetConfiguration,
     },
     versions::ProtocolVersion,
@@ -68,7 +68,13 @@ use super::{
 pub(crate) enum InboundDecryptionResult {
     /// A message from another sender or from a sibling emulator client (with
     /// the `virtual-clients-draft` feature), decrypted and ready for parsing.
-    Decrypted(DecryptedMessage),
+    Decrypted {
+        message: DecryptedMessage,
+        /// The sender ratchet change that decrypting a PrivateMessage requires.
+        /// It must only be applied once the message is processed successfully.
+        /// `None` for a PublicMessage.
+        ratchet_update: Option<PendingRatchetUpdate>,
+    },
     /// A private message whose sender data claims this client's own leaf.
     /// Carries the plaintext framing fields needed to build the
     /// [`ProcessedMessage`], since the content itself cannot be decrypted.
@@ -83,7 +89,7 @@ impl InboundDecryptionResult {
     #[cfg(test)]
     pub(crate) fn into_decrypted(self) -> Option<DecryptedMessage> {
         match self {
-            Self::Decrypted(message) => Some(message),
+            Self::Decrypted { message, .. } => Some(message),
             Self::OwnPrivateMessage { .. } => None,
         }
     }
@@ -202,7 +208,7 @@ impl DecryptedMessage {
             .message_secrets_for_epoch_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let generation = sender_data.generation;
-        let decryption_secret = message_secrets.secret_tree_mut().secret_for_decryption(
+        let decryption_secret = message_secrets.secret_tree_mut().prepare_decryption(
             ciphersuite,
             crypto,
             sender_data.leaf_index,
@@ -210,10 +216,12 @@ impl DecryptedMessage {
             generation,
             sender_ratchet_configuration,
         );
-        let ratchet_key_material = match decryption_secret {
-            Ok(DecryptionSecret::Available(ratchet_key_material)) => ratchet_key_material,
+        let (ratchet_key_material, ratchet_update) = match decryption_secret {
+            Ok((DecryptionSecret::Available(ratchet_key_material), ratchet_update)) => {
+                (ratchet_key_material, ratchet_update)
+            }
             #[cfg(feature = "virtual-clients-draft")]
-            Ok(DecryptionSecret::OwnMessageConfirmed) => {
+            Ok((DecryptionSecret::OwnMessageConfirmed, _)) => {
                 log::debug!("  Own generation {generation} was already confirmed.");
                 return Ok(InboundDecryptionResult::OwnPrivateMessage {
                     epoch: ciphertext.epoch(),
@@ -233,12 +241,15 @@ impl DecryptedMessage {
             #[cfg(feature = "virtual-clients-draft")]
             effective_emulator_ctx,
         )?;
-        Self::from_verifiable_content(
+        let message = Self::from_verifiable_content(
             decrypted.verifiable,
             #[cfg(feature = "virtual-clients-draft")]
             decrypted.emulator_sender_leaf_index,
-        )
-        .map(InboundDecryptionResult::Decrypted)
+        )?;
+        Ok(InboundDecryptionResult::Decrypted {
+            message,
+            ratchet_update,
+        })
     }
 
     // Internal constructor function. Does the following checks:
