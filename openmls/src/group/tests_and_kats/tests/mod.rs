@@ -11,6 +11,8 @@ mod commit_validation;
 mod creator_leaf_node_capabilities;
 mod encoding;
 mod external_add_proposal;
+#[cfg(feature = "extensions-draft")]
+mod external_app_data_update_proposal;
 mod external_commit;
 mod external_commit_builder;
 mod external_commit_remove_prior;
