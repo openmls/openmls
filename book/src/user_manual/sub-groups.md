@@ -1,7 +1,7 @@
 # Sub-group branching
 
 Sometimes a subset of the members in a group want to continue in a separate, smaller
-group without setting up an new group from scratch. MLS supports this with
+group without setting up a new group from scratch. MLS supports this with
 *sub-group branching* ([RFC 9420 §11.3]): a new group is created with the same
 parameters as an existing (parent) group, and its key schedule is seeded with a
 resumption PSK derived from the parent. This cryptographically ties the new
@@ -13,24 +13,22 @@ on the sender side, `bob_group` on the receiver side).
 ## Exporting `BranchInfo` from the parent
 
 Both the sender and each receiver export a `BranchInfo` from their own parent group.
-`BranchInfo` is an owned snapshot of the values a branch needs (protocol version,
-ciphersuite, group id, epoch, the parent's resumption PSK secret, and the parent
-members' credentials).
-
-> [!WARNING]
-> The `BranchInfo` carries the parent's resumption PSK secret, which is
-> sensitive key material.
+`BranchInfo` copies metadata a branch needs (protocol version,
+ciphersuite, group id, epoch, and the parent members' credentials).
+It does not contain the parent's resumption PSK secret.
 
 The sender and every receiver must use a `BranchInfo` exported from the *same*
 parent epoch — the branch's key schedule is derived from that epoch's resumption
-PSK. A receiver's view of the parent group may advance in the meantime (an
-unrelated commit arrives before the branch `Welcome` is processed), so its current
-`branch_info()` might no longer match the epoch the branch was taken from.
-Applications that need to tolerate this should keep the `BranchInfo` of several
-recent epochs (a sliding window) and join with the one for the parent epoch the
-branch was taken from. Because `BranchInfo` is an owned snapshot, this is just a
-matter of holding on to the values. The window size is bounded by how many
-resumption PSKs the group retains (`number_of_resumption_psks`).
+PSK, which is looked up from storage. A receiver's view of the parent group may
+advance in the meantime (an unrelated commit arrives before the branch `Welcome`
+is processed), so its current `branch_info()` might no longer match the epoch the
+branch was taken from. Applications that need to tolerate this should keep the
+`BranchInfo` of several recent epochs (a sliding window) and join with the one for
+the parent epoch the branch was taken from. Because `BranchInfo` is an owned
+snapshot, this is just a matter of holding on to the values. The window should be
+bounded by how many resumption PSKs the group retains (`number_of_resumption_psks`)
+as older branches will fail to load the secret. For branching to succeed,
+`number_of_resumption_psks` must be at least 1.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_sub_groups.rs:export_branch_info}}
@@ -63,7 +61,7 @@ was taken and when its `Welcome` arrives, so the receiver first needs to find ou
 the `Welcome`'s encrypted `GroupSecrets`, so reading it requires decrypting the
 `Welcome`.
 
-`StagedWelcome::process_resuming_welcome` does exactly one decryption and returns a
+`StagedWelcome::process_resuming_welcome` does one decryption and returns a
 `PendingResumingWelcome`. Call `required_resumption_secret()` on it to get the branch
 resumption PSK, which holds the parent `(group_id, epoch)` the branch was taken
 from (see [RFC 9420 §8.4]). Its `usage()` is `ResumptionPskUsage::Branch` for a
@@ -73,21 +71,19 @@ regular welcome returns `None`). Select the `BranchInfo` for that parent epoch
 `build_from_branch`, which reuses the already-decrypted state.
 If it turns out not to be a sub-group branch welcome, continue with `PendingResumingWelcome::build`.
 
-In addition to the regular join processing, this injects the parent's resumption
+In addition to the regular join processing, this loads the parent's resumption
 PSK secret and enforces the [RFC 9420 §11.3] receiver checks. `build_from_branch`
 verifies that the branch PSK in the `Welcome` references the same parent group and
 epoch as the `BranchInfo` you selected (before that secret is mixed into the key
 schedule); a `BranchInfo` from the wrong parent epoch fails with
-`WelcomeError::SubgroupParentMismatch`. The remaining checks run when `build` is
-called: the protocol version and ciphersuite must match the parent, and the sub-group
-must be at epoch 1.
+`WelcomeError::SubgroupParentMismatch`.
 
 Every sub-group member must also be a member of the parent group.
 A simple membership check by equal credential is on by default and can be disabled with
 `JoinBuilder::check_members(false)`. In that case, the application **must** ensure that the new
-member credentials match old ones captured in `BranchInfo::member_credentials()`.
-This is the case when the application uses credentials that don't allow checking
-equivalence of members by checking exact equality of credentials.
+member credentials in `StagedWelcome::members()` match old ones captured in
+`BranchInfo::member_credentials()`. Use this path when the application uses credentials
+that don't allow checking equivalence of members by checking exact equality of credentials.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code_sub_groups.rs:receiver_peek_branch}}

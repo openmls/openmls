@@ -31,7 +31,7 @@ use crate::{
     schedule::{
         errors::PskError,
         psk::{load_psks, PskSecret, ResumptionPsk, ResumptionPskUsage},
-        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk, ResumptionPskSecret,
+        EpochSecretsResult, JoinerSecret, KeySchedule, PreSharedKeyId, Psk,
     },
     storage::{OpenMlsProvider, StorageProvider},
     versions::ProtocolVersion,
@@ -414,9 +414,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info).
     ///
     /// This adds a resumption [`PreSharedKeyId`] of usage `Branch` to the initial
-    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
-    /// the parent group's resumption PSK secret so it is mixed into this
-    /// subgroup's key schedule.
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh.
     ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
     pub(crate) fn branch(
@@ -436,29 +434,17 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
         self = self.propose_psks_unchecked([psk_id]);
-
-        // The branch PSK secret comes from a different group, so we clear this
-        // group's resumption PSK store and inject it at the sentinel epoch 0,
-        // where `load_psks` looks it up for branch usage.
-        let secret = branch_info.resumption_psk_secret().clone();
-        self.group.borrow_mut().resumption_psk_store.clear();
-        self.group
-            .borrow_mut()
-            .resumption_psk_store
-            .add(0.into(), secret);
         Ok(self)
     }
 
     /// Reinitializes a group into this freshly created group, as described in [RFC 9420 §11.2].
     ///
-    /// Information about the old group comes from `reinit_info`, which the
+    /// Information about the old group comes from a [`ReInitInfo`](crate::group::ReInitInfo), which the
     /// predecessor exports with [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
-    /// We acept only the required parts here to avoid unnecessary `clone`.
+    /// We accept only the required fields here to avoid unnecessary `clone`.
     ///
     /// This adds a resumption [`PreSharedKeyId`] of usage `Reinit` to the initial
-    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
-    /// the old group's resumption PSK secret so it is mixed into this
-    /// new group's key schedule.
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh.
     ///
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
     pub(crate) fn reinit(
@@ -466,7 +452,6 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         rand: &impl OpenMlsRand,
         old_group_id: GroupId,
         old_group_epoch: GroupEpoch,
-        resumption_psk_secret: ResumptionPskSecret,
     ) -> Result<Self, CreateCommitError> {
         // Sample a fresh random nonce of length KDF.Nh. Unlike branching, the
         // successor group may use a different ciphersuite than the old group, so
@@ -482,15 +467,6 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
         self = self.propose_psks_unchecked([psk_id]);
-
-        // The reinit PSK secret comes from a different group, so we clear this
-        // group's resumption PSK store and inject it at the sentinel epoch 0,
-        // where `load_psks` looks it up for reinit usage.
-        self.group.borrow_mut().resumption_psk_store.clear();
-        self.group
-            .borrow_mut()
-            .resumption_psk_store
-            .add(0.into(), resumption_psk_secret);
         Ok(self)
     }
 
@@ -773,7 +749,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .collect();
 
         // Load the PSKs and make the PskIds owned.
-        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)
+        let psks = load_psks(storage, Some(self.group.borrow().group_id()), &psk_ids)
             .await?
             .into_iter()
             .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
@@ -1947,7 +1923,7 @@ impl IntoIterator for CommitMessageBundle {
 }
 
 #[cfg(test)]
-mod branch_tests {
+mod tests {
     use crate::{
         group::{
             mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
@@ -1960,14 +1936,13 @@ mod branch_tests {
     /// of a subgroup (i.e. at epoch 0). Using it in any later commit must be
     /// rejected.
     ///
-    /// This exercises the internal [`CommitBuilder::branch`] engine directly, on
+    /// This exercises the internal [`CommitBuilder::branch`] directly, on
     /// an already-established group, which the public `MlsGroupBuilder::branch`
     /// entry point does not allow.
     #[openmls_test::openmls_test]
     fn subgroup_branch_psk_rejected_outside_initial_commit() {
         let alice_provider = &Provider::default();
         let bob_provider = &Provider::default();
-        let parent_provider = &Provider::default();
 
         // `alice_group` is at epoch 1 after adding Bob, so a branch PSK in a
         // commit on it must be rejected.
@@ -1978,10 +1953,10 @@ mod branch_tests {
         // secret, so that `load_psks` succeeds and we actually reach the
         // proposal validation.
         let (parent_cwk, _parent_kpb, parent_signer, _parent_pk) =
-            setup_client("Parent", ciphersuite, parent_provider);
+            setup_client("Parent", ciphersuite, alice_provider);
         let parent_group = MlsGroup::builder()
             .ciphersuite(ciphersuite)
-            .build(parent_provider, &parent_signer, parent_cwk)
+            .build(alice_provider, &parent_signer, parent_cwk)
             .unwrap();
 
         let result = alice_group
@@ -2005,6 +1980,60 @@ mod branch_tests {
                 ))
             ),
             "expected a branch PSK outside the initial commit to be rejected, got {result:?}"
+        );
+    }
+
+    /// A resumption PSK of usage `ReInit` must only appear in the initial commit
+    /// of a group (i.e. at epoch 0). Using it in any later commit must be
+    /// rejected.
+    ///
+    /// This exercises the internal [`CommitBuilder::reinit`] directly, on
+    /// an already-established group, which the public `MlsGroupBuilder::reinit`
+    /// entry point does not allow.
+    #[openmls_test::openmls_test]
+    fn reinit_psk_rejected_outside_initial_commit() {
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+
+        // `alice_group` is at epoch 1 after adding Bob, so a branch PSK in a
+        // commit on it must be rejected.
+        let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
+            setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+        // An arbitrary group serves as the "old" group whose resumption PSK is
+        // injected, so that `load_psks` succeeds and validation is reached.
+        let (old_cwk, _old_kpb, old_signer, _old_pk) =
+            setup_client("Old", ciphersuite, alice_provider);
+        let old_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .build(alice_provider, &old_signer, old_cwk)
+            .unwrap();
+
+        let result = alice_group
+            .commit_builder()
+            .reinit(
+                alice_provider.rand(),
+                old_group.group_id().clone(),
+                old_group.epoch(),
+            )
+            .unwrap()
+            .load_psks(alice_provider.storage())
+            .unwrap()
+            .build(
+                alice_provider.rand(),
+                alice_provider.crypto(),
+                &alice_signer,
+                |_| true,
+            );
+
+        assert!(
+            matches!(
+                result,
+                Err(CreateCommitError::ProposalValidationError(
+                    ProposalValidationError::Psk(PskError::NotAllowed)
+                ))
+            ),
+            "expected a reinit PSK outside the initial commit to be rejected, got {result:?}"
         );
     }
 }

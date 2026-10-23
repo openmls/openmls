@@ -232,13 +232,17 @@ impl MlsGroupBuilder {
         let mut resumption_psk_store = ResumptionPskStore::new(32);
 
         // Prepare the PskSecret
-        let psk_secret = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)
-            .await
-            .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
-            .map_err(|e| {
-                log::debug!("Unexpected PSK error: {e:?}");
-                LibraryError::custom("Unexpected PSK error")
-            })?;
+        let psk_secret = load_psks(
+            provider.storage(),
+            Some(public_group_builder.group_context().group_id()),
+            &self.psk_ids,
+        )
+        .await
+        .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
+        .map_err(|e| {
+            log::debug!("Unexpected PSK error: {e:?}");
+            LibraryError::custom("Unexpected PSK error")
+        })?;
 
         let mut key_schedule =
             KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)?;
@@ -603,7 +607,7 @@ pub enum BranchError<StorageError> {
 /// step, as described in [RFC 9420 §11.2].
 ///
 /// This overrides the group_id, ciphersuite and group_context.extensions of the group_builder
-/// with value from the ReInit proposal.
+/// with values from the ReInit proposal.
 ///
 /// Create this with [`MlsGroupBuilder::reinit`].
 ///
@@ -649,7 +653,6 @@ impl ReInitGroupBuilder {
             proposal,
             old_group_id,
             old_group_epoch,
-            resumption_psk_secret,
             member_credentials: _,
         } = self.reinit_info;
         let group_builder = self
@@ -663,12 +666,7 @@ impl ReInitGroupBuilder {
 
         let mut commit_builder = group
             .commit_builder()
-            .reinit(
-                provider.rand(),
-                old_group_id,
-                old_group_epoch,
-                resumption_psk_secret,
-            )?
+            .reinit(provider.rand(), old_group_id, old_group_epoch)?
             .propose_adds(members);
         if self.force_self_update {
             commit_builder = commit_builder.force_self_update(true);

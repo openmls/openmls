@@ -213,9 +213,6 @@ impl MlsGroup {
     /// the receiver
     /// ([`StagedWelcome::build_from_branch`](crate::group::StagedWelcome::build_from_branch)).
     ///
-    /// The returned [`BranchInfo`] carries this group's resumption PSK secret,
-    /// which is sensitive key material.
-    ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
     pub fn branch_info(&self) -> BranchInfo {
         BranchInfo {
@@ -223,7 +220,6 @@ impl MlsGroup {
             ciphersuite: self.ciphersuite(),
             group_id: self.group_id().clone(),
             epoch: self.epoch(),
-            resumption_psk_secret: self.resumption_psk_secret().clone(),
             member_credentials: self.members().map(|m| m.credential).collect(),
         }
     }
@@ -236,13 +232,12 @@ impl MlsGroup {
     /// `proposal` must be the ReInit proposal covered by the commit that
     /// suspended this group.
     ///
-    /// Hand the resulting [`ReInitInfo`] to the receiver
-    /// ([`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit)).
-    /// The sender still seeds the new group from this group directly via
-    /// [`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit).
-    ///
-    /// The returned [`ReInitInfo`] carries this group's resumption PSK secret,
-    /// which is sensitive key material.
+    /// The sender seeds the new group from [`ReInitInfo`] directly via
+    /// [`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit),
+    /// and the receiver via
+    /// [`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit).
+    /// Until the new group is initialized, the old one must remain in storage to allow fetching
+    /// the resumption PSK secret.
     ///
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
     pub fn reinit_info(&self, proposal: ReInitProposal) -> Option<ReInitInfo> {
@@ -258,7 +253,6 @@ impl MlsGroup {
             proposal,
             old_group_id: self.group_id().clone(),
             old_group_epoch: self.epoch(),
-            resumption_psk_secret: self.resumption_psk_secret().clone(),
             member_credentials: self.members().map(|member| member.credential).collect(),
         })
     }

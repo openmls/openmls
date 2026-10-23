@@ -157,6 +157,18 @@ pub enum WelcomeError<StorageError> {
     /// match the provided predecessor reinit group information (RFC 9420 §11.2).
     #[error("The group's reinit PSK does not reference the provided predecessor group/epoch.")]
     ReInitPredecessorMismatch,
+    /// The Welcome contains a Branch resumption PSK but no BranchInfo was given.
+    #[error("Missing BranchInfo for Branch Welcome.")]
+    MissingBranchInfo,
+    /// The Welcome contains a ReInit resumption PSK but no ReInitInfo was given.
+    #[error("Missing ReInitInfo for ReInit Welcome.")]
+    MissingReInitInfo,
+    /// The Welcome contains no Branch resumption PSK but a BranchInfo was given.
+    #[error("Got BranchInfo for non-Branch Welcome.")]
+    NotABranch,
+    /// The Welcome contains no ReInit resumption PSK but a ReInitInfo was given.
+    #[error("Got ReInitInfo for non-ReInit Welcome.")]
+    NotAReInit,
 }
 
 /// External Commit error

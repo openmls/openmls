@@ -2108,7 +2108,7 @@ fn reinit_group() {
     // Alice commits a ReInit proposal by value to reinitialize the group as
     // a new group with a fresh group id (and, optionally, a new protocol version,
     // ciphersuite or extensions).
-    let new_group_id = GroupId::from_slice(b"reinitialized group");
+    let new_group_id = GroupId::random(alice_provider.rand());
     let reinit_proposal = ReInitProposal::new(
         new_group_id.clone(),
         ProtocolVersion::Mls10,
@@ -2136,9 +2136,8 @@ fn reinit_group() {
     alice_group.merge_pending_commit(alice_provider).unwrap();
     assert!(!alice_group.is_active());
 
-    // Alice exports the ReInitInfo. It holds everything needed for the reinit, alice_group can be discarded.
+    // Alice exports the ReInitInfo.
     let alice_reinit_info = alice_group.reinit_info(reinit_proposal.clone()).unwrap();
-    drop(alice_group);
     // ANCHOR_END: reinit_commit_value
 
     // ANCHOR: reinit_process
@@ -2165,9 +2164,8 @@ fn reinit_group() {
         .unwrap();
     assert!(!bob_group.is_active());
 
-    // Bob extracts ReInitInfo. It holds everything needed for the reinit, bob_group can be discarded.
+    // Bob extracts ReInitInfo.
     let bob_reinit_info = bob_group.reinit_info(bob_reinit_proposal).unwrap();
-    drop(bob_group);
     // ANCHOR_END: reinit_process
 
     // ANCHOR: reinit_successor
@@ -2208,7 +2206,7 @@ fn reinit_group() {
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
         .build();
-    let bob_successor = StagedWelcome::build_from_reinit(
+    let bob_staged_welcome = StagedWelcome::build_from_reinit(
         bob_provider,
         &join_config,
         successor_welcome,
@@ -2216,10 +2214,12 @@ fn reinit_group() {
     )
     .unwrap()
     .with_ratchet_tree(alice_successor.export_ratchet_tree().into())
+    // .check_members(false) // optional; the membership check is on by default
     .build()
-    .unwrap()
-    .into_group(bob_provider)
     .unwrap();
+    // when setting .check_members(false): check that `bob_staged_welcome.members()`
+    // represents the same members as `bob_reinit_info.member_credentials()`.
+    let bob_successor = bob_staged_welcome.into_group(bob_provider).unwrap();
     // ANCHOR_END: reinit_join
 
     assert_eq!(
@@ -2294,7 +2294,7 @@ fn reinit_group_by_reference_pending_welcome() {
     // Alice proposes to reinitialize the group as a new group with a fresh
     // group id (and, optionally, a new protocol version, ciphersuite or
     // extensions).
-    let new_group_id = GroupId::from_slice(b"reinitialized group");
+    let new_group_id = GroupId::random(alice_provider.rand());
     let reinit_proposal = ReInitProposal::new(
         new_group_id.clone(),
         ProtocolVersion::Mls10,
@@ -2342,7 +2342,6 @@ fn reinit_group_by_reference_pending_welcome() {
     assert!(!alice_group.is_active());
 
     let alice_reinit_info = alice_group.reinit_info(reinit_proposal.clone()).unwrap();
-    drop(alice_group);
     // ANCHOR_END: reinit_commit
 
     // Bob processes and merges the ReInit commit, suspending his group too.
@@ -2367,9 +2366,8 @@ fn reinit_group_by_reference_pending_welcome() {
         .unwrap();
     assert!(!bob_group.is_active());
 
-    // Bob extracts ReInitInfo. It hold everything needed for the reinit, bob_group can be discarded.
+    // Bob extracts ReInitInfo.
     let bob_reinit_info = bob_group.reinit_info(bob_reinit_proposal).unwrap();
-    drop(bob_group);
 
     // Alice creates the successor group with the ReInit parameters and welcomes
     // Bob, mixing in the old group's resumption PSK via `reinit`.

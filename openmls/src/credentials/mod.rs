@@ -230,6 +230,7 @@ pub struct Certificate {
     Debug,
     PartialEq,
     Eq,
+    Hash,
     Clone,
     Serialize,
     Deserialize,

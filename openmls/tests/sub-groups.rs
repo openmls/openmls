@@ -392,7 +392,7 @@ fn build_from_branch_rejects_non_branch_welcome() {
     );
 
     assert!(
-        matches!(result, Err(WelcomeError::SubgroupParentMismatch)),
+        matches!(result, Err(WelcomeError::NotABranch)),
         "expected a non-branch welcome to be rejected by build_from_branch, got {:?}",
         result.map(|_| ())
     );
