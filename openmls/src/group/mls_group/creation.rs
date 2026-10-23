@@ -1022,9 +1022,19 @@ impl PendingResumingWelcome {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum ResumptionInfo {
     ReInit(ReInitInfo),
     Branch(BranchInfo),
+}
+
+impl ResumptionInfo {
+    pub(crate) fn member_credentials(&self) -> &[Credential] {
+        match self {
+            ResumptionInfo::Branch(branch_info) => branch_info.member_credentials(),
+            ResumptionInfo::ReInit(reinit_info) => reinit_info.member_credentials(),
+        }
+    }
 }
 
 /// Decrypt a `Welcome`'s `GroupSecrets`.
@@ -2208,39 +2218,31 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
         // match a LeafNode in the parent group. For a reinit, the members
         // must be identical to the old group's.
         // Member equivalence is an application responsibility.
-        // This is a shortcut for a simple case, matching by credential.
+        // This is a shortcut for a simple case, matching credentials with multiset semantics.
         if self.check_members {
-            match &self.resumption_info {
-                Some(ResumptionInfo::Branch(branch_info)) => {
-                    for member in staged_welcome.members() {
-                        if !branch_info
-                            .member_credentials()
-                            .contains(&member.credential)
-                        {
-                            return Err(WelcomeError::SubgroupLeafMismatch);
-                        }
+            if let Some(resumption_info) = &self.resumption_info {
+                let mut unseen_old_credentials: Vec<_> =
+                    resumption_info.member_credentials().to_vec();
+                for new_member in staged_welcome.members() {
+                    if let Some(parent_index) = unseen_old_credentials
+                        .iter()
+                        .position(|m| m == &new_member.credential)
+                    {
+                        unseen_old_credentials.swap_remove(parent_index);
+                    } else {
+                        // The new group contains a member the source group doesn't.
+                        return match resumption_info {
+                            ResumptionInfo::Branch(_) => Err(WelcomeError::SubgroupLeafMismatch),
+                            ResumptionInfo::ReInit(_) => Err(WelcomeError::ReInitLeafMismatch),
+                        };
                     }
                 }
-                Some(ResumptionInfo::ReInit(reinit_info)) => {
-                    // The members must be identical for reinit.
-                    for member in staged_welcome.members() {
-                        if !reinit_info
-                            .member_credentials()
-                            .contains(&member.credential)
-                        {
-                            return Err(WelcomeError::ReInitLeafMismatch);
-                        }
-                    }
-                    for credential in reinit_info.member_credentials() {
-                        if !staged_welcome
-                            .members()
-                            .any(|member| &member.credential == credential)
-                        {
-                            return Err(WelcomeError::ReInitLeafMismatch);
-                        }
-                    }
+                if matches!(resumption_info, ResumptionInfo::ReInit(_))
+                    && !unseen_old_credentials.is_empty()
+                {
+                    // The predecessor contained a member that is missing in the new group.
+                    return Err(WelcomeError::ReInitLeafMismatch);
                 }
-                None => {}
             }
         }
 

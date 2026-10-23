@@ -323,3 +323,268 @@ fn reinit_cross_ciphersuite() {
     let new_ciphersuite = alternate_ciphersuite(ciphersuite, &provider);
     run_reinit_flow::<Provider>(ciphersuite, new_ciphersuite, false);
 }
+
+/// Run a reinit with the given identities in the first and second group.
+///
+/// - `predecessor_identities` are all members of the predecessor group.
+///   `predecessor_identities[0]` creates and reinits the predecessor group and creates the Welcome.
+/// - `successor_identities` are the members of the successor group.
+///   `successor_identities.last()` processes the Welcome.
+///
+/// We need `predecessor_identities[0] == `successor_identities[0]` for correct key package generation.
+fn run_reinit_membership_check<Provider: openmls::storage::OpenMlsProvider + Default>(
+    ciphersuite: Ciphersuite,
+    predecessor_identities: &[&[u8]],
+    successor_identities: &[&[u8]],
+) -> Result<(), WelcomeError<Provider::StorageError>> {
+    assert_eq!(predecessor_identities[0], successor_identities[0]);
+
+    let sender_provider = &Provider::default();
+    let receiver_provider = &Provider::default();
+    // Holds the other members that don't take part.
+    let other_provider = &Provider::default();
+
+    let mls_group_create_config = MlsGroupCreateConfig::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build();
+
+    // === Predecessor group ===
+    let (sender_credential, sender_signer) = generate_credential(
+        predecessor_identities[0].to_vec(),
+        ciphersuite.signature_algorithm(),
+        sender_provider,
+    );
+    let mut sender_group = MlsGroup::new(
+        sender_provider,
+        &sender_signer,
+        &mls_group_create_config,
+        sender_credential.clone(),
+    )
+    .unwrap();
+
+    // Use special provider for the first key package of the receiver
+    let receiver_index = predecessor_identities[1..]
+        .iter()
+        .position(|identity| identity == successor_identities.last().unwrap())
+        .expect("receiver not in predeccessor");
+
+    let predecessor_key_packages: Vec<_> = predecessor_identities[1..]
+        .iter()
+        .enumerate()
+        .map(|(i, identity)| {
+            let provider = if i == receiver_index {
+                receiver_provider
+            } else {
+                other_provider
+            };
+            let (credential, signer) = generate_credential(
+                identity.to_vec(),
+                ciphersuite.signature_algorithm(),
+                provider,
+            );
+            KeyPackage::builder()
+                .build(ciphersuite, provider, &signer, credential)
+                .unwrap()
+                .key_package()
+                .clone()
+        })
+        .collect();
+
+    let (_, welcome, _) = sender_group
+        .add_members(sender_provider, &sender_signer, &predecessor_key_packages)
+        .expect("Could not add members to group");
+    sender_group.merge_pending_commit(sender_provider).unwrap();
+
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome
+        .into_welcome()
+        .expect("expected the message to be a welcome message");
+
+    let mut receiver_group = StagedWelcome::new_from_welcome(
+        receiver_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+        Some(sender_group.export_ratchet_tree().into()),
+    )
+    .expect("Error creating StagedWelcome from Welcome")
+    .into_group(receiver_provider)
+    .expect("Error creating group from StagedWelcome");
+
+    // === Sender commits a ReInit, which suspends the predecessor ===
+    let reinit_proposal = ReInitProposal::new(
+        GroupId::random(sender_provider.rand()),
+        ProtocolVersion::Mls10,
+        ciphersuite,
+        Extensions::empty(),
+    );
+    let bundle = sender_group
+        .commit_builder()
+        .add_proposal(Proposal::re_init(reinit_proposal.clone()))
+        .load_psks(sender_provider.storage())
+        .unwrap()
+        .build(
+            sender_provider.rand(),
+            sender_provider.crypto(),
+            &sender_signer,
+            |_| true,
+        )
+        .unwrap()
+        .stage_commit(sender_provider)
+        .unwrap();
+    let reinit_commit = bundle.into_commit();
+
+    sender_group.merge_pending_commit(sender_provider).unwrap();
+    let sender_reinit_info = sender_group
+        .reinit_info(reinit_proposal.clone())
+        .expect("group not reinitialized");
+    assert_eq!(
+        sender_reinit_info.member_credentials().len(),
+        predecessor_identities.len()
+    );
+
+    let processed = receiver_group
+        .process_message(
+            receiver_provider,
+            reinit_commit.into_protocol_message().unwrap(),
+        )
+        .unwrap();
+    match processed.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged) => {
+            receiver_group
+                .merge_staged_commit(receiver_provider, *staged)
+                .unwrap();
+        }
+        other => panic!("expected a staged commit message, got {other:?}"),
+    }
+    let receiver_reinit_info = receiver_group
+        .reinit_info(reinit_proposal)
+        .expect("group not reinitialized");
+
+    // === Sender creates the successor group ===
+    let successor_key_packages: Vec<_> = successor_identities[1..]
+        .iter()
+        .enumerate()
+        .map(|(i, identity)| {
+            // receiver is last, and first was skipped
+            let provider = if i == successor_identities.len() - 2 {
+                receiver_provider
+            } else {
+                other_provider
+            };
+            let (credential, signer) = generate_credential(
+                identity.to_vec(),
+                ciphersuite.signature_algorithm(),
+                provider,
+            );
+            KeyPackage::builder()
+                .build(ciphersuite, provider, &signer, credential)
+                .unwrap()
+                .key_package()
+                .clone()
+        })
+        .collect();
+
+    let (mut sender_successor_group, commit_message_bundle) = MlsGroup::builder()
+        .use_ratchet_tree_extension(true)
+        .reinit(sender_reinit_info)
+        .build_reinit(
+            sender_provider,
+            &sender_signer,
+            sender_credential,
+            successor_key_packages,
+        )
+        .unwrap();
+    sender_successor_group
+        .merge_pending_commit(sender_provider)
+        .unwrap();
+
+    let welcome = MlsMessageOut::from_welcome(
+        commit_message_bundle.welcome().unwrap().clone(),
+        ProtocolVersion::Mls10,
+    );
+    let welcome: MlsMessageIn = welcome.into();
+    let welcome = welcome.into_welcome().unwrap();
+
+    // === The receiver checks the successor against the predecessor ===
+    StagedWelcome::build_from_reinit(
+        receiver_provider,
+        mls_group_create_config.join_config(),
+        welcome,
+        receiver_reinit_info,
+    )
+    .expect("Receiver could not process the reinit welcome")
+    .check_members(true)
+    .build()
+    .map(|welcome| {
+        // Welcome succeeds if a `StagedWelcome` could be built
+        let receiver_successor_group = welcome
+            .into_group(receiver_provider)
+            .expect("expected group creation to succeed");
+
+        assert_eq!(
+            receiver_successor_group.epoch_authenticator(),
+            sender_successor_group.epoch_authenticator()
+        );
+    })
+}
+
+#[openmls_test]
+fn reinit_members_same() {
+    assert_eq!(
+        run_reinit_membership_check::<Provider>(ciphersuite, &[b"A", b"B"], &[b"A", b"B"]),
+        Ok(())
+    )
+}
+
+#[openmls_test]
+fn reinit_members_same_reordered() {
+    assert_eq!(
+        run_reinit_membership_check::<Provider>(
+            ciphersuite,
+            &[b"A", b"B", b"C"],
+            &[b"A", b"C", b"B"]
+        ),
+        Ok(())
+    )
+}
+
+#[openmls_test]
+fn reinit_members_subset() {
+    assert_eq!(
+        run_reinit_membership_check::<Provider>(ciphersuite, &[b"A", b"B", b"C"], &[b"A", b"B"]),
+        Err(WelcomeError::ReInitLeafMismatch)
+    )
+}
+
+#[openmls_test]
+fn reinit_members_superset() {
+    assert_eq!(
+        run_reinit_membership_check::<Provider>(ciphersuite, &[b"A", b"C"], &[b"A", b"B", b"C"]),
+        Err(WelcomeError::ReInitLeafMismatch)
+    )
+}
+
+#[openmls_test]
+fn reinit_members_same_multiset() {
+    assert_eq!(
+        run_reinit_membership_check::<Provider>(
+            ciphersuite,
+            &[b"A", b"A", b"B"],
+            &[b"A", b"A", b"B"]
+        ),
+        Ok(())
+    )
+}
+
+#[openmls_test]
+fn reinit_members_different_multiset() {
+    assert_eq!(
+        run_reinit_membership_check::<Provider>(
+            ciphersuite,
+            &[b"A", b"A", b"B"],
+            &[b"A", b"B", b"B"]
+        ),
+        Err(WelcomeError::ReInitLeafMismatch)
+    )
+}
