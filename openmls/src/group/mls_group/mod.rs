@@ -33,7 +33,7 @@ use crate::{
     },
     schedule::{
         message_secrets::MessageSecrets,
-        psk::{load_psks, store::ResumptionPskStore, PskSecret},
+        psk::{store::ResumptionPskStore, PskSecret},
         GroupEpochSecrets, JoinerSecret, KeySchedule,
     },
     storage::{OpenMlsProvider, StorageProvider},

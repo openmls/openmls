@@ -204,7 +204,7 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     let psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &[]).unwrap();
+        let psks = load_psks(provider.storage(), &resumption_psk_store, None, None, &[]).unwrap();
 
         PskSecret::new(provider.crypto(), cipher_suite, psks).unwrap()
     };
