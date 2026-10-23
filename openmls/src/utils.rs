@@ -54,6 +54,28 @@ macro_rules! log_content {
     (trace, $($arg:tt)*) => {{}};
 }
 
+/// Serde helper for serializing a `usize` field as a fixed-width `u64`.
+///
+/// `usize` is 32 bits on `wasm32` and 64 bits on most host targets. Serde's
+/// own `usize` impl already encodes as `u64`, so this produces the same bytes
+/// today. It pins that encoding for persisted fields, so the storage format
+/// can't come to depend on the platform's `usize` width.
+///
+/// Fields that participate in the storage format should opt into this helper
+/// via `#[serde(with = "crate::utils::usize_as_u64")]`.
+pub(crate) mod usize_as_u64 {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(value: &usize, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_u64(*value as u64)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<usize, D::Error> {
+        let value = u64::deserialize(deserializer)?;
+        usize::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+
 /// Helper mod that converts a objects that implement FromIterator<_,_> (like a
 /// HashMap or a BTreeMap) into a vector of tuples and vice versa.
 pub mod vector_converter {
