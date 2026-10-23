@@ -87,7 +87,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install dependencies
-        run: sudo apt-get -y install protobuf-compiler # Needed to build the interop client
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install protobuf-compiler # Needed to build the interop client
       - uses: actions/checkout@v7
       # keep in sync with rust-version in Cargo.toml
       - uses: dtolnay/rust-toolchain@1.94.0
