@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-07a88673.js";
+            window.path_to_searchindex_js = "../searchindex-64acf9db.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5c7e1a74.js"></script>
@@ -176,7 +176,7 @@
                     <main>
                         <h1 id="sub-group-branching"><a class="header" href="#sub-group-branching">Sub-group branching</a></h1>
 <p>Sometimes a subset of the members in a group want to continue in a separate, smaller
-group without setting up an new group from scratch. MLS supports this with
+group without setting up a new group from scratch. MLS supports this with
 <em>sub-group branching</em> (<a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching">RFC 9420 §11.3</a>): a new group is created with the same
 parameters as an existing (parent) group, and its key schedule is seeded with a
 resumption PSK derived from the parent. This cryptographically ties the new
@@ -248,7 +248,7 @@ was taken and when its <code>Welcome</code> arrives, so the receiver first needs
 <code>BranchInfo</code>. The branch PSK that carries the parent group and epoch lives inside
 the <code>Welcome</code>’s encrypted <code>GroupSecrets</code>, so reading it requires decrypting the
 <code>Welcome</code>.</p>
-<p><code>StagedWelcome::process_resuming_welcome</code> does exactly one decryption and returns a
+<p><code>StagedWelcome::process_resuming_welcome</code> does one decryption and returns a
 <code>PendingResumingWelcome</code>. Call <code>required_resumption_secret()</code> on it to get the branch
 resumption PSK, which holds the parent <code>(group_id, epoch)</code> the branch was taken
 from (see <a href="https://www.rfc-editor.org/rfc/rfc9420.html#name-pre-shared-keys">RFC 9420 §8.4</a>). Its <code>usage()</code> is <code>ResumptionPskUsage::Branch</code> for a
@@ -268,14 +268,13 @@ must be at epoch 1.</p>
 <p>Every sub-group member must also be a member of the parent group.
 A simple membership check by equal credential is on by default and can be disabled with
 <code>JoinBuilder::check_members(false)</code>. In that case, the application <strong>must</strong> ensure that the new
-member credentials match old ones captured in <code>BranchInfo::member_credentials()</code>.
-This is the case when the application uses credentials that don’t allow checking
-equivalence of members by checking exact equality of credentials.</p>
+member credentials in <code>StagedWelcome::members()</code> match old ones captured in
+<code>BranchInfo::member_credentials()</code>. Use this path when the application uses credentials
+that don’t allow checking equivalence of members by checking exact equality of credentials.</p>
 <pre><code class="language-rust no_run noplayground">    // Bob decrypts the branch welcome once with `process_resuming_welcome`, then
     // reads which parent group and epoch it derives from. This lets him pick the
     // matching `BranchInfo` from his window even if his view of the parent group
-    // has advanced (see the sliding-window note above), without decrypting the
-    // welcome twice.
+    // has advanced (see the sliding-window note above).
     let pending = StagedWelcome::process_resuming_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
@@ -296,18 +295,20 @@ equivalence of members by checking exact equality of credentials.</p>
         .find_map(|(epoch, info)| (epoch == parent_epoch).then_some(info))
         .expect("No BranchInfo for the branch's parent epoch.");
 
-    // Finish the join from the same carrier, reusing the already-decrypted state.
+    // Finish the join.
     // `build_from_branch` checks that the branch PSK references the same parent
-    // group/epoch as the `BranchInfo`; the remaining receiver checks (matching
-    // version, ciphersuite, sub-group epoch, and membership) run when `build` is
-    // called.
-    let bob_sub_group = pending
+    // group/epoch as the `BranchInfo`. `build` checks that version, ciphersuite, sub-group
+    // epoch match.
+    let bob_staged_welcome = pending
         .build_from_branch(bob_provider, bob_branch_info)
         .expect("Error joining the branch.")
         .with_ratchet_tree(sub_group_ratchet_tree.into())
         // .check_members(false) // optional; the membership check is on by default
         .build()
-        .expect("Error joining the sub-group.")
+        .expect("Error joining the sub-group.");
+    // when setting .check_members(false): check that `bob_staged_welcome.members()`
+    // represents a subset of `bob_branch_info.member_credentials()`.
+    let bob_sub_group = bob_staged_welcome
         .into_group(bob_provider)
         .expect("Error creating the sub-group.");</code></pre>
 <p>If you already know the parent epoch (so no peek is needed), the one-shot

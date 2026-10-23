@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-07a88673.js";
+            window.path_to_searchindex_js = "../searchindex-64acf9db.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5c7e1a74.js"></script>
@@ -202,7 +202,7 @@ directly by value:</p>
 <pre><code class="language-rust no_run noplayground">    // Alice commits a ReInit proposal by value to reinitialize the group as
     // a new group with a fresh group id (and, optionally, a new protocol version,
     // ciphersuite or extensions).
-    let new_group_id = GroupId::from_slice(b"reinitialized group");
+    let new_group_id = GroupId::random(alice_provider.rand());
     let reinit_proposal = ReInitProposal::new(
         new_group_id.clone(),
         ProtocolVersion::Mls10,
@@ -237,7 +237,7 @@ directly by value:</p>
 <pre><code class="language-rust no_run noplayground">    // Alice proposes to reinitialize the group as a new group with a fresh
     // group id (and, optionally, a new protocol version, ciphersuite or
     // extensions).
-    let new_group_id = GroupId::from_slice(b"reinitialized group");
+    let new_group_id = GroupId::random(alice_provider.rand());
     let reinit_proposal = ReInitProposal::new(
         new_group_id.clone(),
         ProtocolVersion::Mls10,
@@ -270,10 +270,10 @@ directly by value:</p>
 
     let alice_reinit_info = alice_group.reinit_info(reinit_proposal.clone()).unwrap();
     drop(alice_group);</code></pre>
-<p>When commiting from the proposal queue, the application itself must make sure
+<p>When committing from the proposal queue, the application itself must make sure
 that the ReInit proposal is the only one in the commit. If it accepts other
 proposals, building the commit will throw an error. <a href="https://www.rfc-editor.org/rfc/rfc9420.html#section-12.2-3.9">RFC 9420 §12.2</a> states that
-other proposals SHOULD be preferrred over ReInit. Applications that follow this
+other proposals SHOULD be preferred over ReInit. Applications that follow this
 advice must reject the ReInit proposal in <code>f</code> of <code>CommitBuilder::build</code> if there
 are other proposals.</p>
 <p>Every other member processes and merges the commit, which suspends their view of
@@ -311,8 +311,8 @@ passing the ReInit proposal the suspending commit covered. <code>reinit_info</co
 <code>None</code> if the group is still active. The <code>ReInitInfo</code> contains all details needed to complete the
 reinit, so the old group can be discarded. The info carries the old group’s
 resumption PSK secret and must be handled as sensitive key material.</p>
-<p>The committer or any ther member uses <a href="https://docs.rs/openmls/latest/openmls/group/struct.CommitBuilder.html"><code>CommitBuilder::reinit</code></a>
-to seed the new group with it. The application is responsible for
+<p>The committer or any other member uses <a href="https://docs.rs/openmls/latest/openmls/group/struct.MlsGroupBuilder.html"><code>MlsGroupBuilder::reinit</code></a>
+to seed the new group. The application is responsible for
 seeding only a single successor from a suspended group:</p>
 <pre><code class="language-rust no_run noplayground">    // Alice creates the successor group with the ReInit parameters and welcomes
     // Bob, mixing in the old group's resumption PSK via `reinit`.
@@ -349,21 +349,21 @@ This injects the old group’s resumption PSK and verifies that the reinit PSK i
 the Welcome references the old group and its final epoch; otherwise it fails with
 <code>WelcomeError::ReInitPredecessorMismatch</code>. The remaining checks run when <code>build</code>
 is called on the returned <code>JoinBuilder</code>: the successor’s protocol version,
-ciphersuite, group id and extensions must match the ReInit proposal, the
+ciphersuite, group id and extensions must match the ReInit proposal, and the
 successor must be at epoch 1.</p>
 <p>New group’s members must be identical to the old group’s. A simple membership check by
 equal credential is on by default and can be disabled with
 <code>JoinBuilder::check_members(false)</code>. In that case, the application <strong>must</strong> ensure that the new
-member credentials match the old ones captured in <code>ReInitInfo::member_credentials()</code>.
-This is the case when the application uses credentials that don’t allow checking
-equivalence of members by checking exact equality of credentials.</p>
+member credentials in <code>StagedWelcome::members()</code> match the old ones captured in
+<code>ReInitInfo::member_credentials()</code>. Use this path when the application uses credentials
+that don’t allow checking equivalence of members by checking exact equality of credentials.</p>
 <pre><code class="language-rust no_run noplayground">    // Bob joins the successor group from the reinit welcome, validating it
     // against his suspended old group.
     let join_config = MlsGroupJoinConfig::builder()
         .use_ratchet_tree_extension(true)
         .number_of_resumption_psks(5)
         .build();
-    let bob_successor = StagedWelcome::build_from_reinit(
+    let bob_staged_welcome = StagedWelcome::build_from_reinit(
         bob_provider,
         &amp;join_config,
         successor_welcome,
@@ -371,10 +371,12 @@ equivalence of members by checking exact equality of credentials.</p>
     )
     .unwrap()
     .with_ratchet_tree(alice_successor.export_ratchet_tree().into())
+    // .check_members(false) // optional; the membership check is on by default
     .build()
-    .unwrap()
-    .into_group(bob_provider)
-    .unwrap();</code></pre>
+    .unwrap();
+    // when setting .check_members(false): check that `bob_staged_welcome.members()`
+    // represents the same members as `bob_reinit_info.member_credentials()`.
+    let bob_successor = bob_staged_welcome.into_group(bob_provider).unwrap();</code></pre>
 <p>If the receiver does not yet know which old group a Welcome belongs to or whether it
 is a reinit at all, it can decrypt the Welcome once with <code>StagedWelcome::process_resuming_welcome</code>,
 read the reinit PSK’s old group id and epoch with <code>required_resumption_secret()</code>, select the
