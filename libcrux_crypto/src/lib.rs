@@ -5,13 +5,21 @@ mod crypto;
 mod ff1;
 mod rand;
 
+/// The `rand` traits an entropy source passed to
+/// [`CryptoProvider::with_entropy_source`] must implement, re-exported so that
+/// callers implement the version this crate uses.
+pub use ::rand::{TryCryptoRng, TryRng};
 pub use crypto::CryptoProvider;
 pub use rand::RandError;
 
 /// The libcrux-backed provider for OpenMLS.
-pub struct Provider {
+///
+/// The randomness for both [`OpenMlsProvider::rand`] and
+/// [`OpenMlsProvider::crypto`] comes from the entropy source `R`; see
+/// [`CryptoProvider`].
+pub struct Provider<R = ::rand::rngs::SysRng> {
     // The CryptoProvider serves as both the Rand and Crypto provider
-    crypto: crypto::CryptoProvider,
+    crypto: crypto::CryptoProvider<R>,
     storage: openmls_memory_storage::MemoryStorage,
 }
 
@@ -27,6 +35,17 @@ impl Provider {
     }
 }
 
+impl<R: ::rand::TryCryptoRng> Provider<R> {
+    /// Instantiate a libcrux-based Provider whose randomness is seeded and
+    /// reseeded from `source`. See [`CryptoProvider::with_entropy_source`].
+    pub fn with_entropy_source(source: R) -> Result<Self, CryptoError> {
+        let crypto = crypto::CryptoProvider::with_entropy_source(source)?;
+        let storage = openmls_memory_storage::MemoryStorage::default();
+
+        Ok(Self { crypto, storage })
+    }
+}
+
 impl Default for Provider {
     fn default() -> Self {
         let crypto = crypto::CryptoProvider::new().unwrap();
@@ -36,9 +55,9 @@ impl Default for Provider {
     }
 }
 
-impl OpenMlsProvider for Provider {
-    type CryptoProvider = CryptoProvider;
-    type RandProvider = CryptoProvider;
+impl<R: ::rand::TryCryptoRng + Send> OpenMlsProvider for Provider<R> {
+    type CryptoProvider = CryptoProvider<R>;
+    type RandProvider = CryptoProvider<R>;
     type StorageProvider = openmls_memory_storage::MemoryStorage;
 
     fn storage(&self) -> &Self::StorageProvider {
