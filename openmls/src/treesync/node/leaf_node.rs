@@ -706,6 +706,24 @@ impl LeafNode {
         &self.payload.extensions
     }
 
+    /// Replace the capabilities of this KeyPackage leaf node and sign it
+    /// again, skipping the consistency checks the builders apply. This allows
+    /// tests to construct validly signed but invalid leaf nodes.
+    #[cfg(test)]
+    pub(crate) fn resign_with_capabilities(
+        mut self,
+        signer: &impl Signer,
+        capabilities: Capabilities,
+    ) -> Self {
+        self.payload.capabilities = capabilities;
+        LeafNodeTbs {
+            payload: self.payload,
+            tree_info_tbs: TreeInfoTbs::KeyPackage,
+        }
+        .sign(signer)
+        .expect("signing failed")
+    }
+
     /// The virtual-client derivation info this leaf might contain.
     #[cfg(feature = "virtual-clients-draft")]
     pub(crate) fn vc_derivation_info(

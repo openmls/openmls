@@ -297,6 +297,61 @@ fn key_package_validation_with_many_extensions() {
         .expect("validation should accept supported extensions");
 }
 
+/// A KeyPackage whose leaf node carries an extension that is missing from the
+/// leaf node's capabilities must be rejected by `KeyPackageIn::validate`.
+#[openmls_test::openmls_test]
+fn key_package_rejects_leaf_extension_not_in_capabilities() {
+    const EXTENSION_TYPE: u16 = 0xf000;
+
+    let provider = &Provider::default();
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+    let capabilities = |extensions: &[ExtensionType]| {
+        Capabilities::new(
+            None,
+            Some(&[ciphersuite]),
+            Some(extensions),
+            None,
+            Some(&[CredentialType::Basic]),
+        )
+    };
+
+    // Build a valid KeyPackage that supports the leaf node extension.
+    let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(capabilities(&[ExtensionType::Unknown(EXTENSION_TYPE)]))
+        .leaf_node_extensions(
+            Extensions::single(Extension::Unknown(EXTENSION_TYPE, UnknownExtension(vec![])))
+                .expect("unknown extensions are valid in leaf nodes"),
+        )
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential,
+            },
+        )
+        .expect("failed to build the key package");
+
+    KeyPackageIn::from(key_package.key_package().clone())
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .expect("validation should accept the supported leaf node extension");
+
+    // Drop the extension from the capabilities and sign again.
+    let mut tbs = KeyPackageTbs::from(key_package.key_package().clone());
+    tbs.leaf_node = tbs
+        .leaf_node
+        .resign_with_capabilities(&signature_keys, capabilities(&[]));
+    let invalid = tbs.sign(&signature_keys).expect("signing failed");
+
+    let error = KeyPackageIn::from(invalid)
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .expect_err("leaf node extension missing from capabilities must be rejected");
+    assert_eq!(error, KeyPackageVerifyError::UnsupportedExtension);
+}
+
 #[cfg(feature = "extensions-draft")]
 fn last_resort_extension_type() -> ExtensionType {
     ExtensionType::AppDataDictionary
