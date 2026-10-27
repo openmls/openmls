@@ -4,7 +4,11 @@ use openmls_traits::random::OpenMlsRand;
 
 use crate::{
     ciphersuite::Secret,
-    schedule::psk::{store::ResumptionPskStore, PskSecret, *},
+    group::GroupId,
+    schedule::{
+        psk::{store::ResumptionPskStore, PskSecret, *},
+        ResumptionPskSecret,
+    },
 };
 
 #[openmls_test::openmls_test]
@@ -36,7 +40,14 @@ fn test_psks() {
     let _psk_secret = {
         let resumption_psk_store = ResumptionPskStore::new(1024);
 
-        let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
+        let psks = load_psks(
+            provider.storage(),
+            &resumption_psk_store,
+            None,
+            None,
+            &psk_ids,
+        )
+        .unwrap();
 
         PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap()
     };
@@ -93,7 +104,14 @@ fn test_application_psks() {
 
     let resumption_psk_store = ResumptionPskStore::new(1024);
 
-    let psks = load_psks(provider.storage(), &resumption_psk_store, &psk_ids).unwrap();
+    let psks = load_psks(
+        provider.storage(),
+        &resumption_psk_store,
+        None,
+        None,
+        &psk_ids,
+    )
+    .unwrap();
     PskSecret::new(provider.crypto(), ciphersuite, psks).unwrap();
 
     // Loading an application PSK that is not in storage fails.
@@ -107,9 +125,98 @@ fn test_application_psks() {
         load_psks(
             provider.storage(),
             &resumption_psk_store,
+            None,
+            None,
             std::slice::from_ref(&unknown_psk_id),
         )
         .unwrap_err(),
         PskError::KeyNotFound
+    );
+}
+
+#[openmls_test::openmls_test]
+fn test_psks_resumption_application_no_group() {
+    use crate::schedule::errors::PskError;
+
+    let provider = &Provider::default();
+
+    let group_id = GroupId::from_slice(b"A");
+    let epoch = 1.into();
+
+    let psk_ids = vec![PreSharedKeyId::new(
+        ciphersuite,
+        provider.rand(),
+        Psk::Resumption(ResumptionPsk::new(
+            ResumptionPskUsage::Application,
+            group_id.clone(),
+            epoch,
+        )),
+    )
+    .unwrap()];
+
+    let resumption_psk = ResumptionPskSecret {
+        secret: Secret::from_slice(b"secret"),
+    };
+    let mut resumption_psk_store = ResumptionPskStore::new(1024);
+    resumption_psk_store.add(epoch, resumption_psk);
+
+    // Works if `group_id` is `Some`
+    load_psks(
+        provider.storage(),
+        &resumption_psk_store,
+        Some(&group_id),
+        None,
+        &psk_ids,
+    )
+    .expect("Expected secret to be loaded");
+
+    // Not allowed if `group_id` is `None`
+    let error = load_psks(
+        provider.storage(),
+        &resumption_psk_store,
+        None,
+        None,
+        &psk_ids,
+    )
+    .expect_err("expected resumption usage application without group to fail");
+    assert_eq!(error, PskError::NotAllowed);
+}
+
+#[openmls_test::openmls_test]
+fn test_psks_resumption_application_other_group() {
+    use crate::schedule::errors::PskError;
+
+    let provider = &Provider::default();
+
+    let group_id = GroupId::from_slice(b"A");
+    let other_group_id = GroupId::from_slice(b"B");
+
+    let psk_ids = vec![PreSharedKeyId::new(
+        ciphersuite,
+        provider.rand(),
+        Psk::Resumption(ResumptionPsk::new(
+            ResumptionPskUsage::Application,
+            other_group_id.clone(),
+            1.into(),
+        )),
+    )
+    .unwrap()];
+
+    let resumption_psk_store = ResumptionPskStore::new(1024);
+
+    let error = load_psks(
+        provider.storage(),
+        &resumption_psk_store,
+        Some(&group_id),
+        None,
+        &psk_ids,
+    )
+    .expect_err("expected resumption usage application from other group to fail");
+    assert_eq!(
+        error,
+        PskError::DifferentGroupId {
+            expected: group_id,
+            got: other_group_id
+        }
     );
 }

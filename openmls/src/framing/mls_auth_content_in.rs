@@ -16,7 +16,7 @@ use super::{mls_auth_content::*, mls_content_in::*, *};
 use crate::{
     ciphersuite::signable::{SignedStruct, Verifiable, VerifiedStruct},
     credentials::CredentialWithKey,
-    group::errors::ValidationError,
+    group::{errors::ValidationError, LeafNodeLifetimePolicy},
     messages::proposals_in::ProposalIn,
     versions::ProtocolVersion,
 };
@@ -50,6 +50,7 @@ impl AuthenticatedContentIn {
         crypto: &impl OpenMlsCrypto,
         sender_context: Option<SenderContext>,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<AuthenticatedContent, ValidationError> {
         Ok(AuthenticatedContent {
             wire_format: self.wire_format,
@@ -58,6 +59,7 @@ impl AuthenticatedContentIn {
                 crypto,
                 sender_context,
                 protocol_version,
+                lifetime_policy,
             )?,
             auth: self.auth,
         })

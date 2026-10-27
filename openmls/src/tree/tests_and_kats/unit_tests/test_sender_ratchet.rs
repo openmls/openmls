@@ -152,6 +152,106 @@ fn sender_ratchet_generation_overflow() {
     assert_eq!(err, SecretTreeError::RatchetTooLong)
 }
 
+#[openmls_test::openmls_test]
+fn decryption_follows_the_ratchet_chain() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut chain = RatchetSecret::initial_ratchet_secret(secret.clone());
+    let chain_keys: Vec<_> = (0..=10)
+        .map(|_| {
+            chain
+                .ratchet_forward(provider.crypto(), ciphersuite)
+                .unwrap()
+                .1
+        })
+        .collect();
+    let mut ratchet = DecryptionRatchet::new(secret);
+
+    let cases = [
+        (0, None),
+        (3, None),
+        (4, None),
+        (1, None),
+        (1, Some(SecretTreeError::SecretReuseError)),
+        (2, None),
+        (10, None),
+        (2, Some(SecretTreeError::TooDistantInThePast)),
+        (2_000, Some(SecretTreeError::TooDistantInTheFuture)),
+    ];
+    for (generation, expected_error) in cases {
+        let result = ratchet.secret_for_decryption(
+            ciphersuite,
+            provider.crypto(),
+            generation,
+            configuration,
+        );
+        match expected_error {
+            Some(error) => assert_eq!(result, Err(error), "generation {generation}"),
+            None => assert_eq!(
+                result,
+                Ok(chain_keys[generation as usize].clone()),
+                "generation {generation}"
+            ),
+        }
+    }
+}
+
+#[openmls_test::openmls_test]
+fn peek_leaves_decryption_ratchet_unchanged() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet = DecryptionRatchet::new(secret);
+    ratchet
+        .secret_for_decryption(ciphersuite, provider.crypto(), 3, configuration)
+        .unwrap();
+    let unchanged = ratchet.clone();
+
+    for generation in [1, 7] {
+        let (first_secret, _) = ratchet
+            .peek(ciphersuite, provider.crypto(), generation, configuration)
+            .unwrap();
+        let (second_secret, _) = ratchet
+            .peek(ciphersuite, provider.crypto(), generation, configuration)
+            .unwrap();
+        assert_eq!(first_secret, second_secret);
+        assert_eq!(ratchet, unchanged);
+    }
+}
+
+#[openmls_test::openmls_test]
+fn stale_peeked_generation_is_rejected() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet = DecryptionRatchet::new(secret);
+
+    let (_, forward) = ratchet
+        .peek(ciphersuite, provider.crypto(), 5, configuration)
+        .unwrap();
+    let (_, other_forward) = ratchet
+        .peek(ciphersuite, provider.crypto(), 6, configuration)
+        .unwrap();
+    ratchet.consume(forward, configuration).unwrap();
+    assert_eq!(
+        ratchet.consume(other_forward, configuration),
+        Err(SecretTreeError::LibraryError)
+    );
+
+    let (_, past) = ratchet
+        .peek(ciphersuite, provider.crypto(), 2, configuration)
+        .unwrap();
+    let (_, same_past) = ratchet
+        .peek(ciphersuite, provider.crypto(), 2, configuration)
+        .unwrap();
+    ratchet.consume(past, configuration).unwrap();
+    assert_eq!(
+        ratchet.consume(same_past, configuration),
+        Err(SecretTreeError::SecretReuseError)
+    );
+}
+
 // === DualUseRatchet ===
 //
 // The tests below cover the dual-use-only methods
@@ -606,4 +706,37 @@ fn dual_use_promoted_ratchet_treats_past_generation_as_own_send() {
         .secret_for_decryption(ciphersuite, provider.crypto(), 0, configuration)
         .expect("Expected a lookup result.");
     assert_eq!(decryption_secret, DecryptionSecret::OwnMessageConfirmed);
+}
+
+#[cfg(feature = "virtual-clients-draft")]
+#[openmls_test::openmls_test]
+fn dual_use_stale_peeked_generation_is_rejected() {
+    let provider = &Provider::default();
+    let configuration = &SenderRatchetConfiguration::default();
+    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let mut ratchet = DualUseRatchet::new(secret);
+
+    let (_, forward) = ratchet
+        .peek(ciphersuite, provider.crypto(), 5, configuration)
+        .unwrap();
+    let (_, other_forward) = ratchet
+        .peek(ciphersuite, provider.crypto(), 6, configuration)
+        .unwrap();
+    ratchet.consume(forward.unwrap(), configuration).unwrap();
+    assert_eq!(
+        ratchet.consume(other_forward.unwrap(), configuration),
+        Err(SecretTreeError::LibraryError)
+    );
+
+    let (_, past) = ratchet
+        .peek(ciphersuite, provider.crypto(), 2, configuration)
+        .unwrap();
+    let (_, same_past) = ratchet
+        .peek(ciphersuite, provider.crypto(), 2, configuration)
+        .unwrap();
+    ratchet.consume(past.unwrap(), configuration).unwrap();
+    assert_eq!(
+        ratchet.consume(same_past.unwrap(), configuration),
+        Err(SecretTreeError::SecretReuseError)
+    );
 }

@@ -12,7 +12,6 @@ pub use super::mls_group::errors::*;
 use super::public_group::errors::CreationFromExternalError;
 use crate::{
     ciphersuite::signable::SignatureError,
-    credentials::Credential,
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::MessageDecryptionError,
@@ -146,13 +145,10 @@ pub enum WelcomeError<StorageError> {
     /// (RFC 9420 §11.2).
     #[error("The successor group is not at epoch 1.")]
     ReInitEpochInvalid,
-    /// A member of the successor group does not match any member of the old
+    /// Members of the successor group do not match those of the old
     /// group (RFC 9420 §11.2).
-    #[error("A member of the successor group does not match any member of the old group.")]
+    #[error("Members of the successor group do not match those of the old group.")]
     ReInitLeafMismatch,
-    /// The successor group is missing members of the old group (RFC 9420 §11.2).
-    #[error("The successor group is missing members {0:?} of the old group.")]
-    ReInitLeavesMissing(Vec<Credential>),
     /// The old group or epoch referenced by the reinit PSK does not
     /// match the provided predecessor reinit group information (RFC 9420 §11.2).
     #[error("The group's reinit PSK does not reference the provided predecessor group/epoch.")]

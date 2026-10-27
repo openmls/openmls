@@ -16,8 +16,8 @@ use crate::{
     group::{
         diff::compute_path::{CommitType, PathComputationResult},
         CommitBuilderStageError, CreateCommitError, Extension, ExternalPubExtension, GroupContext,
-        GroupEpoch, GroupId, ProposalQueue, ProposalQueueError, QueuedProposal,
-        RatchetTreeExtension, StagedCommit, WireFormatPolicy,
+        GroupEpoch, GroupId, LeafNodeLifetimePolicy, ProposalQueue, ProposalQueueError,
+        QueuedProposal, RatchetTreeExtension, StagedCommit, WireFormatPolicy,
     },
     key_packages::KeyPackage,
     messages::{
@@ -98,7 +98,6 @@ use super::HandshakeConfirmationData;
 
 #[derive(Debug)]
 struct ExternalCommitInfo {
-    aad: Vec<u8>,
     /// The authoritative credential and signature key for the external
     /// committer's leaf. `build_internal` folds it into the leaf node
     /// parameters and rejects parameters that pin a different credential.
@@ -121,9 +120,19 @@ pub struct Initial {
     leaf_node_parameters: LeafNodeParameters,
     external_commit_info: Option<ExternalCommitInfo>,
 
+    /// The bare AAD to use for this commit. If it is set, the one from the group is not used for
+    /// this commit, but it is still reset by `stage_commit`.
+    bare_aad: Option<Vec<u8>>,
+
     /// Whether or not to clear the proposal queue of the group when staging the commit. Needs to
     /// be done when we include the commits that have already been queued.
     consume_proposal_store: bool,
+
+    /// How the lifetimes of the key packages in Add proposals are checked.
+    lifetime_policy: LeafNodeLifetimePolicy,
+
+    /// Resumption secret for branch or reinit
+    foreign_resumption_psk: Option<(PreSharedKeyId, ResumptionPskSecret)>,
 }
 
 impl Default for Initial {
@@ -134,6 +143,9 @@ impl Default for Initial {
             leaf_node_parameters: LeafNodeParameters::default(),
             own_proposals: vec![],
             external_commit_info: None,
+            lifetime_policy: LeafNodeLifetimePolicy::Verify,
+            bare_aad: None,
+            foreign_resumption_psk: None,
         }
     }
 }
@@ -152,6 +164,12 @@ pub struct LoadedPsks {
 
     /// The GroupInfo creation config
     group_info_config: GroupInfoConfig,
+
+    /// How the lifetimes of the key packages in Add proposals are checked.
+    lifetime_policy: LeafNodeLifetimePolicy,
+    /// The bare AAD to use for this commit. If it is set, the one from the group is not used for
+    /// this commit, but it is still reset by `stage_commit`.
+    bare_aad: Option<Vec<u8>>,
 
     #[cfg(feature = "extensions-draft")]
     app_data_dictionary_updates: Option<AppDataUpdates>,
@@ -400,9 +418,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info).
     ///
     /// This adds a resumption [`PreSharedKeyId`] of usage `Branch` to the initial
-    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
-    /// the parent group's resumption PSK secret so it is mixed into this
-    /// subgroup's key schedule.
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh.
     ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
     pub(crate) fn branch(
@@ -421,17 +437,9 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             )),
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
-        self = self.propose_psks_unchecked([psk_id]);
-
-        // The branch PSK secret comes from a different group, so we clear this
-        // group's resumption PSK store and inject it at the sentinel epoch 0,
-        // where `load_psks` looks it up for branch usage.
-        let secret = branch_info.resumption_psk_secret().clone();
-        self.group.borrow_mut().resumption_psk_store.clear();
-        self.group
-            .borrow_mut()
-            .resumption_psk_store
-            .add(0.into(), secret);
+        self = self.propose_psks_unchecked([psk_id.clone()]);
+        self.stage.foreign_resumption_psk =
+            Some((psk_id, branch_info.resumption_psk_secret().clone()));
         Ok(self)
     }
 
@@ -439,12 +447,10 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     ///
     /// Information about the old group comes from `reinit_info`, which the
     /// predecessor exports with [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
-    /// We acept only the required parts here to avoid unnecessary `clone`.
+    /// We accept only the required parts here to avoid unnecessary `clone`.
     ///
     /// This adds a resumption [`PreSharedKeyId`] of usage `Reinit` to the initial
-    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh, and injects
-    /// the old group's resumption PSK secret so it is mixed into this
-    /// new group's key schedule.
+    /// commit, with a freshly sampled `psk_nonce` of length KDF.Nh.
     ///
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
     pub(crate) fn reinit(
@@ -467,16 +473,8 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
             )),
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
-        self = self.propose_psks_unchecked([psk_id]);
-
-        // The reinit PSK secret comes from a different group, so we clear this
-        // group's resumption PSK store and inject it at the sentinel epoch 0,
-        // where `load_psks` looks it up for reinit usage.
-        self.group.borrow_mut().resumption_psk_store.clear();
-        self.group
-            .borrow_mut()
-            .resumption_psk_store
-            .add(0.into(), resumption_psk_secret);
+        self = self.propose_psks_unchecked([psk_id.clone()]);
+        self.stage.foreign_resumption_psk = Some((psk_id, resumption_psk_secret));
         Ok(self)
     }
 
@@ -516,6 +514,32 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
     /// self-update takes place.
     pub fn leaf_node_parameters(mut self, leaf_node_parameters: LeafNodeParameters) -> Self {
         self.stage.leaf_node_parameters = leaf_node_parameters;
+        self
+    }
+
+    /// Sets how the lifetimes of the key packages in Add proposals are checked
+    /// when the commit is built. The default is [`LeafNodeLifetimePolicy::Verify`].
+    ///
+    /// RFC 9420, Section 7.3, requires a client to check the lifetime of the
+    /// leaf nodes it sends. [`LeafNodeLifetimePolicy::VerifyAt`] is meant for
+    /// applications that use their own clock.
+    pub fn leaf_node_lifetime_policy(mut self, lifetime_policy: LeafNodeLifetimePolicy) -> Self {
+        self.stage.lifetime_policy = lifetime_policy;
+        self
+    }
+
+    /// The AAD to use for this commit. If it is set, the AAD set on the group via
+    /// [`MlsGroup::set_aad`] is not used for this commit. It is still reset when the commit is
+    /// staged, just as it would be if this method had not been called.
+    #[cfg_attr(
+        feature = "extensions-draft",
+        doc = "",
+        doc = "When the GroupContext requires Safe AAD, this sets the tail only. The Safe AAD",
+        doc = "items staged on the group via [`MlsGroup::set_safe_aad`] are still prefixed to it,",
+        doc = "and are also reset when the commit is staged."
+    )]
+    pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
+        self.stage.bare_aad = Some(aad);
         self
     }
 
@@ -733,11 +757,20 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
             .collect();
 
         // Load the PSKs and make the PskIds owned.
-        let psks = load_psks(storage, &self.group.borrow().resumption_psk_store, &psk_ids)
-            .await?
-            .into_iter()
-            .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
-            .collect();
+        let psks = load_psks(
+            storage,
+            &self.group.borrow().resumption_psk_store,
+            Some(self.group.borrow().group_id()),
+            self.stage
+                .foreign_resumption_psk
+                .as_ref()
+                .map(|(psk_id, secret)| (psk_id, secret.clone())),
+            &psk_ids,
+        )
+        .await?
+        .into_iter()
+        .map(|(psk_id_ref, key)| (psk_id_ref.clone(), key))
+        .collect();
 
         // Initialize GroupInfoConfig
         let use_ratchet_tree_extension = self
@@ -762,8 +795,10 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, Initial, G> {
                         force_self_update: stage.force_self_update,
                         leaf_node_parameters: stage.leaf_node_parameters,
                         consume_proposal_store: stage.consume_proposal_store,
+                        bare_aad: stage.bare_aad,
                         group_info_config,
                         external_commit_info: stage.external_commit_info,
+                        lifetime_policy: stage.lifetime_policy,
                         #[cfg(feature = "extensions-draft")]
                         app_data_dictionary_updates: None,
                     },
@@ -886,6 +921,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             use_ratchet_tree_extension,
             other_extensions,
         } = cur_stage.group_info_config;
+        let lifetime_policy = cur_stage.lifetime_policy;
 
         // Stage the marker before any proposal validation or path computation,
         // so a misconfigured group is rejected before an operation generation is
@@ -1011,7 +1047,9 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             path_leaf_signature_key,
         )?;
         // ValSem105
-        group.public_group.validate_add_proposals(&proposal_queue)?;
+        group
+            .public_group
+            .validate_add_proposals(&proposal_queue, lifetime_policy)?;
         // ValSem106
         // ValSem109
         group.public_group.validate_capabilities(&proposal_queue)?;
@@ -1020,9 +1058,8 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         group
             .public_group
             .validate_remove_proposals(&proposal_queue)?;
-        // Also validates branch PSK proposals: a resumption PSK of usage `Branch`
-        // is only accepted at epoch 0 (i.e. in the initial commit of a subgroup),
-        // see `validate_pre_shared_key_proposals`.
+        // Also validates branch PSK proposals: a resumption PSK of usage `Branch` or `ReInit`
+        // is only accepted at epoch 0 (i.e. in the initial commit),
         group
             .public_group
             .validate_pre_shared_key_proposals(&proposal_queue)?;
@@ -1179,31 +1216,32 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             path: path_computation_result.encrypted_path,
         };
 
-        let (outgoing_aad, wire_format): (Vec<u8>, WireFormat) =
-            match &cur_stage.external_commit_info {
-                None => (
-                    group.outgoing_authenticated_data()?,
-                    group.outgoing_wire_format(),
-                ),
-                Some(ExternalCommitInfo { aad, .. }) => {
-                    // The spec requires the SafeAAD prefix even with zero items
-                    // when the target GroupContext has `safe_aad` present, so a
-                    // bare `aad` would be rejected by SafeAAD-aware receivers.
-                    // The joining group carries no application-staged items, so
-                    // the prefix is empty unless the builder staged the
-                    // virtual-clients marker.
-                    #[cfg(feature = "extensions-draft")]
-                    let aad_bytes = if group.context().safe_aad_required() {
-                        crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, aad)
-                            .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
-                    } else {
-                        aad.clone()
-                    };
-                    #[cfg(not(feature = "extensions-draft"))]
-                    let aad_bytes = aad.clone();
-                    (aad_bytes, WireFormat::PublicMessage)
-                }
-            };
+        let wire_format = if cur_stage.external_commit_info.is_some() {
+            WireFormat::PublicMessage
+        } else {
+            group.outgoing_wire_format()
+        };
+
+        let outgoing_aad = if let Some(aad) = cur_stage.bare_aad {
+            // The spec requires the SafeAAD prefix even with zero items
+            // when the target GroupContext has `safe_aad` present, so a
+            // bare `aad` would be rejected by SafeAAD-aware receivers.
+            // The joining group carries no application-staged items, so
+            // the prefix is empty unless the builder staged the
+            // virtual-clients marker.
+            #[cfg(feature = "extensions-draft")]
+            if group.context().safe_aad_required() {
+                crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, &aad)
+                    .map_err(|_| LibraryError::custom("SafeAad serialization failed"))?
+            } else {
+                aad
+            }
+
+            #[cfg(not(feature = "extensions-draft"))]
+            aad
+        } else {
+            group.outgoing_authenticated_data()?
+        };
 
         let framing_parameters = FramingParameters::new(&outgoing_aad, wire_format);
 
@@ -1901,7 +1939,7 @@ impl IntoIterator for CommitMessageBundle {
 }
 
 #[cfg(test)]
-mod branch_tests {
+mod tests {
     use crate::{
         group::{
             mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client},
@@ -1914,7 +1952,7 @@ mod branch_tests {
     /// of a subgroup (i.e. at epoch 0). Using it in any later commit must be
     /// rejected.
     ///
-    /// This exercises the internal [`CommitBuilder::branch`] engine directly, on
+    /// This exercises the internal [`CommitBuilder::branch`] directly, on
     /// an already-established group, which the public `MlsGroupBuilder::branch`
     /// entry point does not allow.
     #[openmls_test::openmls_test]
@@ -1923,8 +1961,6 @@ mod branch_tests {
         let bob_provider = &Provider::default();
         let parent_provider = &Provider::default();
 
-        // `alice_group` is at epoch 1 after adding Bob, so a branch PSK in a
-        // commit on it must be rejected.
         let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
             setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
 
@@ -1938,6 +1974,8 @@ mod branch_tests {
             .build(parent_provider, &parent_signer, parent_cwk)
             .unwrap();
 
+        // `alice_group` is at epoch 1 so it must reject branch PSK proposals.
+        assert_eq!(alice_group.epoch(), 1.into());
         let result = alice_group
             .commit_builder()
             .branch(alice_provider.rand(), &parent_group.branch_info())
@@ -1959,6 +1997,63 @@ mod branch_tests {
                 ))
             ),
             "expected a branch PSK outside the initial commit to be rejected, got {result:?}"
+        );
+    }
+
+    /// A resumption PSK of usage `Reinit` must only appear in the initial commit
+    /// of a group (i.e. at epoch 0). Using it in any later commit must be
+    /// rejected.
+    ///
+    /// This exercises the internal [`CommitBuilder::reinit`] directly, on
+    /// an already-established group, which the public `MlsGroupBuilder::reinit`
+    /// entry point does not allow.
+    #[openmls_test::openmls_test]
+    fn reinit_psk_rejected_outside_initial_commit() {
+        let alice_provider = &Provider::default();
+        let bob_provider = &Provider::default();
+        let old_provider = &Provider::default();
+
+        let (mut alice_group, alice_signer, _bob_group, _bob_signer, _alice_cwk, _bob_cwk) =
+            setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+        // An arbitrary group serves as the "old" group whose resumption PSK serves as predecessor,
+        // so that `load_psks` succeeds and validation is reached.
+        let (old_cwk, _old_kpb, old_signer, _old_pk) =
+            setup_client("Old", ciphersuite, old_provider);
+        let old_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .build(old_provider, &old_signer, old_cwk)
+            .unwrap();
+        let old_secret = old_group.resumption_psk_secret().clone();
+
+        // `alice_group` is at epoch 1 so it must reject reinit PSK proposals.
+        assert_eq!(alice_group.epoch(), 1.into());
+        let result = alice_group
+            .commit_builder()
+            .reinit(
+                alice_provider.rand(),
+                old_group.group_id().clone(),
+                old_group.epoch(),
+                old_secret,
+            )
+            .unwrap()
+            .load_psks(alice_provider.storage())
+            .unwrap()
+            .build(
+                alice_provider.rand(),
+                alice_provider.crypto(),
+                &alice_signer,
+                |_| true,
+            );
+
+        assert!(
+            matches!(
+                result,
+                Err(CreateCommitError::ProposalValidationError(
+                    ProposalValidationError::Psk(PskError::NotAllowed)
+                ))
+            ),
+            "expected a reinit PSK outside the initial commit to be rejected, got {result:?}"
         );
     }
 }

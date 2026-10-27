@@ -284,6 +284,201 @@ fn test_aad_stage_commit() {
     assert_eq!(processed_message.aad(), TEST_AAD);
 }
 
+const BUILDER_AAD: &[u8] = b"CommitBuilder AAD";
+
+/// `CommitBuilder::with_aad` overrides the group's AAD for the commit it
+/// builds, but the group's AAD is still reset by `stage_commit`.
+///
+/// This is a regression test: `with_aad` only bypasses the group's AAD on the
+/// way *out*; it does not protect it from the unconditional `reset_aad()` in
+/// `stage_commit`. If that ever changes, this test should be updated
+/// deliberately, together with the documentation of `with_aad`.
+///
+/// The `extensions-draft` counterpart, where the GroupContext requires Safe
+/// AAD and `with_aad` replaces only the tail, is
+/// `safe_aad::safe_aad_commit_builder_with_aad_replaces_only_tail`.
+#[openmls_test::openmls_test]
+fn test_aad_stage_commit_with_aad_overrides_group_aad() {
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    group.set_aad(TEST_AAD.to_vec());
+
+    let message_bundle = group
+        .commit_builder()
+        .with_aad(BUILDER_AAD.to_vec())
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+            true
+        })
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    // The group's AAD was ignored for this commit, but it was still reset.
+    assert_eq!(group.aad(), b"");
+
+    let processed_message = group
+        .process_message(
+            provider,
+            message_bundle
+                .commit()
+                .clone()
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(processed_message.aad(), BUILDER_AAD);
+}
+
+/// The AAD passed to `CommitBuilder::with_aad` applies to that commit only. It
+/// is neither stored in the group nor carried over to the next message.
+#[openmls_test::openmls_test]
+fn test_aad_stage_commit_with_aad_is_not_sticky() {
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    // The group's AAD is empty, and `with_aad` must not change that.
+    let message_bundle = group
+        .commit_builder()
+        .with_aad(BUILDER_AAD.to_vec())
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+            true
+        })
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    assert_eq!(group.aad(), b"");
+
+    let processed_message = group
+        .process_message(
+            provider,
+            message_bundle
+                .commit()
+                .clone()
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+    assert_eq!(processed_message.aad(), BUILDER_AAD);
+
+    group.merge_pending_commit(provider).unwrap();
+
+    // The next commit, built without `with_aad`, carries the group's (empty)
+    // AAD again.
+    let message_bundle = group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+            true
+        })
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    let processed_message = group
+        .process_message(
+            provider,
+            message_bundle
+                .commit()
+                .clone()
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(processed_message.aad(), b"");
+}
+
+/// A commit built without `with_aad` keeps using the group's AAD, which is
+/// then reset by `stage_commit`. This pins the baseline the two tests above
+/// compare against.
+#[openmls_test::openmls_test]
+fn test_aad_stage_commit_without_with_aad_uses_group_aad() {
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    group.set_aad(TEST_AAD.to_vec());
+
+    let message_bundle = group
+        .commit_builder()
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+            true
+        })
+        .unwrap()
+        .stage_commit(provider)
+        .unwrap();
+
+    assert_eq!(group.aad(), b"");
+
+    let processed_message = group
+        .process_message(
+            provider,
+            message_bundle
+                .commit()
+                .clone()
+                .into_protocol_message()
+                .unwrap(),
+        )
+        .unwrap();
+
+    assert_eq!(processed_message.aad(), TEST_AAD);
+}
+
+/// On a failing `stage_commit`, neither the group's AAD nor the builder's AAD
+/// is applied to the group: the group's AAD survives untouched.
+#[openmls_test::openmls_test]
+fn test_aad_error_commit_with_aad() {
+    let provider = &Provider::default();
+    let (mut group, _credential, signer, _pk) = setup_alice_group(ciphersuite, provider);
+
+    // Storage provider that will fail to write group state
+    let test_storage = TestStorageProvider {
+        delegate: provider.storage(),
+        errors: RefCell::new(HashMap::from([(
+            "write_group_state",
+            vec![TestStorageError::Injected("writing group state")],
+        )])),
+    };
+    let test_provider = TestProvider {
+        storage: &test_storage,
+        crypto: provider.crypto(),
+        rand: provider.rand(),
+    };
+
+    group.set_aad(TEST_AAD.to_vec());
+
+    let err = group
+        .commit_builder()
+        .with_aad(BUILDER_AAD.to_vec())
+        // use the normal storage first...
+        .load_psks(provider.storage())
+        .unwrap()
+        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
+            true
+        })
+        .unwrap()
+        // ...then switch to error storage
+        .stage_commit(&test_provider)
+        .expect_err("expected error");
+
+    assert_eq!(
+        err,
+        CommitBuilderStageError::KeyStoreError(TestStorageError::Injected("writing group state"))
+    );
+    // The AAD should not be reset, and must not have been replaced by the
+    // builder's AAD either.
+    assert_eq!(group.aad(), TEST_AAD);
+}
+
 #[openmls_test::openmls_test]
 fn test_aad_stage_commit_with_group_info() {
     let provider = &Provider::default();
@@ -666,8 +861,10 @@ fn test_aad_propose_group_context_extensions() {
 
     group.set_aad(TEST_AAD.to_vec());
 
-    let extensions =
-        Extensions::from_vec(vec![Extension::Unknown(1, UnknownExtension(Vec::new()))]).unwrap();
+    let extensions = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[], &[], &[]),
+    )])
+    .unwrap();
 
     let (message, _proposal_ref) = group
         .propose_group_context_extensions(provider, extensions, &signer)
@@ -803,8 +1000,10 @@ fn test_aad_propose_dispatch() {
 
     let (_, charlie_pkb, _, _) = setup_client("Charlie", ciphersuite, &Provider::default());
 
-    let extensions =
-        Extensions::from_vec(vec![Extension::Unknown(1, UnknownExtension(Vec::new()))]).unwrap();
+    let extensions = Extensions::from_vec(vec![Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[], &[], &[]),
+    )])
+    .unwrap();
 
     let proposals = [
         Propose::Add(charlie_pkb.key_package.clone()),

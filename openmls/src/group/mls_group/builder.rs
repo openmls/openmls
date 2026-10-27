@@ -11,8 +11,8 @@ use crate::{
     group::{
         config::PastEpochDeletionPolicy, past_secrets::MessageSecretsStore,
         public_group::errors::PublicGroupBuildError, BranchInfo, CommitBuilderStageError,
-        CommitMessageBundle, CreateCommitError, GroupContext, GroupId, MlsGroup,
-        MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
+        CommitMessageBundle, CreateCommitError, GroupContext, GroupId, LeafNodeLifetimePolicy,
+        MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
         PublicGroup, ReInitInfo, WireFormatPolicy,
     },
     key_packages::{KeyPackage, Lifetime},
@@ -101,6 +101,7 @@ impl MlsGroupBuilder {
             branch_info,
             extensions: None,
             force_self_update: false,
+            lifetime_policy: LeafNodeLifetimePolicy::Verify,
         }
     }
 
@@ -231,13 +232,19 @@ impl MlsGroupBuilder {
         let mut resumption_psk_store = ResumptionPskStore::new(32);
 
         // Prepare the PskSecret
-        let psk_secret = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)
-            .await
-            .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
-            .map_err(|e| {
-                log::debug!("Unexpected PSK error: {e:?}");
-                LibraryError::custom("Unexpected PSK error")
-            })?;
+        let psk_secret = load_psks(
+            provider.storage(),
+            &resumption_psk_store,
+            Some(public_group_builder.group_context().group_id()),
+            None,
+            &self.psk_ids,
+        )
+        .await
+        .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
+        .map_err(|e| {
+            log::debug!("Unexpected PSK error: {e:?}");
+            LibraryError::custom("Unexpected PSK error")
+        })?;
 
         let mut key_schedule =
             KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)?;
@@ -503,6 +510,7 @@ pub struct BranchGroupBuilder {
     branch_info: BranchInfo,
     extensions: Option<Extensions<GroupContext>>,
     force_self_update: bool,
+    lifetime_policy: LeafNodeLifetimePolicy,
 }
 
 impl BranchGroupBuilder {
@@ -521,6 +529,14 @@ impl BranchGroupBuilder {
     /// [`CommitBuilder::force_self_update`](crate::group::CommitBuilder::force_self_update).
     pub fn force_self_update(mut self, force_self_update: bool) -> Self {
         self.force_self_update = force_self_update;
+        self
+    }
+
+    /// Sets how the lifetimes of the key packages of the new members are
+    /// checked. See
+    /// [`CommitBuilder::leaf_node_lifetime_policy`](crate::group::CommitBuilder::leaf_node_lifetime_policy).
+    pub fn leaf_node_lifetime_policy(mut self, lifetime_policy: LeafNodeLifetimePolicy) -> Self {
+        self.lifetime_policy = lifetime_policy;
         self
     }
 
@@ -555,7 +571,8 @@ impl BranchGroupBuilder {
         let mut builder = group
             .commit_builder()
             .branch(provider.rand(), &self.branch_info)?
-            .propose_adds(new_members);
+            .propose_adds(new_members)
+            .leaf_node_lifetime_policy(self.lifetime_policy);
         if let Some(extensions) = self.extensions {
             builder = builder.propose_group_context_extensions(extensions)?;
         }

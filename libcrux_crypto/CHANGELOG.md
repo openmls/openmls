@@ -9,9 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [#2281](https://github.com/openmls/openmls/pull/2281): The ML-KEM-768 + P-256 hybrid KEM (`MLKEM768-P256`) via `hpke-rs-libcrux`, so `MLS_128_MLKEM768P256_AES128GCM_SHA256_P256` (TBD3) and `MLS_128_MLKEM768P256_AES256GCM_SHA384_P256` (TBD4) from `draft-ietf-mls-pq-ciphersuites` are now supported (behind the `draft-ietf-mls-pq-ciphersuites` feature flag). `MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87` (already accepted by `supports()`) is now also advertised in `supported_ciphersuites()`. `MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384` (TBD5) and `MLS_192_MLKEM1024_AES256GCM_SHA384_P384` (TBD8) remain unsupported because libcrux has no ECDSA P-384 implementation; the ML-KEM-1024 + P-384 HPKE KEM itself is implemented.
 - [#2215](https://github.com/openmls/openmls/pull/2215): ECDSA P-256 signature support via `libcrux-ecdsa`, enabling the `MLS_128_DHKEMP256_AES128GCM_SHA256_P256` ciphersuite. Key and signature encodings (raw scalar, uncompressed SEC1 point, DER signatures) match the RustCrypto provider.
 
 - [#2170](https://github.com/openmls/openmls/pull/2170): ML-DSA-44/65/87 signatures via `libcrux-ml-dsa`, and pure ML-KEM KEMs via `hpke-rs-libcrux`'s `draft-ietf-hpke-pq`, so the ML-DSA ciphersuites from `draft-ietf-mls-pq-ciphersuites` are now supported by the libcrux provider (behind the `draft-ietf-mls-pq-ciphersuites` feature flag). Key and signature encodings match the RustCrypto provider.
+
+- [#2274](https://github.com/openmls/openmls/pull/2274): The libcrux provider now also advertises `MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519`, `MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519`, `MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519` and `MLS_128_MLKEM768_AES256GCM_SHA384_P256` from `draft-ietf-mls-pq-ciphersuites` in `supported_ciphersuites()` (all already accepted by `supports()`).
+- [#2274](https://github.com/openmls/openmls/pull/2274): New `legacy-pq-key-derivation` feature flag: derives HPKE key pairs for the legacy `MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519` (0x004D) ciphersuite the way 0.4.0 did, to interoperate with existing groups on that ciphersuite. See below.
+
+### Changed
+
+- [#2274](https://github.com/openmls/openmls/pull/2274): HPKE key derivation (`derive_hpke_keypair`) for the ML-KEM and X-Wing KEMs now follows `draft-ietf-hpke-pq` (`SHAKE256.LabeledDerive(ikm, "DeriveKeyPair", "", Nsk)`) instead of the unlabeled `SHAKE256(ikm, Nsk)`, and ML-KEM private keys are now the 64-byte seed instead of the expanded decapsulation key. This is a breaking change for groups created with 0.4.0 on PQ ciphersuites:
+  - `MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519` (0x004D): keys derived from path secrets no longer match those of 0.4.0 peers, so mixed-version groups fail on commits with an update path. Stored keys keep working. Enable `legacy-pq-key-derivation` to keep the 0.4.0 derivation for this ciphersuite (all other ciphersuites are unaffected), and migrate such groups (e.g. via ReInit) to a `draft-ietf-mls-pq-ciphersuites` ciphersuite.
+  - `MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519` (0xF042) is the provisional code point of the draft's TBD6 and uses the new derivation. Groups created with 0.4.0 on it cannot be carried over: the derivation differs and stored ML-KEM private keys are in the old expanded format.
 
 ## 0.4.0 (2026-08-25)
 

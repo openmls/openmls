@@ -14,15 +14,16 @@ use super::Sender;
 #[cfg(feature = "extensions-draft")]
 use super::StagedCommitSafeExport;
 use super::{
-    super::errors::*, load_psks, Credential, ExportedSecret, Extension, GroupContext,
-    GroupEpochSecrets, GroupId, JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets,
-    MlsGroup, MlsGroupState, OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue,
-    PskSecret, QueuedProposal, ReInitProposal, StagedCommitExport,
+    super::errors::*, Credential, ExportedSecret, Extension, GroupContext, GroupEpochSecrets,
+    GroupId, JoinerSecret, KeySchedule, LeafNode, LibraryError, MessageSecrets, MlsGroup,
+    MlsGroupState, OpenMlsProvider, PendingCommitState, Proposal, ProposalQueue, PskSecret,
+    QueuedProposal, ReInitProposal, StagedCommitExport,
 };
 use crate::group::diff::PublicGroupDiff;
-use crate::group::GroupEpoch;
+use crate::group::{GroupEpoch, LeafNodeLifetimePolicy};
 use crate::messages::ConfirmationTag;
 use crate::prelude::{Commit, LeafNodeIndex};
+use crate::schedule::psk::load_psks;
 #[cfg(feature = "extensions-draft")]
 use crate::{component::ComponentId, schedule::application_export_tree::ApplicationExportTree};
 
@@ -182,6 +183,8 @@ impl MlsGroup {
             let psks: Vec<(&PreSharedKeyId, Secret)> = load_psks(
                 provider.storage(),
                 &self.resumption_psk_store,
+                Some(self.group_id()),
+                None,
                 &apply_proposals_values.presharedkeys,
             )
             .await?;
@@ -250,13 +253,14 @@ impl MlsGroup {
         old_epoch_keypairs: Vec<EncryptionKeyPair>,
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         provider: &impl OpenMlsProvider,
+        lifetime_policy: LeafNodeLifetimePolicy,
         #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
             crate::components::vc_derivation_info::VcCommitMaterial,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (commit, proposal_queue, sender_index) = self
-            .public_group
-            .validate_commit(mls_content, provider.crypto())?;
+        let (commit, proposal_queue, sender_index) =
+            self.public_group
+                .validate_commit(mls_content, provider.crypto(), lifetime_policy)?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.
@@ -298,13 +302,14 @@ impl MlsGroup {
         leaf_node_keypairs: Vec<EncryptionKeyPair>,
         app_data_dict_updates: Option<AppDataUpdates>,
         provider: &impl OpenMlsProvider,
+        lifetime_policy: LeafNodeLifetimePolicy,
         #[cfg(feature = "virtual-clients-draft")] vc_commit_material: Option<
             crate::components::vc_derivation_info::VcCommitMaterial,
         >,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (commit, proposal_queue, sender_index) = self
-            .public_group
-            .validate_commit(mls_content, provider.crypto())?;
+        let (commit, proposal_queue, sender_index) =
+            self.public_group
+                .validate_commit(mls_content, provider.crypto(), lifetime_policy)?;
 
         // Create the provisional public group state (including the tree and
         // group context) and apply proposals.
