@@ -27,6 +27,7 @@ mod group_context_extensions;
 mod key_package_in;
 mod past_secrets;
 mod proposal_validation;
+mod random_group_operations;
 mod remove_operation;
 mod unsupported_ciphersuite;
 #[cfg(all(
