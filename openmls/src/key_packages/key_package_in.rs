@@ -211,6 +211,11 @@ impl KeyPackageIn {
             .leaf_node
             .capabilities()
             .contains_extensions(&key_package.payload.extensions)
+            || !key_package
+                .payload
+                .leaf_node
+                .capabilities()
+                .contains_extensions(key_package.payload.leaf_node.extensions())
         {
             return Err(KeyPackageVerifyError::UnsupportedExtension);
         }
