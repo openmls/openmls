@@ -35,7 +35,7 @@ impl Provider {
     }
 }
 
-impl<R: ::rand::TryCryptoRng> Provider<R> {
+impl<R: ::rand::TryCryptoRng + Send + 'static> Provider<R> {
     /// Instantiate a libcrux-based Provider whose randomness is seeded and
     /// reseeded from `source`. See [`CryptoProvider::with_entropy_source`].
     pub fn with_entropy_source(source: R) -> Result<Self, CryptoError> {
@@ -55,7 +55,7 @@ impl Default for Provider {
     }
 }
 
-impl<R: ::rand::TryCryptoRng + Send> OpenMlsProvider for Provider<R> {
+impl<R: ::rand::TryCryptoRng + Send + 'static> OpenMlsProvider for Provider<R> {
     type CryptoProvider = CryptoProvider<R>;
     type RandProvider = CryptoProvider<R>;
     type StorageProvider = openmls_memory_storage::MemoryStorage;
