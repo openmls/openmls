@@ -1,6 +1,6 @@
 use hpke_rs_libcrux::HpkeLibcrux;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{
@@ -9,48 +9,68 @@ use openmls_traits::types::{
 };
 
 use libcrux_hmac_drbg::{HmacDrbgSha256, MAX_GENERATE_BYTES};
-use rand::rngs::SysRng;
+use rand::{rngs::SysRng, TryCryptoRng};
 
 use tls_codec::SecretVLBytes;
 
 /// Application-specific personalization string mixed into the HMAC-DRBG seed.
 const PERSONALIZATION: &[u8] = b"openmls-libcrux-hmac-drbg-v1";
 
+/// The number of DRBG `generate` requests after which the provider reseeds
+/// the DRBG from its entropy source.
+///
+/// `libcrux-hmac-drbg` only enforces the SP 800-90A maximum of 2^48 requests
+/// (`HmacDrbg::needs_reseed`), which is not reached in practice, and its
+/// interval cannot be configured yet. The provider therefore applies its own,
+/// shorter interval. 2^16 is the default of OpenSSL's secondary DRBGs.
+pub(crate) const RESEED_INTERVAL: u64 = 1 << 16;
+
 /// The libcrux-backed cryptography provider for OpenMLS
-pub struct CryptoProvider {
-    pub(super) rng: Mutex<HmacDrbgSha256>,
+///
+/// All randomness this provider uses, both through
+/// [`OpenMlsRand`](openmls_traits::random::OpenMlsRand) and inside
+/// [`OpenMlsCrypto`] operations (signature key generation, ECDSA and hedged
+/// ML-DSA signing, HPKE encapsulation), is drawn from a single HMAC-DRBG. The
+/// DRBG is seeded from the entropy source `R`, which is the operating
+/// system's RNG unless one is given with
+/// [`CryptoProvider::with_entropy_source`], and is reseeded from it after
+/// every 2^16 DRBG requests.
+pub struct CryptoProvider<R = SysRng> {
+    pub(super) rng: SharedDrbg<R>,
 }
 
-impl CryptoProvider {
-    /// Instantiate a libcrux-based CryptoProvider
-    pub fn new() -> Result<Self, CryptoError> {
-        // Seed the HMAC-DRBG from the operating system's entropy source.
-        let drbg = HmacDrbgSha256::new_from_sys_rng(PERSONALIZATION)
-            .map_err(|_| CryptoError::InsufficientRandomness)?;
+/// The HMAC-DRBG together with the entropy source it reseeds from.
+///
+/// [`HmacDrbgSha256`] does not hold an entropy source: it only reseeds when
+/// the caller passes one to `reseed_from_rng`. The provider reseeds after
+/// [`RESEED_INTERVAL`] requests, so it keeps the source next to the DRBG.
+/// (`libcrux_hmac_drbg::HmacDrbgRng` keeps a source too, but it requires an
+/// infallible `CryptoRng`, so a failing source could not be reported as an
+/// error, and it reseeds only at the fixed 2^48 interval.)
+pub(super) struct DrbgState<R> {
+    drbg: HmacDrbgSha256,
+    source: R,
+}
 
-        Ok(Self {
-            rng: Mutex::new(drbg),
-        })
-    }
-
-    /// Fill `out` with fresh randomness from the HMAC-DRBG.
+impl<R: TryCryptoRng> DrbgState<R> {
+    /// Fill `out` from the HMAC-DRBG.
     ///
-    /// Reseeds from the operating system's entropy source when the DRBG's
-    /// reseed interval is reached, and splits requests larger than
-    /// [`MAX_GENERATE_BYTES`] into multiple `generate` calls. Any failure to
-    /// obtain OS entropy for a reseed is propagated rather than panicking.
-    pub(super) fn fill_random(&self, out: &mut [u8]) -> Result<(), CryptoError> {
-        let mut drbg = self
-            .rng
-            .lock()
-            .map_err(|_| CryptoError::CryptoLibraryError)?;
-
+    /// Reseeds from the entropy source after [`RESEED_INTERVAL`] requests,
+    /// and splits requests larger than [`MAX_GENERATE_BYTES`] into multiple
+    /// `generate` calls. Any failure to obtain entropy for a reseed is
+    /// propagated as [`CryptoError::InsufficientRandomness`] rather than
+    /// panicking.
+    fn fill(&mut self, out: &mut [u8]) -> Result<(), CryptoError> {
         for chunk in out.chunks_mut(MAX_GENERATE_BYTES) {
-            if drbg.needs_reseed() {
-                drbg.reseed_from_rng(&mut SysRng, &[])
+            // The counter is 1 after (re)seeding and is incremented by each
+            // `generate`, so this allows `RESEED_INTERVAL` requests per seed.
+            if self.drbg.reseed_counter() > RESEED_INTERVAL {
+                self.drbg
+                    .reseed_from_rng(&mut self.source, &[])
                     .map_err(|_| CryptoError::InsufficientRandomness)?;
             }
-            drbg.generate(chunk, &[])
+            self.drbg
+                .generate(chunk, &[])
                 .map_err(|_| CryptoError::InsufficientRandomness)?;
         }
 
@@ -58,7 +78,114 @@ impl CryptoProvider {
     }
 }
 
-impl OpenMlsCrypto for CryptoProvider {
+/// A handle to the provider's single HMAC-DRBG.
+///
+/// Cloning the handle does not copy the DRBG state: all clones draw from the
+/// same DRBG. This lets an `hpke_rs::Hpke` instance, which takes ownership of
+/// its RNG, draw from the provider's DRBG.
+pub(super) struct SharedDrbg<R>(Arc<Mutex<DrbgState<R>>>);
+
+impl<R> Clone for SharedDrbg<R> {
+    fn clone(&self) -> Self {
+        Self(Arc::clone(&self.0))
+    }
+}
+
+impl<R: TryCryptoRng> SharedDrbg<R> {
+    /// Fill `out` from the HMAC-DRBG (see [`DrbgState::fill`]).
+    fn fill(&self, out: &mut [u8]) -> Result<(), CryptoError> {
+        self.0
+            .lock()
+            .map_err(|_| CryptoError::CryptoLibraryError)?
+            .fill(out)
+    }
+}
+
+/// Lets libcrux primitives that take an RNG (ECDSA key generation and
+/// signing, HPKE encapsulation) draw from the DRBG, with the same reseeding
+/// as [`DrbgState::fill`].
+impl<R: TryCryptoRng> rand::TryRng for SharedDrbg<R> {
+    type Error = CryptoError;
+
+    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+        let mut bytes = [0u8; 4];
+        self.fill(&mut bytes)?;
+        Ok(u32::from_le_bytes(bytes))
+    }
+
+    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+        let mut bytes = [0u8; 8];
+        self.fill(&mut bytes)?;
+        Ok(u64::from_le_bytes(bytes))
+    }
+
+    fn try_fill_bytes(&mut self, dst: &mut [u8]) -> Result<(), Self::Error> {
+        self.fill(dst)
+    }
+}
+
+impl<R: TryCryptoRng> TryCryptoRng for SharedDrbg<R> {}
+
+impl CryptoProvider {
+    /// Instantiate a libcrux-based CryptoProvider
+    ///
+    /// The HMAC-DRBG is seeded and reseeded from the operating system's
+    /// entropy source.
+    pub fn new() -> Result<Self, CryptoError> {
+        Self::with_entropy_source(SysRng)
+    }
+}
+
+impl<R: TryCryptoRng + Send + 'static> CryptoProvider<R> {
+    /// Instantiate a libcrux-based CryptoProvider whose HMAC-DRBG is seeded
+    /// and reseeded from `source`.
+    ///
+    /// `source` must implement the `rand` 0.10 [`TryCryptoRng`] trait, and be
+    /// `Send` and `'static` so that the provider can be shared between
+    /// threads and the DRBG can be passed to `hpke-rs`. A failure of
+    /// `source`, now or on a later reseed, is reported as
+    /// [`CryptoError::InsufficientRandomness`].
+    pub fn with_entropy_source(mut source: R) -> Result<Self, CryptoError> {
+        let drbg = HmacDrbgSha256::new_from_rng(&mut source, PERSONALIZATION)
+            .map_err(|_| CryptoError::InsufficientRandomness)?;
+
+        Ok(Self {
+            rng: SharedDrbg(Arc::new(Mutex::new(DrbgState { drbg, source }))),
+        })
+    }
+}
+
+impl<R: TryCryptoRng> CryptoProvider<R> {
+    /// Fill `out` with fresh randomness from the HMAC-DRBG, reseeding from the
+    /// entropy source when needed (see [`DrbgState::fill`]).
+    pub(super) fn fill_random(&self, out: &mut [u8]) -> Result<(), CryptoError> {
+        self.rng.fill(out)
+    }
+}
+
+impl<R: TryCryptoRng + 'static> CryptoProvider<R> {
+    /// An HPKE instance for the sender side, whose encapsulation randomness
+    /// is drawn from the provider's HMAC-DRBG.
+    ///
+    /// `hpke_rs::Hpke::new` creates its own PRNG seeded from the operating
+    /// system, so the sender paths pass a handle to this provider's DRBG
+    /// instead. There is only one DRBG state.
+    fn hpke_sender(
+        &self,
+        config: HpkeConfig,
+        mode: hpke_rs::Mode,
+    ) -> hpke_rs::Hpke<HpkeLibcrux<SharedDrbg<R>>> {
+        hpke_rs::Hpke::new_with_rng(
+            mode,
+            hpke_kem(config.0),
+            hpke_kdf(config.1),
+            hpke_aead(config.2),
+            self.rng.clone(),
+        )
+    }
+}
+
+impl<R: TryCryptoRng + Send + 'static> OpenMlsCrypto for CryptoProvider<R> {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
         match ciphersuite.aead_algorithm() {
             AeadType::ChaCha20Poly1305 | AeadType::Aes128Gcm | AeadType::Aes256Gcm => Ok(()),
@@ -307,12 +434,8 @@ impl OpenMlsCrypto for CryptoProvider {
                 Ok((sk.to_vec(), pk.to_vec()))
             }
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let mut drbg = self
-                    .rng
-                    .lock()
-                    .map_err(|_| CryptoError::CryptoLibraryError)?;
-                let sk = libcrux_ecdsa::p256::PrivateKey::random(&mut *drbg)
-                    .map_err(|_| CryptoError::SigningError)?;
+                let sk = libcrux_ecdsa::p256::PrivateKey::random(&mut self.rng.clone())
+                    .map_err(ecdsa_error)?;
                 // Same wire format as the RustCrypto provider: the private key
                 // is the raw 32-byte scalar, the public key the uncompressed
                 // SEC1 point.
@@ -387,18 +510,15 @@ impl OpenMlsCrypto for CryptoProvider {
                 let sk = libcrux_ecdsa::p256::PrivateKey::try_from(key)
                     .map_err(|_| CryptoError::InvalidLength)?;
                 // The ECDSA nonce is rejection-sampled inside libcrux through
-                // the provider DRBG; a randomness failure surfaces as an error.
-                let mut drbg = self
-                    .rng
-                    .lock()
-                    .map_err(|_| CryptoError::CryptoLibraryError)?;
+                // the provider DRBG; a randomness failure surfaces as
+                // `CryptoError::InsufficientRandomness`.
                 let signature = libcrux_ecdsa::p256::rand::sign(
                     libcrux_ecdsa::DigestAlgorithm::Sha256,
                     data,
                     &sk,
-                    &mut *drbg,
+                    &mut self.rng.clone(),
                 )
-                .map_err(|_| CryptoError::SigningError)?;
+                .map_err(ecdsa_error)?;
                 Ok(signature.to_der().as_bytes().to_vec())
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
@@ -422,7 +542,7 @@ impl OpenMlsCrypto for CryptoProvider {
         aad: &[u8],
         ptxt: &[u8],
     ) -> Result<HpkeCiphertext, CryptoError> {
-        let mut config = hpke_config(config);
+        let mut config = self.hpke_sender(config, hpke_rs::Mode::Base);
 
         let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
 
@@ -430,6 +550,7 @@ impl OpenMlsCrypto for CryptoProvider {
             .seal(&pk_r, info, aad, ptxt, None, None, None)
             .map_err(|e| match e {
                 hpke_rs::HpkeError::InvalidConfig => CryptoError::SenderSetupError,
+                hpke_rs::HpkeError::InsufficientRandomness => CryptoError::InsufficientRandomness,
                 _ => CryptoError::HpkeEncryptionError,
             })?;
 
@@ -479,13 +600,19 @@ impl OpenMlsCrypto for CryptoProvider {
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<(KemOutput, ExporterSecret), CryptoError> {
-        let mut config = hpke_config(config);
+        let mut config = self.hpke_sender(config, hpke_rs::Mode::Base);
 
         let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
 
-        let (enc, ctx) = config
-            .setup_sender(&pk_r, info, None, None, None)
-            .map_err(|_| CryptoError::SenderSetupError)?;
+        let (enc, ctx) =
+            config
+                .setup_sender(&pk_r, info, None, None, None)
+                .map_err(|e| match e {
+                    hpke_rs::HpkeError::InsufficientRandomness => {
+                        CryptoError::InsufficientRandomness
+                    }
+                    _ => CryptoError::SenderSetupError,
+                })?;
 
         ctx.export(exporter_context, exporter_length)
             .map_err(|_| CryptoError::ExporterError)
@@ -575,7 +702,7 @@ impl OpenMlsCrypto for CryptoProvider {
         psk: &[u8],
         psk_id: &[u8],
     ) -> Result<HpkeCiphertext, CryptoError> {
-        let mut config = hpke_psk_from_config(config);
+        let mut config = self.hpke_sender(config, hpke_rs::Mode::Psk);
 
         let pk_r = hpke_rs::HpkePublicKey::new(pk_r.to_vec());
 
@@ -583,6 +710,7 @@ impl OpenMlsCrypto for CryptoProvider {
             .seal(&pk_r, info, aad, ptxt, Some(psk), Some(psk_id), None)
             .map_err(|e| match e {
                 hpke_rs::HpkeError::InvalidConfig => CryptoError::SenderSetupError,
+                hpke_rs::HpkeError::InsufficientRandomness => CryptoError::InsufficientRandomness,
                 _ => CryptoError::HpkeEncryptionError,
             })?;
 
@@ -603,21 +731,79 @@ impl OpenMlsCrypto for CryptoProvider {
     }
 }
 
-fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
-    let kem = hpke_kem(config.0);
-    let kdf = hpke_kdf(config.1);
-    let aead = hpke_aead(config.2);
+/// The RNG of the HPKE instances for operations that draw no randomness
+/// (receiver side and key derivation).
+///
+/// It never yields any bytes: if such an operation asked for randomness, it
+/// would fail rather than fall back to another source. Unlike
+/// `hpke_rs::Hpke::new`, constructing an instance with it does not read the
+/// operating system's RNG.
+struct NoRandomness;
 
-    hpke_rs::Hpke::new(hpke_rs::Mode::Base, kem, kdf, aead)
+#[derive(Debug)]
+struct NoRandomnessError;
+
+impl std::fmt::Display for NoRandomnessError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "this HPKE instance has no randomness")
+    }
 }
 
-#[cfg(feature = "targeted-messages-draft")]
-fn hpke_psk_from_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
-    let kem = hpke_kem(config.0);
-    let kdf = hpke_kdf(config.1);
-    let aead = hpke_aead(config.2);
+impl std::error::Error for NoRandomnessError {}
 
-    hpke_rs::Hpke::new(hpke_rs::Mode::Psk, kem, kdf, aead)
+impl rand::TryRng for NoRandomness {
+    type Error = NoRandomnessError;
+
+    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+        Err(NoRandomnessError)
+    }
+
+    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+        Err(NoRandomnessError)
+    }
+
+    fn try_fill_bytes(&mut self, _: &mut [u8]) -> Result<(), Self::Error> {
+        Err(NoRandomnessError)
+    }
+}
+
+impl TryCryptoRng for NoRandomness {}
+
+/// An HPKE instance for operations that draw no randomness (receiver side and
+/// key derivation). Sender paths use [`CryptoProvider::hpke_sender`].
+fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux<NoRandomness>> {
+    hpke_receiver(config, hpke_rs::Mode::Base)
+}
+
+/// A PSK-mode HPKE instance for the receiver side. Sender paths use
+/// [`CryptoProvider::hpke_sender`].
+#[cfg(feature = "targeted-messages-draft")]
+fn hpke_psk_from_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux<NoRandomness>> {
+    hpke_receiver(config, hpke_rs::Mode::Psk)
+}
+
+fn hpke_receiver(
+    config: HpkeConfig,
+    mode: hpke_rs::Mode,
+) -> hpke_rs::Hpke<HpkeLibcrux<NoRandomness>> {
+    hpke_rs::Hpke::new_with_rng(
+        mode,
+        hpke_kem(config.0),
+        hpke_kdf(config.1),
+        hpke_aead(config.2),
+        NoRandomness,
+    )
+}
+
+/// Map a `libcrux-ecdsa` error from key generation or signing.
+///
+/// `RandError` means that no valid scalar could be drawn from the DRBG,
+/// normally because the entropy source failed on a reseed.
+fn ecdsa_error(e: libcrux_ecdsa::Error) -> CryptoError {
+    match e {
+        libcrux_ecdsa::Error::RandError => CryptoError::InsufficientRandomness,
+        _ => CryptoError::SigningError,
+    }
 }
 
 fn hpke_kdf(kdf: HpkeKdfType) -> hpke_rs_crypto::types::KdfAlgorithm {
@@ -876,6 +1062,211 @@ mod tests {
             "69f07c8840ce80024db30939882c3d5bbc9c98b3e31e4513ebd2ca9b4503cdd3",
             "e735f8e75ba7883aae5d6456ae03c14086b769d73502147370f2963b397e4d4a",
         );
+    }
+}
+
+/// Reseeding of the provider DRBG from the entropy source.
+#[cfg(test)]
+mod reseed_tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use openmls_traits::random::OpenMlsRand;
+
+    use super::*;
+
+    /// A deterministic source that counts its reads and fails from read
+    /// number `fail_from` on.
+    struct CountingSource {
+        reads: Arc<AtomicUsize>,
+        fail_from: usize,
+        state: u8,
+    }
+
+    #[derive(Debug)]
+    struct SourceFailed;
+
+    impl std::fmt::Display for SourceFailed {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "entropy source failed")
+        }
+    }
+
+    impl std::error::Error for SourceFailed {}
+
+    impl rand::TryRng for CountingSource {
+        type Error = SourceFailed;
+
+        fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+            let mut bytes = [0u8; 4];
+            self.try_fill_bytes(&mut bytes)?;
+            Ok(u32::from_le_bytes(bytes))
+        }
+
+        fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+            let mut bytes = [0u8; 8];
+            self.try_fill_bytes(&mut bytes)?;
+            Ok(u64::from_le_bytes(bytes))
+        }
+
+        fn try_fill_bytes(&mut self, dst: &mut [u8]) -> Result<(), Self::Error> {
+            if self.reads.fetch_add(1, Ordering::SeqCst) >= self.fail_from {
+                return Err(SourceFailed);
+            }
+            for byte in dst {
+                self.state = self.state.wrapping_add(1);
+                *byte = self.state;
+            }
+            Ok(())
+        }
+    }
+
+    impl TryCryptoRng for CountingSource {}
+
+    /// A provider whose source fails from read number `fail_from` on, and
+    /// the counter of the source reads.
+    fn provider(fail_from: usize) -> (CryptoProvider<CountingSource>, Arc<AtomicUsize>) {
+        let reads = Arc::new(AtomicUsize::new(0));
+        let source = CountingSource {
+            reads: reads.clone(),
+            fail_from,
+            state: 0,
+        };
+        (CryptoProvider::with_entropy_source(source).unwrap(), reads)
+    }
+
+    /// Make `RESEED_INTERVAL` DRBG requests, so the next one reseeds.
+    fn exhaust_reseed_interval<R: TryCryptoRng>(provider: &CryptoProvider<R>) {
+        for _ in 0..RESEED_INTERVAL {
+            provider.fill_random(&mut [0u8; 1]).unwrap();
+        }
+    }
+
+    #[test]
+    fn reseeds_after_the_reseed_interval() {
+        let (provider, reads) = provider(usize::MAX);
+        // Instantiation reads the entropy input and the nonce.
+        assert_eq!(reads.load(Ordering::SeqCst), 2);
+
+        exhaust_reseed_interval(&provider);
+        assert_eq!(
+            reads.load(Ordering::SeqCst),
+            2,
+            "no reseed before the limit"
+        );
+
+        provider.fill_random(&mut [0u8; 1]).unwrap();
+        assert_eq!(reads.load(Ordering::SeqCst), 3, "one reseed at the limit");
+
+        let drbg = provider.rng.0.lock().unwrap();
+        assert_eq!(drbg.drbg.reseed_counter(), 2, "the counter was reset");
+    }
+
+    /// When the reseed fails, every operation that needs randomness returns
+    /// `CryptoError::InsufficientRandomness`, and operations that do not need
+    /// randomness keep working.
+    #[test]
+    fn failed_reseed_is_reported_by_every_operation() {
+        let other = CryptoProvider::new().unwrap();
+        let (provider, _) = provider(2);
+        exhaust_reseed_interval(&provider);
+
+        let insufficient = Err(CryptoError::InsufficientRandomness);
+
+        assert_eq!(provider.fill_random(&mut [0u8; 1]), insufficient);
+        assert!(provider.random_vec(1).is_err());
+
+        for ciphersuite in provider.supported_ciphersuites() {
+            let scheme = ciphersuite.signature_algorithm();
+            assert_eq!(
+                provider.signature_key_gen(scheme).map(|_| ()),
+                insufficient,
+                "{scheme:?} key generation"
+            );
+
+            let (private, public) = other.signature_key_gen(scheme).unwrap();
+            let sign = provider.sign(scheme, b"message", &private);
+            if scheme == SignatureScheme::ED25519 {
+                // Ed25519 signing is deterministic.
+                let signature = sign.unwrap();
+                provider
+                    .verify_signature(scheme, b"message", &public, &signature)
+                    .unwrap();
+            } else {
+                assert_eq!(sign.map(|_| ()), insufficient, "{scheme:?} signing");
+            }
+
+            let ikm = other.random_vec(ciphersuite.hash_length()).unwrap();
+            let key_pair = provider
+                .derive_hpke_keypair(ciphersuite.hpke_config(), &ikm)
+                .unwrap();
+
+            assert_eq!(
+                provider
+                    .hpke_seal(
+                        ciphersuite.hpke_config(),
+                        &key_pair.public,
+                        b"info",
+                        b"aad",
+                        b"ptxt"
+                    )
+                    .map(|_| ()),
+                insufficient,
+                "{ciphersuite:?} hpke_seal"
+            );
+            assert_eq!(
+                provider
+                    .hpke_setup_sender_and_export(
+                        ciphersuite.hpke_config(),
+                        &key_pair.public,
+                        b"info",
+                        b"ctx",
+                        32
+                    )
+                    .map(|_| ()),
+                insufficient,
+                "{ciphersuite:?} hpke_setup_sender_and_export"
+            );
+            #[cfg(feature = "targeted-messages-draft")]
+            assert_eq!(
+                provider
+                    .hpke_seal_psk(
+                        ciphersuite.hpke_config(),
+                        &key_pair.public,
+                        b"info",
+                        b"aad",
+                        b"ptxt",
+                        &[7u8; 32],
+                        b"psk id",
+                    )
+                    .map(|_| ()),
+                insufficient,
+                "{ciphersuite:?} hpke_seal_psk"
+            );
+
+            // The receiver side draws no randomness.
+            let ciphertext = other
+                .hpke_seal(
+                    ciphersuite.hpke_config(),
+                    &key_pair.public,
+                    b"info",
+                    b"aad",
+                    b"ptxt",
+                )
+                .unwrap();
+            assert_eq!(
+                provider
+                    .hpke_open(
+                        ciphersuite.hpke_config(),
+                        &ciphertext,
+                        &key_pair.private,
+                        b"info",
+                        b"aad"
+                    )
+                    .unwrap(),
+                b"ptxt",
+                "{ciphersuite:?} hpke_open"
+            );
+        }
     }
 }
 
