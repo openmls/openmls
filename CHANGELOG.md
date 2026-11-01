@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- [#2310](https://github.com/openmls/openmls/pull/2310): A Commit that lists an AppDataUpdate proposal before a GroupContextExtensions proposal is now accepted, when building and when processing it. draft-ietf-mls-extensions no longer orders them (mlswg/mls-extensions#109). The variant `AppDataUpdateValidationError::IncorrectOrder` is removed.
+
 ## 0.10.0 (2026-11-23)
 
 ### Added
