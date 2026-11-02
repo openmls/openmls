@@ -27,6 +27,7 @@ const HELP: &str = "
 >>>         - invite {client name}              invite a user to the group
 >>>         - read                              read messages sent to the group (max 100)
 >>>         - update                            update the client state
+>>>     - quit / exit                           close the client
 
 ";
 
@@ -273,6 +274,10 @@ fn main() {
         if op == "help" {
             stdout.write_all(HELP.as_bytes()).unwrap();
             continue;
+        }
+
+        if op == "quit" || op == "exit" {
+            return;
         }
 
         stdout
