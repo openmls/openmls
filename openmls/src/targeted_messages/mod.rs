@@ -368,9 +368,18 @@ pub struct ProcessedTargetedMessage {
     sender_leaf_index: LeafNodeIndex,
     application_data: Vec<u8>,
     authenticated_data: Vec<u8>,
+    #[cfg(test)]
+    padding_length: usize,
 }
 
 impl ProcessedTargetedMessage {
+    /// Returns the length of the zero padding that followed the application
+    /// data.
+    #[cfg(test)]
+    pub(crate) fn padding_length(&self) -> usize {
+        self.padding_length
+    }
+
     /// Returns the sender's leaf index.
     pub fn sender_leaf_index(&self) -> LeafNodeIndex {
         self.sender_leaf_index
@@ -538,6 +547,35 @@ pub(crate) fn create_targeted_message(
     application_data: &[u8],
     padding_length: usize,
 ) -> Result<TargetedMessage, CreateTargetedMessageError> {
+    let content = TargetedMessageContent::new(application_data, padding_length);
+    let content_bytes = content
+        .serialize_detached()
+        .map_err(LibraryError::missing_bound_check)?;
+    seal_targeted_message(
+        crypto,
+        signer,
+        ctx,
+        sender_leaf_index,
+        recipient_leaf_index,
+        recipient_encryption_key,
+        authenticated_data,
+        &content_bytes,
+    )
+}
+
+/// Encrypt, sign and assemble a targeted message around an already serialized
+/// `TargetedMessageContent`.
+#[allow(clippy::too_many_arguments)]
+fn seal_targeted_message(
+    crypto: &impl OpenMlsCrypto,
+    signer: &impl Signer,
+    ctx: &TargetedMessageGroupContext<'_>,
+    sender_leaf_index: LeafNodeIndex,
+    recipient_leaf_index: LeafNodeIndex,
+    recipient_encryption_key: &EncryptionKey,
+    authenticated_data: &[u8],
+    content_bytes: &[u8],
+) -> Result<TargetedMessage, CreateTargetedMessageError> {
     let psk = derive_targeted_message_psk(crypto, ctx.ciphersuite, ctx.exporter_secret)?;
     let sender_auth_data_secret =
         derive_sender_auth_data_secret(crypto, ctx.ciphersuite, ctx.exporter_secret)?;
@@ -545,11 +583,6 @@ pub(crate) fn create_targeted_message(
     let psk_id = TargetedMessagePskId::new(ctx.group_id, ctx.epoch);
     let psk_id_bytes = psk_id
         .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)?;
-
-    let content = TargetedMessageContent::new(application_data, padding_length);
-    let content_bytes = content
-        .serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
 
     let info = targeted_message_hpke_info(recipient_leaf_index.u32(), sender_leaf_index.u32())?;
@@ -562,7 +595,7 @@ pub(crate) fn create_targeted_message(
             ciphersuite: ctx.ciphersuite,
         },
         authenticated_data,
-        &content_bytes,
+        content_bytes,
         crypto,
     )?;
 
@@ -796,5 +829,7 @@ pub(crate) fn process_targeted_message<StorageError>(
         sender_leaf_index,
         application_data: content.application_data().to_vec(),
         authenticated_data: message.authenticated_data.as_slice().to_vec(),
+        #[cfg(test)]
+        padding_length: content.padding_length,
     })
 }
