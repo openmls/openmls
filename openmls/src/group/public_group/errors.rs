@@ -4,7 +4,10 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     extensions::errors::InvalidExtensionError,
-    treesync::errors::{LeafNodeValidationError, TreeSyncFromNodesError},
+    treesync::{
+        errors::{LeafNodeValidationError, TreeSyncFromNodesError},
+        node::leaf_node::LeafNodeBuildError,
+    },
 };
 
 /// Public group creation from external error.
@@ -60,6 +63,9 @@ pub enum PublicGroupBuildError {
     /// Invalid extensions set in configuration
     #[error("Invalid extensions set in configuration")]
     InvalidExtensions(#[from] InvalidExtensionError),
+    /// The leaf node's capabilities don't cover what the leaf itself uses.
+    #[error(transparent)]
+    LeafNodeBuild(#[from] LeafNodeBuildError),
 }
 
 /// The errors that may occur while applying AppDataUpdate proposals

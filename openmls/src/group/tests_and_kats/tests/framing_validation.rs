@@ -473,6 +473,27 @@ fn test_valsem006() {
         ))
     ));
 
+    // Corrupting only the end of the ciphertext leaves the sender data
+    // decryptable, so the receiver looks up the sender's ratchet.
+    let mut tail_corrupted_message = serialized_message.clone();
+    *tail_corrupted_message.last_mut().unwrap() ^= 0x01;
+    let tail_corrupted_message =
+        MlsMessageIn::tls_deserialize(&mut tail_corrupted_message.as_slice())
+            .expect("Could not deserialize message.")
+            .into_ciphertext()
+            .expect("Message was not a plaintext.");
+
+    let err = bob_group
+        .process_message(bob_provider, ProtocolMessage::from(tail_corrupted_message))
+        .expect_err("Could parse message despite garbled ciphertext.");
+
+    assert!(matches!(
+        err,
+        ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
+            MessageDecryptionError::AeadError
+        ))
+    ));
+
     // Positive case
     bob_group
         .process_message(bob_provider, ProtocolMessage::from(original_message))

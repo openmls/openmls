@@ -1,10 +1,11 @@
 use super::*;
 use std::io::Write;
 
+#[openmls_traits::maybe_async(AFIT)]
 impl StorageProvider<V_TEST> for MemoryStorage {
     type Error = MemoryStorageError;
 
-    fn write_encryption_key_pair<
+    async fn write_encryption_key_pair<
         EncryptionKey: traits::EncryptionKey<V_TEST>,
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
     >(
@@ -19,7 +20,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         )
     }
 
-    fn encryption_epoch_key_pairs<
+    async fn encryption_epoch_key_pairs<
         GroupId: traits::GroupId<V_TEST>,
         EpochKey: traits::EpochKey<V_TEST>,
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
@@ -40,7 +41,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         self.read_list(ENCRYPTION_KEY_PAIR_LABEL, &key)
     }
 
-    fn key_package<
+    async fn key_package<
         KeyPackageRef: traits::HashReference<V_TEST>,
         KeyPackage: traits::KeyPackage<V_TEST>,
     >(
@@ -57,7 +58,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         self.read(KEY_PACKAGE_LABEL, &key)
     }
 
-    fn write_key_package<
+    async fn write_key_package<
         HashReference: traits::HashReference<V_TEST>,
         KeyPackage: traits::KeyPackage<V_TEST>,
     >(
@@ -73,12 +74,13 @@ impl StorageProvider<V_TEST> for MemoryStorage {
             .unwrap();
 
         self.key_package::<HashReference, KeyPackage>(hash_ref)
+            .await
             .unwrap();
 
         Ok(())
     }
 
-    fn queue_proposal<
+    async fn queue_proposal<
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
         QueuedProposal: traits::QueuedProposal<V_TEST>,
@@ -91,7 +93,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
+    async fn write_tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
         &self,
         _group_id: &GroupId,
         _tree: &TreeSync,
@@ -99,7 +101,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_interim_transcript_hash<
+    async fn write_interim_transcript_hash<
         GroupId: traits::GroupId<V_TEST>,
         InterimTranscriptHash: traits::InterimTranscriptHash<V_TEST>,
     >(
@@ -110,7 +112,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_context<
+    async fn write_context<
         GroupId: traits::GroupId<V_TEST>,
         GroupContext: traits::GroupContext<V_TEST>,
     >(
@@ -121,7 +123,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_confirmation_tag<
+    async fn write_confirmation_tag<
         GroupId: traits::GroupId<V_TEST>,
         ConfirmationTag: traits::ConfirmationTag<V_TEST>,
     >(
@@ -132,7 +134,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_signature_key_pair<
+    async fn write_signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<V_TEST>,
         SignatureKeyPair: traits::SignatureKeyPair<V_TEST>,
     >(
@@ -143,7 +145,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_encryption_epoch_key_pairs<
+    async fn write_encryption_epoch_key_pairs<
         GroupId: traits::GroupId<V_TEST>,
         EpochKey: traits::EpochKey<V_TEST>,
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
@@ -157,7 +159,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_psk<PskId: traits::PskId<V_TEST>, PskBundle: traits::PskBundle<V_TEST>>(
+    async fn write_psk<PskId: traits::PskId<V_TEST>, PskBundle: traits::PskBundle<V_TEST>>(
         &self,
         _psk_id: &PskId,
         _psk: &PskBundle,
@@ -165,7 +167,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn queued_proposal_refs<
+    async fn queued_proposal_refs<
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
     >(
@@ -175,14 +177,14 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
+    async fn tree<GroupId: traits::GroupId<V_TEST>, TreeSync: traits::TreeSync<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
         todo!()
     }
 
-    fn group_context<
+    async fn group_context<
         GroupId: traits::GroupId<V_TEST>,
         GroupContext: traits::GroupContext<V_TEST>,
     >(
@@ -192,7 +194,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn interim_transcript_hash<
+    async fn interim_transcript_hash<
         GroupId: traits::GroupId<V_TEST>,
         InterimTranscriptHash: traits::InterimTranscriptHash<V_TEST>,
     >(
@@ -202,7 +204,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn confirmation_tag<
+    async fn confirmation_tag<
         GroupId: traits::GroupId<V_TEST>,
         ConfirmationTag: traits::ConfirmationTag<V_TEST>,
     >(
@@ -212,7 +214,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn signature_key_pair<
+    async fn signature_key_pair<
         SignaturePublicKey: traits::SignaturePublicKey<V_TEST>,
         SignatureKeyPair: traits::SignatureKeyPair<V_TEST>,
     >(
@@ -222,7 +224,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn encryption_key_pair<
+    async fn encryption_key_pair<
         HpkeKeyPair: traits::HpkeKeyPair<V_TEST>,
         EncryptionKey: traits::EncryptionKey<V_TEST>,
     >(
@@ -232,28 +234,28 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn psk<PskBundle: traits::PskBundle<V_TEST>, PskId: traits::PskId<V_TEST>>(
+    async fn psk<PskBundle: traits::PskBundle<V_TEST>, PskId: traits::PskId<V_TEST>>(
         &self,
         _psk_id: &PskId,
     ) -> Result<Option<PskBundle>, Self::Error> {
         todo!()
     }
 
-    fn delete_signature_key_pair<SignaturePublicKeuy: traits::SignaturePublicKey<V_TEST>>(
+    async fn delete_signature_key_pair<SignaturePublicKeuy: traits::SignaturePublicKey<V_TEST>>(
         &self,
         _public_key: &SignaturePublicKeuy,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<V_TEST>>(
+    async fn delete_encryption_key_pair<EncryptionKey: traits::EncryptionKey<V_TEST>>(
         &self,
         _public_key: &EncryptionKey,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_encryption_epoch_key_pairs<
+    async fn delete_encryption_epoch_key_pairs<
         GroupId: traits::GroupId<V_TEST>,
         EpochKey: traits::EpochKey<V_TEST>,
     >(
@@ -265,28 +267,31 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn delete_key_package<KeyPackageRef: traits::HashReference<V_TEST>>(
+    async fn delete_key_package<KeyPackageRef: traits::HashReference<V_TEST>>(
         &self,
         _hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_psk<PskKey: traits::PskId<V_TEST>>(
+    async fn delete_psk<PskKey: traits::PskId<V_TEST>>(
         &self,
         _psk_id: &PskKey,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn group_state<GroupState: traits::GroupState<V_TEST>, GroupId: traits::GroupId<V_TEST>>(
+    async fn group_state<
+        GroupState: traits::GroupState<V_TEST>,
+        GroupId: traits::GroupId<V_TEST>,
+    >(
         &self,
         _group_id: &GroupId,
     ) -> Result<Option<GroupState>, Self::Error> {
         todo!()
     }
 
-    fn write_group_state<
+    async fn write_group_state<
         GroupState: traits::GroupState<V_TEST>,
         GroupId: traits::GroupId<V_TEST>,
     >(
@@ -297,14 +302,14 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn delete_group_state<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_group_state<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn message_secrets<
+    async fn message_secrets<
         GroupId: traits::GroupId<V_TEST>,
         MessageSecrets: traits::MessageSecrets<V_TEST>,
     >(
@@ -314,7 +319,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_message_secrets<
+    async fn write_message_secrets<
         GroupId: traits::GroupId<V_TEST>,
         MessageSecrets: traits::MessageSecrets<V_TEST>,
     >(
@@ -325,14 +330,14 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn delete_message_secrets<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_message_secrets<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn resumption_psk_store<
+    async fn resumption_psk_store<
         GroupId: traits::GroupId<V_TEST>,
         ResumptionPskStore: traits::ResumptionPskStore<V_TEST>,
     >(
@@ -342,7 +347,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_resumption_psk_store<
+    async fn write_resumption_psk_store<
         GroupId: traits::GroupId<V_TEST>,
         ResumptionPskStore: traits::ResumptionPskStore<V_TEST>,
     >(
@@ -353,14 +358,14 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_all_resumption_psk_secrets<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn own_leaf_index<
+    async fn own_leaf_index<
         GroupId: traits::GroupId<V_TEST>,
         LeafNodeIndex: traits::LeafNodeIndex<V_TEST>,
     >(
@@ -370,7 +375,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_own_leaf_index<
+    async fn write_own_leaf_index<
         GroupId: traits::GroupId<V_TEST>,
         LeafNodeIndex: traits::LeafNodeIndex<V_TEST>,
     >(
@@ -381,14 +386,14 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn delete_own_leaf_index<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_own_leaf_index<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn group_epoch_secrets<
+    async fn group_epoch_secrets<
         GroupId: traits::GroupId<V_TEST>,
         GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
     >(
@@ -398,7 +403,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_group_epoch_secrets<
+    async fn write_group_epoch_secrets<
         GroupId: traits::GroupId<V_TEST>,
         GroupEpochSecrets: traits::GroupEpochSecrets<V_TEST>,
     >(
@@ -409,14 +414,14 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn delete_group_epoch_secrets<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_group_epoch_secrets<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn clear_proposal_queue<
+    async fn clear_proposal_queue<
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
     >(
@@ -426,7 +431,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn mls_group_join_config<
+    async fn mls_group_join_config<
         GroupId: traits::GroupId<V_TEST>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
     >(
@@ -436,7 +441,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn write_mls_join_config<
+    async fn write_mls_join_config<
         GroupId: traits::GroupId<V_TEST>,
         MlsGroupJoinConfig: traits::MlsGroupJoinConfig<V_TEST>,
     >(
@@ -447,14 +452,17 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn own_leaf_nodes<GroupId: traits::GroupId<V_TEST>, LeafNode: traits::LeafNode<V_TEST>>(
+    async fn own_leaf_nodes<
+        GroupId: traits::GroupId<V_TEST>,
+        LeafNode: traits::LeafNode<V_TEST>,
+    >(
         &self,
         _group_id: &GroupId,
     ) -> Result<Vec<LeafNode>, Self::Error> {
         todo!()
     }
 
-    fn append_own_leaf_node<
+    async fn append_own_leaf_node<
         GroupId: traits::GroupId<V_TEST>,
         LeafNode: traits::LeafNode<V_TEST>,
     >(
@@ -465,7 +473,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn queued_proposals<
+    async fn queued_proposals<
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
         QueuedProposal: traits::QueuedProposal<V_TEST>,
@@ -476,7 +484,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn remove_proposal<
+    async fn remove_proposal<
         GroupId: traits::GroupId<V_TEST>,
         ProposalRef: traits::ProposalRef<V_TEST>,
     >(
@@ -487,42 +495,42 @@ impl StorageProvider<V_TEST> for MemoryStorage {
         todo!()
     }
 
-    fn delete_own_leaf_nodes<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_own_leaf_nodes<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_group_config<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_group_config<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_tree<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_tree<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_confirmation_tag<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_confirmation_tag<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_context<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_context<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn delete_interim_transcript_hash<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_interim_transcript_hash<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -530,7 +538,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "extensions-draft")]
-    fn write_application_export_tree<
+    async fn write_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
@@ -542,7 +550,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "extensions-draft")]
-    fn application_export_tree<
+    async fn application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
@@ -553,7 +561,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "extensions-draft")]
-    fn delete_application_export_tree<
+    async fn delete_application_export_tree<
         GroupId: traits::GroupId<V_TEST>,
         ApplicationExportTree: traits::ApplicationExportTree<V_TEST>,
     >(
@@ -564,7 +572,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_derivation_epoch_state<
+    async fn write_vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<V_TEST>,
         VcDerivationEpochState: traits::VcDerivationEpochState<V_TEST>,
     >(
@@ -576,7 +584,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_derivation_epoch_state<
+    async fn vc_derivation_epoch_state<
         EpochId: traits::VcEpochId<V_TEST>,
         VcDerivationEpochState: traits::VcDerivationEpochState<V_TEST>,
     >(
@@ -587,14 +595,14 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_unreferenced_vc_derivation_epoch_states<EpochId: traits::VcEpochId<V_TEST>>(
+    async fn delete_unreferenced_vc_derivation_epoch_states<EpochId: traits::VcEpochId<V_TEST>>(
         &self,
     ) -> Result<Vec<EpochId>, Self::Error> {
         todo!()
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_emulation_binding<
+    async fn write_vc_emulation_binding<
         GroupId: traits::GroupId<V_TEST>,
         EpochKey: traits::EpochKey<V_TEST>,
         EpochId: traits::VcEpochId<V_TEST>,
@@ -610,7 +618,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_binding<
+    async fn vc_emulation_binding<
         GroupId: traits::GroupId<V_TEST>,
         EpochKey: traits::EpochKey<V_TEST>,
         VcEmulationBinding: traits::VcEmulationBinding<V_TEST>,
@@ -623,7 +631,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_emulation_bindings<
+    async fn vc_emulation_bindings<
         GroupId: traits::GroupId<V_TEST>,
         VcEmulationBinding: traits::VcEmulationBinding<V_TEST>,
     >(
@@ -634,7 +642,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_emulation_bindings<
+    async fn delete_vc_emulation_bindings<
         GroupId: traits::GroupId<V_TEST>,
         EpochKey: traits::EpochKey<V_TEST>,
     >(
@@ -646,7 +654,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_all_vc_emulation_bindings<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_all_vc_emulation_bindings<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -654,7 +662,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_derivation_epoch_log_entry<
+    async fn write_vc_derivation_epoch_log_entry<
         GroupId: traits::GroupId<V_TEST>,
         EpochId: traits::VcEpochId<V_TEST>,
         VcDerivationEpochLogEntry: traits::VcDerivationEpochLogEntry<V_TEST>,
@@ -668,7 +676,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_derivation_epoch_log_entries<
+    async fn vc_derivation_epoch_log_entries<
         GroupId: traits::GroupId<V_TEST>,
         VcDerivationEpochLogEntry: traits::VcDerivationEpochLogEntry<V_TEST>,
     >(
@@ -679,7 +687,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_derivation_epoch_log_entries<
+    async fn delete_vc_derivation_epoch_log_entries<
         GroupId: traits::GroupId<V_TEST>,
         EpochId: traits::VcEpochId<V_TEST>,
     >(
@@ -691,7 +699,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_vc_derivation_epoch_log<GroupId: traits::GroupId<V_TEST>>(
+    async fn delete_vc_derivation_epoch_log<GroupId: traits::GroupId<V_TEST>>(
         &self,
         _group_id: &GroupId,
     ) -> Result<(), Self::Error> {
@@ -699,7 +707,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_vc_operation_tree<
+    async fn write_vc_operation_tree<
         EpochId: traits::VcEpochId<V_TEST>,
         VcOperationTree: traits::VcOperationTree<V_TEST>,
     >(
@@ -711,7 +719,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn vc_operation_tree<
+    async fn vc_operation_tree<
         EpochId: traits::VcEpochId<V_TEST>,
         VcOperationTree: traits::VcOperationTree<V_TEST>,
     >(
@@ -722,7 +730,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn write_retained_key_package_material_batch<
+    async fn write_retained_key_package_material_batch<
         EpochId: traits::VcEpochId<V_TEST>,
         VcOperationTree: traits::VcOperationTree<V_TEST>,
         KeyPackageRef: traits::HashReference<V_TEST>,
@@ -737,7 +745,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn retained_key_package_material<
+    async fn retained_key_package_material<
         KeyPackageRef: traits::HashReference<V_TEST>,
         RetainedKeyPackageMaterial: traits::RetainedKeyPackageMaterial<V_TEST>,
     >(
@@ -748,7 +756,7 @@ impl StorageProvider<V_TEST> for MemoryStorage {
     }
 
     #[cfg(feature = "virtual-clients-draft")]
-    fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<V_TEST>>(
+    async fn delete_retained_key_package_material<KeyPackageRef: traits::HashReference<V_TEST>>(
         &self,
         _hash_ref: &KeyPackageRef,
     ) -> Result<(), Self::Error> {

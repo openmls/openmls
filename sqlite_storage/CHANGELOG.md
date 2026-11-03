@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+- [#1923](https://github.com/openmls/openmls/pull/1923): The provider only works in the sync mode of `openmls_traits`. When a crate in the build enables the `async` feature of `openmls` or `openmls_traits`, the crate fails to compile with a message that names the problem.
+- [#2256](https://github.com/openmls/openmls/pull/2256): Updated `rusqlite` to 0.40 and `refinery` to 0.10. This is a breaking change, since `rusqlite::Connection` is re-exported.
+
 ## 0.3.0 (2026-08-25)
 
 ### Added

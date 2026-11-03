@@ -10,6 +10,7 @@ use zeroize::ZeroizeOnDrop;
 use crate::{
     ciphersuite::{HpkePublicKey, Secret},
     extensions::errors::InvalidExtensionError,
+    group::reinit::ReInitInfo,
     schedule::{EpochAuthenticator, ResumptionPskSecret},
 };
 #[cfg(feature = "extensions-draft")]
@@ -141,7 +142,8 @@ impl MlsGroup {
     /// Export a secret from the forward secure exporter for the component with
     /// the given component ID.
     #[cfg(feature = "extensions-draft")]
-    pub fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn safe_export_secret<Crypto: OpenMlsCrypto, Storage: StorageProvider>(
         &mut self,
         crypto: &Crypto,
         storage: &Storage,
@@ -161,6 +163,7 @@ impl MlsGroup {
             application_export_tree.safe_export_secret(crypto, ciphersuite, component_id)?;
         storage
             .write_application_export_tree(group_id, application_export_tree)
+            .await
             .map_err(SafeExportSecretError::Storage)?;
 
         Ok(ExportedSecret::new(component_secret))
@@ -169,7 +172,8 @@ impl MlsGroup {
     /// Export a secret from the forward secure exporter of the pending commit
     /// state for the component with the given component ID.
     #[cfg(feature = "extensions-draft")]
-    pub fn safe_export_secret_from_pending<Provider: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn safe_export_secret_from_pending<Provider: StorageProvider>(
         &mut self,
         crypto: &impl OpenMlsCrypto,
         storage: &Provider,
@@ -186,6 +190,7 @@ impl MlsGroup {
         let secret = staged_commit.safe_export_secret(crypto, component_id)?;
         storage
             .write_group_state(&group_id, &self.group_state)
+            .await
             .map_err(PendingSafeExportSecretError::Storage)?;
         Ok(secret.into_pending_safe_export())
     }
@@ -221,6 +226,41 @@ impl MlsGroup {
             resumption_psk_secret: self.resumption_psk_secret().clone(),
             member_credentials: self.members().map(|m| m.credential).collect(),
         }
+    }
+
+    /// Export the information a reinit needs from this predecessor group,
+    /// as described in [RFC 9420 §11.2].
+    ///
+    /// Returns [`None`] if the group is active and thus cannot have processed a reinit proposal.
+    ///
+    /// `proposal` must be the ReInit proposal covered by the commit that
+    /// suspended this group.
+    ///
+    /// Hand the resulting [`ReInitInfo`] to the receiver
+    /// ([`StagedWelcome::build_from_reinit`](crate::group::StagedWelcome::build_from_reinit)).
+    /// The sender still seeds the new group from this group directly via
+    /// [`MlsGroupBuilder::reinit`](crate::group::MlsGroupBuilder::reinit).
+    ///
+    /// The returned [`ReInitInfo`] carries this group's resumption PSK secret,
+    /// which is sensitive key material.
+    ///
+    /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
+    pub fn reinit_info(&self, proposal: ReInitProposal) -> Option<ReInitInfo> {
+        // TODO (breaking change to storage): Introduce a dedicated state for shutdown after reinitialization.
+        // If that also includes the ReInit proposal, we can query the [`ReInitInfo`] directly from the old group
+        // without inspecting incoming commits.
+
+        if !matches!(self.group_state, MlsGroupState::Inactive) {
+            return None;
+        }
+
+        Some(ReInitInfo {
+            proposal,
+            old_group_id: self.group_id().clone(),
+            old_group_epoch: self.epoch(),
+            resumption_psk_secret: self.resumption_psk_secret().clone(),
+            member_credentials: self.members().map(|member| member.credential).collect(),
+        })
     }
 
     /// Returns a resumption psk for a given epoch. If no resumption psk

@@ -72,7 +72,7 @@ OpenMLS provides the following features
 - **backtrace**: enable backtraces
 - **content-debug**: allow printing sensitive content of messages for debugging
 - **crypto-debug**: allow printing cryptographic key material for debugging
-- **test-util**: test utilities
+- **test-utils**: test utilities
 
 </details>
 
@@ -92,7 +92,7 @@ OpenMLS is maintained and developed by [Phoenix R&D] and [CE Labs].
 [chat-link]: https://openmls.zulipchat.com
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
-[rustc-image]: https://img.shields.io/badge/rustc-1.91+-blue.svg?style=for-the-badge&logo=rust
+[rustc-image]: https://img.shields.io/badge/rustc-1.94+-blue.svg?style=for-the-badge&logo=rust
 [docs-release-badge]: https://img.shields.io/badge/docs-release-blue.svg?style=for-the-badge
 [docs-release-link]: https://docs.rs/crate/openmls/latest
 [book-release-badge]: https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge

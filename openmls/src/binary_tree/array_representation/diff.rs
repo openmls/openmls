@@ -141,7 +141,24 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'_, L, P> {
         if self.size().u32() > MAX_TREE_SIZE / 2 {
             return Err(ABinaryTreeDiffError::TreeTooLarge);
         }
+        let old_size = self.size;
         self.size.inc();
+        // A previous shrink drops diff entries outside the smaller tree. If the
+        // tree grows again, the re-exposed positions must be blank rather than
+        // fall through to the nodes of the original tree.
+        let leaf_end = self.size.leaf_count().min(self.original_tree.leaf_count());
+        for index in old_size.leaf_count()..leaf_end {
+            self.leaf_diff
+                .insert(LeafNodeIndex::new(index), L::default());
+        }
+        let parent_end = self
+            .size
+            .parent_count()
+            .min(self.original_tree.parent_count());
+        for index in old_size.parent_count()..parent_end {
+            self.parent_diff
+                .insert(ParentNodeIndex::new(index), P::default());
+        }
         Ok(())
     }
 

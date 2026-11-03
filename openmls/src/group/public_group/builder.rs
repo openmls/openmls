@@ -13,11 +13,13 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNode},
+            leaf_node::{
+                resolve_capabilities, Capabilities, CapabilitiesPolicy, LeafNode,
+                LeafNodeConstraints,
+            },
         },
         TreeSync,
     },
-    versions::ProtocolVersion,
 };
 
 #[derive(Debug)]
@@ -29,6 +31,7 @@ pub(crate) struct TempBuilderPG1 {
     capabilities: Option<Capabilities>,
     leaf_node_extensions: Extensions<LeafNode>,
     group_context_extensions: Extensions<GroupContext>,
+    capabilities_policy: Option<CapabilitiesPolicy>,
 }
 
 impl TempBuilderPG1 {
@@ -37,8 +40,8 @@ impl TempBuilderPG1 {
         self
     }
 
-    pub(crate) fn with_capabilities(mut self, capabilities: Capabilities) -> Self {
-        self.capabilities = Some(capabilities);
+    pub(crate) fn with_capabilities(mut self, capabilities: Option<Capabilities>) -> Self {
+        self.capabilities = capabilities;
         self
     }
 
@@ -55,34 +58,20 @@ impl TempBuilderPG1 {
         self
     }
 
+    pub(crate) fn with_capabilities_policy(mut self, policy: Option<CapabilitiesPolicy>) -> Self {
+        self.capabilities_policy = policy;
+        self
+    }
+
     pub(crate) fn get_secrets(
         self,
         provider: &impl OpenMlsProvider,
         signer: &impl Signer,
     ) -> Result<(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError> {
-        // If there are no capabilities, we want to provide a default version
-        // plus anything in the required capabilities.
-        let (required_extensions, required_proposals, required_credentials) =
-            if let Some(required_capabilities) =
-                self.group_context_extensions.required_capabilities()
-            {
-                (
-                    Some(required_capabilities.extension_types()),
-                    Some(required_capabilities.proposal_types()),
-                    Some(required_capabilities.credential_types()),
-                )
-            } else {
-                (None, None, None)
-            };
-        let capabilities = self.capabilities.unwrap_or_else(|| {
-            Capabilities::new(
-                Some(&[ProtocolVersion::default()]),
-                Some(&[self.ciphersuite]),
-                required_extensions,
-                required_proposals,
-                required_credentials,
-            )
-        });
+        let constraints =
+            LeafNodeConstraints::from_group_context_extensions(&self.group_context_extensions);
+        let (capabilities, capabilities_policy) =
+            resolve_capabilities(self.capabilities, self.capabilities_policy);
         let (treesync, commit_secret, leaf_keypair) = TreeSync::new(
             provider,
             signer,
@@ -91,6 +80,8 @@ impl TempBuilderPG1 {
             self.lifetime.unwrap_or_default(),
             capabilities,
             self.leaf_node_extensions,
+            constraints,
+            capabilities_policy,
         )?;
 
         let group_context = GroupContext::create_initial_group_context(
@@ -161,6 +152,7 @@ impl PublicGroup {
             capabilities: None,
             leaf_node_extensions: Extensions::empty(),
             group_context_extensions: Extensions::empty(),
+            capabilities_policy: None,
         }
     }
 }

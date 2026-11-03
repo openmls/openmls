@@ -37,7 +37,10 @@ use crate::{
     extensions::Extensions,
     key_packages::Lifetime,
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::{errors::LeafNodeValidationError, node::leaf_node::Capabilities},
+    treesync::{
+        errors::LeafNodeValidationError,
+        node::leaf_node::{Capabilities, CapabilitiesPolicy},
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -353,8 +356,10 @@ impl MlsGroupJoinConfig {
 /// more information about the different configuration values.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MlsGroupCreateConfig {
-    /// Capabilities advertised in the creator's leaf node
-    pub(crate) capabilities: Capabilities,
+    /// Capabilities advertised in the creator's leaf node. `None` means the
+    /// caller expressed no preference, in which case they are derived from the
+    /// leaf itself — see [`resolve_capabilities`].
+    pub(crate) capabilities: Option<Capabilities>,
     /// Lifetime of the own leaf node
     pub(crate) lifetime: Lifetime,
     /// Ciphersuite and protocol version
@@ -365,6 +370,10 @@ pub struct MlsGroupCreateConfig {
     pub(crate) group_context_extensions: Extensions<GroupContext>,
     /// List of initial leaf node extensions
     pub(crate) leaf_node_extensions: Extensions<LeafNode>,
+    /// How the creator's leaf node capabilities are treated when they don't
+    /// cover what the leaf needs. `None` lets [`resolve_capabilities`] pick
+    /// based on whether `capabilities` was set.
+    pub(crate) capabilities_policy: Option<CapabilitiesPolicy>,
     /// Flag marking the created group as an emulation group of a virtual
     /// client. Only consulted at group creation, the group keeps the flag
     /// itself afterwards.
@@ -375,12 +384,13 @@ pub struct MlsGroupCreateConfig {
 impl Default for MlsGroupCreateConfig {
     fn default() -> Self {
         Self {
-            capabilities: Capabilities::default(),
+            capabilities: None,
             lifetime: Lifetime::default(),
             ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             join_config: MlsGroupJoinConfig::default(),
             group_context_extensions: Extensions::default(),
             leaf_node_extensions: Extensions::default(),
+            capabilities_policy: None,
             #[cfg(feature = "virtual-clients-draft")]
             emulation_group: false,
         }
@@ -653,8 +663,16 @@ impl MlsGroupCreateConfigBuilder {
     }
 
     /// Sets the `capabilities` of the group creator's leaf node.
+    ///
+    /// Setting them explicitly means they are taken at face value: if they
+    /// don't cover the group's ciphersuite, the creator's credential type or
+    /// the configured leaf node extensions, group creation fails rather than
+    /// silently advertising something else. Leave them unset to have them
+    /// derived from the leaf, or pair this with
+    /// [`MlsGroupCreateConfigBuilder::capabilities_policy`] to have the
+    /// missing pieces added.
     pub fn capabilities(mut self, capabilities: Capabilities) -> Self {
-        self.config.capabilities = capabilities;
+        self.config.capabilities = Some(capabilities);
         self
     }
 
@@ -720,21 +738,23 @@ impl MlsGroupCreateConfigBuilder {
 
     /// Sets extensions of the group creator's [`LeafNode`].
     ///
-    /// Returns an error if the extension types are not valid in a leaf node.
+    /// The extensions are checked against the creator's capabilities when the
+    /// leaf is built, not here.
     pub fn with_leaf_node_extensions(
         mut self,
         extensions: Extensions<LeafNode>,
     ) -> Result<Self, LeafNodeValidationError> {
-        // Make sure that the extension type is supported in this context.
-        // This means that the leaf node needs to have support listed in the
-        // the capabilities (https://validation.openmls.tech/#valn0107).
-        if !self.config.capabilities.contains_extensions(&extensions) {
-            return Err(LeafNodeValidationError::ExtensionsNotInCapabilities);
-        }
-
-        // Note that the extensions have already been checked to be allowed here.
         self.config.leaf_node_extensions = extensions;
         Ok(self)
+    }
+
+    /// Sets the [`CapabilitiesPolicy`] applied to the creator's leaf node capabilities.
+    ///
+    /// If left unset, uses [`CapabilitiesPolicy::Reject`] if capabilities are
+    /// manually set via [`Self::capabilities`], and [`CapabilitiesPolicy::Widen`] if they aren't.
+    pub fn capabilities_policy(mut self, policy: CapabilitiesPolicy) -> Self {
+        self.config.capabilities_policy = Some(policy);
+        self
     }
 
     /// Finalizes the builder and returns an [`MlsGroupCreateConfig`].

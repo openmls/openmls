@@ -241,6 +241,45 @@ fn diff_leaf_access() {
 }
 
 #[test]
+fn diff_regrow_after_shrink() {
+    // Shrinking a diff and growing it again must not bring back nodes of the
+    // original tree that were outside the shrunk tree.
+    let nodes = (0..7)
+        .map(|i| {
+            if i % 2 == 0 {
+                // Offset by 10 so that the default node (0) is recognizable.
+                TreeNode::leaf(i + 10)
+            } else {
+                TreeNode::parent(i + 10)
+            }
+        })
+        .collect();
+    let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
+
+    let mut diff = tree.empty_diff();
+    diff.shrink_tree().unwrap();
+    diff.grow_tree().unwrap();
+
+    assert_eq!(diff.leaf_count(), 4);
+    assert_eq!(diff.leaf(LeafNodeIndex::new(0)), &10);
+    assert_eq!(diff.leaf(LeafNodeIndex::new(1)), &12);
+    assert_eq!(diff.leaf(LeafNodeIndex::new(2)), &0);
+    assert_eq!(diff.leaf(LeafNodeIndex::new(3)), &0);
+    assert_eq!(diff.parent(ParentNodeIndex::new(0)), &11);
+    assert_eq!(diff.parent(ParentNodeIndex::new(1)), &0);
+    assert_eq!(diff.parent(ParentNodeIndex::new(2)), &0);
+
+    // The same holds after the diff is staged and merged.
+    let staged = diff.into();
+    let mut tree = tree;
+    tree.merge_diff(staged);
+    assert_eq!(tree.leaf_by_index(LeafNodeIndex::new(2)), &0);
+    assert_eq!(tree.leaf_by_index(LeafNodeIndex::new(3)), &0);
+    assert_eq!(tree.parent_by_index(ParentNodeIndex::new(1)), &0);
+    assert_eq!(tree.parent_by_index(ParentNodeIndex::new(2)), &0);
+}
+
+#[test]
 fn test_from_components() {
     let leaf_nodes = vec![1u32, 2, 3, 4];
     let parent_nodes = vec![10u32, 20, 30];

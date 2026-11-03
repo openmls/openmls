@@ -326,12 +326,23 @@ fn bad_padding() {
             .sender_data(&message_secrets, provider.crypto(), ciphersuite)
             .expect("Could not decrypt sender data.");
 
+        let ratchet_key_material = message_secrets
+            .secret_tree_mut()
+            .secret_for_decryption(
+                ciphersuite,
+                provider.crypto(),
+                LeafNodeIndex::new(0),
+                SecretType::from(&tampered_ciphertext.content_type()),
+                sender_data.generation,
+                &SenderRatchetConfiguration::default(),
+            )
+            .expect("Could not get decryption secret.")
+            .available()
+            .expect("Expected key material of another member.");
         let verifiable_plaintext_result = tampered_ciphertext.to_verifiable_content(
-            ciphersuite,
             provider.crypto(),
-            &mut message_secrets,
-            LeafNodeIndex::new(0),
-            &SenderRatchetConfiguration::default(),
+            &message_secrets,
+            ratchet_key_material,
             sender_data,
             #[cfg(feature = "virtual-clients-draft")]
             None,

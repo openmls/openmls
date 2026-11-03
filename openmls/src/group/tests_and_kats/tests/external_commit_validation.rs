@@ -2,12 +2,14 @@
 //! commit messages as defined in
 //! https://github.com/openmls/openmls/wiki/Message-validation
 
+use crate::treesync::LeafNodeParameters;
 use tls_codec::{Deserialize, Serialize};
 
 use self::utils::*;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
-    extensions::{Extension, UnknownExtension},
+    credentials::CredentialType,
+    extensions::{Extension, ExtensionType, UnknownExtension},
     framing::{
         mls_auth_content_in::AuthenticatedContentIn, ContentType, DecryptedMessage,
         FramedContentBody, MlsMessageIn, ProtocolMessage, Sender,
@@ -27,7 +29,10 @@ use crate::{
         AddProposal, ExternalInitProposal, GroupContextExtensionProposal, Proposal, ProposalOrRef,
         ProposalType, ReInitProposal,
     },
-    treesync::errors::LeafNodeValidationError,
+    treesync::{
+        errors::{ApplyOwnUpdatePathError, LeafNodeValidationError},
+        node::leaf_node::{Capabilities, LeafNodeBuildError},
+    },
 };
 
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
@@ -238,6 +243,7 @@ fn test_valsem242() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -693,11 +699,19 @@ fn test_external_commit_unsupported_group_context_extension() {
         Extensions::single(Extension::Unknown(0x4141, UnknownExtension(vec![0x01])))
             .expect("unknown extensions should be considered valid in group context");
 
-    // Alice creates a group with the custom group context extension
+    // Alice creates a group with the custom group context extension, which
+    // she has to support herself.
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .ciphersuite(ciphersuite)
         .with_group_context_extensions(gc_extensions)
+        .capabilities(
+            Capabilities::builder()
+                .ciphersuites(vec![ciphersuite])
+                .extensions(vec![ExtensionType::Unknown(0x4141)])
+                .credentials(vec![CredentialType::Basic])
+                .build(),
+        )
         .build();
 
     let alice_group = MlsGroup::new(
@@ -728,6 +742,10 @@ fn test_external_commit_unsupported_group_context_extension() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .build(),
+        )
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -739,10 +757,15 @@ fn test_external_commit_unsupported_group_context_extension() {
         .expect_err("bob can't join because he doesn't have capabilities for an extension in the group context");
 
     // Verify error type
-    assert!(matches!(
-        err,
-        CreateCommitError::LeafNodeValidation(LeafNodeValidationError::UnsupportedExtensions)
-    ));
+    assert!(
+        matches!(
+            err,
+            CreateCommitError::ApplyOwnUpdatePath(ApplyOwnUpdatePathError::LeafNodeBuild(
+                LeafNodeBuildError::Validation(LeafNodeValidationError::UnsupportedExtensions)
+            ))
+        ),
+        "unexpected error: {err:?}"
+    );
 }
 
 #[openmls_test::openmls_test]
@@ -824,6 +847,7 @@ fn test_external_commit_duplicate_signature_key() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -848,6 +872,7 @@ fn test_external_commit_duplicate_signature_key() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -921,6 +946,8 @@ fn test_external_commit_duplicate_signature_key() {
 mod utils {
     use openmls_traits::types::Ciphersuite;
 
+    use crate::treesync::LeafNodeParameters;
+
     use crate::{
         framing::{MlsMessageIn, PublicMessage, Sender, WireFormat},
         group::{
@@ -992,6 +1019,7 @@ mod utils {
                 bob_credential.credential_with_key.clone(),
             )
             .unwrap()
+            .leaf_node_parameters(LeafNodeParameters::builder().build())
             .load_psks(bob_provider.storage())
             .unwrap()
             .build(

@@ -6,7 +6,7 @@ use web_time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize};
 
-use crate::treesync::errors::LifetimeError;
+use crate::{group::LeafNodeLifetimePolicy, treesync::errors::LifetimeError};
 
 /// This value is used as the default lifetime if no default  lifetime is configured.
 /// The value is in seconds and amounts to 3 * 28 Days, i.e. about 3 months.
@@ -88,6 +88,19 @@ impl Lifetime {
         self.validate_with_time(SystemTime::now())
     }
 
+    /// Returns a [`LifetimeError`] if the lifetime is not valid under
+    /// `policy`.
+    pub(crate) fn validate_with_policy(
+        &self,
+        policy: LeafNodeLifetimePolicy,
+    ) -> Result<(), LifetimeError> {
+        match policy {
+            LeafNodeLifetimePolicy::Verify => self.validate(),
+            LeafNodeLifetimePolicy::Skip => Ok(()),
+            LeafNodeLifetimePolicy::VerifyAt(unix_seconds) => self.validate_at(unix_seconds),
+        }
+    }
+
     /// Returns a [`LifetimeError`] if the lifetime is not valid at the given
     /// time.
     pub fn validate_with_time(&self, now: SystemTime) -> Result<(), LifetimeError> {
@@ -95,15 +108,21 @@ impl Lifetime {
             .duration_since(UNIX_EPOCH)
             .map_err(|_| LifetimeError::SystemTimeBeforeUnixEpoch)?
             .as_secs();
-        if self.not_after <= duration_since_unix_epoch {
+        self.validate_at(duration_since_unix_epoch)
+    }
+
+    /// Returns a [`LifetimeError`] if the lifetime is not valid at `now`, in
+    /// seconds since the Unix epoch.
+    fn validate_at(&self, now: u64) -> Result<(), LifetimeError> {
+        if self.not_after <= now {
             Err(LifetimeError::Expired {
                 not_after: self.not_after,
-                now: duration_since_unix_epoch,
+                now,
             })
-        } else if self.not_before > duration_since_unix_epoch {
+        } else if self.not_before > now {
             Err(LifetimeError::NotValidYet {
                 not_before: self.not_before,
-                now: duration_since_unix_epoch,
+                now,
             })
         } else {
             Ok(())

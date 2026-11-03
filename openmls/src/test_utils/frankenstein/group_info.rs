@@ -87,13 +87,13 @@ pub struct FrankenGroupInfoTbs {
     Debug, Clone, PartialEq, Eq, TlsSerialize, TlsDeserialize, TlsDeserializeBytes, TlsSize,
 )]
 pub struct FrankenGroupContext {
-    protocol_version: u16,
-    ciphersuite: u16,
-    group_id: VLBytes,
-    epoch: u64,
-    tree_hash: VLBytes,
-    confirmed_transcript_hash: VLBytes,
-    extensions: Vec<FrankenExtension>,
+    pub protocol_version: u16,
+    pub ciphersuite: u16,
+    pub group_id: VLBytes,
+    pub epoch: u64,
+    pub tree_hash: VLBytes,
+    pub confirmed_transcript_hash: VLBytes,
+    pub extensions: Vec<FrankenExtension>,
 }
 
 impl From<GroupContext> for FrankenGroupContext {
@@ -115,6 +115,12 @@ impl From<GroupContext> for FrankenGroupContext {
             confirmed_transcript_hash: value.confirmed_transcript_hash().to_vec().into(),
             extensions,
         }
+    }
+}
+
+impl From<FrankenGroupContext> for GroupContext {
+    fn from(value: FrankenGroupContext) -> Self {
+        Self::tls_deserialize(&mut value.tls_serialize_detached().unwrap().as_slice()).unwrap()
     }
 }
 

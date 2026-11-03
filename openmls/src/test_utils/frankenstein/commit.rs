@@ -1,3 +1,4 @@
+use openmls_traits::types::HpkeCiphertext;
 use tls_codec::*;
 
 use super::{FrankenLeafNode, FrankenProposal};
@@ -43,4 +44,18 @@ pub struct FrankenUpdatePathNode {
 pub struct FrankenHpkeCiphertext {
     pub kem_output: VLBytes,
     pub ciphertext: VLBytes,
+}
+
+impl From<FrankenHpkeCiphertext> for HpkeCiphertext {
+    fn from(ln: FrankenHpkeCiphertext) -> Self {
+        HpkeCiphertext::tls_deserialize(&mut ln.tls_serialize_detached().unwrap().as_slice())
+            .unwrap()
+    }
+}
+
+impl From<HpkeCiphertext> for FrankenHpkeCiphertext {
+    fn from(ln: HpkeCiphertext) -> Self {
+        FrankenHpkeCiphertext::tls_deserialize(&mut ln.tls_serialize_detached().unwrap().as_slice())
+            .unwrap()
+    }
 }
