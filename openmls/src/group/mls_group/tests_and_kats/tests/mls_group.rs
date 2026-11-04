@@ -2410,6 +2410,106 @@ fn join_multiple_groups_last_resort_key_package() {
     // done :-)
 }
 
+/// The KeyPackage a Welcome is encrypted to is consumed only when the join
+/// succeeds: a Welcome that is processed and dropped, or whose staging fails,
+/// leaves it in storage, and [`StagedWelcome::into_group`] deletes it. A
+/// last-resort KeyPackage is never deleted.
+#[openmls_test]
+fn welcome_consumes_key_package_only_on_join() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("alice", ciphersuite, alice_provider);
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("bob", ciphersuite, bob_provider);
+
+    for last_resort in [false, true] {
+        let mut key_package_builder = KeyPackage::builder();
+        if last_resort {
+            key_package_builder = key_package_builder.mark_as_last_resort();
+        }
+        let bob_kpb = key_package_builder
+            .build(
+                ciphersuite,
+                bob_provider,
+                &bob_signer,
+                bob_credential_with_key.clone(),
+            )
+            .expect("error building key package for bob");
+        let hash_ref = bob_kpb
+            .key_package()
+            .hash_ref(bob_provider.crypto())
+            .unwrap();
+        let stored = || -> bool {
+            bob_provider
+                .storage()
+                .key_package::<_, KeyPackageBundle>(&hash_ref)
+                .unwrap()
+                .is_some()
+        };
+
+        // Without the ratchet tree extension, staging needs the tree.
+        let mut alice_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .build(
+                alice_provider,
+                &alice_signer,
+                alice_credential_with_key.clone(),
+            )
+            .expect("error creating group for alice");
+        let (_, welcome, _) = alice_group
+            .add_members(
+                alice_provider,
+                &alice_signer,
+                from_ref(bob_kpb.key_package()),
+            )
+            .expect("error adding bob");
+        alice_group.merge_pending_commit(alice_provider).unwrap();
+        let welcome = || -> Welcome {
+            MlsMessageIn::from(welcome.clone())
+                .into_welcome()
+                .expect("expected a welcome")
+        };
+        let join_config = MlsGroupJoinConfig::default();
+
+        // A processed Welcome that is dropped does not consume the KeyPackage.
+        drop(ProcessedWelcome::new_from_welcome(bob_provider, &join_config, welcome()).unwrap());
+        assert!(stored(), "dropped ProcessedWelcome consumed the KeyPackage");
+
+        // Neither does a Welcome whose staging fails.
+        let err = StagedWelcome::new_from_welcome(bob_provider, &join_config, welcome(), None)
+            .expect_err("staging without a ratchet tree must fail");
+        assert!(matches!(err, WelcomeError::MissingRatchetTree));
+        assert!(stored(), "failed staging consumed the KeyPackage");
+
+        // A staged Welcome that is dropped does not consume it either.
+        let ratchet_tree = alice_group.export_ratchet_tree();
+        drop(
+            StagedWelcome::new_from_welcome(
+                bob_provider,
+                &join_config,
+                welcome(),
+                Some(ratchet_tree.clone().into()),
+            )
+            .unwrap(),
+        );
+        assert!(stored(), "dropped StagedWelcome consumed the KeyPackage");
+
+        // Joining consumes it, unless it is a last-resort KeyPackage.
+        let bob_group = StagedWelcome::new_from_welcome(
+            bob_provider,
+            &join_config,
+            welcome(),
+            Some(ratchet_tree.into()),
+        )
+        .unwrap()
+        .into_group(bob_provider)
+        .expect("error joining");
+        assert_eq!(bob_group.group_id(), alice_group.group_id());
+        assert_eq!(stored(), last_resort);
+    }
+}
+
 #[openmls_test]
 fn deletion() {
     let alice_provider = &Provider::default();
