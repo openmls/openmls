@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2289](https://github.com/openmls/openmls/pull/2289): `GroupInfo` equality no longer depends on whether the signed payload is cached, so a signed `GroupInfo` now equals the same `GroupInfo` after decoding and verifying it.
 - [#2242](https://github.com/openmls/openmls/pull/2242): `CommitBuilder::load_psk` now checks that resumption PSKs of usage `Application` reference the correct group ID, and returns `CreateCommitError::PskError(PskError::DifferentGroupId)`. In earlier versions it would return `CreateCommitError::PskError(PskError::KeyNotFound)`
 - [#2295](https://github.com/openmls/openmls/pull/2295): `JoinBuilder::check_members(true)` now uses multiset semantics to check member credentials in subgroups and reinitialized groups.
+- [#2316](https://github.com/openmls/openmls/issues/2316): A Welcome now consumes the KeyPackage it is encrypted to in `StagedWelcome::into_group`, after the joined group is stored, instead of in `ProcessedWelcome::new_from_welcome`. Previously a Welcome that failed staging, for example with `WelcomeError::MissingRatchetTree`, or that the application dropped before calling `into_group`, still deleted the KeyPackage, so a later valid Welcome for it failed with `WelcomeError::NoMatchingKeyPackage`. Last-resort KeyPackages are still never deleted. If the deletion fails after the group is stored, `into_group` returns `WelcomeError::StorageError`.
 
 ## 0.9.0 (2026-08-25)
 

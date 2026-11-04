@@ -182,6 +182,9 @@ impl ProcessedWelcome {
     ///
     /// This does not require a ratchet tree yet.
     ///
+    /// This does not consume the [`KeyPackage`] the [`Welcome`] is encrypted
+    /// to. It stays in storage until [`StagedWelcome::into_group`] succeeds.
+    ///
     /// [`Welcome`]: crate::messages::Welcome
     #[openmls_traits::maybe_async]
     pub async fn new_from_welcome<Provider: OpenMlsProvider>(
@@ -495,9 +498,9 @@ impl StagedWelcome {
     /// Creates a new staged welcome from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
-    /// Note: calling this function will consume the key material for decrypting the [`Welcome`]
-    /// message, even if the caller does not turn the [`StagedWelcome`] into an [`MlsGroup`].
-    /// A virtual client's key material is only consumed by [`Self::into_group`].
+    ///
+    /// This does not consume the [`KeyPackage`] the [`Welcome`] is encrypted
+    /// to. It stays in storage until [`Self::into_group`] succeeds.
     ///
     /// [`Welcome`]: crate::messages::Welcome
     #[openmls_traits::maybe_async]
@@ -714,6 +717,14 @@ impl StagedWelcome {
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
+    ///
+    /// Once the group is stored, this deletes the [`KeyPackage`] the
+    /// [`Welcome`] was encrypted to from storage, unless it is a last-resort
+    /// [`KeyPackage`]. If storing the group fails, the [`KeyPackage`] stays.
+    /// If the deletion fails, this returns [`WelcomeError::StorageError`]
+    /// even though the group is already stored.
+    ///
+    /// [`Welcome`]: crate::messages::Welcome
     #[openmls_traits::maybe_async]
     pub async fn into_group<Provider: OpenMlsProvider>(
         self,
@@ -822,8 +833,7 @@ impl StagedWelcome {
         // epoch reference from the retained KeyPackage material, which
         // `keys_for_welcome` left in storage for that purpose. (a bound group
         // is required for the reuse-guard MUST). The material of a last resort
-        // KeyPackage is kept, mirroring how `keys_for_welcome` keeps a last
-        // resort KeyPackage bundle.
+        // KeyPackage is kept, like a last resort KeyPackage bundle.
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(material) = self.key_material.vc_welcome_material() {
             let max_entries = mls_group.message_secrets_store.max_epochs.saturating_add(1);
@@ -845,14 +855,20 @@ impl StagedWelcome {
             }
         }
 
-        // A virtual client's own KeyPackage comes with retained material too.
-        // The binding written for the joined leaf took over its epoch
-        // reference, so the KeyPackage is consumed now.
-        #[cfg(feature = "virtual-clients-draft")]
+        mls_group
+            .store(provider.storage())
+            .await
+            .map_err(WelcomeError::StorageError)?;
+
+        // Consume the KeyPackage only now that the group is stored, so that a
+        // Welcome that is rejected or dropped before this point leaves it
+        // available. A virtual client's own KeyPackage comes with retained
+        // material, which this deletes too. The binding written for the
+        // joined leaf above took over its epoch reference.
         if let Some(key_package_bundle) = self.key_material.key_package_bundle() {
-            if !key_package_bundle.key_package().last_resort()
-                && join_consumes_key_package(key_package_bundle)?
-            {
+            if key_package_bundle.key_package().last_resort() {
+                log::debug!("KeyPackage has a last-resort marker, not deleting");
+            } else {
                 provider
                     .storage()
                     .delete_key_package(
@@ -864,11 +880,6 @@ impl StagedWelcome {
                     .map_err(WelcomeError::StorageError)?;
             }
         }
-
-        mls_group
-            .store(provider.storage())
-            .await
-            .map_err(WelcomeError::StorageError)?;
 
         Ok(mls_group)
     }
@@ -1040,11 +1051,10 @@ impl ResumptionInfo {
 /// Decrypt a `Welcome`'s `GroupSecrets`.
 ///
 /// This is the first half of welcome processing, shared between the regular
-/// join and the subgroup-branch peek (see [`PendingResumingWelcome`]). It consumes
-/// the matching (non-last-resort) key package from storage via
-/// [`keys_for_welcome`] and decrypts the encrypted group secrets addressed to
-/// it. A virtual client's KeyPackage and retained virtual-client material are
-/// read but not consumed, see [`keys_for_welcome`].
+/// join and the subgroup-branch peek (see [`PendingResumingWelcome`]). It reads
+/// the matching key package or retained virtual-client material from storage
+/// via [`keys_for_welcome`] and decrypts the encrypted group secrets addressed
+/// to it. Nothing is consumed here, see [`StagedWelcome::into_group`].
 #[openmls_traits::maybe_async]
 async fn decrypt_group_secrets<Provider: OpenMlsProvider>(
     provider: &Provider,
@@ -1055,8 +1065,6 @@ async fn decrypt_group_secrets<Provider: OpenMlsProvider>(
     WelcomeError<<Provider as OpenMlsProvider>::StorageError>,
 > {
     let ciphersuite = welcome.ciphersuite();
-    // Check this before touching any stored key material: `keys_for_welcome`
-    // consumes a matching (non-last-resort) key package.
     provider
         .crypto()
         .supports(ciphersuite)
@@ -1239,6 +1247,9 @@ async fn finish_processed_welcome<Provider: OpenMlsProvider>(
 }
 
 /// Read keys for decrypting the welcome message.
+///
+/// The key material stays in storage. [`StagedWelcome::into_group`] deletes it
+/// once the group is stored.
 #[openmls_traits::maybe_async]
 async fn keys_for_welcome<Provider: OpenMlsProvider>(
     mls_group_config: &MlsGroupJoinConfig,
@@ -1258,18 +1269,6 @@ async fn keys_for_welcome<Provider: OpenMlsProvider>(
             .await
             .map_err(WelcomeError::StorageError)?
         {
-            let key_package_bundle: KeyPackageBundle = key_package_bundle;
-            if key_package_bundle.key_package().last_resort() {
-                log::debug!("KeyPackage has a last-resort marker, not deleting");
-            } else if !join_consumes_key_package(&key_package_bundle)? {
-                provider
-                    .storage()
-                    .delete_key_package(
-                        &key_package_bundle.key_package.hash_ref(provider.crypto())?,
-                    )
-                    .await
-                    .map_err(WelcomeError::StorageError)?;
-            }
             return Ok((
                 resumption_psk_store,
                 WelcomeKeyMaterial::with_key_package_bundle(key_package_bundle),
@@ -1280,7 +1279,6 @@ async fn keys_for_welcome<Provider: OpenMlsProvider>(
         if let Some(material) =
             resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref).await?
         {
-            // The retained material stays in storage for now.
             return Ok((
                 resumption_psk_store,
                 WelcomeKeyMaterial::with_vc_welcome_material(material),
@@ -1289,31 +1287,6 @@ async fn keys_for_welcome<Provider: OpenMlsProvider>(
     }
 
     Err(WelcomeError::NoMatchingKeyPackage)
-}
-
-/// Returns whether [`StagedWelcome::into_group`] rather than
-/// [`keys_for_welcome`] deletes the (non-last-resort) `key_package_bundle`.
-///
-/// That is the case for a virtual client's KeyPackage. Deleting it also deletes
-/// its retained material, which keeps the derivation epoch alive that the join
-/// binds the group to. Like a sibling's retained material, it has to stay until
-/// the group is bound.
-fn join_consumes_key_package<StorageError>(
-    key_package_bundle: &KeyPackageBundle,
-) -> Result<bool, WelcomeError<StorageError>> {
-    #[cfg(feature = "virtual-clients-draft")]
-    {
-        Ok(key_package_bundle
-            .key_package()
-            .leaf_node()
-            .vc_derivation_info()?
-            .is_some())
-    }
-    #[cfg(not(feature = "virtual-clients-draft"))]
-    {
-        let _ = key_package_bundle;
-        Ok(false)
-    }
 }
 
 /// Try to derive virtual-client welcome material for `hash_ref`. Returns
