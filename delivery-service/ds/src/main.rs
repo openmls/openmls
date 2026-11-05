@@ -259,8 +259,8 @@ async fn consume_key_package(
 async fn send_welcome(State(data): State<Arc<DsData>>, body: Bytes) -> Response {
     let welcome_msg = unwrap_data!(MlsMessageIn::tls_deserialize(&mut &body[..]));
     let welcome = match welcome_msg.clone().into_welcome() {
-        Ok(welcome) => welcome,
-        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+        Some(welcome) => welcome,
+        None => return StatusCode::BAD_REQUEST.into_response(),
     };
     log::debug!("Storing welcome message: {welcome_msg:?}");
 
