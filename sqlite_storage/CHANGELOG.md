@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- [#PRNUMBER](https://github.com/openmls/openmls/pull/PRNUMBER): `run_migrations` (and the deprecated `initialize`) apply all pending migrations in one transaction. Before, each migration and its history row were committed separately, so a process that died in between left a migration applied but unrecorded, and the next run failed on it for good.
+
 ### Changed
 
 - [#1923](https://github.com/openmls/openmls/pull/1923): The provider only works in the sync mode of `openmls_traits`. When a crate in the build enables the `async` feature of `openmls` or `openmls_traits`, the crate fails to compile with a message that names the problem.
