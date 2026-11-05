@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- [#PRNUMBER](https://github.com/openmls/openmls/pull/PRNUMBER): `run_migrations` (and the deprecated `initialize`) apply all pending migrations in one transaction. Before, each migration and its history row were committed separately, so a process that died in between left a migration applied but unrecorded, and the next run failed on it for good.
+- [#2323](https://github.com/openmls/openmls/pull/2323): `run_migrations` (and the deprecated `initialize`) apply all pending migrations in one transaction. Before, each migration and its history row were committed separately, so a process that died in between left a migration applied but unrecorded, and the next run failed on it for good.
 
 ### Changed
 
