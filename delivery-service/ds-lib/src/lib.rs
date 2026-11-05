@@ -78,10 +78,7 @@ mod tests {
         let mut encoded = Vec::new();
         hashset_codec::tls_serialize(&values, &mut encoded).unwrap();
 
-        assert_eq!(
-            hashset_codec::tls_serialized_len(&values),
-            encoded.len()
-        );
+        assert_eq!(hashset_codec::tls_serialized_len(&values), encoded.len());
     }
 }
 
