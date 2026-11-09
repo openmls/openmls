@@ -14,18 +14,6 @@ This repository provides default implementations
 
 - [Rust Crypto](https://github.com/openmls/openmls/tree/main/openmls_rust_crypto/)
 
-It further holds the following crates that are used for testing.
-
-### Delivery Service
-
-A basic [delivery service](https://messaginglayersecurity.rocks/mls-architecture/draft-ietf-mls-architecture.html#name-delivery-service) can be found in [delivery-service/ds](https://github.com/openmls/openmls/tree/main//delivery-service/ds/).
-To interact with the delivery service the [ds-lib](https://github.com/openmls/openmls/tree/main//delivery-service/ds-lib/) provides the necessary types.
-
-### Command line Client
-
-A basic command line client can be found in [cli](https://github.com/openmls/openmls/tree/main/cli).
-Note that this is a PoC for testing and must not be used for anything else.
-
 ## Contributing
 
 OpenMLS welcomes contributions! Before contributing, please read the [contributing guidelines](https://github.com/openmls/openmls/tree/main/CONTRIBUTING.md) carefully.
