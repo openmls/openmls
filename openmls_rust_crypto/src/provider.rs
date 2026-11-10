@@ -1,4 +1,4 @@
-use std::sync::RwLock;
+use std::sync::{RwLock, RwLockWriteGuard};
 
 use aes_gcm::{
     aead::{Aead, Payload},
@@ -13,7 +13,6 @@ use hpke_rs_crypto::types as hpke_types;
 use hpke_rs_rust_crypto::HpkeRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    random::OpenMlsRand,
     types::{
         self, AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType,
         HpkeCiphertext, HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, SignatureScheme,
@@ -89,6 +88,14 @@ fn aead_mode(aead: HpkeAeadType) -> hpke_types::AeadAlgorithm {
         HpkeAeadType::AesGcm256 => hpke_types::AeadAlgorithm::Aes256Gcm,
         HpkeAeadType::ChaCha20Poly1305 => hpke_types::AeadAlgorithm::ChaCha20Poly1305,
         HpkeAeadType::Export => hpke_types::AeadAlgorithm::HpkeExport,
+    }
+}
+
+impl RustCrypto {
+    fn guarded_rng(&self) -> Result<RwLockWriteGuard<'_, rand_chacha::ChaCha20Rng>, CryptoError> {
+        self.rng
+            .write()
+            .map_err(|_| CryptoError::InsufficientRandomness)
     }
 }
 
@@ -291,28 +298,19 @@ impl OpenMlsCrypto for RustCrypto {
     ) -> Result<(Vec<u8>, Vec<u8>), openmls_traits::types::CryptoError> {
         match alg {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let mut rng = self
-                    .rng
-                    .write()
-                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+                let mut rng = self.guarded_rng()?;
                 let k = SigningKey::generate_from_rng(&mut *rng);
                 let pk = k.verifying_key().to_sec1_point(false).as_bytes().into();
                 Ok((k.to_bytes().as_slice().into(), pk))
             }
             SignatureScheme::ED25519 => {
-                let mut rng = self
-                    .rng
-                    .write()
-                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+                let mut rng = self.guarded_rng()?;
                 let sk = ed25519_dalek::SigningKey::generate(&mut *rng);
                 let pk = sk.verifying_key().to_bytes().into();
                 Ok((sk.to_bytes().into(), pk))
             }
             SignatureScheme::ECDSA_SECP384R1_SHA384 => {
-                let mut rng = self
-                    .rng
-                    .write()
-                    .map_err(|_| CryptoError::InsufficientRandomness)?;
+                let mut rng = self.guarded_rng()?;
                 let k = p384::ecdsa::SigningKey::generate_from_rng(&mut *rng);
                 let pk = k.verifying_key().to_sec1_point(false).as_bytes().into();
                 Ok((k.to_bytes().as_slice().into(), pk))
@@ -321,10 +319,7 @@ impl OpenMlsCrypto for RustCrypto {
             SignatureScheme::MLDSA44 => {
                 use ml_dsa::{Generate, Keypair};
                 let sk = {
-                    let mut rng = self
-                        .rng
-                        .write()
-                        .map_err(|_| CryptoError::InsufficientRandomness)?;
+                    let mut rng = self.guarded_rng()?;
                     ml_dsa::SigningKey::<ml_dsa::MlDsa44>::generate_from_rng(&mut *rng)
                 };
                 let pk = sk.verifying_key().encode().to_vec();
@@ -335,10 +330,7 @@ impl OpenMlsCrypto for RustCrypto {
             SignatureScheme::MLDSA65 => {
                 use ml_dsa::{Generate, Keypair};
                 let sk = {
-                    let mut rng = self
-                        .rng
-                        .write()
-                        .map_err(|_| CryptoError::InsufficientRandomness)?;
+                    let mut rng = self.guarded_rng()?;
                     ml_dsa::SigningKey::<ml_dsa::MlDsa65>::generate_from_rng(&mut *rng)
                 };
                 let pk = sk.verifying_key().encode().to_vec();
@@ -349,10 +341,7 @@ impl OpenMlsCrypto for RustCrypto {
             SignatureScheme::MLDSA87 => {
                 use ml_dsa::{Generate, Keypair};
                 let sk = {
-                    let mut rng = self
-                        .rng
-                        .write()
-                        .map_err(|_| CryptoError::InsufficientRandomness)?;
+                    let mut rng = self.guarded_rng()?;
                     ml_dsa::SigningKey::<ml_dsa::MlDsa87>::generate_from_rng(&mut *rng)
                 };
                 let pk = sk.verifying_key().encode().to_vec();
@@ -653,6 +642,18 @@ impl OpenMlsCrypto for RustCrypto {
     fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError> {
         crate::ff1::decrypt(key, ciphertext)
     }
+
+    fn random_array<const N: usize>(&self) -> Result<[u8; N], CryptoError> {
+        let mut out = [0u8; N];
+        self.guarded_rng()?.try_fill_bytes(&mut out);
+        Ok(out)
+    }
+
+    fn random_vec(&self, len: usize) -> Result<Vec<u8>, CryptoError> {
+        let mut out = vec![0u8; len];
+        self.guarded_rng()?.try_fill_bytes(&mut out);
+        Ok(out)
+    }
 }
 
 fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeRustCrypto> {
@@ -672,34 +673,6 @@ fn hpke_psk_from_config(config: HpkeConfig) -> Hpke<HpkeRustCrypto> {
         kdf_mode(config.1),
         aead_mode(config.2),
     )
-}
-
-impl OpenMlsRand for RustCrypto {
-    type Error = RandError;
-
-    fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
-        let mut rng = self.rng.write().map_err(|_| Self::Error::LockPoisoned)?;
-        let mut out = [0u8; N];
-        rng.try_fill_bytes(&mut out)
-            .map_err(|_| Self::Error::NotEnoughRandomness)?;
-        Ok(out)
-    }
-
-    fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
-        let mut rng = self.rng.write().map_err(|_| Self::Error::LockPoisoned)?;
-        let mut out = vec![0u8; len];
-        rng.try_fill_bytes(&mut out)
-            .map_err(|_| Self::Error::NotEnoughRandomness)?;
-        Ok(out)
-    }
-}
-
-#[derive(thiserror::Error, Debug, Copy, Clone, PartialEq, Eq)]
-pub enum RandError {
-    #[error("Rng lock is poisoned.")]
-    LockPoisoned,
-    #[error("Unable to collect enough randomness.")]
-    NotEnoughRandomness,
 }
 
 #[cfg(test)]
