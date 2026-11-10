@@ -1,4 +1,5 @@
 use openmls_traits::random::OpenMlsRand;
+use rand::TryCryptoRng;
 
 use crate::CryptoProvider;
 
@@ -24,7 +25,7 @@ impl std::fmt::Display for RandError {
 }
 impl std::error::Error for RandError {}
 
-impl OpenMlsRand for CryptoProvider {
+impl<R: TryCryptoRng> OpenMlsRand for CryptoProvider<R> {
     type Error = RandError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
