@@ -358,12 +358,7 @@ mod tests {
             .load_psks(alice_provider.storage())
             .unwrap()
             .use_ratchet_tree_extension(true)
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_signer,
-                |_proposal| true,
-            )
+            .build(alice_provider.crypto(), &alice_signer, |_proposal| true)
             .unwrap()
             .stage_commit(alice_provider)
             .unwrap();
@@ -423,12 +418,7 @@ mod tests {
             .load_psks(alice_provider.storage())
             .unwrap()
             .use_ratchet_tree_extension(true)
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_signer,
-                |_proposal| true,
-            )
+            .build(alice_provider.crypto(), &alice_signer, |_proposal| true)
             .unwrap()
             .stage_commit(alice_provider)
             .unwrap();

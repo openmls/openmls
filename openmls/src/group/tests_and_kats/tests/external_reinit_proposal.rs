@@ -167,12 +167,7 @@ fn external_reinit_proposal_should_be_accepted() {
         .consume_proposal_store(true)
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_credential.signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_credential.signer, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();

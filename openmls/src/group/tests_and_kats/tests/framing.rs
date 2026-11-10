@@ -1,8 +1,6 @@
 use std::io::Write;
 
 use itertools::iproduct;
-use openmls_traits::random::OpenMlsRand;
-
 use tls_codec::Serialize;
 
 use crate::group::tests_and_kats::utils::*;
@@ -128,7 +126,7 @@ fn bad_padding() {
 
         let group_context = GroupContext::new(
             ciphersuite,
-            GroupId::random(provider.rand()),
+            GroupId::random(provider.crypto()),
             1,
             vec![],
             vec![],
@@ -138,7 +136,7 @@ fn bad_padding() {
         let plaintext = {
             let plaintext_tbs = FramedContentTbs::new(
                 WireFormat::PrivateMessage,
-                GroupId::random(provider.rand()),
+                GroupId::random(provider.crypto()),
                 1,
                 sender,
                 vec![1, 2, 3].into(),
@@ -152,10 +150,10 @@ fn bad_padding() {
         };
 
         let mut message_secrets =
-            MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0));
+            MessageSecrets::random(ciphersuite, provider.crypto(), LeafNodeIndex::new(0));
 
         let encryption_secret_bytes = provider
-            .rand()
+            .crypto()
             .random_vec(ciphersuite.hash_length())
             .unwrap();
 
@@ -218,7 +216,7 @@ fn bad_padding() {
                 .unwrap();
 
             // Sample reuse guard uniformly at random.
-            let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(provider.rand()).unwrap();
+            let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(provider.crypto()).unwrap();
 
             // Prepare the nonce by xoring with the reuse guard.
             let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);

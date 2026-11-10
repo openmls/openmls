@@ -58,7 +58,7 @@ struct TestElement {
 fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result<(), String> {
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
 
-    let group_id = GroupId::random(provider.rand());
+    let group_id = GroupId::random(provider.crypto());
 
     let nodes = Vec::<Option<NodeIn>>::tls_deserialize_exact(test.tree_before).unwrap();
 
@@ -82,7 +82,7 @@ fn run_test_vector(test: TestElement, provider: &impl OpenMlsProvider) -> Result
         Mac::new(
             provider.crypto(),
             ciphersuite,
-            &Secret::random(ciphersuite, provider.rand()).unwrap(),
+            &Secret::random(ciphersuite, provider.crypto()).unwrap(),
             &[],
         )
         .unwrap(),

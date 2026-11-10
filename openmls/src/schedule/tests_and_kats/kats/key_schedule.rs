@@ -6,7 +6,7 @@
 //! If values are not present, they are encoded as empty strings.
 
 use log::info;
-use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsProvider};
+use openmls_traits::{types::HpkeKeyPair, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
@@ -82,20 +82,20 @@ fn generate(
     HpkeKeyPair,
 ) {
     let tree_hash = crypto
-        .rand()
+        .crypto()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
-    let commit_secret = CommitSecret::random(ciphersuite, crypto.rand());
+    let commit_secret = CommitSecret::random(ciphersuite, crypto.crypto());
 
     let confirmed_transcript_hash = crypto
-        .rand()
+        .crypto()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
 
     // PSK secret can sometimes be the all zero vector
-    let a: [u8; 1] = crypto.rand().random_array().unwrap();
+    let a: [u8; 1] = crypto.crypto().random_array().unwrap();
     let psk_secret = if a[0] > 127 {
-        PskSecret::from(Secret::random(ciphersuite, crypto.rand()).unwrap())
+        PskSecret::from(Secret::random(ciphersuite, crypto.crypto()).unwrap())
     } else {
         PskSecret::from(Secret::zero(ciphersuite))
     };
@@ -168,10 +168,10 @@ pub fn generate_test_vector(
 
     // Set up setting.
     let mut init_secret =
-        InitSecret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+        InitSecret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let initial_init_secret = init_secret.clone();
     let group_id = provider
-        .rand()
+        .crypto()
         .random_vec(16)
         .expect("An unexpected error occurred.");
 

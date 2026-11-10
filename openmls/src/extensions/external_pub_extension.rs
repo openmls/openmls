@@ -58,7 +58,7 @@ mod test {
                     {
                         let ikm = Secret::random(
                             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                            provider.rand(),
+                            provider.crypto(),
                         )
                         .unwrap();
                         let init_key = provider.crypto().derive_hpke_keypair(

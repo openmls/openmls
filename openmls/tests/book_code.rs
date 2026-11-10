@@ -324,12 +324,7 @@ fn book_operations() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(dave_provider.storage())
         .unwrap()
-        .build(
-            dave_provider.rand(),
-            dave_provider.crypto(),
-            &dave_signature_keys,
-            |_| true,
-        )
+        .build(dave_provider.crypto(), &dave_signature_keys, |_| true)
         .unwrap()
         .finalize(dave_provider)
         .expect("Error joining from external commit");
@@ -1771,7 +1766,6 @@ fn commit_builder() {
         .load_psks(alice_provider.storage())
         .expect("error loading psks")
         .build(
-            alice_provider.rand(),
             alice_provider.crypto(),
             &alice_signature_keys,
             |_proposal| true,
@@ -1919,12 +1913,7 @@ fn external_commit_builder() {
         .leaf_node_parameters(leaf_node_parameters)
         .load_psks(bob_provider.storage())
         .expect("error loading psks")
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signer, |_| true)
         .expect("error building external commit")
         .finalize(bob_provider)
         .expect("error finalizing external commit");
@@ -1986,7 +1975,7 @@ fn external_commit_builder() {
     // Charlie joins the group externally and sends a PSK proposal as part of the commit.
     let psk_id_bytes = vec![0, 1, 2, 3];
     let psk_id = Psk::External(ExternalPsk::new(psk_id_bytes.clone()));
-    let psk = PreSharedKeyId::new(ciphersuite, bob_provider.rand(), psk_id).unwrap();
+    let psk = PreSharedKeyId::new(ciphersuite, bob_provider.crypto(), psk_id).unwrap();
     let psk_value = vec![4, 5, 6, 7];
     psk.store(bob_provider, &psk_value).unwrap();
     psk.store(charlie_provider, &psk_value).unwrap();
@@ -2004,12 +1993,7 @@ fn external_commit_builder() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(charlie_provider.storage())
         .unwrap()
-        .build(
-            charlie_provider.rand(),
-            charlie_provider.crypto(),
-            &charlie_signer,
-            |_| true,
-        )
+        .build(charlie_provider.crypto(), &charlie_signer, |_| true)
         .unwrap()
         .finalize(charlie_provider)
         .unwrap();
@@ -2108,7 +2092,7 @@ fn reinit_group() {
     // Alice commits a ReInit proposal by value to reinitialize the group as
     // a new group with a fresh group id (and, optionally, a new protocol version,
     // ciphersuite or extensions).
-    let new_group_id = GroupId::random(alice_provider.rand());
+    let new_group_id = GroupId::random(alice_provider.crypto());
     let reinit_proposal = ReInitProposal::new(
         new_group_id.clone(),
         ProtocolVersion::Mls10,
@@ -2123,12 +2107,7 @@ fn reinit_group() {
         .add_proposal(Proposal::ReInit(Box::new(reinit_proposal.clone())))
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -2296,7 +2275,7 @@ fn reinit_group_by_reference_pending_welcome() {
     // Alice proposes to reinitialize the group as a new group with a fresh
     // group id (and, optionally, a new protocol version, ciphersuite or
     // extensions).
-    let new_group_id = GroupId::random(alice_provider.rand());
+    let new_group_id = GroupId::random(alice_provider.crypto());
     let reinit_proposal = ReInitProposal::new(
         new_group_id.clone(),
         ProtocolVersion::Mls10,
@@ -2330,12 +2309,7 @@ fn reinit_group_by_reference_pending_welcome() {
         .consume_proposal_store(true)
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();

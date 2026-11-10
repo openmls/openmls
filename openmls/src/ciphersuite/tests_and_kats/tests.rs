@@ -14,7 +14,7 @@ fn test_hpke_seal_open() {
         .crypto()
         .derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, provider.rand())
+            Secret::random(ciphersuite, provider.crypto())
                 .expect("Not enough randomness.")
                 .as_slice(),
         )
@@ -95,7 +95,7 @@ fn test_safe_hpke_seal_open() {
         .crypto()
         .derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, provider.rand())
+            Secret::random(ciphersuite, provider.crypto())
                 .expect("Not enough randomness.")
                 .as_slice(),
         )

@@ -2,7 +2,7 @@
 
 use std::borrow::Borrow;
 
-use openmls_traits::{random::OpenMlsRand, storage::StorageProvider as StorageProviderTrait};
+use openmls_traits::storage::StorageProvider as StorageProviderTrait;
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 
@@ -287,10 +287,10 @@ impl PreSharedKeyId {
     /// Construct a `PreSharedKeyID` with a random nonce.
     pub fn new(
         ciphersuite: Ciphersuite,
-        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         psk: Psk,
     ) -> Result<Self, CryptoError> {
-        let psk_nonce = rand
+        let psk_nonce = crypto
             .random_vec(ciphersuite.hash_length())
             .map_err(|_| CryptoError::InsufficientRandomness)?
             .into();

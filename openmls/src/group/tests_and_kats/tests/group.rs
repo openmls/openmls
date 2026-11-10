@@ -819,12 +819,7 @@ fn decrypt_after_leaf_index_reuse() {
         .propose_adds(Some(dora_key_package.clone()))
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signature_keys,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signature_keys, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -869,12 +864,7 @@ fn create_group_info_flag() {
         .commit_builder()
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -887,12 +877,7 @@ fn create_group_info_flag() {
         .load_psks(alice_provider.storage())
         .unwrap()
         .create_group_info(true)
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -917,7 +902,7 @@ fn use_ratchet_tree_extension_flag() {
             .commit_builder()
             .load_psks(provider.storage())
             .unwrap()
-            .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+            .build(provider.crypto(), &alice_signer, |_| true)
             .unwrap()
             .stage_commit(provider)
             .unwrap();
@@ -931,7 +916,7 @@ fn use_ratchet_tree_extension_flag() {
             .unwrap()
             .create_group_info(true)
             .use_ratchet_tree_extension(use_ratchet_tree_extension)
-            .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+            .build(provider.crypto(), &alice_signer, |_| true)
             .unwrap()
             .stage_commit(provider)
             .unwrap();
@@ -956,7 +941,7 @@ fn test_create_group_info_with_extensions() {
         .commit_builder()
         .load_psks(provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .build(provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(provider)
         .unwrap();
@@ -973,7 +958,7 @@ fn test_create_group_info_with_extensions() {
         .use_ratchet_tree_extension(false)
         .create_group_info_with_extensions(extensions.clone())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .build(provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(provider)
         .unwrap();

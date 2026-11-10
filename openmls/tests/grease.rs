@@ -357,7 +357,7 @@ fn test_grease_injection_via_with_grease() {
     let (credential, signer) = create_credential(b"Alice");
 
     // Create capabilities with GREASE values using with_grease()
-    let capabilities = test_capabilities().with_grease(provider.rand()).build();
+    let capabilities = test_capabilities().with_grease(provider.crypto()).build();
 
     // Create a KeyPackage with these capabilities
     let key_package = KeyPackage::builder()
@@ -453,7 +453,7 @@ fn test_grease_injection_in_groups_via_with_grease() {
     let (credential, signer) = create_credential(b"Alice");
 
     // Create capabilities with GREASE values using with_grease()
-    let capabilities = test_capabilities().with_grease(provider.rand()).build();
+    let capabilities = test_capabilities().with_grease(provider.crypto()).build();
 
     // Create a group with these capabilities
     let alice_group = MlsGroup::builder()

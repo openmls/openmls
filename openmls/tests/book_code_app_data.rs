@@ -288,7 +288,6 @@ fn app_data_update_book_example() {
     // Build and stage the commit
     let commit_bundle = commit_stage
         .build(
-            alice_party.provider.rand(),
             alice_party.provider.crypto(),
             &alice.party.signer,
             |_proposal| true, // accept all proposals
@@ -450,12 +449,7 @@ fn app_data_update_increment_then_decrement() {
         commit_stage.with_app_data_dictionary_updates(alice_updater.changes());
 
         let commit_bundle = commit_stage
-            .build(
-                alice_party.provider.rand(),
-                alice_party.provider.crypto(),
-                &alice.party.signer,
-                |_| true,
-            )
+            .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
             .expect("failed to build")
             .stage_commit(&alice_party.provider)
             .expect("failed to stage");
@@ -533,12 +527,7 @@ fn app_data_update_increment_then_decrement() {
         commit_stage.with_app_data_dictionary_updates(alice_updater.changes());
 
         let commit_bundle = commit_stage
-            .build(
-                alice_party.provider.rand(),
-                alice_party.provider.crypto(),
-                &alice.party.signer,
-                |_| true,
-            )
+            .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
             .expect("failed to build")
             .stage_commit(&alice_party.provider)
             .expect("failed to stage");

@@ -422,7 +422,7 @@ impl Capabilities {
     /// // Create capabilities with GREASE values injected
     /// let capabilities = Capabilities::builder()
     ///     .build()
-    ///     .with_grease(provider.rand());
+    ///     .with_grease(provider.crypto());
     ///
     /// // Verify GREASE values were added
     /// assert!(capabilities.ciphersuites().iter().any(|cs| cs.is_grease()));
@@ -430,7 +430,7 @@ impl Capabilities {
     /// assert!(capabilities.proposals().iter().any(|prop| prop.is_grease()));
     /// assert!(capabilities.credentials().iter().any(|cred| cred.is_grease()));
     /// ```
-    pub fn with_grease(mut self, rand: &impl openmls_traits::random::OpenMlsRand) -> Self {
+    pub fn with_grease(mut self, crypto: &impl openmls_traits::crypto::OpenMlsCrypto) -> Self {
         use crate::credentials::CredentialType;
         use crate::extensions::ExtensionType;
         use crate::messages::proposals::ProposalType;
@@ -438,25 +438,25 @@ impl Capabilities {
 
         // Add GREASE ciphersuite if none present
         if !self.ciphersuites.iter().any(|cs| cs.is_grease()) {
-            let grease_cs = VerifiableCiphersuite::new(crate::grease::random_grease_value(rand));
+            let grease_cs = VerifiableCiphersuite::new(crate::grease::random_grease_value(crypto));
             self.ciphersuites.push(grease_cs);
         }
 
         // Add GREASE extension if none present
         if !self.extensions.iter().any(|ext| ext.is_grease()) {
-            let grease_ext = ExtensionType::Grease(crate::grease::random_grease_value(rand));
+            let grease_ext = ExtensionType::Grease(crate::grease::random_grease_value(crypto));
             self.extensions.push(grease_ext);
         }
 
         // Add GREASE proposal if none present
         if !self.proposals.iter().any(|prop| prop.is_grease()) {
-            let grease_prop = ProposalType::Grease(crate::grease::random_grease_value(rand));
+            let grease_prop = ProposalType::Grease(crate::grease::random_grease_value(crypto));
             self.proposals.push(grease_prop);
         }
 
         // Add GREASE credential if none present
         if !self.credentials.iter().any(|cred| cred.is_grease()) {
-            let grease_cred = CredentialType::Grease(crate::grease::random_grease_value(rand));
+            let grease_cred = CredentialType::Grease(crate::grease::random_grease_value(crypto));
             self.credentials.push(grease_cred);
         }
 
@@ -522,14 +522,14 @@ impl CapabilitiesBuilder {
     /// let provider = OpenMlsRustCrypto::default();
     ///
     /// let capabilities = Capabilities::builder()
-    ///     .with_grease(provider.rand())
+    ///     .with_grease(provider.crypto())
     ///     .build();
     ///
     /// // GREASE values were added
     /// assert!(capabilities.ciphersuites().iter().any(|cs| cs.is_grease()));
     /// ```
-    pub fn with_grease(self, rand: &impl openmls_traits::random::OpenMlsRand) -> Self {
-        Self(self.0.with_grease(rand))
+    pub fn with_grease(self, crypto: &impl openmls_traits::crypto::OpenMlsCrypto) -> Self {
+        Self(self.0.with_grease(crypto))
     }
 
     /// Builds the [`Capabilities`].

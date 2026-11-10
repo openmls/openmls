@@ -137,12 +137,7 @@ mod test {
             .propose_adds(Some(charlie_kpb.key_package().clone()))
             .load_psks(alice_provider.storage())
             .unwrap()
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_signer,
-                |_| true,
-            )
+            .build(alice_provider.crypto(), &alice_signer, |_| true)
             .unwrap()
             .stage_commit(alice_provider)
             .unwrap();
@@ -152,12 +147,7 @@ mod test {
             .propose_adds(Some(dave_kpb.key_package().clone()))
             .load_psks(bob_provider.storage())
             .unwrap()
-            .build(
-                bob_provider.rand(),
-                bob_provider.crypto(),
-                &bob_signer,
-                |_| true,
-            )
+            .build(bob_provider.crypto(), &bob_signer, |_| true)
             .unwrap()
             .stage_commit(bob_provider)
             .unwrap();
@@ -194,12 +184,7 @@ mod test {
             .provide_key_packages(key_packages)
             .load_psks(alice_provider.storage())
             .unwrap()
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_signer,
-                |_| true,
-            )
+            .build(alice_provider.crypto(), &alice_signer, |_| true)
             .unwrap()
             .stage_commit(alice_provider)
             .unwrap();

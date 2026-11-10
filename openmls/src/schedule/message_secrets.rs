@@ -131,16 +131,16 @@ impl MessageSecrets {
     #[cfg(test)]
     pub(crate) fn random(
         ciphersuite: Ciphersuite,
-        rng: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         own_index: LeafNodeIndex,
     ) -> Self {
         Self {
-            sender_data_secret: SenderDataSecret::random(ciphersuite, rng),
-            membership_key: MembershipKey::random(ciphersuite, rng),
-            confirmation_key: ConfirmationKey::random(ciphersuite, rng),
-            serialized_context: rng.random_vec(10).expect("Not enough randomness."),
+            sender_data_secret: SenderDataSecret::random(ciphersuite, crypto),
+            membership_key: MembershipKey::random(ciphersuite, crypto),
+            confirmation_key: ConfirmationKey::random(ciphersuite, crypto),
+            serialized_context: crypto.random_vec(10).expect("Not enough randomness."),
             secret_tree: SecretTree::new(
-                EncryptionSecret::random(ciphersuite, rng),
+                EncryptionSecret::random(ciphersuite, crypto),
                 TreeSize::new(10),
                 own_index,
             ),

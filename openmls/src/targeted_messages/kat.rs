@@ -1,7 +1,7 @@
 //! KAT vectors for targeted messages.
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{DeserializeBytes, Serialize as TlsSerializeTrait};
 
@@ -60,7 +60,7 @@ pub fn generate_kat_vector(
     padding_length: usize,
 ) -> TargetedMessageKatVector {
     let crypto = provider.crypto();
-    let rand = provider.rand();
+    let rand = provider.crypto();
 
     let sender_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm())
         .expect("signature keypair generation failed");

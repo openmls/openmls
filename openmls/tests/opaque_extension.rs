@@ -119,12 +119,7 @@ fn opaque_extension() {
         .expect("error creating commit")
         .load_psks(alice_provider.storage())
         .expect("error loading psks")
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signature_keys,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signature_keys, |_| true)
         .expect("error building commit")
         .stage_commit(alice_provider)
         .expect("error staging commit");
@@ -182,12 +177,7 @@ fn opaque_extension() {
         .expect("error creating commit")
         .load_psks(alice_provider.storage())
         .expect("error loading psks")
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signature_keys,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signature_keys, |_| true)
         .expect("error building commit")
         .stage_commit(alice_provider)
         .expect("error staging commit");

@@ -1,5 +1,3 @@
-use openmls_traits::random::OpenMlsRand;
-
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     schedule::EncryptionSecret,
@@ -16,7 +14,7 @@ fn test_boundaries() {
     let provider = &Provider::default();
 
     let configuration = &SenderRatchetConfiguration::default();
-    let encryption_secret = EncryptionSecret::random(ciphersuite, provider.rand());
+    let encryption_secret = EncryptionSecret::random(ciphersuite, provider.crypto());
     let mut secret_tree = SecretTree::new(
         encryption_secret,
         TreeSize::from_leaf_count(3u32),
@@ -108,7 +106,7 @@ fn test_boundaries() {
         ),
         Err(SecretTreeError::IndexOutOfBounds)
     );
-    let encryption_secret = EncryptionSecret::random(ciphersuite, provider.rand());
+    let encryption_secret = EncryptionSecret::random(ciphersuite, provider.crypto());
     let mut largetree = SecretTree::new(
         encryption_secret,
         TreeSize::from_leaf_count(100_000u32),
@@ -162,7 +160,7 @@ fn prepare_decryption_leaves_ratchet_unchanged() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
     let mut secret_tree = SecretTree::new(
-        EncryptionSecret::random(ciphersuite, provider.rand()),
+        EncryptionSecret::random(ciphersuite, provider.crypto()),
         TreeSize::from_leaf_count(2u32),
         LeafNodeIndex::new(1u32),
     );
@@ -205,7 +203,7 @@ fn prepare_and_apply_match_sender_ratchet() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
     let mut secret_tree = SecretTree::new(
-        EncryptionSecret::random(ciphersuite, provider.rand()),
+        EncryptionSecret::random(ciphersuite, provider.crypto()),
         TreeSize::from_leaf_count(2u32),
         LeafNodeIndex::new(1u32),
     );
@@ -257,7 +255,7 @@ fn prepare_decryption_leaves_own_dual_use_ratchet_unchanged() {
     let configuration = &SenderRatchetConfiguration::default();
     let own_index = LeafNodeIndex::new(0u32);
     let mut secret_tree = SecretTree::new(
-        EncryptionSecret::random(ciphersuite, provider.rand()),
+        EncryptionSecret::random(ciphersuite, provider.crypto()),
         TreeSize::from_leaf_count(2u32),
         own_index,
     );
@@ -308,7 +306,7 @@ fn increment_generation() {
     const MAX_GENERATIONS: usize = 10;
 
     let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
-    let encryption_secret = EncryptionSecret::random(ciphersuite, provider.rand());
+    let encryption_secret = EncryptionSecret::random(ciphersuite, provider.crypto());
     let mut secret_tree = SecretTree::new(
         encryption_secret,
         TreeSize::from_leaf_count(SIZE as u32),
@@ -384,7 +382,7 @@ fn secret_tree() {
     let mut secret_tree = SecretTree::new(
         EncryptionSecret::from_slice(
             &provider
-                .rand()
+                .crypto()
                 .random_vec(ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")[..],
         ),

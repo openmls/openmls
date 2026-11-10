@@ -498,7 +498,7 @@ impl MlsGroup {
             .consume_proposal_store(true)
             .load_psks(provider.storage())
             .await?
-            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .build(provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
             .await?
             .into_contents();

@@ -116,12 +116,7 @@ fn commit_add<Provider: OpenMlsProvider>(
         .leaf_node_lifetime_policy(policy)
         .load_psks(committer.provider.storage())
         .unwrap()
-        .build(
-            committer.provider.rand(),
-            committer.provider.crypto(),
-            &committer.signer,
-            |_| true,
-        )?
+        .build(committer.provider.crypto(), &committer.signer, |_| true)?
         .stage_commit(&committer.provider)
         .unwrap();
     committer
@@ -278,12 +273,7 @@ fn a_given_time_replaces_the_system_clock() {
         .unwrap()
         .load_psks(erin_provider.storage())
         .unwrap()
-        .build(
-            erin_provider.rand(),
-            erin_provider.crypto(),
-            &erin_signer,
-            |_| true,
-        )
+        .build(erin_provider.crypto(), &erin_signer, |_| true)
         .unwrap()
         .finalize(&erin_provider)
         .unwrap();
@@ -439,12 +429,7 @@ fn an_add_by_reference_is_checked_on_both_calls() {
         .leaf_node_lifetime_policy(LeafNodeLifetimePolicy::VerifyAt(then))
         .load_psks(alice.provider.storage())
         .unwrap()
-        .build(
-            alice.provider.rand(),
-            alice.provider.crypto(),
-            &alice.signer,
-            |_| true,
-        )
+        .build(alice.provider.crypto(), &alice.signer, |_| true)
         .unwrap()
         .stage_commit(&alice.provider)
         .unwrap()

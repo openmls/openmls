@@ -1332,7 +1332,7 @@ fn addition_order() {
     let charlie_provider = &Provider::default();
 
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
-        let group_id = GroupId::random(alice_provider.rand());
+        let group_id = GroupId::random(alice_provider.crypto());
         // Generate credentials with keys
         let (alice_credential, alice_signer) =
             new_credential(alice_provider, b"Alice", ciphersuite.signature_algorithm());
@@ -1478,7 +1478,7 @@ fn more_remove_than_add_proposals_in_commit() {
                 .ciphersuite(ciphersuite)
                 .build();
 
-            let group_id = GroupId::random(provider.rand());
+            let group_id = GroupId::random(provider.crypto());
 
             // === Alice creates a group ===
             let mut alice_group = MlsGroup::new_with_group_id(
@@ -1624,7 +1624,7 @@ fn mls_group_ratchet_tree_extension() {
             .build();
 
         // === Alice creates a group ===
-        let group_id = GroupId::random(alice_provider.rand());
+        let group_id = GroupId::random(alice_provider.crypto());
         let mut alice_group = MlsGroup::new_with_group_id(
             alice_provider,
             &alice_signer,
@@ -1676,7 +1676,7 @@ fn mls_group_ratchet_tree_extension() {
         let mls_group_create_config = MlsGroupCreateConfig::test_default(ciphersuite);
 
         // === Alice creates a group ===
-        let group_id = GroupId::random(alice_provider.rand());
+        let group_id = GroupId::random(alice_provider.crypto());
         let mut alice_group = MlsGroup::new_with_group_id(
             alice_provider,
             &alice_signer,

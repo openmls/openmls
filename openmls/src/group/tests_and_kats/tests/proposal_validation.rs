@@ -71,7 +71,7 @@ fn create_group_with_members<Provider: OpenMlsProvider>(
         &MlsGroupCreateConfig::builder()
             .ciphersuite(ciphersuite)
             .build(),
-        GroupId::random(provider.rand()),
+        GroupId::random(provider.crypto()),
         alice_credential_with_key_and_signer
             .credential_with_key
             .clone(),
@@ -106,7 +106,7 @@ fn new_test_group(
     ciphersuite: Ciphersuite,
     provider: &impl OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
-    let group_id = GroupId::random(provider.rand());
+    let group_id = GroupId::random(provider.crypto());
 
     // Generate credentials with keys
     let credential_with_key_and_signer =
@@ -693,7 +693,7 @@ fn test_valsem101b() {
             &MlsGroupCreateConfig::builder()
                 .ciphersuite(ciphersuite)
                 .build(),
-            GroupId::random(alice_provider.rand()),
+            GroupId::random(alice_provider.crypto()),
             alice_credential_with_key.credential_with_key.clone(),
         )
         .unwrap();
@@ -2448,7 +2448,6 @@ fn custom_proposal_with_colliding_type() {
             .load_psks(alice_provider.storage())
             .unwrap()
             .build(
-                alice_provider.rand(),
                 alice_provider.crypto(),
                 &alice_credential_with_keys.signer,
                 |_| true,

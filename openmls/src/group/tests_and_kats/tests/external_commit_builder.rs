@@ -116,12 +116,7 @@ fn external_commit_builder() {
         .leaf_node_parameters(leaf_node_parameters)
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
@@ -189,7 +184,7 @@ fn external_commit_builder() {
     // Charlie joins the group externally and sends a PSK proposal as part of the commit.
     let psk_id_bytes = vec![0, 1, 2, 3];
     let psk_id = Psk::External(ExternalPsk::new(psk_id_bytes.clone()));
-    let psk = PreSharedKeyId::new(ciphersuite, charlie_provider.rand(), psk_id).unwrap();
+    let psk = PreSharedKeyId::new(ciphersuite, charlie_provider.crypto(), psk_id).unwrap();
     let psk_value = vec![4, 5, 6, 7];
     psk.store(bob_provider, &psk_value).unwrap();
     psk.store(charlie_provider, &psk_value).unwrap();
@@ -207,12 +202,7 @@ fn external_commit_builder() {
         .add_psk_proposal(PreSharedKeyProposal::new(psk))
         .load_psks(charlie_provider.storage())
         .unwrap()
-        .build(
-            charlie_provider.rand(),
-            charlie_provider.crypto(),
-            &charlie_signer,
-            |_| true,
-        )
+        .build(charlie_provider.crypto(), &charlie_signer, |_| true)
         .unwrap()
         .finalize(charlie_provider)
         .unwrap();
@@ -309,12 +299,7 @@ fn external_commit_after_self_remove() {
         .leaf_node_parameters(leaf_node_parameters.clone())
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
@@ -377,12 +362,7 @@ fn external_commit_after_self_remove() {
         .leaf_node_parameters(leaf_node_parameters)
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
@@ -475,12 +455,7 @@ fn external_commit_consistent_credential() {
         .leaf_node_parameters(leaf_node_parameters)
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
@@ -589,12 +564,7 @@ fn external_commit_rejects_divergent_credential() {
         .leaf_node_parameters(divergent_leaf_node_parameters)
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signer, |_| true)
         .unwrap_err();
 
     assert_eq!(err, CreateCommitError::ExternalCommitCredentialMismatch);
@@ -657,7 +627,6 @@ fn external_commit_rejects_new_signer() {
         .load_psks(bob_provider.storage())
         .unwrap()
         .build_with_new_signer(
-            bob_provider.rand(),
             bob_provider.crypto(),
             &bob_signer,
             new_signer_bundle,
@@ -709,12 +678,7 @@ fn verify_group_exposes_group_info_and_context() {
         .unwrap()
         .load_psks(charlie_provider.storage())
         .unwrap()
-        .build(
-            charlie_provider.rand(),
-            charlie_provider.crypto(),
-            &charlie_signer,
-            |_| true,
-        )
+        .build(charlie_provider.crypto(), &charlie_signer, |_| true)
         .unwrap()
         .finalize(charlie_provider)
         .unwrap();
@@ -806,12 +770,7 @@ fn verify_group_respects_skip_lifetime_validation() {
         .unwrap()
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();

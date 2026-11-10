@@ -47,10 +47,10 @@ impl Secret {
     /// The function can return a [`CryptoError`] if there is insufficient randomness.
     pub(crate) fn random(
         ciphersuite: Ciphersuite,
-        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<Self, CryptoError> {
         Ok(Secret {
-            value: rand
+            value: crypto
                 .random_vec(ciphersuite.hash_length())
                 .map_err(|_| CryptoError::InsufficientRandomness)?
                 .into(),
