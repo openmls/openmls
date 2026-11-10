@@ -21,6 +21,11 @@ use crate::{
 use openmls_traits::signatures::Signer;
 
 use super::proposals::{GroupContextExtensionProposal, PreSharedKeyProposal, RemoveProposal};
+#[cfg(feature = "extensions-draft")]
+use crate::{
+    component::ComponentId,
+    messages::proposals::{AppDataUpdateOperation, AppDataUpdateProposal},
+};
 
 /// External Add Proposal where sender is [NewMemberProposal](crate::prelude::Sender::NewMemberProposal). A client
 /// outside the group can request joining the group. This proposal should then be committed by a
@@ -221,6 +226,45 @@ impl ExternalProposal {
             epoch,
             signer,
             sender_index,
+        )
+        .map(PublicMessage::from)
+        .map(MlsMessageOut::from)
+    }
+
+    /// Creates an external AppDataUpdate proposal. For delivery services requesting to update the
+    /// application data of a component in the group context.
+    /// This proposal will have to be committed later by a group member.
+    ///
+    /// # Arguments
+    /// * `component_id` - the component whose data is updated or removed
+    /// * `operation` - the update or remove operation
+    /// * `group_id` - unique group identifier of the group
+    /// * `epoch` - group's epoch
+    /// * `signer` - of the sender to sign the message
+    /// * `sender_index` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
+    ///   from the Group Context)
+    /// * `authenticated_data` - the `authenticated_data` of the message; a SafeAAD struct if the
+    ///   group requires one (draft-ietf-mls-extensions-10 §4.9)
+    #[cfg(feature = "extensions-draft")]
+    pub fn new_app_data_update(
+        component_id: ComponentId,
+        operation: AppDataUpdateOperation,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        signer: &impl Signer,
+        sender_index: SenderExtensionIndex,
+        authenticated_data: Vec<u8>,
+    ) -> Result<MlsMessageOut, LibraryError> {
+        AuthenticatedContent::new_external_proposal_with_aad(
+            Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::new(
+                component_id,
+                operation,
+            ))),
+            group_id,
+            epoch,
+            signer,
+            sender_index,
+            authenticated_data,
         )
         .map(PublicMessage::from)
         .map(MlsMessageOut::from)
