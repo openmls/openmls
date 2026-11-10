@@ -601,6 +601,18 @@ impl OpenMlsCrypto for CryptoProvider {
     fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError> {
         crate::ff1::decrypt(key, ciphertext)
     }
+
+    fn random_array<const N: usize>(&self) -> Result<[u8; N], CryptoError> {
+        let mut output = [0u8; N];
+        self.fill_random(&mut output)?;
+        Ok(output)
+    }
+
+    fn random_vec(&self, len: usize) -> Result<Vec<u8>, CryptoError> {
+        let mut output = vec![0u8; len];
+        self.fill_random(&mut output)?;
+        Ok(output)
+    }
 }
 
 fn hpke_config(config: HpkeConfig) -> hpke_rs::Hpke<HpkeLibcrux> {
