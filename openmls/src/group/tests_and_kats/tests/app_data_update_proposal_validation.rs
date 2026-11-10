@@ -72,60 +72,131 @@ fn setup<'a, Provider: OpenMlsProvider>(
     group_state
 }
 
-/// Commit creation:
-/// Test the invalid case where a GroupContextExtensionProposal comes after the AppDataUpdate
-/// proposals.
+/// A Commit may list a GroupContextExtensions proposal after AppDataUpdate
+/// proposals. draft-ietf-mls-extensions §4.7 does not order them (mls-extensions
+/// #108, #109); RFC 9420 §12.3 applies the GroupContextExtensions proposal
+/// first wherever it appears.
 #[openmls_test]
-fn test_group_context_update_wrong_order() {
+fn test_group_context_update_after_app_data_update() {
     // Set up parties
     let alice_party = CorePartyState::<Provider>::new("alice");
     let bob_party = CorePartyState::<Provider>::new("bob");
 
     let mut group_state = setup(&alice_party, &bob_party, ciphersuite, true);
 
-    let [alice] = group_state.members_mut(&["alice"]);
+    let [alice, bob] = group_state.members_mut(&["alice", "bob"]);
 
-    // Alice sends a commit containing an AppDataUpdate proposal
-    alice
-        .group
-        .propose_app_data_update(
-            &alice_party.provider,
-            &alice.party.signer,
-            16,
-            AppDataUpdateOperation::Update(b"ignored".into()),
-        )
-        .unwrap();
-
-    let required_capabilities_extension =
-        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-            &[ExtensionType::AppDataDictionary],
-            &[ProposalType::AppDataUpdate],
-            &[],
-        ));
-
-    alice
-        .group
-        .propose_group_context_extensions(
-            &alice_party.provider,
-            Extensions::from_vec(vec![required_capabilities_extension]).unwrap(),
-            &alice.party.signer,
-        )
-        .unwrap();
-
-    let err = alice
-        .group
-        .commit_to_pending_proposals(&alice_party.provider, &alice.party.signer)
-        .unwrap_err();
-
-    assert_eq!(
-        err,
-        CommitToPendingProposalsError::CreateCommitError(
-            CreateCommitError::AppDataUpdateValidationError(
-                AppDataUpdateValidationError::IncorrectOrder
-            )
-        )
+    // Drop AppDataUpdate from the required proposal types, so the effect of
+    // the GroupContextExtensions proposal is visible.
+    let required_capabilities_extension = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::AppDataDictionary], &[], &[]),
     );
+
+    // Alice commits [AppDataUpdate, GroupContextExtensions], in that order.
+    let mut stage = alice
+        .group
+        .commit_builder()
+        .add_proposals(vec![
+            Proposal::AppDataUpdate(Box::new(AppDataUpdateProposal::update(
+                0xf042,
+                b"test_value",
+            ))),
+            Proposal::GroupContextExtensions(Box::new(GroupContextExtensionProposal::new(
+                Extensions::single(required_capabilities_extension).unwrap(),
+            ))),
+        ])
+        .load_psks(alice_party.provider.storage())
+        .unwrap();
+
+    let mut alice_updater = stage.app_data_dictionary_updater();
+    for proposal in stage.app_data_update_proposals() {
+        if let AppDataUpdateOperation::Update(data) = proposal.operation() {
+            alice_updater.set(ComponentData::from_parts(
+                proposal.component_id(),
+                data.clone(),
+            ));
+        }
+    }
+    stage.with_app_data_dictionary_updates(alice_updater.changes());
+
+    let commit_bundle = stage
+        .build(
+            alice_party.provider.rand(),
+            alice_party.provider.crypto(),
+            &alice.party.signer,
+            |_| true,
+        )
+        .expect("AppDataUpdate before GroupContextExtensions is a valid order")
+        .stage_commit(&alice_party.provider)
+        .unwrap();
+
+    let (commit_message, _, _) = commit_bundle.into_contents();
+
+    // Bob accepts the same order.
+    let processed_message = bob
+        .group
+        .process_message(
+            &bob_party.provider,
+            commit_message
+                .into_protocol_message()
+                .expect("not a protocol message"),
+        )
+        .expect("failed to process commit");
+
+    let unresolved_commit = match processed_message.into_content() {
+        ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) => unresolved_commit,
+        other => panic!(
+            "Expected UnresolvedAppDataCommit, got: {:?}",
+            std::mem::discriminant(&other)
+        ),
+    };
+
+    let mut bob_updater = bob.group.app_data_dictionary_updater();
+    for proposal in unresolved_commit.app_data_update_proposals() {
+        if let AppDataUpdateOperation::Update(data) = proposal.operation() {
+            bob_updater.set(ComponentData::from_parts(
+                proposal.component_id(),
+                data.clone(),
+            ));
+        }
+    }
+
+    let staged_commit = bob
+        .group
+        .stage_app_data_commit(
+            &bob_party.provider,
+            *unresolved_commit,
+            bob_updater.changes(),
+        )
+        .expect("AppDataUpdate before GroupContextExtensions is a valid order");
+
+    bob.group
+        .merge_staged_commit(&bob_party.provider, staged_commit)
+        .unwrap();
+    alice
+        .group
+        .merge_pending_commit(&alice_party.provider)
+        .unwrap();
+
+    // Both proposals took effect.
+    for group in [&alice.group, &bob.group] {
+        let extensions = group.extensions();
+        assert_eq!(
+            extensions
+                .app_data_dictionary()
+                .expect("dictionary")
+                .dictionary()
+                .get(&0xf042),
+            Some(b"test_value".as_slice())
+        );
+        assert!(extensions
+            .required_capabilities()
+            .expect("required capabilities")
+            .proposal_types()
+            .is_empty());
+    }
 }
+
 /// Commit creation:
 /// Test the invalid case where a GroupContextExtensionProposal updates the AppDataDictionary.
 #[openmls_test]

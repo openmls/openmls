@@ -844,11 +844,6 @@ pub enum MergeCommitError<StorageError> {
 /// Error validating an AppDataUpdate proposal.
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum AppDataUpdateValidationError {
-    /// [`AppDataUpdateProposal`](crate::messages::proposals::AppDataUpdateProposal)s
-    /// occur before
-    /// [`GroupContextExtensionsProposal`](crate::messages::proposals::GroupContextExtensionProposal)s.
-    #[error("AppDataUpdate proposals occur before GroupContextExtensions proposals.")]
-    IncorrectOrder,
     /// Attempted to update the [`AppDataDictionary`](crate::extensions::AppDataDictionary)
     /// in the
     /// [`GroupContextExtensionsProposal`](crate::messages::proposals::GroupContextExtensionProposal) directly.
