@@ -81,6 +81,8 @@ pub struct ExternalCommitBuilder {
     config: MlsGroupJoinConfig,
     validate_lifetimes: LeafNodeLifetimePolicy,
     aad: Vec<u8>,
+    #[cfg(feature = "extensions-draft")]
+    safe_aad: Option<crate::framing::SafeAad>,
     /// Whether to join the group as an emulation group of a virtual client. Set
     /// by [`Self::emulation_group`].
     #[cfg(feature = "virtual-clients-draft")]
@@ -131,6 +133,20 @@ impl ExternalCommitBuilder {
     pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
         self.aad = aad;
         self
+    }
+
+    /// Specifies the Safe AAD items to be included in the external commit.
+    /// Items must be sorted by [`ComponentId`] in strictly-increasing order and
+    /// contain no duplicates.
+    ///
+    /// [`ComponentId`]: crate::component::ComponentId
+    #[cfg(feature = "extensions-draft")]
+    pub fn with_safe_aad(
+        mut self,
+        items: Vec<crate::framing::SafeAadItem>,
+    ) -> Result<Self, crate::framing::SafeAadError> {
+        self.safe_aad = Some(crate::framing::SafeAad::from_items(items)?);
+        Ok(self)
     }
 
     /// Join the group as an emulation group of a virtual client. See
@@ -205,6 +221,8 @@ impl ExternalCommitBuilder {
             ratchet_tree,
             config,
             aad,
+            #[cfg(feature = "extensions-draft")]
+            safe_aad,
             validate_lifetimes,
             #[cfg(feature = "virtual-clients-draft")]
             emulation_group,
@@ -239,6 +257,8 @@ impl ExternalCommitBuilder {
             proposals,
             config,
             aad,
+            #[cfg(feature = "extensions-draft")]
+            safe_aad,
             #[cfg(feature = "virtual-clients-draft")]
             emulation_group,
         })
@@ -255,6 +275,8 @@ pub struct VerifiedExternalCommitBuilder {
     proposals: Vec<PublicMessageIn>,
     config: MlsGroupJoinConfig,
     aad: Vec<u8>,
+    #[cfg(feature = "extensions-draft")]
+    safe_aad: Option<crate::framing::SafeAad>,
     #[cfg(feature = "virtual-clients-draft")]
     emulation_group: bool,
 }
@@ -289,6 +311,8 @@ impl VerifiedExternalCommitBuilder {
             proposals,
             mut config,
             aad,
+            #[cfg(feature = "extensions-draft")]
+            safe_aad,
             #[cfg(feature = "virtual-clients-draft")]
             emulation_group,
         } = self;
@@ -414,7 +438,7 @@ impl VerifiedExternalCommitBuilder {
             own_leaf_nodes: vec![],
             aad: vec![],
             #[cfg(feature = "extensions-draft")]
-            safe_aad: crate::framing::SafeAad::empty(),
+            safe_aad: safe_aad.unwrap_or_else(crate::framing::SafeAad::empty),
             group_state: MlsGroupState::Operational,
             public_group,
             group_epoch_secrets,
