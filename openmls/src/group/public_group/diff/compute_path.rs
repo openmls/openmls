@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as _;
 
@@ -48,7 +48,6 @@ impl PublicGroupDiff<'_> {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_path(
         &mut self,
-        rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet<&LeafNodeIndex>,
@@ -130,7 +129,6 @@ impl PublicGroupDiff<'_> {
         // Derive and apply an update path based on the previously
         // generated new leaf.
         let (plain_path, new_keypairs, commit_secret) = self.diff.apply_own_update_path(
-            rand,
             crypto,
             signer,
             ciphersuite,

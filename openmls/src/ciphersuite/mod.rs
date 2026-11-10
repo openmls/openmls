@@ -6,7 +6,6 @@
 use ::tls_codec::{TlsDeserialize, TlsDeserializeBytes, TlsSerialize, TlsSize, VLBytes};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    random::OpenMlsRand,
     types::{AeadType, Ciphersuite, CryptoError, SignatureScheme},
 };
 use signable::SignedStruct;

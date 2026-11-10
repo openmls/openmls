@@ -137,12 +137,7 @@ fn suspend_via_reinit<Provider: OpenMlsProvider>(
         .add_proposal(Proposal::re_init(reinit_proposal.clone()))
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            alice_signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), alice_signer, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();

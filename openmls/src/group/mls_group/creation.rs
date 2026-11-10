@@ -166,7 +166,7 @@ impl MlsGroup {
                 log::error!("Error loading PSKs for external commit: {e:?}");
                 LibraryError::custom("Error loading PSKs for external commit")
             })?
-            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .build(provider.crypto(), signer, |_| true)?
             .finalize(provider)
             .await?;
 
@@ -1792,7 +1792,7 @@ impl VcExternalCommitJoinBuilder {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
         let own_leaf_index = public_group.leftmost_free_index(std::iter::empty())?;
-        let init_secret = InitSecret::random(ciphersuite, provider.rand())
+        let init_secret = InitSecret::random(ciphersuite, provider.crypto())
             .map_err(LibraryError::unexpected_crypto_error)?;
         let epoch_secrets =
             EpochSecrets::with_init_secret(provider.crypto(), ciphersuite, init_secret)

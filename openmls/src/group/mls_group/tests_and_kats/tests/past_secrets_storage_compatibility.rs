@@ -66,7 +66,7 @@ fn test_storage_compatibility() {
         // modify the loaded MessageSecretsStore, adding a new past epoch tree with a timestamp
         message_secrets_store.add_past_epoch_tree(
             alice_group.epoch(),
-            MessageSecrets::random(ciphersuite, alice_provider.rand(), LeafNodeIndex::new(0))
+            MessageSecrets::random(ciphersuite, alice_provider.crypto(), LeafNodeIndex::new(0))
                 .with_timestamp(std::time::SystemTime::now()),
             Vec::new(),
         );
@@ -85,7 +85,7 @@ fn test_serialize_deserialize() {
     // create a MessageSecrets
     let message_secrets = MessageSecrets::random(
         Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-        provider.rand(),
+        provider.crypto(),
         LeafNodeIndex::new(0),
     );
 
@@ -111,13 +111,9 @@ struct Provider {
 
 impl OpenMlsProvider for Provider {
     type CryptoProvider = CryptoProvider;
-    type RandProvider = CryptoProvider;
     type StorageProvider = SqliteStorageProvider<JsonCodec, Connection>;
 
     fn crypto(&self) -> &Self::CryptoProvider {
-        &self.crypto
-    }
-    fn rand(&self) -> &Self::RandProvider {
         &self.crypto
     }
     fn storage(&self) -> &Self::StorageProvider {

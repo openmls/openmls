@@ -229,7 +229,7 @@ fn vc_commit_path_material_imports_into_group_ciphersuite() {
         "the resolved derivation epoch must survive the stage transition"
     );
     builder
-        .build(provider.rand(), provider.crypto(), &alice_signer, |_| true)
+        .build(provider.crypto(), &alice_signer, |_| true)
         .expect("build vc commit")
         .stage_commit(provider)
         .expect("stage vc commit");

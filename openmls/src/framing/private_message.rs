@@ -1,4 +1,4 @@
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use std::io::Write;
 use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
 
@@ -122,7 +122,6 @@ impl PrivateMessage {
     /// to avoid validation using a special feature flag.
     pub(crate) fn try_from_authenticated_content<T>(
         crypto: &impl OpenMlsCrypto,
-        rand: &impl OpenMlsRand,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
@@ -137,7 +136,6 @@ impl PrivateMessage {
         }
         Self::encrypt_content(
             crypto,
-            rand,
             None,
             public_message,
             ciphersuite,
@@ -151,7 +149,6 @@ impl PrivateMessage {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn encrypt_without_check<T>(
         crypto: &impl OpenMlsCrypto,
-        rand: &impl OpenMlsRand,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         message_secrets: &mut MessageSecrets,
@@ -159,7 +156,6 @@ impl PrivateMessage {
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         Self::encrypt_content(
             crypto,
-            rand,
             None,
             public_message,
             ciphersuite,
@@ -173,7 +169,6 @@ impl PrivateMessage {
     #[cfg(test)]
     pub(crate) fn encrypt_with_different_header<T>(
         crypto: &impl OpenMlsCrypto,
-        rand: &impl OpenMlsRand,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         header: MlsMessageHeader,
@@ -182,7 +177,6 @@ impl PrivateMessage {
     ) -> Result<EncryptionOutput, MessageEncryptionError<T>> {
         Self::encrypt_content(
             crypto,
-            rand,
             Some(header),
             public_message,
             ciphersuite,
@@ -198,7 +192,6 @@ impl PrivateMessage {
     #[allow(clippy::too_many_arguments)]
     fn encrypt_content<T>(
         crypto: &impl OpenMlsCrypto,
-        rand: &impl OpenMlsRand,
         test_header: Option<MlsMessageHeader>,
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
@@ -243,7 +236,6 @@ impl PrivateMessage {
         let reuse_guard: ReuseGuard = if let Some(ctx) = emulator_ctx {
             ReuseGuard::for_emulator_sender(
                 crypto,
-                rand,
                 ctx.reuse_guard_secret,
                 ctx.emulation_ciphersuite,
                 &ratchet_nonce,
@@ -259,11 +251,11 @@ impl PrivateMessage {
                 }
             })?
         } else {
-            ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)?
+            ReuseGuard::try_from_random(crypto).map_err(LibraryError::unexpected_crypto_error)?
         };
         #[cfg(not(feature = "virtual-clients-draft"))]
         let reuse_guard: ReuseGuard =
-            ReuseGuard::try_from_random(rand).map_err(LibraryError::unexpected_crypto_error)?;
+            ReuseGuard::try_from_random(crypto).map_err(LibraryError::unexpected_crypto_error)?;
         // Prepare the nonce by xoring with the reuse guard.
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         // Encrypt the payload

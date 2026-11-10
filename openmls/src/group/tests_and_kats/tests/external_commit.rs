@@ -75,12 +75,7 @@ fn test_external_commit() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_credential.signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_credential.signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
@@ -152,7 +147,6 @@ fn test_external_commit() {
         .load_psks(charlie_provider.storage())
         .unwrap()
         .build(
-            charlie_provider.rand(),
             charlie_provider.crypto(),
             &charlie_credential.signer,
             |_| true,
@@ -235,12 +229,7 @@ fn test_external_commit() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_credential.signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_credential.signer, |_| true)
         .unwrap()
         .finalize(alice_provider)
         .unwrap();

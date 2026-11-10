@@ -3,7 +3,6 @@ use std::collections::HashSet;
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    random::OpenMlsRand,
     signatures::Signer,
     types::{Ciphersuite, VerifiableCiphersuite},
 };
@@ -371,8 +370,7 @@ impl LeafNode {
         } = new_leaf_node_params;
 
         // Create a new encryption key pair.
-        let encryption_key_pair =
-            EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)?;
+        let encryption_key_pair = EncryptionKeyPair::random(provider.crypto(), ciphersuite)?;
 
         let leaf_node = Self::new_with_key(
             ciphersuite,
@@ -490,7 +488,6 @@ impl LeafNode {
     /// This is the hook for the virtual-clients-draft sender.
     #[allow(clippy::too_many_arguments)]
     pub(in crate::treesync) fn new_with_parent_hash(
-        rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         parent_hash: &[u8],
@@ -505,10 +502,10 @@ impl LeafNode {
         #[cfg(feature = "virtual-clients-draft")]
         let encryption_key_pair = match encryption_key_pair_override {
             Some(kp) => kp,
-            None => EncryptionKeyPair::random(rand, crypto, ciphersuite)?,
+            None => EncryptionKeyPair::random(crypto, ciphersuite)?,
         };
         #[cfg(not(feature = "virtual-clients-draft"))]
-        let encryption_key_pair = EncryptionKeyPair::random(rand, crypto, ciphersuite)?;
+        let encryption_key_pair = EncryptionKeyPair::random(crypto, ciphersuite)?;
 
         let leaf_node_tbs = LeafNodeTbs::new(
             ciphersuite,
@@ -635,8 +632,7 @@ impl LeafNode {
         )?;
 
         // Create a new encryption key pair
-        let encryption_key_pair =
-            EncryptionKeyPair::random(provider.rand(), provider.crypto(), ciphersuite)?;
+        let encryption_key_pair = EncryptionKeyPair::random(provider.crypto(), ciphersuite)?;
         leaf_node_tbs.payload.encryption_key = encryption_key_pair.public_key().clone();
 
         // Store the encryption key pair in the key store.

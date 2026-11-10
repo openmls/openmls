@@ -86,12 +86,7 @@ fn test_external_commit() {
             .leaf_node_parameters(LeafNodeParameters::builder().build())
             .load_psks(bob_provider.storage())
             .unwrap()
-            .build(
-                bob_provider.rand(),
-                bob_provider.crypto(),
-                &bob_signature_keys,
-                |_| true,
-            )
+            .build(bob_provider.crypto(), &bob_signature_keys, |_| true)
             .unwrap()
             .finalize(bob_provider)
             .unwrap();
@@ -149,12 +144,7 @@ fn test_group_info() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signature_keys,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signature_keys, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
@@ -205,12 +195,7 @@ fn test_group_info() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signature_keys,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signature_keys, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();

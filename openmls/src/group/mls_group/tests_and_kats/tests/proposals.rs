@@ -48,7 +48,7 @@ fn proposal_queue_functions() {
 
     let group_context = GroupContext::new(
         ciphersuite,
-        GroupId::random(alice_provider.rand()),
+        GroupId::random(alice_provider.crypto()),
         0,
         vec![],
         vec![],
@@ -188,7 +188,7 @@ fn proposal_queue_order() {
 
     let group_context = GroupContext::new(
         ciphersuite,
-        GroupId::random(alice_provider.rand()),
+        GroupId::random(alice_provider.crypto()),
         0,
         vec![],
         vec![],

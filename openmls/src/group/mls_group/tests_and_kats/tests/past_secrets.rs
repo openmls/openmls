@@ -389,7 +389,7 @@ fn setup_tree_store_with_timestamps<Provider: OpenMlsProvider>(
     // Create a store
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
         &PastEpochDeletionPolicy::KeepAll,
-        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0)),
+        MessageSecrets::random(ciphersuite, provider.crypto(), LeafNodeIndex::new(0)),
     );
 
     // Populate with past epoch trees
@@ -397,7 +397,7 @@ fn setup_tree_store_with_timestamps<Provider: OpenMlsProvider>(
     for (epoch, timestamp) in entries.iter().enumerate() {
         let message_secrets = MessageSecrets::random(
             ciphersuite,
-            provider.rand(),
+            provider.crypto(),
             LeafNodeIndex::new(epoch as u32),
         );
 
@@ -779,13 +779,13 @@ fn test_secret_tree_store() {
     // Create a store that keeps up to 3 epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
         &PastEpochDeletionPolicy::MaxEpochs(3),
-        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0)),
+        MessageSecrets::random(ciphersuite, provider.crypto(), LeafNodeIndex::new(0)),
     );
 
     // Add message secrets to the store
     message_secrets_store.add_past_epoch_tree(
         0,
-        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
+        MessageSecrets::random(ciphersuite, provider.crypto(), LeafNodeIndex::new(0))
             .with_timestamp(SystemTime::now()),
         Vec::new(),
     );
@@ -797,7 +797,7 @@ fn test_secret_tree_store() {
     for i in 1..6u64 {
         message_secrets_store.add_past_epoch_tree(
             i,
-            MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
+            MessageSecrets::random(ciphersuite, provider.crypto(), LeafNodeIndex::new(0))
                 .with_timestamp(SystemTime::now()),
             Vec::new(),
         );
@@ -821,13 +821,13 @@ fn test_empty_secret_tree_store() {
     // Create a store that keeps no epochs
     let mut message_secrets_store = MessageSecretsStore::new_with_secret(
         &PastEpochDeletionPolicy::MaxEpochs(0),
-        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0)),
+        MessageSecrets::random(ciphersuite, provider.crypto(), LeafNodeIndex::new(0)),
     );
 
     // Add message secrets to the store
     message_secrets_store.add_past_epoch_tree(
         0,
-        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0))
+        MessageSecrets::random(ciphersuite, provider.crypto(), LeafNodeIndex::new(0))
             .with_timestamp(SystemTime::now()),
         Vec::new(),
     );

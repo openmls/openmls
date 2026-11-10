@@ -258,12 +258,7 @@ fn send_vc_commit<P: OpenMlsProvider>(
         .unwrap()
         .load_psks(sender_provider.storage())
         .unwrap()
-        .build(
-            sender_provider.rand(),
-            sender_provider.crypto(),
-            sender_signer,
-            |_| true,
-        )
+        .build(sender_provider.crypto(), sender_signer, |_| true)
         .unwrap()
         .stage_commit(sender_provider)
         .unwrap();
@@ -295,12 +290,7 @@ fn send_vc_commit_at_epoch<P: OpenMlsProvider>(
         .unwrap()
         .load_psks(sender_provider.storage())
         .unwrap()
-        .build(
-            sender_provider.rand(),
-            sender_provider.crypto(),
-            sender_signer,
-            |_| true,
-        )
+        .build(sender_provider.crypto(), sender_signer, |_| true)
         .unwrap()
         .stage_commit(sender_provider)
         .unwrap();
@@ -466,12 +456,7 @@ fn join_sibling_emulator<P: OpenMlsProvider>(
         .expect("vc emulation")
         .load_psks(alice_b_provider.storage())
         .expect("load psks")
-        .build(
-            alice_b_provider.rand(),
-            alice_b_provider.crypto(),
-            vc_signer,
-            |_| true,
-        )
+        .build(alice_b_provider.crypto(), vc_signer, |_| true)
         .expect("build external commit")
         .finalize(alice_b_provider)
         .expect("finalize external commit");
@@ -701,12 +686,7 @@ fn sibling_resync_external_commit_fails_when_receiver_lacks_operation_tree() {
         .expect("vc emulation")
         .load_psks(alice_b_provider.storage())
         .expect("load psks")
-        .build(
-            alice_b_provider.rand(),
-            alice_b_provider.crypto(),
-            &vc_signer,
-            |_| true,
-        )
+        .build(alice_b_provider.crypto(), &vc_signer, |_| true)
         .expect("build external commit")
         .finalize(&alice_b_provider)
         .expect("finalize external commit");
@@ -907,12 +887,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
         .expect("vc emulation")
         .load_psks(alice_b_provider.storage())
         .expect("load psks")
-        .build(
-            alice_b_provider.rand(),
-            alice_b_provider.crypto(),
-            &vc_signer,
-            |_| true,
-        )
+        .build(alice_b_provider.crypto(), &vc_signer, |_| true)
         .expect("build external commit")
         .finalize(&alice_b_provider)
         .expect("finalize external commit");
@@ -992,7 +967,7 @@ fn vc_two_alice_clients_in_group_with_bob_and_charly() {
             .force_self_update(true)
             .load_psks(provider.storage())
             .expect("load psks")
-            .build(provider.rand(), provider.crypto(), signer, |_| true)
+            .build(provider.crypto(), signer, |_| true)
             .expect("build commit")
             .stage_commit(provider)
             .expect("stage commit");
@@ -1247,12 +1222,7 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
         .expect("vc emulation")
         .load_psks(alice_b_provider.storage())
         .expect("load psks")
-        .build(
-            alice_b_provider.rand(),
-            alice_b_provider.crypto(),
-            &vc_signer,
-            |_| true,
-        )
+        .build(alice_b_provider.crypto(), &vc_signer, |_| true)
         .expect("build external commit")
         .finalize(&alice_b_provider)
         .expect("finalize external commit");
@@ -1386,12 +1356,7 @@ fn vc_sibling_emulator_resyncs_into_higher_level_group_via_external_commit() {
             .force_self_update(true)
             .load_psks(bob_provider.storage())
             .expect("load psks")
-            .build(
-                bob_provider.rand(),
-                bob_provider.crypto(),
-                &bob_signer,
-                |_| true,
-            )
+            .build(bob_provider.crypto(), &bob_signer, |_| true)
             .expect("build")
             .stage_commit(&bob_provider)
             .expect("stage");
@@ -1560,12 +1525,7 @@ fn vc_second_emulator_client_onboards_via_external_commit() {
         .expect("vc emulation charly_a")
         .load_psks(charly_a_provider.storage())
         .expect("load psks")
-        .build(
-            charly_a_provider.rand(),
-            charly_a_provider.crypto(),
-            &vc_signer,
-            |_| true,
-        )
+        .build(charly_a_provider.crypto(), &vc_signer, |_| true)
         .expect("build external commit charly_a")
         .finalize(&charly_a_provider)
         .expect("finalize charly_a join");
@@ -1814,12 +1774,7 @@ fn vc_sibling_reads_app_ephemeral_from_external_commit() {
         ))))
         .load_psks(charly_a_provider.storage())
         .expect("load psks")
-        .build(
-            charly_a_provider.rand(),
-            charly_a_provider.crypto(),
-            &vc_signer,
-            |_| true,
-        )
+        .build(charly_a_provider.crypto(), &vc_signer, |_| true)
         .expect("build external commit charly_a")
         .finalize(&charly_a_provider)
         .expect("finalize charly_a join");
@@ -2092,12 +2047,7 @@ fn charly_a_external_commit_with_app_data_update<P: OpenMlsProvider>(
     ));
     builder.with_app_data_dictionary_updates(updater.changes());
     let (charly_a_main, bundle) = builder
-        .build(
-            provider.rand(),
-            provider.crypto(),
-            &scenario.vc_signer,
-            |_| true,
-        )
+        .build(provider.crypto(), &scenario.vc_signer, |_| true)
         .expect("build external commit charly_a")
         .finalize(provider)
         .expect("finalize charly_a join");
@@ -4517,9 +4467,7 @@ fn aged_out_binding_releases_derivation_epoch_state() {
         .force_self_update(true)
         .load_psks(provider.storage())
         .expect("load psks")
-        .build(provider.rand(), provider.crypto(), &emulator_signer, |_| {
-            true
-        })
+        .build(provider.crypto(), &emulator_signer, |_| true)
         .expect("build emulator commit with marker")
         .stage_commit(&provider)
         .expect("stage emulator commit with marker");
@@ -4891,12 +4839,7 @@ fn vc_binding_is_kept_per_epoch_for_delayed_messages() {
             .force_self_update(true)
             .load_psks(alice_a_provider.storage())
             .expect("load psks")
-            .build(
-                alice_a_provider.rand(),
-                alice_a_provider.crypto(),
-                &emulator_a_signer,
-                |_| true,
-            )
+            .build(alice_a_provider.crypto(), &emulator_a_signer, |_| true)
             .expect("build emulator commit")
             .stage_commit(&alice_a_provider)
             .expect("stage emulator commit");
@@ -5034,12 +4977,7 @@ fn vc_binding_carries_forward_across_foreign_commits() {
             .force_self_update(true)
             .load_psks(bob_provider.storage())
             .expect("load psks")
-            .build(
-                bob_provider.rand(),
-                bob_provider.crypto(),
-                &bob_signer,
-                |_| true,
-            )
+            .build(bob_provider.crypto(), &bob_signer, |_| true)
             .expect("build bob commit")
             .stage_commit(&bob_provider)
             .expect("stage bob commit");
@@ -5379,12 +5317,7 @@ fn vc_own_commit_echo_surfaces_as_own_pending_commit() {
         .expect("alice_a bind commit to derivation epoch")
         .load_psks(alice_a_provider.storage())
         .expect("alice_a load psks")
-        .build(
-            alice_a_provider.rand(),
-            alice_a_provider.crypto(),
-            &vc_signer,
-            |_| true,
-        )
+        .build(alice_a_provider.crypto(), &vc_signer, |_| true)
         .expect("alice_a build vc commit")
         .stage_commit(&alice_a_provider)
         .expect("alice_a stage vc commit");
@@ -5760,12 +5693,7 @@ fn vc_group_creation_join_fails_on_non_key_package_creator_leaf() {
         .expect("vc emulation commit builder")
         .load_psks(alice_a_provider.storage())
         .expect("load psks")
-        .build(
-            alice_a_provider.rand(),
-            alice_a_provider.crypto(),
-            &vc_signer,
-            |_| true,
-        )
+        .build(alice_a_provider.crypto(), &vc_signer, |_| true)
         .expect("build commit")
         .stage_commit(&alice_a_provider)
         .expect("stage commit");
@@ -6168,12 +6096,7 @@ fn vc_private_commit_end_to_end() {
         .expect("vc emulation")
         .load_psks(alice_a_provider.storage())
         .expect("load psks")
-        .build(
-            alice_a_provider.rand(),
-            alice_a_provider.crypto(),
-            &vc_signer,
-            |_| true,
-        )
+        .build(alice_a_provider.crypto(), &vc_signer, |_| true)
         .expect("build commit")
         .stage_commit(&alice_a_provider)
         .expect("stage commit");
@@ -6271,12 +6194,7 @@ fn vc_private_commit_end_to_end() {
         .expect("vc emulation")
         .load_psks(alice_a_provider.storage())
         .expect("load psks")
-        .build(
-            alice_a_provider.rand(),
-            alice_a_provider.crypto(),
-            &vc_signer,
-            |_| true,
-        )
+        .build(alice_a_provider.crypto(), &vc_signer, |_| true)
         .expect("build second commit")
         .stage_commit(&alice_a_provider)
         .expect("stage second commit");
@@ -6537,7 +6455,7 @@ fn send_emulation_commit<P: OpenMlsProvider>(
         .derivation_epoch(new_derivation_epoch)
         .load_psks(provider.storage())
         .expect("load psks")
-        .build(provider.rand(), provider.crypto(), signer, |_| true)
+        .build(provider.crypto(), signer, |_| true)
         .expect("build emulation commit")
         .stage_commit(provider)
         .expect("stage emulation commit");
@@ -6783,7 +6701,7 @@ fn marker_with_membership_change_registers_once() {
         .derivation_epoch(true)
         .load_psks(provider_a.storage())
         .expect("load psks")
-        .build(provider_a.rand(), provider_a.crypto(), &signer_a, |_| true)
+        .build(provider_a.crypto(), &signer_a, |_| true)
         .expect("build add commit with marker")
         .stage_commit(&provider_a)
         .expect("stage add commit with marker");
@@ -6826,7 +6744,7 @@ fn external_commit_into_emulation_group_creates_vc_derivation_epoch() {
         )
         .load_psks(provider_c.storage())
         .expect("load psks")
-        .build(provider_c.rand(), provider_c.crypto(), &signer_c, |_| true)
+        .build(provider_c.crypto(), &signer_c, |_| true)
         .expect("build external commit")
         .finalize(&provider_c)
         .expect("finalize external commit");
@@ -7050,7 +6968,7 @@ fn new_derivation_epoch_requires_safe_aad() {
         .force_self_update(true)
         .load_psks(provider.storage())
         .expect("load psks")
-        .build(provider.rand(), provider.crypto(), &signer, |_| true)
+        .build(provider.crypto(), &signer, |_| true)
         .expect_err("the marker cannot be carried without Safe AAD framing");
     assert!(
         matches!(
@@ -7083,7 +7001,7 @@ fn new_derivation_epoch_requires_emulation_group() {
         .force_self_update(true)
         .load_psks(provider.storage())
         .expect("load psks")
-        .build(provider.rand(), provider.crypto(), &signer, |_| true)
+        .build(provider.crypto(), &signer, |_| true)
         .expect_err("the marker is only valid in an emulation group");
     assert!(
         matches!(

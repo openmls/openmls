@@ -14,7 +14,7 @@ fn create_group(
     provider: &impl crate::storage::OpenMlsProvider,
     wire_format_policy: WireFormatPolicy,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
-    let group_id = GroupId::random(provider.rand());
+    let group_id = GroupId::random(provider.crypto());
 
     // Generate credentials with keys
     let credential_with_key_and_signer =

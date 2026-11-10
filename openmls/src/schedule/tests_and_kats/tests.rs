@@ -1,7 +1,5 @@
 //! Key Schedule Unit Tests
 
-use openmls_traits::random::OpenMlsRand;
-
 use crate::{
     ciphersuite::Secret,
     group::GroupId,
@@ -16,14 +14,14 @@ fn test_psks() {
     let provider = &Provider::default();
 
     // Create a new PSK secret from multiple PSKs.
-    let prng = provider.rand();
+    let prng = provider.crypto();
 
     let psk_ids = (0..33)
         .map(|_| {
             let id = prng.random_vec(12).expect("An unexpected error occurred.");
             PreSharedKeyId::new(
                 ciphersuite,
-                provider.rand(),
+                provider.crypto(),
                 Psk::External(ExternalPsk::new(id)),
             )
             .expect("An unexpected error occurred.")
@@ -61,7 +59,7 @@ fn test_application_psks() {
     use crate::schedule::errors::PskError;
 
     let provider = &Provider::default();
-    let prng = provider.rand();
+    let prng = provider.crypto();
 
     // Create application PSK ids for different components.
     let psk_ids = (0..7)
@@ -69,7 +67,7 @@ fn test_application_psks() {
             let id = prng.random_vec(12).expect("An unexpected error occurred.");
             PreSharedKeyId::new(
                 ciphersuite,
-                provider.rand(),
+                provider.crypto(),
                 Psk::Application(ApplicationPsk::new(component_id, id.into())),
             )
             .expect("An unexpected error occurred.")
@@ -117,7 +115,7 @@ fn test_application_psks() {
     // Loading an application PSK that is not in storage fails.
     let unknown_psk_id = PreSharedKeyId::new(
         ciphersuite,
-        provider.rand(),
+        provider.crypto(),
         Psk::Application(ApplicationPsk::new(0x8000, b"unknown".to_vec().into())),
     )
     .expect("An unexpected error occurred.");
@@ -145,7 +143,7 @@ fn test_psks_resumption_application_no_group() {
 
     let psk_ids = vec![PreSharedKeyId::new(
         ciphersuite,
-        provider.rand(),
+        provider.crypto(),
         Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Application,
             group_id.clone(),
@@ -193,7 +191,7 @@ fn test_psks_resumption_application_other_group() {
 
     let psk_ids = vec![PreSharedKeyId::new(
         ciphersuite,
-        provider.rand(),
+        provider.crypto(),
         Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Application,
             other_group_id.clone(),

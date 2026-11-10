@@ -157,7 +157,7 @@ impl MlsGroupBuilder {
             .unwrap_or_else(|| self.mls_group_create_config_builder.build());
         let group_id = self
             .group_id
-            .unwrap_or_else(|| GroupId::random(provider.rand()));
+            .unwrap_or_else(|| GroupId::random(provider.crypto()));
         let ciphersuite = mls_group_create_config.ciphersuite;
 
         provider
@@ -222,7 +222,7 @@ impl MlsGroupBuilder {
             provider.crypto(),
             ciphersuite,
             commit_secret,
-            &InitSecret::random(ciphersuite, provider.rand())
+            &InitSecret::random(ciphersuite, provider.crypto())
                 .map_err(LibraryError::unexpected_crypto_error)?,
             &serialized_group_context,
         )
@@ -570,7 +570,7 @@ impl BranchGroupBuilder {
 
         let mut builder = group
             .commit_builder()
-            .branch(provider.rand(), &self.branch_info)?
+            .branch(provider.crypto(), &self.branch_info)?
             .propose_adds(new_members)
             .leaf_node_lifetime_policy(self.lifetime_policy);
         if let Some(extensions) = self.extensions {
@@ -582,7 +582,7 @@ impl BranchGroupBuilder {
         let bundle = builder
             .load_psks(provider.storage())
             .await?
-            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .build(provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
             .await?;
 
@@ -670,7 +670,7 @@ impl ReInitGroupBuilder {
         let mut commit_builder = group
             .commit_builder()
             .reinit(
-                provider.rand(),
+                provider.crypto(),
                 old_group_id,
                 old_group_epoch,
                 resumption_psk_secret,
@@ -682,7 +682,7 @@ impl ReInitGroupBuilder {
         let bundle = commit_builder
             .load_psks(provider.storage())
             .await?
-            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .build(provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
             .await?;
 

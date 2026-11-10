@@ -29,7 +29,7 @@ fn test_pre_shared_key_proposal_codec() {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Application,
-            GroupId::random(provider.rand()),
+            GroupId::random(provider.crypto()),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -46,7 +46,7 @@ fn test_pre_shared_key_proposal_codec() {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Reinit,
-            GroupId::random(provider.rand()),
+            GroupId::random(provider.crypto()),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -63,7 +63,7 @@ fn test_pre_shared_key_proposal_codec() {
     let psk = PreSharedKeyId {
         psk: Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Branch,
-            GroupId::random(provider.rand()),
+            GroupId::random(provider.crypto()),
             1234.into(),
         )),
         psk_nonce: vec![1, 2, 3].into(),
@@ -82,7 +82,7 @@ fn test_pre_shared_key_proposal_codec() {
 fn test_reinit_proposal_codec() {
     let provider = &Provider::default();
     let orig = ReInitProposal {
-        group_id: GroupId::random(provider.rand()),
+        group_id: GroupId::random(provider.crypto()),
         version: ProtocolVersion::default(),
         ciphersuite,
         extensions: Extensions::empty(),
