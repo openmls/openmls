@@ -25,7 +25,6 @@
 //!     let test_provider = TestProvider {
 //!         storage: &test_storage,
 //!         crypto: provider.crypto(),
-//!         rand: provider.crypto(),
 //!     };
 //!
 //!     group.set_aad(TEST_AAD.to_vec());
@@ -36,9 +35,7 @@
 //!         // use the normal storage first...
 //!         .load_psks(provider.storage())
 //!         .unwrap()
-//!         .build(provider.crypto(), &signer, |_proposal| {
-//!             true
-//!         })
+//!         .build(provider.crypto(), &signer, |_proposal| true)
 //!         .unwrap()
 //!         // ...then switch to error storage
 //!         .stage_commit(&test_provider)

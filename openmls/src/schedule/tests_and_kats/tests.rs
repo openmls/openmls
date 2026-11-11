@@ -14,11 +14,13 @@ fn test_psks() {
     let provider = &Provider::default();
 
     // Create a new PSK secret from multiple PSKs.
-    let prng = provider.crypto();
+    let crypto = provider.crypto();
 
     let psk_ids = (0..33)
         .map(|_| {
-            let id = prng.random_vec(12).expect("An unexpected error occurred.");
+            let id = crypto
+                .random_vec(12)
+                .expect("An unexpected error occurred.");
             PreSharedKeyId::new(
                 ciphersuite,
                 provider.crypto(),
@@ -29,7 +31,13 @@ fn test_psks() {
         .collect::<Vec<PreSharedKeyId>>();
 
     for (secret, psk_id) in (0..33)
-        .map(|_| Secret::from_slice(&prng.random_vec(55).expect("An unexpected error occurred.")))
+        .map(|_| {
+            Secret::from_slice(
+                &crypto
+                    .random_vec(55)
+                    .expect("An unexpected error occurred."),
+            )
+        })
         .zip(psk_ids.clone())
     {
         psk_id.store(provider, secret.as_slice()).unwrap();
@@ -59,12 +67,14 @@ fn test_application_psks() {
     use crate::schedule::errors::PskError;
 
     let provider = &Provider::default();
-    let prng = provider.crypto();
+    let crypto = provider.crypto();
 
     // Create application PSK ids for different components.
     let psk_ids = (0..7)
         .map(|component_id| {
-            let id = prng.random_vec(12).expect("An unexpected error occurred.");
+            let id = crypto
+                .random_vec(12)
+                .expect("An unexpected error occurred.");
             PreSharedKeyId::new(
                 ciphersuite,
                 provider.crypto(),
@@ -95,8 +105,11 @@ fn test_application_psks() {
 
     // Store the PSKs and create a new PSK secret from them.
     for psk_id in &psk_ids {
-        let secret =
-            Secret::from_slice(&prng.random_vec(55).expect("An unexpected error occurred."));
+        let secret = Secret::from_slice(
+            &crypto
+                .random_vec(55)
+                .expect("An unexpected error occurred."),
+        );
         psk_id.store(provider, secret.as_slice()).unwrap();
     }
 

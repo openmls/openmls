@@ -9,8 +9,7 @@
 //!
 //! To avoid that, this module provides a single [`CryptoProvider`] that wraps the
 //! *current* libcrux `CryptoProvider` and re-implements the previous version's
-//! [`OpenMlsCrypto`](openmls_traits_compat::crypto::OpenMlsCrypto) and
-//! [`OpenMlsRand`](openmls_traits_compat::random::OpenMlsRand) traits on top of
+//! [`OpenMlsCrypto`](openmls_traits_compat::crypto::OpenMlsCrypto) trait on top of
 //! it. Every operation is delegated to the current provider; only the trait's
 //! argument and result types are translated at the boundary.
 //!

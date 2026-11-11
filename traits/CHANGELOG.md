@@ -13,10 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1923](https://github.com/openmls/openmls/pull/1923): Added an async mode for `StorageProvider` and `PublicStorageProvider`, enabled with the `async` feature. Every method then returns a `Send` future. The sync mode stays the default. A single crate in the build that enables `async` switches every crate in the build to the async mode.
 - [#1923](https://github.com/openmls/openmls/pull/1923): Added the `maybe_async` attribute, which lets other crates write storage code once and follow the mode of `openmls_traits`, and the `require_sync_mode!` macro for crates that only work in sync mode.
 - [#1923](https://github.com/openmls/openmls/pull/1923): Added the `MaybeSync` and `MaybeSend` traits. In async mode they require `Sync` and `Send`. In sync mode every type implements them.
+- [#2328](https://github.com/openmls/openmls/pull/2328): Added `OpenMlsCrypto::random_array` and `OpenMlsCrypto::random_vec` methods that were previously part of the now-removed `OpenMlsRand` trait.
 
 ### Changed
 
 - [#1923](https://github.com/openmls/openmls/pull/1923): `StorageProvider`, `PublicStorageProvider`, `Key` and `Entity` now require `MaybeSync`, and the storage error types require `MaybeSend`. This only adds bounds in async mode.
+
+### Removed
+
+- [#2328](https://github.com/openmls/openmls/pull/2328): Removed `OpenMlsRand`. Its methods move to `OpenMlsCrypto`.
+- [#2328](https://github.com/openmls/openmls/pull/2328): Removed the associated type `OpenMlsProvider::RandProvider` and method `OpenMlsProvider::rand()`.
 
 ## 0.6.0 (2026-08-25)
 

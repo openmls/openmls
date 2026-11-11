@@ -1,6 +1,6 @@
 //! # The OpenMLS Crypto Trait
 //!
-//! This trait defines all cryptographic functions used by OpenMLS.
+//! This trait defines all cryptographic and randomness functions used by OpenMLS.
 
 use tls_codec::SecretVLBytes;
 

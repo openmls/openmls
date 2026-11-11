@@ -69,7 +69,7 @@ fn generate(
     init_secret: &InitSecret,
     group_id: &[u8],
     epoch: u64,
-    crypto: &impl OpenMlsProvider,
+    provider: &impl OpenMlsProvider,
 ) -> (
     Vec<u8>,
     CommitSecret,
@@ -81,21 +81,21 @@ fn generate(
     GroupContext,
     HpkeKeyPair,
 ) {
-    let tree_hash = crypto
+    let tree_hash = provider
         .crypto()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
-    let commit_secret = CommitSecret::random(ciphersuite, crypto.crypto());
+    let commit_secret = CommitSecret::random(ciphersuite, provider.crypto());
 
-    let confirmed_transcript_hash = crypto
+    let confirmed_transcript_hash = provider
         .crypto()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
 
     // PSK secret can sometimes be the all zero vector
-    let a: [u8; 1] = crypto.crypto().random_array().unwrap();
+    let a: [u8; 1] = provider.crypto().random_array().unwrap();
     let psk_secret = if a[0] > 127 {
-        PskSecret::from(Secret::random(ciphersuite, crypto.crypto()).unwrap())
+        PskSecret::from(Secret::random(ciphersuite, provider.crypto()).unwrap())
     } else {
         PskSecret::from(Secret::zero(ciphersuite))
     };
@@ -110,7 +110,7 @@ fn generate(
     );
 
     let joiner_secret = JoinerSecret::new(
-        crypto.crypto(),
+        provider.crypto(),
         ciphersuite,
         commit_secret.clone(),
         init_secret,
@@ -119,13 +119,13 @@ fn generate(
     .expect("Could not create JoinerSecret.");
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
-        crypto.crypto(),
+        provider.crypto(),
         &joiner_secret,
         psk_secret.clone(),
     )
     .expect("Could not create KeySchedule.");
     let welcome_secret = key_schedule
-        .welcome(crypto.crypto(), ciphersuite)
+        .welcome(provider.crypto(), ciphersuite)
         .expect("An unexpected error occurred.");
 
     let serialized_group_context = group_context
@@ -133,16 +133,16 @@ fn generate(
         .expect("Could not serialize group context.");
 
     key_schedule
-        .add_context(crypto.crypto(), &serialized_group_context)
+        .add_context(provider.crypto(), &serialized_group_context)
         .expect("An unexpected error occurred.");
     let EpochSecretsResult { epoch_secrets, .. } = key_schedule
-        .epoch_secrets(crypto.crypto(), ciphersuite)
+        .epoch_secrets(provider.crypto(), ciphersuite)
         .expect("An unexpected error occurred.");
 
     // Calculate external HPKE key pair
     let external_key_pair = epoch_secrets
         .external_secret()
-        .derive_external_keypair(crypto.crypto(), ciphersuite)
+        .derive_external_keypair(provider.crypto(), ciphersuite)
         .expect("An unexpected crypto error occurred.");
 
     (

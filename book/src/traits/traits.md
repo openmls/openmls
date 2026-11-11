@@ -4,7 +4,7 @@
 > within OpenMLS.
 > Please ensure you know what you're doing when implementing your own versions.**
 
-Because implementing the `OpenMLSCryptoProvider` is challenging, requires
+Because implementing the `OpenMlsCrypto` trait is challenging, requires
 tremendous care, and is not what the average OpenMLS consumer wants to (or should)
 do, we provide two implementations that can be used.
 
@@ -55,21 +55,7 @@ IANA code points yet, so OpenMLS uses provisional ones that may change.
 
 ## The Traits
 
-There are 4 different traits defined in the [OpenMLS traits crate].
-
-### OpenMlsRand
-
-This trait defines two functions to generate arrays and vectors, and is used by
-OpenMLS to generate randomness for key generation and random identifiers.
-While there is the commonly used [rand crate], not all implementations use it.
-OpenMLS, therefore, defines its own randomness trait that needs to be implemented
-by an OpenMLS crypto provider.
-It simply needs to implement two functions to generate cryptographically secure
-randomness and store it in an array or vector.
-
-```rust,no_run,noplayground
-{{#include ../../../traits/src/random.rs:openmls_rand}}
-```
+There are 3 different traits defined in the [OpenMLS traits crate].
 
 ### OpenMlsCrypto
 
@@ -80,6 +66,7 @@ This trait defines all cryptographic functions required by OpenMLS. In particula
 - AEAD
 - Signatures
 - HPKE
+- Randomness
 
 ### StorageProvider
 
@@ -184,10 +171,9 @@ Some OpenMLS APIs require only one of the sub-traits, though.
 It is not necessary to implement all sub-traits if one functionality is missing.
 Suppose you want to use a persisting storage provider. In that case, it is
 sufficient to do a new implementation of the `StorageProvider` trait and
-combine it with one of the provided crypto and randomness trait implementations.
+combine it with one of the provided crypto trait implementations.
 
 [rust crypto]: https://crates.io/crates/openmls_rust_crypto
 [libcrux crypto]: https://crates.io/crates/openmls_libcrux_crypto
 [openmls traits crate]: https://crates.io/crates/openmls_traits
-[rand crate]: https://crates.io/crates/rand
 [draft-ietf-mls-pq-ciphersuites]: https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites

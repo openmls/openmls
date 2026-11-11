@@ -8,7 +8,6 @@ pub use crypto::CryptoProvider;
 
 /// The libcrux-backed provider for OpenMLS.
 pub struct Provider {
-    // The CryptoProvider serves as both the Rand and Crypto provider
     crypto: crypto::CryptoProvider,
     storage: openmls_memory_storage::MemoryStorage,
 }
