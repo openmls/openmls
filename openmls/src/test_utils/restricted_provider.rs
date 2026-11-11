@@ -215,6 +215,14 @@ impl OpenMlsCrypto for RestrictedCrypto {
     fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError> {
         self.inner.ff1_aes128_decrypt(key, ciphertext)
     }
+
+    fn random_array<const N: usize>(&self) -> Result<[u8; N], CryptoError> {
+        self.inner.random_array()
+    }
+
+    fn random_vec(&self, len: usize) -> Result<Vec<u8>, CryptoError> {
+        self.inner.random_vec(len)
+    }
 }
 
 /// An [`OpenMlsProvider`] that only claims support for an explicit allowlist
@@ -247,7 +255,6 @@ impl RestrictedProvider {
 
 impl OpenMlsProvider for RestrictedProvider {
     type CryptoProvider = RestrictedCrypto;
-    type RandProvider = RustCrypto;
     type StorageProvider = MemoryStorage;
 
     fn storage(&self) -> &Self::StorageProvider {
@@ -256,9 +263,5 @@ impl OpenMlsProvider for RestrictedProvider {
 
     fn crypto(&self) -> &Self::CryptoProvider {
         &self.crypto
-    }
-
-    fn rand(&self) -> &Self::RandProvider {
-        self.inner.rand()
     }
 }

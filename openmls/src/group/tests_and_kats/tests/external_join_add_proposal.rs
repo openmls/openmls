@@ -29,7 +29,7 @@ fn new_test_group(
     ciphersuite: Ciphersuite,
     provider: &impl crate::storage::OpenMlsProvider,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
-    let group_id = GroupId::random(provider.rand());
+    let group_id = GroupId::random(provider.crypto());
 
     // Generate credentials with keys
     let credential_with_keys =

@@ -321,12 +321,7 @@ fn test_app_data_update_multi_remove_validate_outgoing() {
     stage.with_app_data_dictionary_updates(changes);
 
     let commit_bundle = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap();
@@ -387,12 +382,7 @@ fn test_process_message_returns_unresolved_app_data_commit() {
     stage.with_app_data_dictionary_updates(alice_updater.changes());
 
     let commit_bundle = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap();
@@ -499,12 +489,7 @@ fn test_commit_with_app_data_update_without_providing_updates_fails() {
     // The build should fail because we have AppDataUpdate proposals but didn't
     // provide the computed updates
     let err = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .expect_err(
             "Commit creation should have failed when AppDataUpdate proposals are \
                  present but no updates were provided. This is a bug - the commit \
@@ -558,12 +543,7 @@ fn test_commit_with_superfluous_app_data_updates_fails() {
 
     // The build should fail because we provided updates without corresponding proposals
     let err = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .expect_err(
             "Commit creation should have failed when app data updates are provided \
                  without corresponding proposals. This would lead to confusion.",
@@ -618,12 +598,7 @@ fn test_stage_app_data_commit_without_updates_returns_clear_error() {
     stage.with_app_data_dictionary_updates(alice_updater.changes());
 
     let commit_bundle = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap();
@@ -706,12 +681,7 @@ fn test_process_with_wrong_app_data_updates() {
     stage.with_app_data_dictionary_updates(alice_updater.changes());
 
     let commit_bundle = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap();
@@ -859,12 +829,7 @@ fn test_external_commit_with_app_data_update_proposal() {
     stage.with_app_data_dictionary_updates(updater.changes());
 
     stage
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signer, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -932,12 +897,7 @@ fn test_external_commit_with_app_data_update_proposal() {
     stage.with_app_data_dictionary_updates(charlie_updater.changes());
 
     let (charlie_group, commit_message_bundle) = stage
-        .build(
-            charlie_provider.rand(),
-            charlie_provider.crypto(),
-            &charlie_signer,
-            |_| true,
-        )
+        .build(charlie_provider.crypto(), &charlie_signer, |_| true)
         .unwrap()
         .finalize(charlie_provider)
         .unwrap();

@@ -21,7 +21,6 @@ use std::collections::HashSet;
 
 use log::debug;
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::random::OpenMlsRand;
 use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 
@@ -306,7 +305,6 @@ impl TreeSyncDiff<'_> {
     /// Returns an error if the leaf is not in the tree
     fn derive_path(
         &self,
-        rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
@@ -316,7 +314,8 @@ impl TreeSyncDiff<'_> {
             p
         } else {
             PathSecret::from(
-                Secret::random(ciphersuite, rand).map_err(LibraryError::unexpected_crypto_error)?,
+                Secret::random(ciphersuite, crypto)
+                    .map_err(LibraryError::unexpected_crypto_error)?,
             )
         };
 
@@ -343,7 +342,6 @@ impl TreeSyncDiff<'_> {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn apply_own_update_path(
         &mut self,
-        rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         signer: &impl Signer,
         ciphersuite: Ciphersuite,
@@ -376,7 +374,7 @@ impl TreeSyncDiff<'_> {
 
         // We calculate the parent hash so that we can use it for a fresh leaf
         let (path, update_path_nodes, parent_keypairs, commit_secret) =
-            self.derive_path(rand, crypto, ciphersuite, leaf_index, path_secret_override)?;
+            self.derive_path(crypto, ciphersuite, leaf_index, path_secret_override)?;
         let parent_hash = self
             .process_update_path(crypto, ciphersuite, leaf_index, path)
             .map_err(|e| match e {
@@ -388,7 +386,6 @@ impl TreeSyncDiff<'_> {
 
         // We generate the new leaf with all parameters
         let (leaf_node, node_keypair) = LeafNode::new_with_parent_hash(
-            rand,
             crypto,
             ciphersuite,
             &parent_hash,

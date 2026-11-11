@@ -49,10 +49,10 @@ impl AeadKey {
 
     #[cfg(test)]
     /// Generate a random AEAD Key
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, crypto: &impl OpenMlsCrypto) -> Self {
         AeadKey {
             aead_mode: ciphersuite.aead_algorithm(),
-            value: aead_key_gen(ciphersuite.aead_algorithm(), rng),
+            value: aead_key_gen(ciphersuite.aead_algorithm(), crypto),
         }
     }
 
@@ -106,11 +106,10 @@ impl AeadNonce {
 
     /// Generate a new random nonce.
     ///
-    /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
-    /// TODO: This panics if another thread holding the rng panics.
+    /// TODO: This panics if randomness generation fails.
     #[cfg(test)]
-    pub(crate) fn random(rng: &impl OpenMlsRand) -> Self {
-        Self(rng.random_array().expect("Not enough entropy."))
+    pub(crate) fn random(crypto: &impl OpenMlsCrypto) -> Self {
+        Self(crypto.random_array().expect("Not enough entropy."))
     }
 
     /// Get a slice to the nonce value.
@@ -144,15 +143,15 @@ impl AeadNonce {
 #[cfg(test)]
 pub(crate) fn aead_key_gen(
     alg: openmls_traits::types::AeadType,
-    rng: &impl OpenMlsRand,
+    crypto: &impl OpenMlsCrypto,
 ) -> SecretVLBytes {
     match alg {
-        openmls_traits::types::AeadType::Aes128Gcm => rng
+        openmls_traits::types::AeadType::Aes128Gcm => crypto
             .random_vec(16)
             .expect("An unexpected error occurred.")
             .into(),
         openmls_traits::types::AeadType::Aes256Gcm
-        | openmls_traits::types::AeadType::ChaCha20Poly1305 => rng
+        | openmls_traits::types::AeadType::ChaCha20Poly1305 => crypto
             .random_vec(32)
             .expect("An unexpected error occurred.")
             .into(),
@@ -172,8 +171,8 @@ mod unit_tests {
         let provider = &Provider::default();
 
         let reuse_guard: ReuseGuard =
-            ReuseGuard::try_from_random(provider.rand()).expect("An unexpected error occurred.");
-        let original_nonce = AeadNonce::random(provider.rand());
+            ReuseGuard::try_from_random(provider.crypto()).expect("An unexpected error occurred.");
+        let original_nonce = AeadNonce::random(provider.crypto());
         let xored_once = original_nonce.clone().xor_with_reuse_guard(&reuse_guard);
         assert_ne!(
             original_nonce, xored_once,

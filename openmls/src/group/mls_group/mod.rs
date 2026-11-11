@@ -1068,7 +1068,6 @@ impl MlsGroup {
 
         let msg = PrivateMessage::try_from_authenticated_content(
             provider.crypto(),
-            provider.rand(),
             &public_message,
             self.ciphersuite(),
             self.message_secrets_store.message_secrets_mut(),

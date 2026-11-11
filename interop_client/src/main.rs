@@ -36,7 +36,7 @@ use openmls::{
 };
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto as _, types::Ciphersuite, OpenMlsProvider};
 use tls_codec::{Deserialize, Serialize, VLBytes};
 use tonic::{async_trait, transport::Server, Code, Request, Response, Status};
 use tracing::{debug, error, info, instrument, trace, Span};
@@ -281,7 +281,7 @@ impl MlsClientImpl {
             .tls_serialize_detached()
             .map_err(|_| Status::aborted("failed to serialize successor key package"))?;
 
-        let reinit_id: [u8; 4] = crypto_provider.rand().random_array().unwrap();
+        let reinit_id: [u8; 4] = crypto_provider.crypto().random_array().unwrap();
         let reinit_id = u32::from_be_bytes(reinit_id);
 
         self.pending_reinits().insert(
@@ -570,7 +570,7 @@ impl MlsClient for MlsClientImpl {
             )
             .unwrap();
 
-        let transaction_id: [u8; 4] = crypto_provider.rand().random_array().unwrap();
+        let transaction_id: [u8; 4] = crypto_provider.crypto().random_array().unwrap();
         let transaction_id = u32::from_be_bytes(transaction_id);
 
         let key_package_msg: MlsMessageOut = key_package.clone().into();
@@ -775,7 +775,7 @@ impl MlsClient for MlsClientImpl {
             .unwrap()
             .load_psks(provider.storage())
             .unwrap()
-            .build(provider.rand(), provider.crypto(), &signer, |_| true)
+            .build(provider.crypto(), &signer, |_| true)
             .unwrap()
             .finalize(&provider)
             .unwrap();
@@ -979,8 +979,10 @@ impl MlsClient for MlsClientImpl {
             external_psk: Psk,
             secret: &[u8],
         ) -> Result<(), Status> {
-            let psk_id = PreSharedKeyId::new(ciphersuite, crypto_provider.rand(), external_psk)
-                .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
+            let psk_id = PreSharedKeyId::new(ciphersuite, crypto_provider.crypto(), external_psk)
+                .map_err(|_| {
+                Status::internal("unable to create PreSharedKeyId from raw psk_id")
+            })?;
             psk_id
                 .store(crypto_provider, secret)
                 .map_err(|_| Status::new(Code::Internal, "unable to store PSK"))?;
@@ -1314,7 +1316,7 @@ impl MlsClient for MlsClientImpl {
                 "externalPSK" => {
                     let psk_id = PreSharedKeyId::new(
                         group.ciphersuite(),
-                        interop_group.crypto_provider.rand(),
+                        interop_group.crypto_provider.crypto(),
                         Psk::External(ExternalPsk::new(proposal.psk_id.clone())),
                     )
                     .map_err(|_| Status::internal("Unsupported proposal type (resumption PSK)"))?;
@@ -1330,7 +1332,7 @@ impl MlsClient for MlsClientImpl {
                 "resumptionPSK" => {
                     let psk_nonce = interop_group
                         .crypto_provider
-                        .rand()
+                        .crypto()
                         .random_vec(group.ciphersuite().hash_length())
                         .map_err(|_| Status::internal("insufficient randomness for psk nonce"))?;
                     let psk_id = PreSharedKeyId::resumption(
@@ -1642,7 +1644,7 @@ impl MlsClient for MlsClientImpl {
 
         let psk_id = PreSharedKeyId::new(
             interop_group.group.ciphersuite(),
-            interop_group.crypto_provider.rand(),
+            interop_group.crypto_provider.crypto(),
             external_psk,
         )
         .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
@@ -1684,7 +1686,7 @@ impl MlsClient for MlsClientImpl {
 
         let psk_nonce = interop_group
             .crypto_provider
-            .rand()
+            .crypto()
             .random_vec(group.ciphersuite().hash_length())
             .map_err(|_| Status::internal("insufficient randomness for psk nonce"))?;
         let psk_id = PreSharedKeyId::resumption(
@@ -2444,7 +2446,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(into_status)?;
 
         let transaction_id: [u8; 4] = crypto_provider
-            .rand()
+            .crypto()
             .random_array()
             .map_err(|_| Status::internal("insufficient randomness for transaction id"))?;
         let transaction_id = u32::from_be_bytes(transaction_id);
@@ -2505,7 +2507,7 @@ impl MlsClient for MlsClientImpl {
         // Mint a signer id that `external_signer_proposal` uses to find the key.
         let crypto_provider = OpenMlsRustCrypto::default();
         let signer_id: [u8; 4] = crypto_provider
-            .rand()
+            .crypto()
             .random_array()
             .map_err(|_| Status::internal("insufficient randomness for signer id"))?;
         let signer_id = u32::from_be_bytes(signer_id);
@@ -2677,7 +2679,7 @@ impl MlsClient for MlsClientImpl {
                 let provider = OpenMlsRustCrypto::default();
                 let psk_id = PreSharedKeyId::new(
                     verifiable_group_info.ciphersuite(),
-                    provider.rand(),
+                    provider.crypto(),
                     Psk::External(ExternalPsk::new(description.psk_id.clone())),
                 )
                 .map_err(|_| Status::internal("unable to create external PreSharedKeyId"))?;
@@ -2693,7 +2695,7 @@ impl MlsClient for MlsClientImpl {
             "resumptionPSK" => {
                 let provider = OpenMlsRustCrypto::default();
                 let psk_nonce = provider
-                    .rand()
+                    .crypto()
                     .random_vec(verifiable_group_info.ciphersuite().hash_length())
                     .map_err(|_| Status::internal("insufficient randomness for psk nonce"))?;
                 let psk_id = PreSharedKeyId::resumption(

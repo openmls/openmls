@@ -103,12 +103,7 @@ fn app_ephemeral_proposals() {
         ))])
         .load_psks(alice_provider.storage())
         .expect("error loading psks")
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signer, |_| true)
         .expect("error validating data and building commit")
         .stage_commit(alice_provider)
         .expect("error staging commit");
@@ -292,12 +287,7 @@ fn app_ephemeral_proposal_in_external_commit() {
         ))))
         .load_psks(charlie_provider.storage())
         .expect("error loading psks")
-        .build(
-            charlie_provider.rand(),
-            charlie_provider.crypto(),
-            &charlie_signer,
-            |_| true,
-        )
+        .build(charlie_provider.crypto(), &charlie_signer, |_| true)
         .expect("error validating data and building commit")
         .finalize(charlie_provider)
         .expect("error finalizing external commit");
@@ -397,12 +387,7 @@ fn forbidden_proposal_in_external_commit_is_rejected() {
         ))))
         .load_psks(charlie_provider.storage())
         .expect("error loading psks")
-        .build(
-            charlie_provider.rand(),
-            charlie_provider.crypto(),
-            &charlie_signer,
-            |_| true,
-        )
+        .build(charlie_provider.crypto(), &charlie_signer, |_| true)
         .expect_err("an Add proposal by value must not be allowed in an external commit");
 
     assert!(matches!(

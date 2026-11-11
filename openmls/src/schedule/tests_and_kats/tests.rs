@@ -1,7 +1,5 @@
 //! Key Schedule Unit Tests
 
-use openmls_traits::random::OpenMlsRand;
-
 use crate::{
     ciphersuite::Secret,
     group::GroupId,
@@ -16,14 +14,16 @@ fn test_psks() {
     let provider = &Provider::default();
 
     // Create a new PSK secret from multiple PSKs.
-    let prng = provider.rand();
+    let crypto = provider.crypto();
 
     let psk_ids = (0..33)
         .map(|_| {
-            let id = prng.random_vec(12).expect("An unexpected error occurred.");
+            let id = crypto
+                .random_vec(12)
+                .expect("An unexpected error occurred.");
             PreSharedKeyId::new(
                 ciphersuite,
-                provider.rand(),
+                provider.crypto(),
                 Psk::External(ExternalPsk::new(id)),
             )
             .expect("An unexpected error occurred.")
@@ -31,7 +31,13 @@ fn test_psks() {
         .collect::<Vec<PreSharedKeyId>>();
 
     for (secret, psk_id) in (0..33)
-        .map(|_| Secret::from_slice(&prng.random_vec(55).expect("An unexpected error occurred.")))
+        .map(|_| {
+            Secret::from_slice(
+                &crypto
+                    .random_vec(55)
+                    .expect("An unexpected error occurred."),
+            )
+        })
         .zip(psk_ids.clone())
     {
         psk_id.store(provider, secret.as_slice()).unwrap();
@@ -61,15 +67,17 @@ fn test_application_psks() {
     use crate::schedule::errors::PskError;
 
     let provider = &Provider::default();
-    let prng = provider.rand();
+    let crypto = provider.crypto();
 
     // Create application PSK ids for different components.
     let psk_ids = (0..7)
         .map(|component_id| {
-            let id = prng.random_vec(12).expect("An unexpected error occurred.");
+            let id = crypto
+                .random_vec(12)
+                .expect("An unexpected error occurred.");
             PreSharedKeyId::new(
                 ciphersuite,
-                provider.rand(),
+                provider.crypto(),
                 Psk::Application(ApplicationPsk::new(component_id, id.into())),
             )
             .expect("An unexpected error occurred.")
@@ -97,8 +105,11 @@ fn test_application_psks() {
 
     // Store the PSKs and create a new PSK secret from them.
     for psk_id in &psk_ids {
-        let secret =
-            Secret::from_slice(&prng.random_vec(55).expect("An unexpected error occurred."));
+        let secret = Secret::from_slice(
+            &crypto
+                .random_vec(55)
+                .expect("An unexpected error occurred."),
+        );
         psk_id.store(provider, secret.as_slice()).unwrap();
     }
 
@@ -117,7 +128,7 @@ fn test_application_psks() {
     // Loading an application PSK that is not in storage fails.
     let unknown_psk_id = PreSharedKeyId::new(
         ciphersuite,
-        provider.rand(),
+        provider.crypto(),
         Psk::Application(ApplicationPsk::new(0x8000, b"unknown".to_vec().into())),
     )
     .expect("An unexpected error occurred.");
@@ -145,7 +156,7 @@ fn test_psks_resumption_application_no_group() {
 
     let psk_ids = vec![PreSharedKeyId::new(
         ciphersuite,
-        provider.rand(),
+        provider.crypto(),
         Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Application,
             group_id.clone(),
@@ -193,7 +204,7 @@ fn test_psks_resumption_application_other_group() {
 
     let psk_ids = vec![PreSharedKeyId::new(
         ciphersuite,
-        provider.rand(),
+        provider.crypto(),
         Psk::Resumption(ResumptionPsk::new(
             ResumptionPskUsage::Application,
             other_group_id.clone(),

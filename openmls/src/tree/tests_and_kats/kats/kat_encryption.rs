@@ -224,7 +224,7 @@ fn build_handshake_messages(
     group.context_mut().set_epoch(epoch.into());
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::PrivateMessage);
     let membership_key = MembershipKey::from_secret(
-        Secret::random(group.ciphersuite(), provider.rand()).expect("Not enough randomness."),
+        Secret::random(group.ciphersuite(), provider.crypto()).expect("Not enough randomness."),
     );
     let content = AuthenticatedContentIn::from(
         AuthenticatedContent::member_proposal(
@@ -253,7 +253,6 @@ fn build_handshake_messages(
         .expect("Error setting membership tag.");
     let ciphertext = PrivateMessage::encrypt_without_check::<Infallible>(
         provider.crypto(),
-        provider.rand(),
         &content,
         group.ciphersuite(),
         group.message_secrets_test_mut(),
@@ -287,7 +286,7 @@ fn build_application_messages(
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());
     let membership_key = MembershipKey::from_secret(
-        Secret::random(group.ciphersuite(), provider.rand()).expect("Not enough randomness."),
+        Secret::random(group.ciphersuite(), provider.crypto()).expect("Not enough randomness."),
     );
     let content = AuthenticatedContent::new_application(
         sender_index,
@@ -311,7 +310,6 @@ fn build_application_messages(
         .expect("Error setting membership tag.");
     let ciphertext = match PrivateMessage::encrypt_without_check::<Infallible>(
         provider.crypto(),
-        provider.rand(),
         &content,
         group.ciphersuite(),
         group.message_secrets_test_mut(),
@@ -345,15 +343,15 @@ pub async fn generate_test_vector(
     let ciphersuite_name = ciphersuite;
     let provider = OpenMlsRustCrypto::default();
     let encryption_secret_bytes = provider
-        .rand()
+        .crypto()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
-    let sender_data_secret = SenderDataSecret::random(ciphersuite, provider.rand());
+    let sender_data_secret = SenderDataSecret::random(ciphersuite, provider.crypto());
     let sender_data_secret_bytes = sender_data_secret.as_slice();
 
     // Create sender_data_key/secret
     let ciphertext = provider
-        .rand()
+        .crypto()
         .random_vec(77)
         .expect("An unexpected error occurred.");
     let sender_data_key = sender_data_secret
@@ -624,8 +622,8 @@ pub async fn run_test_vector(
 
             let message_secrets = MessageSecrets::new(
                 sender_data_secret.clone(),
-                MembershipKey::random(ciphersuite, provider.rand()), // we don't care about this value
-                ConfirmationKey::random(ciphersuite, provider.rand()), // we don't care about this value
+                MembershipKey::random(ciphersuite, provider.crypto()), // we don't care about this value
+                ConfirmationKey::random(ciphersuite, provider.crypto()), // we don't care about this value
                 group
                     .export_group_context()
                     .tls_serialize_detached()

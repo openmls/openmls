@@ -44,7 +44,7 @@ impl MlsGroup {
             .consume_proposal_store(true)
             .load_psks(provider.storage())
             .await?
-            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .build(provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
             .await?;
 
@@ -93,13 +93,7 @@ impl MlsGroup {
             .consume_proposal_store(true)
             .load_psks(provider.storage())
             .await?
-            .build_with_new_signer(
-                provider.rand(),
-                provider.crypto(),
-                old_signer,
-                new_signer,
-                |_| true,
-            )?
+            .build_with_new_signer(provider.crypto(), old_signer, new_signer, |_| true)?
             .stage_commit(provider)
             .await?;
 

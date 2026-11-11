@@ -40,26 +40,25 @@
 //!
 //! // Inject random GREASE values into capabilities
 //! let capabilities = Capabilities::builder()
-//!     .with_grease(provider.rand())
+//!     .with_grease(provider.crypto())
 //!     .build();
 //!
 //! // Capabilities now contain random GREASE values
 //! assert!(capabilities.ciphersuites().iter().any(|cs| cs.is_grease()));
 //! ```
 
-use openmls_traits::random::OpenMlsRand;
-
+use openmls_traits::crypto::OpenMlsCrypto;
 // Re-export GREASE constants and functions from traits crate
 pub use openmls_traits::grease::{is_grease_value, GREASE_VALUES};
 
 /// Returns a random GREASE value from the set of valid GREASE values.
 ///
-/// This function uses the provided random number generator to select one of the
+/// This function uses randomness from the crypto provider to select one of the
 /// 15 valid GREASE values defined in RFC 9420.
 ///
 /// # Arguments
 ///
-/// * `rand` - A random number generator implementing [`OpenMlsRand`]
+/// * `crypto` - An implementation of `OpenMlsCrypto`, used for randomness
 ///
 /// # Returns
 ///
@@ -75,9 +74,9 @@ pub use openmls_traits::grease::{is_grease_value, GREASE_VALUES};
 /// let grease = random_grease_value(&crypto);
 /// assert!(openmls::grease::is_grease_value(grease));
 /// ```
-pub fn random_grease_value(rand: &impl OpenMlsRand) -> u16 {
+pub fn random_grease_value(crypto: &impl OpenMlsCrypto) -> u16 {
     // Generate a random index into the GREASE_VALUES array
-    let random_bytes: [u8; 1] = rand
+    let random_bytes: [u8; 1] = crypto
         .random_array()
         .expect("Failed to generate random bytes");
     let index = (random_bytes[0] % GREASE_VALUES.len() as u8) as usize;

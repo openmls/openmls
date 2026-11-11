@@ -69,12 +69,7 @@ fn book_example_readd() {
         .propose_adds(vec![bob_kpb.key_package().clone()])
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signature_keys,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signature_keys, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -104,12 +99,7 @@ fn book_example_readd() {
         .propose_adds(vec![charlie_kpb.key_package().clone()])
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signature_keys,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signature_keys, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -119,12 +109,7 @@ fn book_example_readd() {
         .propose_adds(vec![charlie_kpb.key_package().clone()])
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signature_keys,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signature_keys, |_| true)
         .unwrap()
         .stage_commit(bob_provider)
         .unwrap();
@@ -191,12 +176,7 @@ fn book_example_readd() {
         .provide_key_packages(readded_key_packages)
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signature_keys,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signature_keys, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -301,12 +281,7 @@ fn book_example_reboot() {
         .propose_adds(vec![bob_kpb.key_package().clone()])
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signature_keys,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signature_keys, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -336,12 +311,7 @@ fn book_example_reboot() {
         .propose_adds(vec![charlie_kpb.key_package().clone()])
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signature_keys,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice_signature_keys, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -351,12 +321,7 @@ fn book_example_reboot() {
         .propose_adds(vec![charlie_kpb.key_package().clone()])
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signature_keys,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signature_keys, |_| true)
         .unwrap()
         .stage_commit(bob_provider)
         .unwrap();

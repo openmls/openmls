@@ -28,7 +28,7 @@ fn test_add_member_with_aad() {
         let alice_provider = &Provider::default();
         let bob_provider = &Provider::default();
         let charlie_provider = &Provider::default();
-        let group_id = GroupId::random(alice_provider.rand());
+        let group_id = GroupId::random(alice_provider.crypto());
 
         // Generate credentials with keys
         let alice_credential_with_key_and_signer = generate_credential_with_key(
@@ -261,9 +261,7 @@ fn test_aad_stage_commit() {
         .commit_builder()
         .load_psks(provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-            true
-        })
+        .build(provider.crypto(), &signer, |_proposal| true)
         .unwrap()
         .stage_commit(provider)
         .unwrap();
@@ -309,9 +307,7 @@ fn test_aad_stage_commit_with_aad_overrides_group_aad() {
         .with_aad(BUILDER_AAD.to_vec())
         .load_psks(provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-            true
-        })
+        .build(provider.crypto(), &signer, |_proposal| true)
         .unwrap()
         .stage_commit(provider)
         .unwrap();
@@ -346,9 +342,7 @@ fn test_aad_stage_commit_with_aad_is_not_sticky() {
         .with_aad(BUILDER_AAD.to_vec())
         .load_psks(provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-            true
-        })
+        .build(provider.crypto(), &signer, |_proposal| true)
         .unwrap()
         .stage_commit(provider)
         .unwrap();
@@ -375,9 +369,7 @@ fn test_aad_stage_commit_with_aad_is_not_sticky() {
         .commit_builder()
         .load_psks(provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-            true
-        })
+        .build(provider.crypto(), &signer, |_proposal| true)
         .unwrap()
         .stage_commit(provider)
         .unwrap();
@@ -410,9 +402,7 @@ fn test_aad_stage_commit_without_with_aad_uses_group_aad() {
         .commit_builder()
         .load_psks(provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-            true
-        })
+        .build(provider.crypto(), &signer, |_proposal| true)
         .unwrap()
         .stage_commit(provider)
         .unwrap();
@@ -451,7 +441,6 @@ fn test_aad_error_commit_with_aad() {
     let test_provider = TestProvider {
         storage: &test_storage,
         crypto: provider.crypto(),
-        rand: provider.rand(),
     };
 
     group.set_aad(TEST_AAD.to_vec());
@@ -462,9 +451,7 @@ fn test_aad_error_commit_with_aad() {
         // use the normal storage first...
         .load_psks(provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-            true
-        })
+        .build(provider.crypto(), &signer, |_proposal| true)
         .unwrap()
         // ...then switch to error storage
         .stage_commit(&test_provider)
@@ -491,9 +478,7 @@ fn test_aad_stage_commit_with_group_info() {
         .load_psks(provider.storage())
         .unwrap()
         .create_group_info(true)
-        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-            true
-        })
+        .build(provider.crypto(), &signer, |_proposal| true)
         .unwrap()
         .stage_commit(provider)
         .unwrap();
@@ -534,9 +519,7 @@ fn test_aad_stage_commit_with_welcome() {
         .load_psks(provider.storage())
         .unwrap()
         .use_ratchet_tree_extension(true) // TODO; named differently than on the external commit builder
-        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-            true
-        })
+        .build(provider.crypto(), &signer, |_proposal| true)
         .unwrap()
         .stage_commit(provider)
         .unwrap();
@@ -1099,11 +1082,11 @@ fn test_aad_propose_dispatch_preshared_key() {
     let psk_id = vec![1u8, 2, 3];
 
     let secret =
-        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
+        Secret::random(ciphersuite, alice_provider.crypto()).expect("Not enough randomness.");
     let external_psk = ExternalPsk::new(psk_id);
     let preshared_key_id = PreSharedKeyId::new(
         ciphersuite,
-        alice_provider.rand(),
+        alice_provider.crypto(),
         Psk::External(external_psk),
     )
     .unwrap();
@@ -1155,7 +1138,6 @@ fn test_aad_error_commit() {
     let test_provider = TestProvider {
         storage: &test_storage,
         crypto: provider.crypto(),
-        rand: provider.rand(),
     };
 
     group.set_aad(TEST_AAD.to_vec());
@@ -1166,9 +1148,7 @@ fn test_aad_error_commit() {
         // use the normal storage first...
         .load_psks(provider.storage())
         .unwrap()
-        .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-            true
-        })
+        .build(provider.crypto(), &signer, |_proposal| true)
         .unwrap()
         // ...then switch to error storage
         .stage_commit(&test_provider)

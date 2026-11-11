@@ -128,12 +128,7 @@ fn test_app_data_update_simple() {
     stage.with_app_data_dictionary_updates(changes);
 
     let commit_bundle = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap();
@@ -262,12 +257,7 @@ fn test_app_data_update_with_welcome() {
     stage.with_app_data_dictionary_updates(changes);
 
     let commit_bundle = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap();
@@ -405,12 +395,7 @@ fn alice_app_data_commit<Provider: OpenMlsProvider>(
     stage.with_app_data_dictionary_updates(updater.changes());
 
     let commit_bundle = stage
-        .build(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(alice_provider)
         .unwrap();
@@ -585,12 +570,7 @@ fn test_public_group_app_data_commit_by_reference() {
     ));
     stage.with_app_data_dictionary_updates(alice_updater.changes());
     let commit_bundle = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap();
@@ -746,12 +726,7 @@ fn test_public_group_plain_commit_not_unresolved() {
         .force_self_update(true)
         .load_psks(alice_party.provider.storage())
         .unwrap()
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap()
@@ -868,12 +843,7 @@ fn test_resolve_app_data_commit_wrong_content() {
         .force_self_update(true)
         .load_psks(alice_party.provider.storage())
         .unwrap()
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap()
@@ -1003,12 +973,7 @@ fn test_app_data_commit_keeps_lifetime_policy() {
     updater.set(ComponentData::from_parts(16, b"value".to_vec().into()));
     stage.with_app_data_dictionary_updates(updater.changes());
     let (commit_message, _, _) = stage
-        .build(
-            alice_party.provider.rand(),
-            alice_party.provider.crypto(),
-            &alice.party.signer,
-            |_| true,
-        )
+        .build(alice_party.provider.crypto(), &alice.party.signer, |_| true)
         .unwrap()
         .stage_commit(&alice_party.provider)
         .unwrap()

@@ -3,14 +3,11 @@ use openmls_traits::{types::CryptoError, OpenMlsProvider};
 mod crypto;
 #[cfg(feature = "virtual-clients-draft")]
 mod ff1;
-mod rand;
 
 pub use crypto::CryptoProvider;
-pub use rand::RandError;
 
 /// The libcrux-backed provider for OpenMLS.
 pub struct Provider {
-    // The CryptoProvider serves as both the Rand and Crypto provider
     crypto: crypto::CryptoProvider,
     storage: openmls_memory_storage::MemoryStorage,
 }
@@ -38,7 +35,6 @@ impl Default for Provider {
 
 impl OpenMlsProvider for Provider {
     type CryptoProvider = CryptoProvider;
-    type RandProvider = CryptoProvider;
     type StorageProvider = openmls_memory_storage::MemoryStorage;
 
     fn storage(&self) -> &Self::StorageProvider {
@@ -46,10 +42,6 @@ impl OpenMlsProvider for Provider {
     }
 
     fn crypto(&self) -> &Self::CryptoProvider {
-        &self.crypto
-    }
-
-    fn rand(&self) -> &Self::RandProvider {
         &self.crypto
     }
 }

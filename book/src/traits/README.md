@@ -3,7 +3,7 @@
 OpenMLS defines several traits that have to be implemented to use
 OpenMLS.
 The main goal is to allow OpenMLS to use different implementations for its
-cryptographic primitives, persistence, and random number generation.
+cryptographic primitives and persistence.
 This should make it possible to plug in anything from [WebCrypto] to secure
 enclaves.
 

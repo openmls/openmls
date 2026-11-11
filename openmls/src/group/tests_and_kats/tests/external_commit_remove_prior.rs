@@ -94,12 +94,7 @@ fn run_case<Provider: crate::storage::OpenMlsProvider + Default>(
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
@@ -133,12 +128,7 @@ fn run_case<Provider: crate::storage::OpenMlsProvider + Default>(
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob2_provider.storage())
         .unwrap()
-        .build(
-            bob2_provider.rand(),
-            bob2_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob2_provider.crypto(), &bob_signer, |_| true)
         .unwrap()
         .finalize(bob2_provider)
         .unwrap();
@@ -270,12 +260,7 @@ fn external_commit_remove_prior_after_truncation() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(dave2_provider.storage())
         .unwrap()
-        .build(
-            dave2_provider.rand(),
-            dave2_provider.crypto(),
-            &dave.signer,
-            |_| true,
-        )
+        .build(dave2_provider.crypto(), &dave.signer, |_| true)
         .unwrap()
         .finalize(dave2_provider)
         .unwrap();

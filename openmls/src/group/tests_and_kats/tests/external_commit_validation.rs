@@ -246,12 +246,7 @@ fn test_valsem242() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_credential.signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_credential.signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
@@ -749,7 +744,6 @@ fn test_external_commit_unsupported_group_context_extension() {
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
-            bob_provider.rand(),
             bob_provider.crypto(),
             &bob_credential.signer,
             |_| true,
@@ -850,12 +844,9 @@ fn test_external_commit_duplicate_signature_key() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_credential.signer,
-            |proposal| !proposal.proposal().is_remove(),
-        )
+        .build(bob_provider.crypto(), &bob_credential.signer, |proposal| {
+            !proposal.proposal().is_remove()
+        })
         .unwrap_err();
 
     assert!(matches!(
@@ -875,12 +866,7 @@ fn test_external_commit_duplicate_signature_key() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_credential.signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_credential.signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
@@ -1022,12 +1008,7 @@ mod utils {
             .leaf_node_parameters(LeafNodeParameters::builder().build())
             .load_psks(bob_provider.storage())
             .unwrap()
-            .build(
-                bob_provider.rand(),
-                bob_provider.crypto(),
-                &bob_credential.signer,
-                |_| true,
-            )
+            .build(bob_provider.crypto(), &bob_credential.signer, |_| true)
             .unwrap()
             .finalize(bob_provider)
             .unwrap();

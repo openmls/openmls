@@ -25,7 +25,6 @@
 //!     let test_provider = TestProvider {
 //!         storage: &test_storage,
 //!         crypto: provider.crypto(),
-//!         rand: provider.rand(),
 //!     };
 //!
 //!     group.set_aad(TEST_AAD.to_vec());
@@ -36,9 +35,7 @@
 //!         // use the normal storage first...
 //!         .load_psks(provider.storage())
 //!         .unwrap()
-//!         .build(provider.rand(), provider.crypto(), &signer, |_proposal| {
-//!             true
-//!         })
+//!         .build(provider.crypto(), &signer, |_proposal| true)
 //!         .unwrap()
 //!         // ...then switch to error storage
 //!         .stage_commit(&test_provider)
@@ -60,25 +57,21 @@ use std::{cell::RefCell, collections::HashMap};
 use openmls_traits::{storage::CURRENT_VERSION, OpenMlsProvider};
 
 /// Customizable [`OpenMlsProvider`] for use in tests
-pub(crate) struct TestProvider<'a, S, R, C>
+pub(crate) struct TestProvider<'a, S, C>
 where
     S: openmls_traits::storage::StorageProvider<CURRENT_VERSION> + 'a,
-    R: openmls_traits::random::OpenMlsRand + 'a,
     C: openmls_traits::crypto::OpenMlsCrypto + 'a,
 {
     pub(crate) storage: &'a S,
     pub(crate) crypto: &'a C,
-    pub(crate) rand: &'a R,
 }
 
-impl<'a, S, R, C> OpenMlsProvider for TestProvider<'a, S, R, C>
+impl<'a, S, C> OpenMlsProvider for TestProvider<'a, S, C>
 where
     S: openmls_traits::storage::StorageProvider<CURRENT_VERSION> + 'a,
-    R: openmls_traits::random::OpenMlsRand + 'a,
     C: openmls_traits::crypto::OpenMlsCrypto + 'a,
 {
     type CryptoProvider = C;
-    type RandProvider = R;
     type StorageProvider = S;
 
     fn storage(&self) -> &Self::StorageProvider {
@@ -87,10 +80,6 @@ where
 
     fn crypto(&self) -> &Self::CryptoProvider {
         self.crypto
-    }
-
-    fn rand(&self) -> &Self::RandProvider {
-        self.rand
     }
 }
 

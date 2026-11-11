@@ -147,7 +147,6 @@ pub(crate) mod message_secrets;
 // Private
 use errors::*;
 use message_secrets::MessageSecrets;
-use openmls_traits::random::OpenMlsRand;
 use psk::PskSecret;
 
 // Tests and kats
@@ -238,9 +237,9 @@ impl CommitSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, crypto: &impl OpenMlsCrypto) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng).expect("Not enough randomness."),
+            secret: Secret::random(ciphersuite, crypto).expect("Not enough randomness."),
         }
     }
 
@@ -290,10 +289,10 @@ impl InitSecret {
     /// Sample a fresh, random `InitSecret` for the creation of a new group.
     pub(crate) fn random(
         ciphersuite: Ciphersuite,
-        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<Self, CryptoError> {
         Ok(InitSecret {
-            secret: Secret::random(ciphersuite, rand)?,
+            secret: Secret::random(ciphersuite, crypto)?,
         })
     }
 
@@ -395,9 +394,9 @@ impl JoinerSecret {
     }
 
     #[cfg(test)]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rand: &impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, crypto: &impl OpenMlsCrypto) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rand).expect("Not enough randomness."),
+            secret: Secret::random(ciphersuite, crypto).expect("Not enough randomness."),
         }
     }
 }
@@ -695,9 +694,9 @@ impl EncryptionSecret {
 
     /// Create a random `EncryptionSecret`. For testing purposes only.
     #[cfg(test)]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, crypto: &impl OpenMlsCrypto) -> Self {
         EncryptionSecret {
-            secret: Secret::random(ciphersuite, rng).expect("Not enough randomness."),
+            secret: Secret::random(ciphersuite, crypto).expect("Not enough randomness."),
         }
     }
 
@@ -887,9 +886,9 @@ impl ConfirmationKey {
 
 #[cfg(any(feature = "test-utils", test))]
 impl ConfirmationKey {
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, crypto: &impl OpenMlsCrypto) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng).expect("Not enough randomness."),
+            secret: Secret::random(ciphersuite, crypto).expect("Not enough randomness."),
         }
     }
 
@@ -955,9 +954,9 @@ impl MembershipKey {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, crypto: &impl OpenMlsCrypto) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng).expect("Not enough randomness."),
+            secret: Secret::random(ciphersuite, crypto).expect("Not enough randomness."),
         }
     }
 }
@@ -1037,9 +1036,9 @@ impl SenderDataSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, crypto: &impl OpenMlsCrypto) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng).expect("Not enough randomness."),
+            secret: Secret::random(ciphersuite, crypto).expect("Not enough randomness."),
         }
     }
 

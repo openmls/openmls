@@ -2508,7 +2508,7 @@ fn deletion() {
 fn failed_groupinfo_decryption() {
     let provider = &Provider::default();
     let epoch = 123;
-    let group_id = GroupId::random(provider.rand());
+    let group_id = GroupId::random(provider.crypto());
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let confirmed_transcript_hash = vec![1, 1, 1];
     let extensions = Extensions::empty();
@@ -2547,15 +2547,15 @@ fn failed_groupinfo_decryption() {
     };
 
     // Generate key and nonce for the symmetric cipher.
-    let welcome_key = AeadKey::random(ciphersuite, provider.rand());
-    let welcome_nonce = AeadNonce::random(provider.rand());
+    let welcome_key = AeadKey::random(ciphersuite, provider.crypto());
+    let welcome_nonce = AeadNonce::random(provider.crypto());
 
     // Generate receiver key pair.
     let receiver_key_pair = provider
         .crypto()
         .derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, provider.rand())
+            Secret::random(ciphersuite, provider.crypto())
                 .expect("Not enough randomness.")
                 .as_slice(),
         )
@@ -2726,11 +2726,11 @@ fn psks() {
     let psk_id = vec![1u8, 2, 3];
 
     let secret =
-        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
+        Secret::random(ciphersuite, alice_provider.crypto()).expect("Not enough randomness.");
     let external_psk = ExternalPsk::new(psk_id);
     let preshared_key_id = PreSharedKeyId::new(
         ciphersuite,
-        alice_provider.rand(),
+        alice_provider.crypto(),
         Psk::External(external_psk),
     )
     .expect("An unexpected error occured.");
@@ -2815,11 +2815,11 @@ fn application_psks() {
 
     // === Alice creates a group with an application PSK ===
     let secret =
-        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
+        Secret::random(ciphersuite, alice_provider.crypto()).expect("Not enough randomness.");
     let application_psk = ApplicationPsk::new(component_id, vec![1, 2, 3].into());
     let preshared_key_id = PreSharedKeyId::new(
         ciphersuite,
-        alice_provider.rand(),
+        alice_provider.crypto(),
         Psk::Application(application_psk),
     )
     .expect("An unexpected error occured.");
@@ -2883,10 +2883,10 @@ fn application_psks() {
 
     // === Alice proposes a second application PSK by value and commits ===
     let second_secret =
-        Secret::random(ciphersuite, alice_provider.rand()).expect("Not enough randomness.");
+        Secret::random(ciphersuite, alice_provider.crypto()).expect("Not enough randomness.");
     let second_psk_id = PreSharedKeyId::new(
         ciphersuite,
-        alice_provider.rand(),
+        alice_provider.crypto(),
         Psk::Application(ApplicationPsk::new(component_id, vec![4, 5, 6].into())),
     )
     .expect("An unexpected error occured.");
@@ -3994,13 +3994,7 @@ fn commit_with_new_signer_mismatched_ciphersuite() {
         .commit_builder()
         .load_psks(provider.storage())
         .unwrap()
-        .build_with_new_signer(
-            provider.rand(),
-            provider.crypto(),
-            &signer,
-            new_signer,
-            |_| true,
-        )
+        .build_with_new_signer(provider.crypto(), &signer, new_signer, |_| true)
         .unwrap_err();
 
     assert_eq!(err, CreateCommitError::InvalidSignerCiphersuite);
@@ -4042,13 +4036,7 @@ fn commit_with_new_signer_mismatched_credential() {
         .leaf_node_parameters(leaf_node_parameters)
         .load_psks(provider.storage())
         .unwrap()
-        .build_with_new_signer(
-            provider.rand(),
-            provider.crypto(),
-            &signer,
-            new_signer,
-            |_| true,
-        )
+        .build_with_new_signer(provider.crypto(), &signer, new_signer, |_| true)
         .unwrap_err();
 
     assert_eq!(err, CreateCommitError::InvalidLeafNodeParameters);
@@ -4071,13 +4059,7 @@ fn commit_with_new_signer_duplicate_signature_key() {
         .commit_builder()
         .load_psks(alice_provider.storage())
         .unwrap()
-        .build_with_new_signer(
-            alice_provider.rand(),
-            alice_provider.crypto(),
-            &alice_signer,
-            new_signer,
-            |_| true,
-        )
+        .build_with_new_signer(alice_provider.crypto(), &alice_signer, new_signer, |_| true)
         .unwrap_err();
 
     assert_eq!(
@@ -4291,7 +4273,6 @@ fn propose_self_update_with_new_signer_committed_by_proposer() {
             .load_psks(provider.storage())
             .expect("load_psks")
             .build_with_new_signer(
-                provider.rand(),
                 provider.crypto(),
                 &alice_group_state.party.signer,
                 new_signer_for_build,
@@ -4386,7 +4367,6 @@ fn commit_with_new_signer_signs_group_info_with_new_signer() {
             .load_psks(provider.storage())
             .expect("load_psks")
             .build_with_new_signer(
-                provider.rand(),
                 provider.crypto(),
                 &alice_group_state.party.signer,
                 new_signer,

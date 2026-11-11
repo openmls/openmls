@@ -482,7 +482,6 @@ fn app_data_dictionary_extension() {
         .create_group_info_with_extensions(Some(extension))
         .unwrap()
         .build(
-            alice_party.provider.rand(),
             alice_party.provider.crypto(),
             &alice.party.signer,
             |_proposal| true,

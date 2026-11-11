@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2257](https://github.com/openmls/openmls/pull/2257): Added `leaf_node_lifetime_policy` to `CommitBuilder`, `BranchGroupBuilder`, `JoinBuilder` and `ExternalCommitBuilder`. On the first two it applies to the key packages of the new members when the commit is built, on the other two to the leaf nodes in the ratchet tree.
 - [#2257](https://github.com/openmls/openmls/pull/2257): Added `KeyPackageIn::validate_with_lifetime_policy` and `PublicGroup::validate_key_package_for_add_with_lifetime_policy`. They work like `validate` and `validate_key_package_for_add`, but check the lifetime under the given `LeafNodeLifetimePolicy`.
 - [#2277](https://github.com/openmls/openmls/pull/2277): Added `ExternalCommitBuilder::verify_group`, which verifies the group info and ratchet tree of the group to be joined without building an external commit. It returns a `VerifiedExternalCommitBuilder` that exposes the verified `GroupInfo` and `GroupContext`, and whose `build_group` builds the external commit as before. `ExternalCommitBuilder::build_group` is unchanged and runs both steps.
+- [#2328](https://github.com/openmls/openmls/pull/2328): Added `OpenMlsCrypto::random_array` and `OpenMlsCrypto::random_vec` methods that were previously part of the now-removed `OpenMlsRand` trait.
 
 ### Changed
 
@@ -35,10 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [GHSA-gc79-23g3-8g52](https://github.com/openmls/openmls/security/advisories/GHSA-gc79-23g3-8g52): As part of addressing this issue, we change the argument type to the `validate_extension_type` method of  `ExtensionValidator` and sealed the trait.
 - [#2173](https://github.com/openmls/openmls/pull/2173): Simplified the HPKE construction for targeted messages to match the updated draft (`targeted-messages-draft` feature). The recipient and sender leaf indices are now bound through the HPKE info and the `authenticated_data` field is used directly as the HPKE AAD. The `TargetedMessageTBM` struct is removed and the sender uses a single-shot PSK-mode seal. The `OpenMlsCrypto` trait method `hpke_seal_psk_resolved_aad` is replaced by `hpke_seal_psk`.
 - [#2257](https://github.com/openmls/openmls/pull/2257): `LeafNodeLifetimePolicy` has the new variant `VerifyAt`, so an exhaustive `match` on it needs another arm.
+- [#2328](https://github.com/openmls/openmls/pull/2328): All former consumers of `&impl OpenMlsRand` now accept `&impl OpenMlsCrypto` instead. Functions that consumed both now only accept one `&impl OpenMlsCrypto`. This change affects the signatures of `random_grease_value`, `Capabilities::with_grease`, `CapabilitiesBuilder::with_grease`, `CommitBuilder::build`, `CommitBuilder::build_with_new_signer`, `GroupId::random`, and `PreSharedKeyId::new`.
 
 ### Removed
 
 - Removed the `js-test` feature. It only enabled the `js` backend of `getrandom` 0.2, which no OpenMLS crate depends on anymore. The `js` feature is enough to run the tests on `wasm32-unknown-unknown`.
+- [#2328](https://github.com/openmls/openmls/pull/2328): Removed the `OpenMlsRand` trait. Its methods move to `OpenMlsCrypto`. This also removes the associated type `OpenMlsProvider::RandProvider` and method `OpenMlsProvider::rand()`.
 
 ### Fixed
 

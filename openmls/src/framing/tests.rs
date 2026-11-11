@@ -1,5 +1,4 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::prelude::*;
 use openmls_traits::types::Ciphersuite;
 
 use mls_group::tests_and_kats::utils::{setup_alice_bob_group, setup_client};
@@ -32,7 +31,7 @@ fn codec_plaintext() {
     let sender = Sender::build_member(LeafNodeIndex::new(987543210));
     let group_context = GroupContext::new(
         ciphersuite,
-        GroupId::random(provider.rand()),
+        GroupId::random(provider.crypto()),
         1,
         vec![],
         vec![],
@@ -44,7 +43,7 @@ fn codec_plaintext() {
         .expect("An unexpected error occurred.");
     let signature_input = FramedContentTbs::new(
         WireFormat::PublicMessage,
-        GroupId::random(provider.rand()),
+        GroupId::random(provider.crypto()),
         1,
         sender,
         vec![1, 2, 3].into(),
@@ -57,7 +56,7 @@ fn codec_plaintext() {
         .into();
 
     let membership_key = MembershipKey::from_secret(
-        Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness."),
+        Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness."),
     );
     orig.set_membership_tag(
         provider.crypto(),
@@ -97,7 +96,7 @@ fn codec_ciphertext() {
         .expect("An unexpected error occurred.");
     let signature_input = FramedContentTbs::new(
         WireFormat::PrivateMessage,
-        GroupId::random(provider.rand()),
+        GroupId::random(provider.crypto()),
         1,
         sender,
         vec![1, 2, 3].into(),
@@ -111,7 +110,7 @@ fn codec_ciphertext() {
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
         provider.crypto(),
-        &JoinerSecret::random(ciphersuite, provider.rand()),
+        &JoinerSecret::random(ciphersuite, provider.crypto()),
         PskSecret::from(Secret::zero(ciphersuite)),
     )
     .expect("Could not create KeySchedule.");
@@ -125,11 +124,10 @@ fn codec_ciphertext() {
         .expect("Could not add context to key schedule");
 
     let mut message_secrets =
-        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0));
+        MessageSecrets::random(ciphersuite, provider.crypto(), LeafNodeIndex::new(0));
 
     let orig = PrivateMessage::encrypt_with_different_header::<StorageError>(
         provider.crypto(),
-        provider.rand(),
         &plaintext,
         ciphersuite,
         MlsMessageHeader {
@@ -162,9 +160,9 @@ fn wire_format_checks() {
         create_content(ciphersuite, WireFormat::PrivateMessage, provider);
 
     let mut message_secrets =
-        MessageSecrets::random(ciphersuite, provider.rand(), LeafNodeIndex::new(0));
+        MessageSecrets::random(ciphersuite, provider.crypto(), LeafNodeIndex::new(0));
     let encryption_secret_bytes = provider
-        .rand()
+        .crypto()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
     let sender_encryption_secret = EncryptionSecret::from_slice(&encryption_secret_bytes[..]);
@@ -185,7 +183,6 @@ fn wire_format_checks() {
     let sender_index = LeafNodeIndex::new(0);
     let ciphertext = PrivateMessage::encrypt_with_different_header::<StorageError>(
         provider.crypto(),
-        provider.rand(),
         &plaintext,
         ciphersuite,
         MlsMessageHeader {
@@ -251,7 +248,6 @@ fn wire_format_checks() {
     // Bypass wire format check during encryption
     let ciphertext = PrivateMessage::encrypt_without_check::<StorageError>(
         provider.crypto(),
-        provider.rand(),
         &plaintext,
         ciphersuite,
         &mut message_secrets,
@@ -308,7 +304,6 @@ fn wire_format_checks() {
     assert!(matches!(
         PrivateMessage::try_from_authenticated_content::<StorageError>(
             provider.crypto(),
-            provider.rand(),
             &plaintext,
             ciphersuite,
             &mut message_secrets,
@@ -342,7 +337,7 @@ fn create_content(
         .expect("An unexpected error occurred.");
     let signature_input = FramedContentTbs::new(
         wire_format,
-        GroupId::random(provider.rand()),
+        GroupId::random(provider.crypto()),
         1,
         sender,
         vec![1, 2, 3].into(),
@@ -363,14 +358,14 @@ fn membership_tag() {
         test_utils::new_credential(provider, b"Creator", ciphersuite.signature_algorithm());
     let group_context = GroupContext::new(
         ciphersuite,
-        GroupId::random(provider.rand()),
+        GroupId::random(provider.crypto()),
         1,
         vec![],
         vec![],
         Extensions::empty(),
     );
     let membership_key = MembershipKey::from_secret(
-        Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness."),
+        Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness."),
     );
     let public_message: PublicMessage = AuthenticatedContent::new_application(
         LeafNodeIndex::new(987543210),
@@ -515,7 +510,6 @@ fn unknown_sender<Provider: OpenMlsProvider>(ciphersuite: Ciphersuite, provider:
 
     let enc_message = PrivateMessage::encrypt_with_different_header::<StorageError>(
         alice_provider.crypto(),
-        alice_provider.rand(),
         &bogus_sender_message,
         ciphersuite,
         MlsMessageHeader {

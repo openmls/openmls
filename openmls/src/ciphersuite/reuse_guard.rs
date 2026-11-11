@@ -27,9 +27,9 @@ impl ReuseGuard {
     }
 
     /// Samples a fresh reuse guard uniformly at random.
-    pub(crate) fn try_from_random(rng: &impl OpenMlsRand) -> Result<Self, CryptoError> {
+    pub(crate) fn try_from_random(crypto: &impl OpenMlsCrypto) -> Result<Self, CryptoError> {
         Ok(Self {
-            value: rng
+            value: crypto
                 .random_array()
                 .map_err(|_| CryptoError::InsufficientRandomness)?,
         })
@@ -48,7 +48,6 @@ impl ReuseGuard {
     #[cfg(feature = "virtual-clients-draft")]
     pub(crate) fn for_emulator_sender(
         crypto: &impl OpenMlsCrypto,
-        rand: &impl OpenMlsRand,
         reuse_guard_secret: &ReuseGuardSecret,
         emulation_ciphersuite: openmls_traits::types::Ciphersuite,
         ratchet_nonce: &AeadNonce,
@@ -76,7 +75,8 @@ impl ReuseGuard {
         debug_assert!(full > 0);
         let r = loop {
             let candidate = u32::from_be_bytes(
-                rand.random_array::<4>()
+                crypto
+                    .random_array::<4>()
                     .map_err(|_| LibraryError::custom("rand failure"))?,
             );
             let candidate_u64 = u64::from(candidate);
@@ -142,12 +142,11 @@ mod vc_tests {
         let p = provider();
         let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
         let secret = dummy_reuse_guard_secret(&p, ciphersuite);
-        let nonce = crate::ciphersuite::aead::AeadNonce::random(p.rand());
+        let nonce = crate::ciphersuite::aead::AeadNonce::random(p.crypto());
         let n_e = TreeSize::from_leaf_count(1);
         debug_assert_eq!(n_e.leaf_count(), 2);
         let err = ReuseGuard::for_emulator_sender(
             p.crypto(),
-            p.rand(),
             &secret,
             ciphersuite,
             &nonce,

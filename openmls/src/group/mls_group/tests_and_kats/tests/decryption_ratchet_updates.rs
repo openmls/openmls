@@ -1,5 +1,4 @@
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::random::OpenMlsRand;
 use tls_codec::Serialize;
 
 use crate::{
@@ -94,10 +93,10 @@ fn forge_private_message(
     let group_id = receiver.group_id().clone();
     let epoch = receiver.epoch();
     let mut message_secrets = receiver.message_secrets().clone();
-    let reuse_guard = ReuseGuard::try_from_random(provider.rand()).unwrap();
+    let reuse_guard = ReuseGuard::try_from_random(provider.crypto()).unwrap();
 
     let ciphertext = match plaintext {
-        ForgedPlaintext::Garbage => provider.rand().random_vec(64).unwrap(),
+        ForgedPlaintext::Garbage => provider.crypto().random_vec(64).unwrap(),
         ForgedPlaintext::Content(content) => {
             let (ratchet_key, ratchet_nonce) = message_secrets
                 .secret_tree_mut()

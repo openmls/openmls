@@ -11,7 +11,7 @@
 #![cfg_attr(not(feature = "generate-kats"), allow(unused_imports))]
 
 use frankenstein::{FrankenFramedContentBody, FrankenPublicMessage};
-use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsProvider};
+use openmls_traits::{types::SignatureScheme, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
@@ -228,10 +228,10 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let psk_proposal = {
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
-            provider.rand(),
+            provider.crypto(),
             Psk::External(ExternalPsk::new(
                 provider
-                    .rand()
+                    .crypto()
                     .random_vec(ciphersuite.hash_length())
                     .unwrap(),
             )),
@@ -305,7 +305,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             .tls_serialize_detached()
             .unwrap(),
 
-        group_secrets: GroupSecrets::random_encoded(ciphersuite, provider.rand()).unwrap(),
+        group_secrets: GroupSecrets::random_encoded(ciphersuite, provider.crypto()).unwrap(),
         ratchet_tree: alice_ratchet_tree.tls_serialize_detached().unwrap(),
 
         add_proposal: add_proposal.tls_serialize_detached().unwrap(),

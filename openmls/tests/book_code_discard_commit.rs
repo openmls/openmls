@@ -312,7 +312,7 @@ fn discard_commit_psk() {
 
     let psk_bytes = vec![1; 32];
     let psk = Psk::External(ExternalPsk::new(psk_bytes.clone()));
-    let psk_id = PreSharedKeyId::new(ciphersuite, alice_provider.rand(), psk.clone()).unwrap();
+    let psk_id = PreSharedKeyId::new(ciphersuite, alice_provider.crypto(), psk.clone()).unwrap();
 
     // store
     // TODO: is this correct?
@@ -396,12 +396,7 @@ fn discard_commit_external_join() {
         .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_signer, |_| true)
         .unwrap()
         .finalize(bob_provider)
         .unwrap();
