@@ -106,8 +106,7 @@ impl AeadNonce {
 
     /// Generate a new random nonce.
     ///
-    /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
-    /// TODO: This panics if another thread holding the rng panics.
+    /// TODO: This panics if randomness generation fails.
     #[cfg(test)]
     pub(crate) fn random(crypto: &impl OpenMlsCrypto) -> Self {
         Self(crypto.random_array().expect("Not enough entropy."))

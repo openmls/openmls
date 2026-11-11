@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- [#2328](https://github.com/openmls/openmls/pull/2328): `RustCrypto` no longer implements `OpenMlsRand`, which has been removed.
+  - `random_array` and `random_vec` now implement `OpenMlsCrypto` instead of `OpenMlsRand` for `RustCrypto`.
+
 ### Fixed
 
 - `aead_encrypt` and `aead_decrypt` now return `CryptoError::InvalidLength` for a nonce of the wrong length. `sign` returns the same error for an ECDSA private key of the wrong length. Previously these inputs caused a panic.

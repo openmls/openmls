@@ -141,9 +141,9 @@ OpenMLS also provides a helper function to generate individual random GREASE val
 
 ```rust
 use openmls::grease::random_grease_value;
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_rust_crypto::RustCrypto;
 
-let crypto = OpenMlsRustCrypto::default();
+let crypto = RustCrypto::default();
 let grease_value = random_grease_value(&crypto);
 
 // Use in capabilities

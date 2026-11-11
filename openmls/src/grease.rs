@@ -53,12 +53,12 @@ pub use openmls_traits::grease::{is_grease_value, GREASE_VALUES};
 
 /// Returns a random GREASE value from the set of valid GREASE values.
 ///
-/// This function uses the provided random number generator to select one of the
+/// This function uses randomness from the crypto provider to select one of the
 /// 15 valid GREASE values defined in RFC 9420.
 ///
 /// # Arguments
 ///
-/// * `rand` - A random number generator implementing [`OpenMlsRand`]
+/// * `crypto` - An implementation of `OpenMlsCrypto`, used for randomness
 ///
 /// # Returns
 ///
