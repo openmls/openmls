@@ -47,7 +47,8 @@ draft-ietf-mls-pq-ciphersuites = [
     "openmls_traits/draft-ietf-mls-pq-ciphersuites",
     "openmls_memory_storage/draft-ietf-mls-pq-ciphersuites",
     "dep:libcrux-ml-dsa",
-    "hpke-rs-libcrux/draft-ietf-hpke-pq",
+    "hpke-rs/draft-connolly-cfrg-hpke-mlkem",
+    "hpke-rs-libcrux/draft-connolly-cfrg-hpke-mlkem",
     "openmls_rust_crypto/draft-ietf-mls-pq-ciphersuites",
 ]
 # Derive HPKE key pairs for the legacy X-Wing ciphersuite
