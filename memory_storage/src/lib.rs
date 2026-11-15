@@ -244,7 +244,8 @@ pub enum MemoryStorageError {
     UnsupportedValueTypeBytes,
     #[error("Updating is not supported by this key store.")]
     UnsupportedMethod,
-    /// Serializing a value failed, or a stored value failed to deserialize.
+    /// Serializing a value failed, a stored value failed to deserialize, or a
+    /// queued proposal reference has no proposal entry.
     #[error("Error serializing value.")]
     SerializationError,
 }
@@ -425,7 +426,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
                 let key = (group_id, &proposal_ref);
                 let key = serde_json::to_vec(&key)?;
 
-                let proposal = self.read(QUEUED_PROPOSAL_LABEL, &key)?.unwrap();
+                // A queued reference without its proposal: the stored queue is inconsistent.
+                let proposal = self
+                    .read(QUEUED_PROPOSAL_LABEL, &key)?
+                    .ok_or(MemoryStorageError::SerializationError)?;
                 Ok((proposal_ref, proposal))
             })
             .collect::<Result<Vec<_>, _>>()

@@ -11,6 +11,8 @@ impl Entity<CURRENT_VERSION> for TestValue {}
 impl traits::GroupId<CURRENT_VERSION> for TestValue {}
 impl traits::SignaturePublicKey<CURRENT_VERSION> for TestValue {}
 impl traits::EpochKey<CURRENT_VERSION> for TestValue {}
+impl traits::ProposalRef<CURRENT_VERSION> for TestValue {}
+impl traits::QueuedProposal<CURRENT_VERSION> for TestValue {}
 impl traits::TreeSync<CURRENT_VERSION> for TestValue {}
 impl traits::GroupContext<CURRENT_VERSION> for TestValue {}
 impl traits::InterimTranscriptHash<CURRENT_VERSION> for TestValue {}
@@ -157,6 +159,30 @@ fn corrupted_encryption_epoch_key_pairs() {
             Err(MemoryStorageError::SerializationError)
         );
     }
+}
+
+#[test]
+fn missing_queued_proposal() {
+    let storage = MemoryStorage::default();
+    let group_id = TestValue(vec![1]);
+    storage
+        .queue_proposal(&group_id, &TestValue(vec![2]), &TestValue(vec![3]))
+        .unwrap();
+
+    // Leave the reference in the queue, but remove the proposal it points to.
+    storage
+        .values
+        .write()
+        .unwrap()
+        .retain(|key, _| !key.starts_with(b"QueuedProposal"));
+    assert_eq!(
+        storage.queued_proposal_refs(&group_id),
+        Ok(vec![TestValue(vec![2])])
+    );
+    assert_eq!(
+        storage.queued_proposals::<_, TestValue, TestValue>(&group_id),
+        Err(MemoryStorageError::SerializationError)
+    );
 }
 
 #[cfg(feature = "virtual-clients-draft")]
