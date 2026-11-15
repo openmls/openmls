@@ -203,7 +203,7 @@ impl MemoryStorage {
         log::trace!("{}", std::backtrace::Backtrace::capture());
 
         let value: Vec<Vec<u8>> = match values.get(&storage_key) {
-            Some(list_bytes) => serde_json::from_slice(list_bytes).unwrap(),
+            Some(list_bytes) => serde_json::from_slice(list_bytes)?,
             None => vec![],
         };
 
@@ -244,6 +244,7 @@ pub enum MemoryStorageError {
     UnsupportedValueTypeBytes,
     #[error("Updating is not supported by this key store.")]
     UnsupportedMethod,
+    /// Serializing a value failed, or a stored value failed to deserialize.
     #[error("Error serializing value.")]
     SerializationError,
 }
@@ -437,15 +438,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<TreeSync>, Self::Error> {
-        let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &GroupId>(TREE_LABEL, group_id);
-
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        let value = serde_json::from_slice(value).unwrap();
-
-        Ok(value)
+        self.read(TREE_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     async fn group_context<
@@ -455,15 +448,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<GroupContext>, Self::Error> {
-        let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &GroupId>(GROUP_CONTEXT_LABEL, group_id);
-
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        let value = serde_json::from_slice(value).unwrap();
-
-        Ok(value)
+        self.read(GROUP_CONTEXT_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     async fn interim_transcript_hash<
@@ -473,15 +458,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<InterimTranscriptHash>, Self::Error> {
-        let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &GroupId>(INTERIM_TRANSCRIPT_HASH_LABEL, group_id);
-
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        let value = serde_json::from_slice(value).unwrap();
-
-        Ok(value)
+        self.read(
+            INTERIM_TRANSCRIPT_HASH_LABEL,
+            &serde_json::to_vec(group_id)?,
+        )
     }
 
     async fn confirmation_tag<
@@ -491,15 +471,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ConfirmationTag>, Self::Error> {
-        let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &GroupId>(CONFIRMATION_TAG_LABEL, group_id);
-
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        let value = serde_json::from_slice(value).unwrap();
-
-        Ok(value)
+        self.read(CONFIRMATION_TAG_LABEL, &serde_json::to_vec(group_id)?)
     }
 
     async fn signature_key_pair<
@@ -509,17 +481,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         public_key: &SignaturePublicKey,
     ) -> Result<Option<SignatureKeyPair>, Self::Error> {
-        let values = self.values.read().unwrap();
-
-        let key =
-            build_key::<CURRENT_VERSION, &SignaturePublicKey>(SIGNATURE_KEY_PAIR_LABEL, public_key);
-
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        let value = serde_json::from_slice(value).unwrap();
-
-        Ok(value)
+        self.read(SIGNATURE_KEY_PAIR_LABEL, &serde_json::to_vec(public_key)?)
     }
 
     async fn write_key_package<
@@ -851,7 +813,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         if let Some(value) = value {
             #[cfg(feature = "test-utils")]
             log::debug!("  value: {}", hex::encode(value));
-            return Ok(serde_json::from_slice(value).unwrap());
+            return Ok(serde_json::from_slice(value)?);
         }
 
         Ok(vec![])
@@ -1031,15 +993,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         group_id: &GroupId,
     ) -> Result<Option<ApplicationExportTree>, Self::Error> {
-        let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &GroupId>(APPLICATION_EXPORT_TREE_LABEL, group_id);
-
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        let value = serde_json::from_slice(value).unwrap();
-
-        Ok(value)
+        self.read(
+            APPLICATION_EXPORT_TREE_LABEL,
+            &serde_json::to_vec(group_id)?,
+        )
     }
 
     #[cfg(feature = "extensions-draft")]
@@ -1080,12 +1037,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         epoch_id: &EpochId,
     ) -> Result<Option<VcDerivationEpochState>, Self::Error> {
-        let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_DERIVATION_EPOCH_STATE_LABEL, epoch_id);
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        Ok(serde_json::from_slice(value).unwrap())
+        self.read(
+            VC_DERIVATION_EPOCH_STATE_LABEL,
+            &serde_json::to_vec(epoch_id)?,
+        )
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -1349,12 +1304,7 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         epoch_id: &EpochId,
     ) -> Result<Option<VcOperationTree>, Self::Error> {
-        let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &EpochId>(VC_OPERATION_TREE_LABEL, epoch_id);
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        Ok(serde_json::from_slice(value).unwrap())
+        self.read(VC_OPERATION_TREE_LABEL, &serde_json::to_vec(epoch_id)?)
     }
 
     #[cfg(feature = "virtual-clients-draft")]
@@ -1403,15 +1353,10 @@ impl StorageProvider<CURRENT_VERSION> for MemoryStorage {
         &self,
         hash_ref: &KeyPackageRef,
     ) -> Result<Option<RetainedKeyPackageMaterial>, Self::Error> {
-        let values = self.values.read().unwrap();
-        let key = build_key::<CURRENT_VERSION, &KeyPackageRef>(
+        self.read(
             RETAINED_KEY_PACKAGE_MATERIAL_LABEL,
-            hash_ref,
-        );
-        let Some(value) = values.get(&key) else {
-            return Ok(None);
-        };
-        Ok(serde_json::from_slice(value).unwrap())
+            &serde_json::to_vec(hash_ref)?,
+        )
     }
 
     #[cfg(feature = "virtual-clients-draft")]
