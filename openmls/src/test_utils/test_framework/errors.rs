@@ -27,8 +27,6 @@ pub enum SetupError<StorageError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    #[error("")]
-    Unknown,
 }
 
 #[derive(Debug)]
