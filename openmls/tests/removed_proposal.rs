@@ -93,6 +93,12 @@ fn removed_proposal_is_not_committed() {
         .unwrap();
     assert_eq!(alice_group.pending_proposals().count(), 0);
 
+    // The stored group agrees: it loads and has no pending proposals.
+    let loaded = MlsGroup::load(alice.storage(), alice_group.group_id())
+        .unwrap()
+        .expect("the group is in the storage");
+    assert_eq!(loaded.pending_proposals().count(), 0);
+
     // A commit to the pending proposals doesn't add Charlie.
     let (_commit, welcome, _group_info) = alice_group
         .commit_to_pending_proposals(&alice, &alice_signer)

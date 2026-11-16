@@ -154,11 +154,10 @@ impl MemoryStorage {
         // fetch value from db, falling back to an empty list if doens't exist
         let list_bytes = values.entry(storage_key).or_insert_with(|| b"[]".to_vec());
 
-        // parse old value, find value to delete and remove it from list
+        // parse old value and remove every occurrence of the value: the list
+        // holds a value twice if it was appended twice
         let mut list: Vec<Vec<u8>> = serde_json::from_slice(list_bytes)?;
-        if let Some(pos) = list.iter().position(|stored_item| stored_item == &value) {
-            list.remove(pos);
-        }
+        list.retain(|stored_item| stored_item != &value);
 
         // write back, reusing the old buffer
         list_bytes.clear();

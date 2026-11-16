@@ -78,3 +78,25 @@ fn read_write_delete() {
     // Clearing the queue must also remove the proposal values, not only their refs.
     assert!(storage.values.read().unwrap().is_empty());
 }
+
+/// Removing a proposal that was queued twice leaves nothing behind.
+#[test]
+fn queue_twice_remove_once() {
+    let group_id = TestGroupId(b"TestGroupId".to_vec());
+    let proposal = Proposal(b"TestProposal".to_vec());
+    let storage = MemoryStorage::default();
+
+    storage
+        .queue_proposal(&group_id, &ProposalRef(1), &proposal)
+        .unwrap();
+    storage
+        .queue_proposal(&group_id, &ProposalRef(1), &proposal)
+        .unwrap();
+
+    storage.remove_proposal(&group_id, &ProposalRef(1)).unwrap();
+
+    let proposal_refs_read: Vec<ProposalRef> = storage.queued_proposal_refs(&group_id).unwrap();
+    assert!(proposal_refs_read.is_empty());
+    let proposals_read: Vec<(ProposalRef, Proposal)> = storage.queued_proposals(&group_id).unwrap();
+    assert!(proposals_read.is_empty());
+}
