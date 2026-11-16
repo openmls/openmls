@@ -67,13 +67,14 @@ impl ProposalStore {
 
     /// Removes a proposal from the store using its reference. It will return
     /// None if it wasn't found in the store.
+    ///
+    /// The store can hold the same proposal more than once, for example if
+    /// it was received twice. All of them are removed.
     pub(crate) fn remove(&mut self, proposal_ref: &ProposalRef) -> Option<()> {
-        let index = self
-            .queued_proposals
-            .iter()
-            .position(|p| &p.proposal_reference() == proposal_ref)?;
-        self.queued_proposals.remove(index);
-        Some(())
+        let stored = self.queued_proposals.len();
+        self.queued_proposals
+            .retain(|p| &p.proposal_reference() != proposal_ref);
+        (self.queued_proposals.len() < stored).then_some(())
     }
 
     pub(crate) fn self_removes(&self) -> Vec<SelfRemoveInStore> {
