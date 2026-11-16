@@ -7,7 +7,9 @@ how to report an issue to us privately.
 
 ## Scope
 
-This policy covers the `openmls` library crate. If you find issues in any of the other crates, please file a regular GitHub issue.
+This policy covers the `openmls` library crate. If you find issues in any of the
+other crates, such as the storage or crypto provider crates, please file a
+regular GitHub issue.
 
 ## Threat model
 
