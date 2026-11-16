@@ -21,8 +21,3 @@ features = ["derive", "serde", "mls"]
 [workspace.dependencies.tls_codec_derive]
 version = "0.5"
 features = ["derive", "serde", "mls"]
-
-# We're hit by https://github.com/rust-lang/libc/issues/5601 with libc 0.2.190,
-# so use an older version until that gets fixed.
-[patch.crates-io]
-libc = { git = "https://github.com/rust-lang/libc.git", rev ="ef0906e20828777175f65caa7e681a0ce33c559a", version = "0.2.189" }
