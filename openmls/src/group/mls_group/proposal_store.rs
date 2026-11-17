@@ -553,8 +553,6 @@ impl ProposalQueue {
         let mut contains_external_init = false;
         let mut contains_reinit = false;
 
-        // Use a BTreeMap so member-specific proposals are listed in ascending
-        // leaf order rather than in hash iteration order.
         let mut member_specific_proposals: BTreeMap<LeafNodeIndex, QueuedProposal> =
             BTreeMap::new();
         let mut register_member_specific_proposal =
