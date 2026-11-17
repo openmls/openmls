@@ -762,6 +762,8 @@ impl PublicGroup {
     ///     and Removes
     ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
     ///     Remove
+    ///   - An [`AppDataUpdateProposal`] removes a [`ComponentId`] that has no entry in the
+    ///     [`AppDataDictionary`] of the current group context
     #[cfg(feature = "extensions-draft")]
     pub(crate) fn validate_app_data_update_proposals_and_group_context(
         &self,
@@ -852,6 +854,11 @@ impl PublicGroup {
         // type second - for a given ID, removes come first. The sorting is stable and
         // won't mess with the ordering of updates within a component.
         // This is ensured in ProposalQueue::app_data_update_proposals.
+        //
+        // AppDataUpdate proposals are applied to the dictionary of the current group context (a
+        // GroupContextExtensions proposal must not change it), so that is where state has to be
+        // present for a removal.
+        let current_dictionary = self.group_context().extensions().app_data_dictionary();
         let mut latest = None;
         for proposal in proposal_queue.app_data_update_proposals() {
             let proposal = &proposal.app_data_update_proposal;
@@ -864,32 +871,24 @@ impl PublicGroup {
                         AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
                     }
                     AppDataUpdateOperationType::Remove => {
-                        AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+                        AppDataUpdateValidationError::MoreThanOneRemovePerComponentId
                     }
                 };
 
                 return Err(app_data_update_validation_error);
             }
 
-            if proposal.operation().operation_type() == AppDataUpdateOperationType::Remove {
+            if operation_type == AppDataUpdateOperationType::Remove {
                 // From the draft:
                 //
                 // An AppDataUpdate proposal is invalid if [...] it specifies the removal of
                 // state for a component_id that has no state present.
                 //
                 // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
-                let Some(gce) = group_context_extension_proposal else {
-                    // extension gets implicitly created in the group context, so absence is not an
-                    // error condition
-                    return Ok(());
-                };
-                let Some(app_data_dict) = gce.extensions().app_data_dictionary() else {
-                    // extension gets implicitly created in the group context, so absence is not an
-                    // error condition
-                    return Ok(());
-                };
-
-                if app_data_dict.dictionary().get(&component_id).is_none() {
+                if current_dictionary
+                    .and_then(|dictionary| dictionary.dictionary().get(&component_id))
+                    .is_none()
+                {
                     return Err(AppDataUpdateValidationError::CannotRemoveNonexistentComponent);
                 }
 
