@@ -132,8 +132,7 @@ fn book_example_sub_group_branching() {
     // Bob decrypts the branch welcome once with `process_resuming_welcome`, then
     // reads which parent group and epoch it derives from. This lets him pick the
     // matching `BranchInfo` from his window even if his view of the parent group
-    // has advanced (see the sliding-window note above), without decrypting the
-    // welcome twice.
+    // has advanced (see the sliding-window note above).
     let pending = StagedWelcome::process_resuming_welcome(
         bob_provider,
         mls_group_create_config.join_config(),
@@ -154,18 +153,20 @@ fn book_example_sub_group_branching() {
         .find_map(|(epoch, info)| (epoch == parent_epoch).then_some(info))
         .expect("No BranchInfo for the branch's parent epoch.");
 
-    // Finish the join from the same carrier, reusing the already-decrypted state.
+    // Finish the join.
     // `build_from_branch` checks that the branch PSK references the same parent
-    // group/epoch as the `BranchInfo`; the remaining receiver checks (matching
-    // version, ciphersuite, sub-group epoch, and membership) run when `build` is
-    // called.
-    let bob_sub_group = pending
+    // group/epoch as the `BranchInfo`. `build` checks that version, ciphersuite, sub-group
+    // epoch match.
+    let bob_staged_welcome = pending
         .build_from_branch(bob_provider, bob_branch_info)
         .expect("Error joining the branch.")
         .with_ratchet_tree(sub_group_ratchet_tree.into())
         // .check_members(false) // optional; the membership check is on by default
         .build()
-        .expect("Error joining the sub-group.")
+        .expect("Error joining the sub-group.");
+    // when setting .check_members(false): check that `bob_staged_welcome.members()`
+    // represents a subset of `bob_branch_info.member_credentials()`.
+    let bob_sub_group = bob_staged_welcome
         .into_group(bob_provider)
         .expect("Error creating the sub-group.");
     // ANCHOR_END: receiver_peek_branch

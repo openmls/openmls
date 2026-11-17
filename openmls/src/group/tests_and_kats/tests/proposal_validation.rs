@@ -2399,6 +2399,64 @@ fn valsem113() {
     }
 }
 
+/// A custom proposal whose type collides with a registered proposal type or a
+/// GREASE value would decode as a different proposal, so it must be rejected.
+#[openmls_test::openmls_test]
+fn custom_proposal_with_colliding_type() {
+    let alice_provider = &Provider::default();
+
+    let alice_credential_with_keys = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(
+            alice_provider,
+            &alice_credential_with_keys.signer,
+            alice_credential_with_keys.credential_with_key.clone(),
+        )
+        .unwrap();
+
+    // ExternalInit, Remove and a GREASE value.
+    for proposal_type in [6u16, 3, 0x0A0A] {
+        let custom_proposal = CustomProposal::new(proposal_type, vec![1, 2, 3]);
+
+        assert!(matches!(
+            alice_group.propose_custom_proposal_by_value(
+                alice_provider,
+                &alice_credential_with_keys.signer,
+                custom_proposal.clone(),
+            ),
+            Err(ProposalError::LibraryError(_))
+        ));
+        assert!(matches!(
+            alice_group.propose_custom_proposal_by_reference(
+                alice_provider,
+                &alice_credential_with_keys.signer,
+                custom_proposal.clone(),
+            ),
+            Err(ProposalError::LibraryError(_))
+        ));
+        assert_eq!(alice_group.pending_proposals().count(), 0);
+
+        let result = alice_group
+            .commit_builder()
+            .add_proposal(Proposal::custom(custom_proposal))
+            .load_psks(alice_provider.storage())
+            .unwrap()
+            .build(
+                alice_provider.rand(),
+                alice_provider.crypto(),
+                &alice_credential_with_keys.signer,
+                |_| true,
+            );
+        assert!(matches!(result, Err(CreateCommitError::LibraryError(_))));
+    }
+}
+
 // Tests `PublicGroup::validate_key_package_for_add`, which runs the checks of
 // an Add proposal on a single key package. The group used here carries the
 // unknown extension 0xf001 in its group context and requires support for the

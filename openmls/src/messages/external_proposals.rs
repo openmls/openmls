@@ -69,7 +69,7 @@ impl ExternalProposal {
     ///
     /// # Arguments
     /// * `extensions` - a new set of extensions for the group context
-    /// * `group_id` - unique group identifier of the group to join
+    /// * `group_id` - unique group identifier of the group the proposal is for
     /// * `epoch` - group's epoch
     /// * `signer` - of the sender to sign the message
     /// * `sender_index` - index of the sender of the proposal
@@ -102,7 +102,7 @@ impl ExternalProposal {
     ///
     /// # Arguments
     /// * `removed` - index of the client to remove
-    /// * `group_id` - unique group identifier of the group to join
+    /// * `group_id` - unique group identifier of the group the proposal is for
     /// * `epoch` - group's epoch
     /// * `signer` - of the sender to sign the message
     /// * `sender_index` - index of the sender of the proposal
@@ -133,7 +133,7 @@ impl ExternalProposal {
     ///
     /// # Arguments
     /// * `key_package` - key package of the client to add
-    /// * `group_id` - unique group identifier of the group to join
+    /// * `group_id` - unique group identifier of the group the proposal is for
     /// * `epoch` - group's epoch
     /// * `signer` - of the sender to sign the message
     /// * `sender_index` - index of the sender of the proposal

@@ -67,23 +67,14 @@ impl EncryptionKey {
 
 #[cfg(feature = "targeted-messages-draft")]
 impl EncryptionKey {
-    pub(crate) fn encrypt_with_label_psk_resolved_aad<F>(
+    pub(crate) fn seal_psk(
         &self,
         params: hpke::PskEncryptParams,
+        aad: &[u8],
         plaintext: &[u8],
         crypto: &impl OpenMlsCrypto,
-        aad_builder: F,
-    ) -> Result<HpkeCiphertext, LibraryError>
-    where
-        F: FnOnce(&[u8]) -> Result<Vec<u8>, LibraryError>,
-    {
-        hpke::encrypt_with_label_psk_resolved_aad(
-            self.as_slice(),
-            params,
-            plaintext,
-            crypto,
-            aad_builder,
-        )
+    ) -> Result<HpkeCiphertext, LibraryError> {
+        hpke::seal_psk(self.as_slice(), params, aad, plaintext, crypto)
     }
 }
 
@@ -152,14 +143,14 @@ impl EncryptionPrivateKey {
     }
 
     #[cfg(feature = "targeted-messages-draft")]
-    pub(crate) fn decrypt_with_label_psk_aad(
+    pub(crate) fn open_psk(
         &self,
         params: hpke::PskEncryptParams,
         aad: &[u8],
         ciphertext: &HpkeCiphertext,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<Vec<u8>, hpke::Error> {
-        hpke::decrypt_with_label_psk_aad(&self.key, params, aad, ciphertext, crypto)
+        hpke::open_psk(&self.key, params, aad, ciphertext, crypto)
     }
 }
 
@@ -191,11 +182,14 @@ impl EncryptionKeyPair {
     /// This must only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    pub(crate) fn write<Storage: StorageProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn write<Storage: StorageProvider>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {
-        store.write_encryption_key_pair(self.public_key(), self)
+        store
+            .write_encryption_key_pair(self.public_key(), self)
+            .await
     }
 
     /// Read the [`EncryptionKeyPair`] from the key store of the `provider`. This
@@ -207,13 +201,15 @@ impl EncryptionKeyPair {
     /// of the key package or the epoch encryption key pairs.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
-    pub(crate) fn read(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn read(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
         provider
             .storage()
             .encryption_key_pair(encryption_key)
+            .await
             .ok()
             .flatten()
     }
@@ -223,11 +219,12 @@ impl EncryptionKeyPair {
     /// This must only be used for encryption key pairs that are generated for
     /// update leaf nodes. All other encryption key pairs are stored as part
     /// of the key package or the epoch encryption key pairs.
-    pub(crate) fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn delete<Storage: StorageProviderTrait<CURRENT_VERSION>>(
         &self,
         store: &Storage,
     ) -> Result<(), Storage::Error> {
-        store.delete_encryption_key_pair(self.public_key())
+        store.delete_encryption_key_pair(self.public_key()).await
     }
 
     pub(crate) fn public_key(&self) -> &EncryptionKey {
@@ -256,11 +253,14 @@ impl EncryptionKeyPair {
 pub mod test_utils {
     use super::*;
 
-    pub fn read_keys_from_key_store(
+    #[openmls_traits::maybe_async]
+    pub async fn read_keys_from_key_store(
         provider: &impl OpenMlsProvider,
         encryption_key: &EncryptionKey,
     ) -> HpkeKeyPair {
-        let keys = EncryptionKeyPair::read(provider, encryption_key).unwrap();
+        let keys = EncryptionKeyPair::read(provider, encryption_key)
+            .await
+            .unwrap();
 
         HpkeKeyPair {
             private: keys.private_key.key,
@@ -268,10 +268,14 @@ pub mod test_utils {
         }
     }
 
-    pub fn write_keys_from_key_store(provider: &impl OpenMlsProvider, encryption_key: HpkeKeyPair) {
+    #[openmls_traits::maybe_async]
+    pub async fn write_keys_from_key_store(
+        provider: &impl OpenMlsProvider,
+        encryption_key: HpkeKeyPair,
+    ) {
         let keypair = EncryptionKeyPair::from(encryption_key);
 
-        keypair.write(provider.storage()).unwrap();
+        keypair.write(provider.storage()).await.unwrap();
     }
 }
 

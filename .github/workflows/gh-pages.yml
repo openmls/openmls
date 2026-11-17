@@ -26,8 +26,11 @@ jobs:
           mdbook-version: 'latest'
       - name: Build docs
         run: |
+          set -euo pipefail
           cd openmls
-          RUSTDOCFLAGS="--cfg doc_cfg --cfg docsrs" cargo +nightly doc --all-features --no-deps
+          features=$(cargo metadata --no-deps --format-version 1 | jq -r \
+            '.packages[] | select(.name == "openmls") | .metadata.docs.rs.features[]')
+          RUSTDOCFLAGS="--cfg doc_cfg --cfg docsrs" cargo +nightly doc --no-deps -F "${features}"
           touch ../target/doc/.nojekyll
           cd ..
           mkdir temp_docs

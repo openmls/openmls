@@ -4309,9 +4309,9 @@ fn repeated_sibling_message_is_secret_reuse() {
     };
 }
 
-/// A corrupted copy of a sibling's message consumes the generation's secret
-/// before the AEAD check fails. The intact original then fails as a reused
-/// secret. It must not pass as an own message, since nothing was processed.
+/// A corrupted copy of a sibling's message leaves the generation's secret in
+/// place. The intact original then decrypts as the sibling's message and must
+/// not pass as an own message.
 #[test]
 fn corrupted_copy_of_sibling_message_does_not_mask_original() {
     use openmls::prelude::MlsMessageIn;
@@ -4347,15 +4347,10 @@ fn corrupted_copy_of_sibling_message_does_not_mask_original() {
         panic!("expected an AEAD error, got {err:?}");
     };
 
-    let err = alice_b_main
+    let processed = alice_b_main
         .process_message(&alice_b_provider, original.into_protocol_message().unwrap())
-        .expect_err("the original must not pass as an own message");
-    let ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
-        MessageDecryptionError::SecretTreeError(SecretTreeError::SecretReuseError),
-    )) = err
-    else {
-        panic!("expected a secret reuse error, got {err:?}");
-    };
+        .expect("alice_b processes the original");
+    expect_application_message(processed, b"from alice_a");
 }
 
 /// A group with no emulation binding returns `None` from

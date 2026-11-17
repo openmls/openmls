@@ -5,7 +5,7 @@
 pub use crate::group::{
     commit_builder::{
         CommitBuilder, CommitMessageBundle, Complete, ExternalCommitBuilder,
-        ExternalCommitBuilderError, Initial, LoadedPsks,
+        ExternalCommitBuilderError, Initial, LoadedPsks, VerifiedExternalCommitBuilder,
     },
     Member, *,
 };

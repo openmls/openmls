@@ -16,7 +16,10 @@ use crate::{
         Welcome,
     },
     schedule::{
-        psk::{store::ResumptionPskStore, PreSharedKeyId, Psk, ResumptionPsk, ResumptionPskUsage},
+        psk::{
+            load_psks, store::ResumptionPskStore, PreSharedKeyId, Psk, ResumptionPsk,
+            ResumptionPskUsage,
+        },
         EpochSecretsResult,
     },
     storage::OpenMlsProvider,
@@ -37,7 +40,6 @@ use crate::{
         RetainedKeyPackageMaterial, VcDerivationEpochParams, VcDerivationEpochState,
         VcWelcomeMaterial, VirtualClientOperationType, VirtualClientsError,
     },
-    extensions::ExtensionType,
     framing::{mls_auth_content::AuthenticatedContent, ProtocolMessage, SafeAad, Sender},
     group::{
         config::PastEpochDeletionPolicy,
@@ -50,6 +52,7 @@ use crate::{
         },
         public_group::{errors::ApplyAppDataUpdateError, PublicGroup},
     },
+    key_packages::has_last_resort_marker,
     messages::proposals::{AppDataUpdateProposal, AppEphemeralProposal, Proposal, ProposalOrRef},
     prelude::mls_content::FramedContentBody,
     schedule::{EpochSecrets, InitSecret},
@@ -67,23 +70,27 @@ impl MlsGroup {
 
     /// Creates a new group with the creator as the only member (and a random
     /// group ID).
-    pub fn new<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn new<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<Provider::StorageError>> {
-        MlsGroupBuilder::new().build_internal(
-            provider,
-            signer,
-            credential_with_key,
-            Some(mls_group_create_config.clone()),
-        )
+        MlsGroupBuilder::new()
+            .build_internal(
+                provider,
+                signer,
+                credential_with_key,
+                Some(mls_group_create_config.clone()),
+            )
+            .await
     }
 
     /// Creates a new group with a given group ID with the creator as the only
     /// member.
-    pub fn new_with_group_id<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn new_with_group_id<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         mls_group_create_config: &MlsGroupCreateConfig,
@@ -98,6 +105,7 @@ impl MlsGroup {
                 credential_with_key,
                 Some(mls_group_create_config.clone()),
             )
+            .await
     }
 
     /// Join an existing group through an External Commit.
@@ -119,7 +127,8 @@ impl MlsGroup {
         since = "0.7.1",
         note = "Use the `MlsGroup::external_commit_builder` instead."
     )]
-    pub fn join_by_external_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn join_by_external_commit<Provider: OpenMlsProvider>(
         provider: &Provider,
         signer: &impl Signer,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -152,12 +161,14 @@ impl MlsGroup {
             .build_group(provider, verifiable_group_info, credential_with_key)?
             .leaf_node_parameters(leaf_node_parameters)
             .load_psks(provider.storage())
+            .await
             .map_err(|e| {
                 log::error!("Error loading PSKs for external commit: {e:?}");
                 LibraryError::custom("Error loading PSKs for external commit")
             })?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .finalize(provider)?;
+            .finalize(provider)
+            .await?;
 
         let (commit, _, group_info) = commit_message_bundle.into_contents();
 
@@ -172,31 +183,32 @@ impl ProcessedWelcome {
     /// This does not require a ratchet tree yet.
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
-        Self::new_from_welcome_inner(provider, mls_group_config, welcome, None)
+        Self::new_from_welcome_inner(provider, mls_group_config, welcome, None).await
     }
 
     /// Like [`ProcessedWelcome::new_from_welcome`], but allows injecting a
-    /// resumption PSK secret that is not held in storage, at a given epoch.
+    /// resumption PSK secret that is not held in storage.
     ///
     /// This is used for subgroup branching (RFC 9420 §11.3) and
     /// reinitialization (RFC 9420 §11.2): the branch resp. reinit PSK secret
-    /// comes from another group and is injected at the sentinel epoch 0, where
-    /// [`load_psks`] looks it up for both usages. See
+    /// comes from another group. See
     /// [`StagedWelcome::build_from_branch`] and
     /// [`StagedWelcome::build_from_reinit`].
-    pub(crate) fn new_from_welcome_inner<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn new_from_welcome_inner<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
-        resumption_info: Option<ResumptionInfo>,
+        resumption_info: Option<&ResumptionInfo>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let (resumption_psk_store, key_material, group_secrets) =
-            decrypt_group_secrets(provider, mls_group_config, &welcome)?;
+            decrypt_group_secrets(provider, mls_group_config, &welcome).await?;
 
         finish_processed_welcome(
             provider,
@@ -208,6 +220,7 @@ impl ProcessedWelcome {
             &welcome,
             resumption_info,
         )
+        .await
     }
 
     /// Get a reference to the GroupInfo in this Welcome message.
@@ -226,7 +239,8 @@ impl ProcessedWelcome {
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    pub fn into_staged_welcome<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn into_staged_welcome<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -237,11 +251,13 @@ impl ProcessedWelcome {
             LeafNodeLifetimePolicy::Verify,
             false,
         )
+        .await
     }
 
     /// Consume the `ProcessedWelcome` and combine it with the ratchet tree into
     /// a `StagedWelcome`.
-    pub(crate) fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(crate) async fn into_staged_welcome_inner<Provider: OpenMlsProvider>(
         mut self,
         provider: &Provider,
         ratchet_tree: Option<RatchetTreeIn>,
@@ -251,6 +267,7 @@ impl ProcessedWelcome {
         // Check if we need to replace an old group
         if !replace_old_group
             && MlsGroup::load(provider.storage(), self.verifiable_group_info.group_id())
+                .await
                 .map_err(WelcomeError::StorageError)?
                 .is_some()
         {
@@ -326,7 +343,7 @@ impl ProcessedWelcome {
             }
             #[cfg(feature = "virtual-clients-draft")]
             WelcomeKeyMaterialInner::VirtualClient(material) => {
-                find_and_validate_vc_own_leaf(provider, &public_group, material)?
+                find_and_validate_vc_own_leaf(provider, &public_group, material).await?
             }
         };
 
@@ -483,29 +500,33 @@ impl StagedWelcome {
     /// A virtual client's key material is only consumed by [`Self::into_group`].
     ///
     /// [`Welcome`]: crate::messages::Welcome
-    pub fn new_from_welcome<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn new_from_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         ratchet_tree: Option<RatchetTreeIn>,
     ) -> Result<Self, WelcomeError<Provider::StorageError>> {
         let processed_welcome =
-            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
+            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome).await?;
 
-        processed_welcome.into_staged_welcome(provider, ratchet_tree)
+        processed_welcome
+            .into_staged_welcome(provider, ratchet_tree)
+            .await
     }
 
     /// Similar to [`StagedWelcome::new_from_welcome`] but as a builder.
     ///
     /// The builder allows to set the ratchet tree, skip leaf node lifetime
     /// validation, and get the [`ProcessedWelcome`] for inspection before staging.
-    pub fn build_from_welcome<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_welcome<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
         let processed_welcome =
-            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome)?;
+            ProcessedWelcome::new_from_welcome(provider, mls_group_config, welcome).await?;
 
         // processed_welcome.into_staged_welcome(provider, ratchet_tree)
         Ok(JoinBuilder::new(provider, processed_welcome))
@@ -519,16 +540,13 @@ impl StagedWelcome {
     /// [`MlsGroup::branch_info`](crate::group::MlsGroup::branch_info).
     ///
     /// In addition to the regular [`StagedWelcome::build_from_welcome`]
-    /// processing, this injects the parent's resumption PSK secret (which is
+    /// processing, this uses the parent's resumption PSK secret (which is
     /// required to derive the subgroup's key schedule from the branch PSK) and
     /// enforces the receiver-side checks the RFC mandates when joining a branched
     /// subgroup.
     ///
     /// The branch PSK carried in the `Welcome` must reference the same parent
-    /// group and epoch as the supplied `branch_info`; otherwise the injected
-    /// resumption PSK secret would be for the wrong epoch. This is checked here,
-    /// before the secret is mixed into the key schedule, and fails with
-    /// [`WelcomeError::SubgroupParentMismatch`].
+    /// group and epoch as the supplied `branch_info`.
     ///
     /// The remaining checks run when [`JoinBuilder::build`] is called:
     ///
@@ -543,38 +561,39 @@ impl StagedWelcome {
     /// If the receiver does not yet know which parent epoch the branch was taken
     /// from (its own view of the parent group may have advanced), use
     /// [`StagedWelcome::process_resuming_welcome`] to read the parent reference
-    /// from the `Welcome` first and then pick the matching `branch_info`. That
-    /// path decrypts the `Welcome` only once. This one-shot method is a
-    /// convenience for callers that already know the parent epoch; it also
-    /// decrypts only once, via the same carrier.
+    /// from the `Welcome` first and then pick the matching `branch_info`.
+    /// This one-shot method is a convenience for callers who already know the
+    /// parent and epoch.
     ///
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
-    pub fn build_from_branch<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_branch<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         branch_info: BranchInfo,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
-        Self::process_resuming_welcome(provider, mls_group_config, welcome)?
+        Self::process_resuming_welcome(provider, mls_group_config, welcome)
+            .await?
             .build_from_branch(provider, branch_info)
+            .await
     }
 
     /// Builder to create a [`StagedWelcome`] for a reinit of a
     /// predecessor group, as described in [RFC 9420 §11.2].
     ///
     /// The predecessor group's parameters are provided via `reinit_info`, which the
-    /// parent exports with
+    /// predecessor exports with
     /// [`MlsGroup::reinit_info`](crate::group::MlsGroup::reinit_info).
     ///
     /// In addition to the regular [`StagedWelcome::build_from_welcome`]
-    /// processing, this injects the predecessor's resumption PSK secret (which is
+    /// processing, this uses the predecessor's resumption PSK secret (which is
     /// required to derive the new key schedule from the reinit PSK) and
     /// enforces the receiver-side checks the RFC mandates when joining a
     /// reinitialized group.
     ///
     /// The reinit PSK carried in the `Welcome` must reference the same predecessor
-    /// group and epoch as the supplied `reinit_info`; otherwise the injected
-    /// resumption PSK secret would be for the wrong epoch.
+    /// group and epoch as the supplied `reinit_info`.
     ///
     /// The remaining checks run when [`JoinBuilder::build`] is called:
     ///
@@ -587,21 +606,24 @@ impl StagedWelcome {
     /// Matching members is left to the application by the RFC; here we use
     /// credential equality for equivalent identifiers.
     ///
-    /// If the receiver does not yet know which predecessor group the reinit was taken
-    /// from, use [`StagedWelcome::process_resuming_welcome`] to read the psk_id
+    /// If the receiver does not yet know which predecessor group is being reinitialized,
+    /// use [`StagedWelcome::process_resuming_welcome`] to read the psk_id
     /// from the `Welcome` first and then pick the matching `reinit_info`.
     /// This one-shot method is a convenience for callers that already know the
     /// predecessor.
     ///
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
-    pub fn build_from_reinit<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_reinit<'a, Provider: OpenMlsProvider>(
         provider: &'a Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
         reinit_info: ReInitInfo,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
-        Self::process_resuming_welcome(provider, mls_group_config, welcome)?
+        Self::process_resuming_welcome(provider, mls_group_config, welcome)
+            .await?
             .build_from_reinit(provider, reinit_info)
+            .await
     }
 
     /// Decrypt a `Welcome`'s group secrets so its branch or reinit reference can be
@@ -614,13 +636,14 @@ impl StagedWelcome {
     ///
     /// If [`PendingResumingWelcome::required_resumption_secret`] returns [`None`] the [`Welcome`]
     /// is not a branch or reinit welcome and must be completed with [`PendingResumingWelcome::build`].
-    pub fn process_resuming_welcome<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn process_resuming_welcome<Provider: OpenMlsProvider>(
         provider: &Provider,
         mls_group_config: &MlsGroupJoinConfig,
         welcome: Welcome,
     ) -> Result<PendingResumingWelcome, WelcomeError<Provider::StorageError>> {
         let (resumption_psk_store, key_material, group_secrets) =
-            decrypt_group_secrets(provider, mls_group_config, &welcome)?;
+            decrypt_group_secrets(provider, mls_group_config, &welcome).await?;
 
         Ok(PendingResumingWelcome {
             mls_group_config: mls_group_config.clone(),
@@ -691,7 +714,8 @@ impl StagedWelcome {
     }
 
     /// Consumes the [`StagedWelcome`] and returns the respective [`MlsGroup`].
-    pub fn into_group<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, WelcomeError<Provider::StorageError>> {
@@ -725,7 +749,8 @@ impl StagedWelcome {
                         .vc_derivation_epoch_retention_policy()
                         .clone(),
                 ),
-            )?;
+            )
+            .await?;
         }
 
         // A join via a virtual-client KeyPackage lands on a leaf shared with
@@ -746,6 +771,7 @@ impl StagedWelcome {
             provider
                 .storage()
                 .vc_derivation_epoch_state::<_, VcDerivationEpochState>(&epoch_id)
+                .await
                 .map_err(WelcomeError::StorageError)?
                 .ok_or(WelcomeError::VirtualClientsError(
                     VirtualClientsError::MissingDerivationEpochState,
@@ -760,6 +786,7 @@ impl StagedWelcome {
                 epoch_id,
                 max_entries,
             )
+            .await
             .map_err(WelcomeError::StorageError)?;
         }
 
@@ -785,6 +812,7 @@ impl StagedWelcome {
 
         mls_group
             .store_epoch_keypairs(provider.storage(), group_keypairs.as_slice())
+            .await
             .map_err(WelcomeError::StorageError)?;
         // resize the store
         mls_group.resize_message_secrets_store(&past_epoch_deletion_policy);
@@ -806,11 +834,13 @@ impl StagedWelcome {
                 material.epoch_id.clone(),
                 max_entries,
             )
+            .await
             .map_err(WelcomeError::StorageError)?;
             if !material.last_resort {
                 provider
                     .storage()
                     .delete_retained_key_package_material(&material.key_package_ref)
+                    .await
                     .map_err(WelcomeError::StorageError)?;
             }
         }
@@ -830,12 +860,14 @@ impl StagedWelcome {
                             .key_package()
                             .hash_ref(provider.crypto())?,
                     )
+                    .await
                     .map_err(WelcomeError::StorageError)?;
             }
         }
 
         mls_group
             .store(provider.storage())
+            .await
             .map_err(WelcomeError::StorageError)?;
 
         Ok(mls_group)
@@ -876,7 +908,7 @@ impl StagedWelcome {
 /// has not.
 ///
 /// This lets a receiver read which parent group and epoch the group branches from before
-/// committing to a [`BranchInfo`], or which old group's resumption psk to inject for reinit.
+/// committing to a [`BranchInfo`], or the [`ReInitInfo`] of the predecessor.
 /// The decrypted state is carried here and reused when finishing the join.
 /// Create it with [`StagedWelcome::process_resuming_welcome`], read the PSK
 /// reference with [`Self::required_resumption_secret`], then finish with
@@ -893,7 +925,7 @@ pub struct PendingResumingWelcome {
 impl PendingResumingWelcome {
     /// The PSK pointing to the parent group and epoch for branch or old group and final epoch for reinit, if any.
     ///
-    /// The returned [`ResumptionPsk`] has a `usage` of either [`Reinit`](ResumptionPskUsage::Reinit) or [`Branch`](ResumptionPskUsage::Branch)
+    /// The returned [`ResumptionPsk`] has a `usage` of either [`Reinit`](ResumptionPskUsage::Reinit) or [`Branch`](ResumptionPskUsage::Branch).
     pub fn required_resumption_secret(&self) -> Option<&ResumptionPsk> {
         for psk_id in &self.group_secrets.psks {
             if let Psk::Resumption(resumption_psk) = &psk_id.psk {
@@ -913,7 +945,8 @@ impl PendingResumingWelcome {
     /// Use this method if the welcome does not need a PSK, indicated by [`Self::required_resumption_secret`] returning [`None`].
     ///
     /// This has the same effect as [`ProcessedWelcome::new_from_welcome`]
-    pub fn build<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<ProcessedWelcome, WelcomeError<Provider::StorageError>> {
@@ -926,7 +959,8 @@ impl PendingResumingWelcome {
             self.group_secrets,
             &self.welcome,
             None,
-        )?;
+        )
+        .await?;
 
         Ok(processed_welcome)
     }
@@ -937,11 +971,13 @@ impl PendingResumingWelcome {
     /// [`StagedWelcome::build_from_reinit`]); a `reinit_info` from the wrong
     /// group or epoch fails with [`WelcomeError::ReInitPredecessorMismatch`]. The
     /// remaining receiver checks run when [`JoinBuilder::build`] is called.
-    pub fn build_from_reinit<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_reinit<'a, Provider: OpenMlsProvider>(
         self,
         provider: &'a Provider,
         reinit_info: ReInitInfo,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
+        let resumption_info = ResumptionInfo::ReInit(reinit_info);
         let processed_welcome = finish_processed_welcome(
             provider,
             &self.mls_group_config,
@@ -950,10 +986,11 @@ impl PendingResumingWelcome {
             self.key_material,
             self.group_secrets,
             &self.welcome,
-            Some(ResumptionInfo::ReInit(&reinit_info)),
-        )?;
+            Some(&resumption_info),
+        )
+        .await?;
 
-        Ok(JoinBuilder::new(provider, processed_welcome).with_reinit_info(reinit_info))
+        Ok(JoinBuilder::new(provider, processed_welcome).with_resumption_info(resumption_info))
     }
 
     /// Prepare the subgroup-branch join with the selected [`BranchInfo`].
@@ -962,11 +999,13 @@ impl PendingResumingWelcome {
     /// [`StagedWelcome::build_from_branch`]); a `branch_info` from the wrong
     /// parent epoch fails with [`WelcomeError::SubgroupParentMismatch`]. The
     /// remaining receiver checks run when [`JoinBuilder::build`] is called.
-    pub fn build_from_branch<'a, Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_from_branch<'a, Provider: OpenMlsProvider>(
         self,
         provider: &'a Provider,
         branch_info: BranchInfo,
     ) -> Result<JoinBuilder<'a, Provider>, WelcomeError<Provider::StorageError>> {
+        let resumption_info = ResumptionInfo::Branch(branch_info);
         let processed_welcome = finish_processed_welcome(
             provider,
             &self.mls_group_config,
@@ -975,16 +1014,27 @@ impl PendingResumingWelcome {
             self.key_material,
             self.group_secrets,
             &self.welcome,
-            Some(ResumptionInfo::Branch(&branch_info)),
-        )?;
+            Some(&resumption_info),
+        )
+        .await?;
 
-        Ok(JoinBuilder::new(provider, processed_welcome).with_branch_info(branch_info))
+        Ok(JoinBuilder::new(provider, processed_welcome).with_resumption_info(resumption_info))
     }
 }
 
-pub(crate) enum ResumptionInfo<'a> {
-    ReInit(&'a ReInitInfo),
-    Branch(&'a BranchInfo),
+#[derive(Debug)]
+pub(crate) enum ResumptionInfo {
+    ReInit(ReInitInfo),
+    Branch(BranchInfo),
+}
+
+impl ResumptionInfo {
+    pub(crate) fn member_credentials(&self) -> &[Credential] {
+        match self {
+            ResumptionInfo::Branch(branch_info) => branch_info.member_credentials(),
+            ResumptionInfo::ReInit(reinit_info) => reinit_info.member_credentials(),
+        }
+    }
 }
 
 /// Decrypt a `Welcome`'s `GroupSecrets`.
@@ -994,11 +1044,9 @@ pub(crate) enum ResumptionInfo<'a> {
 /// the matching (non-last-resort) key package from storage via
 /// [`keys_for_welcome`] and decrypts the encrypted group secrets addressed to
 /// it. A virtual client's KeyPackage and retained virtual-client material are
-/// read but not consumed, see [`keys_for_welcome`]. The branch resumption PSK
-/// secret is not injected here: injection and the parent-reference check
-/// happen in [`finish_processed_welcome`], so this step is identical on both
-/// paths.
-fn decrypt_group_secrets<Provider: OpenMlsProvider>(
+/// read but not consumed, see [`keys_for_welcome`].
+#[openmls_traits::maybe_async]
+async fn decrypt_group_secrets<Provider: OpenMlsProvider>(
     provider: &Provider,
     mls_group_config: &MlsGroupJoinConfig,
     welcome: &Welcome,
@@ -1015,7 +1063,7 @@ fn decrypt_group_secrets<Provider: OpenMlsProvider>(
         .map_err(|_| WelcomeError::UnsupportedCiphersuite(ciphersuite))?;
 
     let (resumption_psk_store, key_material) =
-        keys_for_welcome(mls_group_config, welcome, provider)?;
+        keys_for_welcome(mls_group_config, welcome, provider).await?;
 
     let Some(egs) =
         welcome.find_encrypted_group_secret(key_material.key_package_ref(provider.crypto())?)
@@ -1055,81 +1103,67 @@ fn decrypt_group_secrets<Provider: OpenMlsProvider>(
 /// decrypts the group info, and runs the capability/ciphersuite checks,
 /// producing a [`ProcessedWelcome`]. It still needs the `welcome` for its
 /// encrypted group info.
-///
-/// For subgroup branching (`branch_info` set), the parent group's resumption
-/// PSK secret is injected at the sentinel epoch 0 and the branch PSK carried in
-/// the `Welcome` is checked to reference the same parent group and epoch as
-/// `branch_info` — both before the secret is mixed into the key schedule, so a
-/// wrong-epoch secret fails cleanly with [`WelcomeError::SubgroupParentMismatch`]
-/// rather than as an opaque group-info decryption failure further down.
 #[allow(clippy::too_many_arguments)]
-fn finish_processed_welcome<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+async fn finish_processed_welcome<Provider: OpenMlsProvider>(
     provider: &Provider,
     mls_group_config: &MlsGroupJoinConfig,
     ciphersuite: Ciphersuite,
-    mut resumption_psk_store: ResumptionPskStore,
+    resumption_psk_store: ResumptionPskStore,
     key_material: WelcomeKeyMaterial,
     group_secrets: GroupSecrets,
     welcome: &Welcome,
-    resumption_info: Option<ResumptionInfo>,
+    resumption_info: Option<&ResumptionInfo>,
 ) -> Result<ProcessedWelcome, WelcomeError<<Provider as OpenMlsProvider>::StorageError>> {
-    if let Some(resumption_info) = resumption_info {
-        // For subgroup branching and reinit, inject the parent group's resumption PSK at
-        // the sentinel epoch 0 before the PSKs are loaded.
-        // Using epoch 0 prevents confusion with normal (group-internal) resumption psks.
+    let foreign_psk = if let Some(resumption_info) = resumption_info {
+        // For subgroup branching and reinit, include the parent/predecessor group's resumption PSK.
         match resumption_info {
             ResumptionInfo::Branch(branch_info) => {
-                resumption_psk_store.add(0.into(), branch_info.resumption_psk_secret().clone());
-
                 // When joining a subgroup branch, the branch resumption
                 // PSK carried in the Welcome must reference the same parent group and
-                // epoch the receiver is branching from. This must be checked here, before
-                // the injected PSK secret is mixed into the key schedule: a wrong-epoch
-                // secret would otherwise only surface as an opaque group-info decryption
-                // failure further down.
-                let parent_matches = group_secrets
-                    .psks
-                    .iter()
-                    .filter_map(|id| match id.psk() {
-                        Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Branch => Some(r),
-                        _ => None,
-                    })
-                    .any(|r| {
-                        r.psk_group_id() == branch_info.group_id()
+                // epoch the receiver is branching from.
+                let parent_psk_id = group_secrets.psks.iter().find(|id| {
+                    matches!(id.psk(), Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Branch
+                            && r.psk_group_id() == branch_info.group_id()
                             && r.psk_epoch() == branch_info.epoch()
-                    });
-                if !parent_matches {
+                    )
+                });
+                if let Some(psk_id) = parent_psk_id {
+                    Some((psk_id, branch_info.resumption_psk_secret().clone()))
+                } else {
                     return Err(WelcomeError::SubgroupParentMismatch);
                 }
             }
             ResumptionInfo::ReInit(reinit_info) => {
-                resumption_psk_store.add(0.into(), reinit_info.resumption_psk_secret().clone());
-
                 // When joining a reinit, the resumption psk must match the `group_id` and final epoch of the old group.
-                let matches_reinit = group_secrets
-                    .psks
-                    .iter()
-                    .filter_map(|id| match id.psk() {
-                        Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Reinit => Some(r),
-                        _ => None,
-                    })
-                    .any(|r| {
-                        r.psk_group_id() == reinit_info.old_group_id()
-                            && r.psk_epoch() == reinit_info.old_group_epoch()
-                    });
-                if !matches_reinit {
+                let predecessor_psk_id = group_secrets.psks.iter().find(|id| {
+                    matches!(id.psk(), Psk::Resumption(r) if r.usage() == ResumptionPskUsage::Reinit
+                        && r.psk_group_id() == reinit_info.old_group_id()
+                        && r.psk_epoch() == reinit_info.old_group_epoch()
+                    )
+                });
+                if let Some(psk_id) = predecessor_psk_id {
+                    Some((psk_id, reinit_info.resumption_psk_secret().clone()))
+                } else {
                     return Err(WelcomeError::ReInitPredecessorMismatch);
                 }
             }
         }
-    }
+    } else {
+        None
+    };
 
     let psk_secret = {
+        // We are joining the group, so there is no resumption PSK history and we don't know the group_id yet.
+        // Therefore, resumption PSKs of usage `Application` cannot be resolved and `group_id` is `None`.
         let psks = load_psks(
             provider.storage(),
             &resumption_psk_store,
+            None,
+            foreign_psk,
             &group_secrets.psks,
-        )?;
+        )
+        .await?;
 
         PskSecret::new(provider.crypto(), ciphersuite, psks)?
     };
@@ -1205,7 +1239,8 @@ fn finish_processed_welcome<Provider: OpenMlsProvider>(
 }
 
 /// Read keys for decrypting the welcome message.
-fn keys_for_welcome<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+async fn keys_for_welcome<Provider: OpenMlsProvider>(
     mls_group_config: &MlsGroupJoinConfig,
     welcome: &Welcome,
     provider: &Provider,
@@ -1220,17 +1255,19 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
         if let Some(key_package_bundle) = provider
             .storage()
             .key_package(&hash_ref)
+            .await
             .map_err(WelcomeError::StorageError)?
         {
             let key_package_bundle: KeyPackageBundle = key_package_bundle;
             if key_package_bundle.key_package().last_resort() {
-                log::debug!("Key package has last resort extension, not deleting");
+                log::debug!("KeyPackage has a last-resort marker, not deleting");
             } else if !join_consumes_key_package(&key_package_bundle)? {
                 provider
                     .storage()
                     .delete_key_package(
                         &key_package_bundle.key_package.hash_ref(provider.crypto())?,
                     )
+                    .await
                     .map_err(WelcomeError::StorageError)?;
             }
             return Ok((
@@ -1241,7 +1278,7 @@ fn keys_for_welcome<Provider: OpenMlsProvider>(
 
         #[cfg(feature = "virtual-clients-draft")]
         if let Some(material) =
-            resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref)?
+            resolve_vc_welcome_material(provider, welcome.ciphersuite(), &hash_ref).await?
         {
             // The retained material stays in storage for now.
             return Ok((
@@ -1292,7 +1329,8 @@ fn join_consumes_key_package<StorageError>(
 ///
 /// [`RetainedKeyPackageMaterial`]: RetainedKeyPackageMaterial
 #[cfg(feature = "virtual-clients-draft")]
-pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+pub(crate) async fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
     provider: &Provider,
     ciphersuite: Ciphersuite,
     hash_ref: &KeyPackageRef,
@@ -1300,6 +1338,7 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
     let storage = provider.storage();
     let Some(material) = storage
         .retained_key_package_material::<_, RetainedKeyPackageMaterial>(hash_ref)
+        .await
         .map_err(WelcomeError::StorageError)?
     else {
         return Ok(None);
@@ -1331,9 +1370,7 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
         init_private_key: init_key_pair.private,
         init_key: init_key_pair.public.into(),
         encryption_keypair,
-        last_resort: material
-            .key_package_extensions
-            .contains(ExtensionType::LastResort),
+        last_resort: has_last_resort_marker(&material.key_package_extensions),
     }))
 }
 
@@ -1350,7 +1387,8 @@ pub(crate) fn resolve_vc_welcome_material<Provider: OpenMlsProvider>(
 /// [`VC_COMPONENT_ID`]: crate::components::vc_derivation_info::VC_COMPONENT_ID
 /// [`DerivationInfoTbe`]: crate::components::vc_derivation_info::DerivationInfoTbe
 #[cfg(feature = "virtual-clients-draft")]
-fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+async fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     provider: &Provider,
     public_group: &PublicGroup,
     material: &VcWelcomeMaterial,
@@ -1385,6 +1423,7 @@ fn find_and_validate_vc_own_leaf<Provider: OpenMlsProvider>(
     let state: VcDerivationEpochState = provider
         .storage()
         .vc_derivation_epoch_state(&material.epoch_id)
+        .await
         .map_err(|e| {
             log::error!("vc: load derivation epoch state in welcome staging failed: {e:?}");
             VirtualClientsError::StorageError
@@ -1450,7 +1489,8 @@ impl MlsGroup {
     /// this client on the shared virtual-client leaf (index 0).
     ///
     /// [`MlsGroupBuilder::vc_emulation`]: crate::group::MlsGroupBuilder::vc_emulation
-    pub fn vc_join_at_creation<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn vc_join_at_creation<Provider: OpenMlsProvider>(
         provider: &Provider,
         join_config: &MlsGroupJoinConfig,
         verifiable_group_info: VerifiableGroupInfo,
@@ -1499,7 +1539,7 @@ impl MlsGroup {
         }
 
         // Load the derivation epoch state and operation tree.
-        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
+        let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id).await?;
         let (_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
 
         // Decrypt the derivation info (KeyPackage case) and read the batch index
@@ -1587,6 +1627,7 @@ impl MlsGroup {
         provider
             .storage()
             .write_vc_operation_tree(&epoch_id, &operation_tree)
+            .await
             .map_err(Error::StorageError)?;
 
         let message_secrets_store = MessageSecretsStore::new_with_secret(
@@ -1613,6 +1654,7 @@ impl MlsGroup {
             epoch_id,
             max_entries,
         )
+        .await
         .map_err(Error::StorageError)?;
 
         let mls_group = MlsGroup {
@@ -1634,9 +1676,11 @@ impl MlsGroup {
         };
         mls_group
             .store(provider.storage())
+            .await
             .map_err(Error::StorageError)?;
         mls_group
             .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+            .await
             .map_err(Error::StorageError)?;
 
         Ok(mls_group)
@@ -1706,7 +1750,8 @@ impl VcExternalCommitJoinBuilder {
     /// Nothing is consumed or persisted at this point. Dropping the returned
     /// [`StagedVcExternalCommitJoin`] discards the join without advancing
     /// the shared operation secret tree.
-    pub fn process_commit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn process_commit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         verifiable_group_info: VerifiableGroupInfo,
@@ -1785,13 +1830,21 @@ impl VcExternalCommitJoinBuilder {
 
         // Parse and verify the external commit against the prior-epoch group.
         // A PrivateMessage claiming our own leaf cannot be an external commit.
-        let processing::UnprotectedMessage::Unverified(unverified) =
-            group.unprotect_message(provider, external_commit)?
+        let processing::UnprotectedMessage::Unverified {
+            message: unverified,
+            ..
+        } = group.unprotect_message(provider, external_commit).await?
         else {
             return Err(Error::NotAnExternalCommit);
         };
         let verified = unverified
-            .verify(group.ciphersuite(), provider.crypto(), group.version())
+            .verify(
+                group.ciphersuite(),
+                provider.crypto(),
+                group.version(),
+                // An external commit carries no Add proposals.
+                LeafNodeLifetimePolicy::Verify,
+            )
             .map_err(ProcessMessageError::from)?;
         if !matches!(verified.content.sender(), Sender::NewMemberCommit) {
             return Err(Error::NotAnExternalCommit);
@@ -1940,7 +1993,8 @@ impl StagedVcExternalCommitJoin {
     /// the committing sibling's dictionary fail with a confirmation tag
     /// mismatch after the generation is consumed, so they should be computed
     /// deterministically from the proposals rather than guessed.
-    pub fn into_group<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn into_group<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, VcExternalCommitJoinError<Provider::StorageError>> {
@@ -1974,38 +2028,45 @@ impl StagedVcExternalCommitJoin {
         // epoch id + carried external init secret) from the leaf's derivation
         // info, then stage and merge the commit through the sibling-VC path.
         let material = group
-            .load_vc_commit_material(provider, commit)?
+            .load_vc_commit_material(provider, commit)
+            .await?
             .ok_or(Error::MissingDerivationInfo)?;
-        let staged = group.stage_commit_with_app_data_updates(
-            &content,
-            vec![],
-            vec![],
-            app_data_updates,
-            provider,
-            Some(material),
-        )?;
-        group.merge_staged_commit(provider, staged)?;
+        let staged = group
+            .stage_commit_with_app_data_updates(
+                &content,
+                vec![],
+                vec![],
+                app_data_updates,
+                provider,
+                // An external commit carries no Add proposals.
+                LeafNodeLifetimePolicy::Verify,
+                Some(material),
+            )
+            .await?;
+        group.merge_staged_commit(provider, staged).await?;
         let deletion_policy = group.mls_group_config.past_epoch_deletion_policy().clone();
         group.resize_message_secrets_store(&deletion_policy);
         group
             .store(provider.storage())
+            .await
             .map_err(Error::StorageError)?;
         Ok(group)
     }
 }
 
-/// Verify or skip the validation of leaf node lifetimes in the ratchet tree
-/// when joining a group.
+/// How the lifetime of a leaf node is checked.
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LeafNodeLifetimePolicy {
-    /// Verify the lifetime of leaf nodes in the ratchet tree.
-    ///
-    /// **NOTE:** Only leaf nodes that have never been updated have a lifetime.
+    /// Check the lifetime against the current time.
     #[default]
     Verify,
 
-    /// Skip the verification of the lifeimte in leaf nodes in the ratchet tree.
+    /// Do not check the lifetime.
     Skip,
+
+    /// Check the lifetime against the given time, in seconds since the Unix
+    /// epoch, instead of the current time.
+    VerifyAt(u64),
 }
 
 /// Builder for joining a group.
@@ -2017,14 +2078,12 @@ pub struct JoinBuilder<'a, Provider: OpenMlsProvider> {
     ratchet_tree: Option<RatchetTreeIn>,
     validate_lifetimes: LeafNodeLifetimePolicy,
     replace_old_group: bool,
-    /// Set when joining a subgroup branch (see [`StagedWelcome::build_from_branch`]).
+    /// Set when joining a subgroup branch (see [`StagedWelcome::build_from_branch`]),
+    /// or when joining a reinitialized group (see [`StagedWelcome::build_from_reinit`]).
     /// Triggers the receiver checks in [`Self::build`].
-    branch: Option<BranchInfo>,
-    /// Set when joining a reinitialized group (see [`StagedWelcome::build_from_reinit`]).
-    /// Triggers the receiver checks in [`Self::build`].
-    reinit: Option<ReInitInfo>,
+    resumption_info: Option<ResumptionInfo>,
     /// Whether to check the new group's members against the parent or old
-    /// group by credential. Only relevant when [`Self::branch`] or [`Self::reinit`] is set.
+    /// group by credential. Only relevant when [`Self::resumption_info`] is set.
     /// Defaults to `true`.
     check_members: bool,
 }
@@ -2038,32 +2097,24 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
             ratchet_tree: None,
             replace_old_group: false,
             validate_lifetimes: LeafNodeLifetimePolicy::Verify,
-            branch: None,
-            reinit: None,
+            resumption_info: None,
             check_members: true,
         }
     }
 
-    /// Seed this builder with the parent group's [`BranchInfo`], turning it into
-    /// a subgroup-branch join (see [`StagedWelcome::build_from_branch`]).
-    fn with_branch_info(mut self, branch_info: BranchInfo) -> Self {
-        self.branch = Some(branch_info);
+    /// Seed this builder with the parent group's [`BranchInfo`] or predecessor's [`ReInitInfo`],
+    /// turning it into a subgroup-branch join (see [`StagedWelcome::build_from_branch`]) or
+    /// reinit join (see [`StagedWelcome::build_from_reinit`]).
+    fn with_resumption_info(mut self, resumption_info: ResumptionInfo) -> Self {
+        self.resumption_info = Some(resumption_info);
         self
     }
-
-    /// Seed this builder with the old group's [`ReInitInfo`], turning it into
-    /// a reinit join (see [`StagedWelcome::build_from_reinit`]).
-    fn with_reinit_info(mut self, reinit_info: ReInitInfo) -> Self {
-        self.reinit = Some(reinit_info);
-        self
-    }
-
     /// When joining a subgroup branch or a reinitialized group, controls
     /// whether [`Self::build`] checks the new group's members by credential
     /// equality. Defaults to `true`.
-    /// **Note**: This is a shortcut for members that are identical if and only if
-    /// credentials are identical.
-    /// For more complex member equivalence conditions, the application must disable
+    ///
+    /// **Note**: This is a shortcut for members that are equivalent when credentials
+    /// are equal. For more complex member equivalence conditions, the application must disable
     /// this and perform the equivalence check itself.
     ///
     /// For a subgroup branch, every subgroup member must also be a member of
@@ -2097,6 +2148,14 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
         self
     }
 
+    /// Sets how the lifetimes of leaf nodes in the ratchet tree are checked.
+    /// [`Self::skip_lifetime_validation`] is the same as passing
+    /// [`LeafNodeLifetimePolicy::Skip`].
+    pub fn leaf_node_lifetime_policy(mut self, lifetime_policy: LeafNodeLifetimePolicy) -> Self {
+        self.validate_lifetimes = lifetime_policy;
+        self
+    }
+
     /// Get a reference to the [`ProcessedWelcome`].
     ///
     /// Use this to inspect the [`Welcome`] message before validation.
@@ -2105,81 +2164,84 @@ impl<'a, Provider: OpenMlsProvider> JoinBuilder<'a, Provider> {
     }
 
     /// Build the [`StagedWelcome`].
-    pub fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
+    #[openmls_traits::maybe_async]
+    pub async fn build(self) -> Result<StagedWelcome, WelcomeError<Provider::StorageError>> {
         // Receiver checks (a) and (b): when joining a subgroup branch, the
         // version and ciphersuite must match the parent group, and the subgroup
         // must be at epoch 1.
-        if let Some(branch_info) = &self.branch {
-            let group_info = self.processed_welcome.unverified_group_info();
-            if group_info.group_context().protocol_version() != branch_info.version()
-                || group_info.ciphersuite() != branch_info.ciphersuite()
-            {
-                return Err(WelcomeError::SubgroupParameterMismatch);
+        match &self.resumption_info {
+            Some(ResumptionInfo::Branch(branch_info)) => {
+                let group_info = self.processed_welcome.unverified_group_info();
+                if group_info.group_context().protocol_version() != branch_info.version()
+                    || group_info.ciphersuite() != branch_info.ciphersuite()
+                {
+                    return Err(WelcomeError::SubgroupParameterMismatch);
+                }
+                if group_info.group_context().epoch().as_u64() != 1 {
+                    return Err(WelcomeError::SubgroupEpochInvalid);
+                }
             }
-            if group_info.group_context().epoch().as_u64() != 1 {
-                return Err(WelcomeError::SubgroupEpochInvalid);
+            Some(ResumptionInfo::ReInit(reinit_info)) => {
+                // RFC 9420 §11.2 receiver checks: the successor's parameters must match
+                // the ReInit proposal, and it must be at epoch 1.
+                let group_info = self.processed_welcome.unverified_group_info();
+                let group_context = group_info.group_context();
+                let reinit_proposal = reinit_info.proposal();
+                // https://validation.openmls.tech/#valn1413 (parameters match the ReInit
+                // proposal).
+                if group_context.protocol_version() != reinit_proposal.version()
+                    || group_context.ciphersuite() != reinit_proposal.ciphersuite()
+                    || group_context.group_id() != reinit_proposal.group_id()
+                    || group_context.extensions() != reinit_proposal.extensions()
+                {
+                    return Err(WelcomeError::ReInitParameterMismatch);
+                }
+                // https://validation.openmls.tech/#valn1412 (reinit/branch PSK => epoch 1).
+                if group_context.epoch().as_u64() != 1 {
+                    return Err(WelcomeError::ReInitEpochInvalid);
+                }
             }
-        }
-        if let Some(reinit_info) = &self.reinit {
-            // RFC 9420 §11.2 receiver checks: the successor's parameters must match
-            // the ReInit proposal, and it must be at epoch 1.
-            let group_info = self.processed_welcome.unverified_group_info();
-            let group_context = group_info.group_context();
-            let reinit_proposal = reinit_info.proposal();
-            // https://validation.openmls.tech/#valn1413 (parameters match the ReInit
-            // proposal).
-            if group_context.protocol_version() != reinit_proposal.version()
-                || group_context.ciphersuite() != reinit_proposal.ciphersuite()
-                || group_context.group_id() != reinit_proposal.group_id()
-                || group_context.extensions() != reinit_proposal.extensions()
-            {
-                return Err(WelcomeError::ReInitParameterMismatch);
-            }
-            // https://validation.openmls.tech/#valn1412 (reinit/branch PSK => epoch 1).
-            if group_context.epoch().as_u64() != 1 {
-                return Err(WelcomeError::ReInitEpochInvalid);
-            }
+            None => {}
         }
 
-        let staged_welcome = self.processed_welcome.into_staged_welcome_inner(
-            self.provider,
-            self.ratchet_tree,
-            self.validate_lifetimes,
-            self.replace_old_group,
-        )?;
+        let staged_welcome = self
+            .processed_welcome
+            .into_staged_welcome_inner(
+                self.provider,
+                self.ratchet_tree,
+                self.validate_lifetimes,
+                self.replace_old_group,
+            )
+            .await?;
 
         // Receiver check (c): every LeafNode in the subgroup must
         // match a LeafNode in the parent group. For a reinit, the members
         // must be identical to the old group's.
         // Member equivalence is an application responsibility.
-        // This is a shortcut for a simple case, matching by credential.
+        // This is a shortcut for a simple case, matching credentials with multiset semantics.
         if self.check_members {
-            if let Some(branch_info) = &self.branch {
-                for member in staged_welcome.members() {
-                    if !branch_info
-                        .member_credentials()
-                        .contains(&member.credential)
-                    {
-                        return Err(WelcomeError::SubgroupLeafMismatch);
-                    }
-                }
-            }
-            if let Some(reinit_info) = &self.reinit {
-                let old_credentials = reinit_info.member_credentials();
-                let mut unseen_old_credentials = old_credentials.to_vec();
-                for member in staged_welcome.members() {
-                    if let Some(position) = unseen_old_credentials
+            if let Some(resumption_info) = &self.resumption_info {
+                let mut unseen_old_credentials: Vec<_> =
+                    resumption_info.member_credentials().to_vec();
+                for new_member in staged_welcome.members() {
+                    if let Some(parent_index) = unseen_old_credentials
                         .iter()
-                        .position(|c| *c == member.credential)
+                        .position(|m| m == &new_member.credential)
                     {
-                        unseen_old_credentials.remove(position);
+                        unseen_old_credentials.swap_remove(parent_index);
                     } else {
-                        return Err(WelcomeError::ReInitLeafMismatch);
+                        // The new group contains a member the source group doesn't.
+                        return match resumption_info {
+                            ResumptionInfo::Branch(_) => Err(WelcomeError::SubgroupLeafMismatch),
+                            ResumptionInfo::ReInit(_) => Err(WelcomeError::ReInitLeafMismatch),
+                        };
                     }
                 }
-                // The members must be identical for reinit.
-                if !unseen_old_credentials.is_empty() {
-                    return Err(WelcomeError::ReInitLeavesMissing(unseen_old_credentials));
+                if matches!(resumption_info, ResumptionInfo::ReInit(_))
+                    && !unseen_old_credentials.is_empty()
+                {
+                    // The predecessor contained a member that is missing in the new group.
+                    return Err(WelcomeError::ReInitLeafMismatch);
                 }
             }
         }
