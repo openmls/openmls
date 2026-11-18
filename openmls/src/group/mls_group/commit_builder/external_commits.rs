@@ -81,6 +81,7 @@ pub struct ExternalCommitBuilder {
     config: MlsGroupJoinConfig,
     validate_lifetimes: LeafNodeLifetimePolicy,
     aad: Vec<u8>,
+    own_leaf: Option<LeafNodeIndex>,
     /// Whether to join the group as an emulation group of a virtual client. Set
     /// by [`Self::emulation_group`].
     #[cfg(feature = "virtual-clients-draft")]
@@ -130,6 +131,14 @@ impl ExternalCommitBuilder {
     /// retained as the AAD of the group that is being joined.
     pub fn with_aad(mut self, aad: Vec<u8>) -> Self {
         self.aad = aad;
+        self
+    }
+
+    /// Removes the leaf at `leaf_index` with the external commit. By default,
+    /// the external commit removes a member with the same signature key as the
+    /// new leaf.
+    pub fn remove_own_leaf(mut self, leaf_index: LeafNodeIndex) -> Self {
+        self.own_leaf = Some(leaf_index);
         self
     }
 
@@ -205,6 +214,7 @@ impl ExternalCommitBuilder {
             ratchet_tree,
             config,
             aad,
+            own_leaf,
             validate_lifetimes,
             #[cfg(feature = "virtual-clients-draft")]
             emulation_group,
@@ -239,6 +249,7 @@ impl ExternalCommitBuilder {
             proposals,
             config,
             aad,
+            own_leaf,
             #[cfg(feature = "virtual-clients-draft")]
             emulation_group,
         })
@@ -255,6 +266,7 @@ pub struct VerifiedExternalCommitBuilder {
     proposals: Vec<PublicMessageIn>,
     config: MlsGroupJoinConfig,
     aad: Vec<u8>,
+    own_leaf: Option<LeafNodeIndex>,
     #[cfg(feature = "virtual-clients-draft")]
     emulation_group: bool,
 }
@@ -289,6 +301,7 @@ impl VerifiedExternalCommitBuilder {
             proposals,
             mut config,
             aad,
+            own_leaf,
             #[cfg(feature = "virtual-clients-draft")]
             emulation_group,
         } = self;
@@ -374,16 +387,15 @@ impl VerifiedExternalCommitBuilder {
 
         let inline_proposals = [external_init_proposal].into_iter();
 
-        // If there is a group member in the group with the same identity as us,
-        // commit a remove proposal.
+        // Remove our previous leaf, by default the one with our signature key.
         let our_signature_key = credential_with_key.signature_key.as_slice();
-        let remove_proposal = public_group.members().find_map(|member| {
-            (member.signature_key == our_signature_key).then_some(Proposal::remove(
-                RemoveProposal {
-                    removed: member.index,
-                },
-            ))
+        let removed = own_leaf.or_else(|| {
+            public_group
+                .members()
+                .find(|member| member.signature_key == our_signature_key)
+                .map(|member| member.index)
         });
+        let remove_proposal = removed.map(|removed| Proposal::remove(RemoveProposal { removed }));
 
         let inline_proposals = inline_proposals
             .chain(remove_proposal)

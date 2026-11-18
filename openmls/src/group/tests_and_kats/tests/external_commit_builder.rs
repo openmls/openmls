@@ -818,3 +818,90 @@ fn verify_group_respects_skip_lifetime_validation() {
 
     assert_eq!(bob_group.members().count(), 2);
 }
+
+/// Bob rejoins with a new signature key. Only `remove_own_leaf` removes his
+/// previous leaf.
+#[openmls_test]
+fn external_commit_remove_own_leaf() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let new_bob_provider = &Provider::default();
+
+    let (mut alice_group, alice_signer, bob_group, _bob_signer, _, _) =
+        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+    let old_bob_leaf = bob_group.own_leaf_index();
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: new_bob_credential_with_key,
+        signer: new_bob_signer,
+    } = generate_credential_with_key(
+        b"Bob".into(),
+        ciphersuite.signature_algorithm(),
+        new_bob_provider,
+    );
+
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, true)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+    let rejoin = |remove_own_leaf: bool| {
+        let verifiable_group_info = verifiable_group_info.clone();
+        let mut builder = MlsGroup::external_commit_builder();
+        if remove_own_leaf {
+            builder = builder.remove_own_leaf(old_bob_leaf);
+        }
+        builder
+            .build_group(
+                new_bob_provider,
+                verifiable_group_info,
+                new_bob_credential_with_key.clone(),
+            )
+            .unwrap()
+            .load_psks(new_bob_provider.storage())
+            .unwrap()
+            .build(
+                new_bob_provider.rand(),
+                new_bob_provider.crypto(),
+                &new_bob_signer,
+                |_| true,
+            )
+            .unwrap()
+            .finalize(new_bob_provider)
+            .unwrap()
+    };
+
+    let removed_leaves = |group: &mut MlsGroup, bundle: crate::group::CommitMessageBundle| {
+        let processed = group
+            .process_message(
+                alice_provider,
+                bundle.into_commit().into_protocol_message().unwrap(),
+            )
+            .unwrap();
+        let ProcessedMessageContent::StagedCommitMessage(staged_commit) = processed.into_content()
+        else {
+            panic!("Expected a staged commit.");
+        };
+        let removed: Vec<_> = staged_commit
+            .remove_proposals()
+            .map(|p| p.remove_proposal().removed())
+            .collect();
+        (removed, staged_commit)
+    };
+
+    let (_, bundle) = rejoin(false);
+    let (removed, _) = removed_leaves(&mut alice_group, bundle);
+    assert!(removed.is_empty());
+
+    let (new_bob_group, bundle) = rejoin(true);
+    let (removed, staged_commit) = removed_leaves(&mut alice_group, bundle);
+    assert_eq!(removed, vec![old_bob_leaf]);
+    alice_group
+        .merge_staged_commit(alice_provider, *staged_commit)
+        .unwrap();
+    assert_eq!(alice_group.members().count(), 2);
+    assert_eq!(
+        alice_group.export_group_context(),
+        new_bob_group.export_group_context()
+    );
+}
