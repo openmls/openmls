@@ -851,3 +851,53 @@ fn build_vc_key_package_carries_reproducible_derivation_info() {
     assert_eq!(tbe_generation, batch.generation);
     assert_eq!(key_package_index, key_package_info.key_package_index);
 }
+
+/// Validation of a key package that carries a GREASE extension, and lists the
+/// same GREASE value in its capabilities, must succeed (RFC 9420 Section 13.5).
+///
+/// The extension decodes as an unknown extension while the capabilities entry
+/// decodes as a GREASE extension type; both must name the same type.
+#[openmls_test::openmls_test]
+fn key_package_validation_with_grease_extension() {
+    const GREASE_TYPE: u16 = 0x0a0a;
+
+    let provider = &Provider::default();
+    let credential = Credential::from(BasicCredential::new(b"Sasha".to_vec()));
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+    let key_package_extensions =
+        Extensions::single(Extension::Unknown(GREASE_TYPE, UnknownExtension(vec![])))
+            .expect("a GREASE extension is valid in a key package");
+
+    let key_package = KeyPackage::builder()
+        .leaf_node_capabilities(Capabilities::new(
+            None,
+            Some(&[ciphersuite]),
+            Some(&[ExtensionType::Grease(GREASE_TYPE)]),
+            None,
+            Some(&[CredentialType::Basic]),
+        ))
+        .key_package_extensions(key_package_extensions)
+        .build(
+            ciphersuite,
+            provider,
+            &signature_keys,
+            CredentialWithKey {
+                signature_key: signature_keys.to_public_vec().into(),
+                credential,
+            },
+        )
+        .expect("failed to build the key package");
+
+    let serialized = key_package
+        .key_package()
+        .tls_serialize_detached()
+        .expect("failed to serialize the key package");
+
+    let key_package_in =
+        KeyPackageIn::tls_deserialize_exact(&serialized).expect("failed to parse the key package");
+
+    key_package_in
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .expect("validation should accept an advertised GREASE extension");
+}
