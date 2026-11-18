@@ -47,7 +47,8 @@ struct KatData {
 }
 
 /// A crypto provider that delegates everything to `inner`, except for
-/// randomness, which is generated deterministically.
+/// [`random_vec`](OpenMlsCrypto::random_vec) and [`random_vec`](OpenMlsCrypto::random_array),
+/// which return deterministic values. Randomness in other primitives is as in `inner`.
 struct DeterministicCrypto<Provider: OpenMlsProvider> {
     id: String,
     ctr: std::sync::atomic::AtomicUsize,
