@@ -4,11 +4,11 @@
 
 use std::fmt::Display;
 
+use openmls_traits::crypto::OpenMlsCrypto;
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
 use crate::extensions::*;
-use openmls_traits::random::OpenMlsRand;
 
 #[cfg(test)]
 use crate::ciphersuite::*;
@@ -68,9 +68,12 @@ impl GroupId {
     /// Create a new (random) group ID.
     ///
     /// Group IDs should be random and not be misused as, e.g., a group name.
-    pub fn random(rng: &impl OpenMlsRand) -> Self {
+    pub fn random(crypto: &impl OpenMlsCrypto) -> Self {
         Self {
-            value: rng.random_vec(16).expect("Not enough randomness.").into(),
+            value: crypto
+                .random_vec(16)
+                .expect("Not enough randomness.")
+                .into(),
         }
     }
 

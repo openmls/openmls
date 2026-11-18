@@ -9,7 +9,7 @@
 // feature is off.
 #![cfg_attr(not(feature = "generate-kats"), allow(unused_imports))]
 
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, OpenMlsProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
 
@@ -170,14 +170,14 @@ fn write_test_vectors() {
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     let provider = OpenMlsRustCrypto::default();
 
-    let confirmation_key = ConfirmationKey::random(ciphersuite, provider.rand());
+    let confirmation_key = ConfirmationKey::random(ciphersuite, provider.crypto());
 
     let interim_transcript_hash_before = randombytes(ciphersuite.hash_length());
 
     // Note: This does not have a valid `confirmation_tag` for now and is only used to
     // calculate `confirmed_transcript_hash_after`.
     let mut authenticated_content = {
-        let aad = provider.rand().random_vec(48).unwrap();
+        let aad = provider.crypto().random_vec(48).unwrap();
         let framing_parameters = FramingParameters::new(&aad, WireFormat::PublicMessage);
 
         // XXX: Use random but valid sender.
@@ -190,18 +190,18 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
 
         let group_context = {
             let tree_hash_before = provider
-                .rand()
+                .crypto()
                 .random_vec(ciphersuite.hash_length())
                 .unwrap();
 
             let confirmed_transcript_hash_before = provider
-                .rand()
+                .crypto()
                 .random_vec(ciphersuite.hash_length())
                 .unwrap();
 
             GroupContext::new(
                 ciphersuite,
-                GroupId::random(provider.rand()),
+                GroupId::random(provider.crypto()),
                 random_u64(),
                 tree_hash_before,
                 confirmed_transcript_hash_before,

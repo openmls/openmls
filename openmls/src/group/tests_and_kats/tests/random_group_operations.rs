@@ -308,7 +308,6 @@ impl<Provider: OpenMlsProvider + Default> Driver<Provider> {
             .load_psks(instance.provider.storage())
             .unwrap()
             .build(
-                instance.provider.rand(),
                 instance.provider.crypto(),
                 &self.clients[committer.0].signer,
                 |_| true,
@@ -385,7 +384,6 @@ impl<Provider: OpenMlsProvider + Default> Driver<Provider> {
             .load_psks(instance.provider.storage())
             .unwrap()
             .build(
-                instance.provider.rand(),
                 instance.provider.crypto(),
                 &self.clients[committer.0].signer,
                 |_| true,
@@ -615,7 +613,7 @@ impl<Provider: OpenMlsProvider + Default> Driver<Provider> {
             )
             .load_psks(provider.storage())
             .unwrap()
-            .build(provider.rand(), provider.crypto(), &client.signer, |_| true)
+            .build(provider.crypto(), &client.signer, |_| true)
             .unwrap()
             .finalize(&provider)
             .unwrap();

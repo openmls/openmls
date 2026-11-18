@@ -3,9 +3,7 @@
 
 use std::{borrow::BorrowMut, marker::PhantomData};
 
-use openmls_traits::{
-    crypto::OpenMlsCrypto, random::OpenMlsRand, signatures::Signer, storage::StorageProvider as _,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer, storage::StorageProvider as _};
 use tls_codec::Serialize as _;
 
 use crate::{
@@ -207,7 +205,7 @@ pub struct Complete {
 ///   .consume_proposal_store(false)
 ///   .add_proposal(key_package_to_add)
 ///   .load_psks(provider.storage())?
-///   .build(provider.rand(), provider.crypto(), signer, app_policy_proposals)?
+///   .build(provider.crypto(), signer, app_policy_proposals)?
 ///   .stage_commit(provider)?;
 ///
 /// let commit = message_bundle.commit();
@@ -425,13 +423,13 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// [RFC 9420 §11.3]: https://www.rfc-editor.org/rfc/rfc9420.html#name-subgroup-branching
     pub(crate) fn branch(
         mut self,
-        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         branch_info: &BranchInfo,
     ) -> Result<Self, CreateCommitError> {
         // Sample a fresh random nonce of length KDF.Nh, as required by the RFC.
         let psk_id = PreSharedKeyId::new(
             branch_info.ciphersuite(),
-            rand,
+            crypto,
             Psk::Resumption(ResumptionPsk::new(
                 ResumptionPskUsage::Branch,
                 branch_info.group_id().clone(),
@@ -457,7 +455,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
     /// [RFC 9420 §11.2]: https://www.rfc-editor.org/rfc/rfc9420.html#name-reinitialization
     pub(crate) fn reinit(
         mut self,
-        rand: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
         old_group_id: GroupId,
         old_group_epoch: GroupEpoch,
         resumption_psk_secret: ResumptionPskSecret,
@@ -467,7 +465,7 @@ impl<'a> CommitBuilder<'a, Initial, &mut MlsGroup> {
         // the nonce length is that of the successor group's ciphersuite.
         let psk_id = PreSharedKeyId::new(
             self.group.ciphersuite(),
-            rand,
+            crypto,
             Psk::Resumption(ResumptionPsk::new(
                 ResumptionPskUsage::Reinit,
                 old_group_id,
@@ -862,12 +860,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// or all non-reinit proposals when building a commit.
     pub fn build<S: Signer>(
         self,
-        rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         signer: &S,
         f: impl FnMut(&QueuedProposal) -> bool,
     ) -> Result<CommitBuilder<'a, Complete, G>, CreateCommitError> {
-        self.build_internal(rand, crypto, signer, None::<NewSignerBundle<'_, S>>, f)
+        self.build_internal(crypto, signer, None::<NewSignerBundle<'_, S>>, f)
     }
 
     /// Just like [`Self::build`], this function validates the inputs and builds the
@@ -891,7 +888,6 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
     /// take their credential and signer from the external commit builder.
     pub fn build_with_new_signer<S: Signer>(
         self,
-        rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         old_signer: &impl Signer,
         new_signer: NewSignerBundle<'_, S>,
@@ -903,12 +899,11 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         if self.stage.external_commit_info.is_some() {
             return Err(CreateCommitError::ExternalCommitWithNewSigner);
         }
-        self.build_internal(rand, crypto, old_signer, Some(new_signer), f)
+        self.build_internal(crypto, old_signer, Some(new_signer), f)
     }
 
     fn build_internal<S: Signer>(
         self,
-        rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         old_signer: &impl Signer,
         new_signer: Option<NewSignerBundle<'_, S>>,
@@ -1176,7 +1171,6 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                 // tree hash.
                 match new_signer {
                     Some(new_signer) => diff.compute_path(
-                        rand,
                         crypto,
                         own_leaf_index,
                         apply_proposals_values.exclusion_list(),
@@ -1188,7 +1182,6 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
                         own_update_override,
                     )?,
                     None => diff.compute_path(
-                        rand,
                         crypto,
                         own_leaf_index,
                         apply_proposals_values.exclusion_list(),
@@ -1980,16 +1973,11 @@ mod tests {
         assert_eq!(alice_group.epoch(), 1.into());
         let result = alice_group
             .commit_builder()
-            .branch(alice_provider.rand(), &parent_group.branch_info())
+            .branch(alice_provider.crypto(), &parent_group.branch_info())
             .unwrap()
             .load_psks(alice_provider.storage())
             .unwrap()
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_signer,
-                |_| true,
-            );
+            .build(alice_provider.crypto(), &alice_signer, |_| true);
 
         assert!(
             matches!(
@@ -2033,7 +2021,7 @@ mod tests {
         let result = alice_group
             .commit_builder()
             .reinit(
-                alice_provider.rand(),
+                alice_provider.crypto(),
                 old_group.group_id().clone(),
                 old_group.epoch(),
                 old_secret,
@@ -2041,12 +2029,7 @@ mod tests {
             .unwrap()
             .load_psks(alice_provider.storage())
             .unwrap()
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_signer,
-                |_| true,
-            );
+            .build(alice_provider.crypto(), &alice_signer, |_| true);
 
         assert!(
             matches!(

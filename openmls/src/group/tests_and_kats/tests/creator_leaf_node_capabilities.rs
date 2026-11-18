@@ -640,12 +640,7 @@ fn external_committer_leaf_advertises_group_ciphersuite() {
         )
         .load_psks(bob_provider.storage())
         .expect("loading psks should succeed")
-        .build(
-            bob_provider.rand(),
-            bob_provider.crypto(),
-            &bob_credential.signer,
-            |_| true,
-        )
+        .build(bob_provider.crypto(), &bob_credential.signer, |_| true)
         .expect("building the external commit should succeed")
         .finalize(bob_provider)
         .expect("finalizing the external commit should succeed");

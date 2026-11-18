@@ -580,7 +580,7 @@ impl OperationContext {
 #[cfg(test)]
 mod tests {
     use openmls_rust_crypto::OpenMlsRustCrypto;
-    use openmls_traits::{random::OpenMlsRand, OpenMlsProvider};
+    use openmls_traits::OpenMlsProvider;
 
     use super::*;
     use crate::components::vc_derivation_info::EmulatorEpochSecret;
@@ -601,7 +601,7 @@ mod tests {
         let provider = OpenMlsRustCrypto::default();
         let emulator = EmulatorEpochSecret::new(
             &provider
-                .rand()
+                .crypto()
                 .random_vec(CIPHERSUITE.hash_length())
                 .expect("randomness"),
         );

@@ -290,12 +290,7 @@ where
         let bundle = commit_builder
             .load_psks(provider.storage())
             .await?
-            .build(
-                provider.rand(),
-                provider.crypto(),
-                &self.party.signer,
-                |_| true,
-            )?
+            .build(provider.crypto(), &self.party.signer, |_| true)?
             .stage_commit(provider)
             .await?;
 

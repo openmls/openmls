@@ -2083,7 +2083,6 @@ mod tests {
     use super::*;
     use openmls_rust_crypto::{MemoryStorage, OpenMlsRustCrypto};
     use openmls_traits::{
-        random::OpenMlsRand,
         storage::{StorageProvider, CURRENT_VERSION},
         OpenMlsProvider,
     };
@@ -2098,7 +2097,7 @@ mod tests {
 
         let emulator = EmulatorEpochSecret::new(
             &provider
-                .rand()
+                .crypto()
                 .random_vec(CIPHERSUITE.hash_length())
                 .expect("randomness"),
         );
@@ -2328,7 +2327,7 @@ mod tests {
     fn setup_key_and_epoch_id(provider: &OpenMlsRustCrypto) -> (EpochEncryptionKey, EpochId) {
         let emulator = EmulatorEpochSecret::new(
             &provider
-                .rand()
+                .crypto()
                 .random_vec(CIPHERSUITE.hash_length())
                 .expect("randomness"),
         );
@@ -2350,7 +2349,7 @@ mod tests {
     fn derivation_info_tbe_roundtrip() {
         let provider = OpenMlsRustCrypto::default();
         let (key, epoch_id) = setup_key_and_epoch_id(&provider);
-        let leaf_encryption_key = provider.rand().random_vec(32).expect("randomness");
+        let leaf_encryption_key = provider.crypto().random_vec(32).expect("randomness");
 
         let key_package_tbe = DerivationInfoTbe::KeyPackage {
             leaf_index: LeafNodeIndex::new(7),
@@ -2505,7 +2504,7 @@ mod tests {
     fn decryption_fails_with_wrong_leaf_encryption_key() {
         let provider = OpenMlsRustCrypto::default();
         let (key, epoch_id) = setup_key_and_epoch_id(&provider);
-        let leaf_encryption_key = provider.rand().random_vec(32).expect("randomness");
+        let leaf_encryption_key = provider.crypto().random_vec(32).expect("randomness");
         let tbe = DerivationInfoTbe::LeafNode {
             leaf_index: LeafNodeIndex::new(1),
             generation: 0,
@@ -2520,7 +2519,7 @@ mod tests {
             &tbe,
         )
         .expect("encrypt");
-        let other_leaf_encryption_key = provider.rand().random_vec(32).expect("randomness");
+        let other_leaf_encryption_key = provider.crypto().random_vec(32).expect("randomness");
         let err = derivation_info
             .decrypt(
                 provider.crypto(),
@@ -2541,7 +2540,7 @@ mod tests {
         let provider = OpenMlsRustCrypto::default();
         let operation_secret = OperationSecret::from(Secret::from_slice(
             &provider
-                .rand()
+                .crypto()
                 .random_vec(CIPHERSUITE.hash_length())
                 .expect("randomness"),
         ));
@@ -2598,7 +2597,7 @@ mod tests {
         let provider = OpenMlsRustCrypto::default();
         let operation_secret = OperationSecret::from(Secret::from_slice(
             &provider
-                .rand()
+                .crypto()
                 .random_vec(CIPHERSUITE.hash_length())
                 .expect("randomness"),
         ));
@@ -2625,7 +2624,7 @@ mod tests {
         let provider = OpenMlsRustCrypto::default();
         let operation_secret = OperationSecret::from(Secret::from_slice(
             &provider
-                .rand()
+                .crypto()
                 .random_vec(CIPHERSUITE.hash_length())
                 .expect("randomness"),
         ));
@@ -2678,7 +2677,7 @@ mod tests {
         let provider = OpenMlsRustCrypto::default();
         let operation_secret = OperationSecret::from(Secret::from_slice(
             &provider
-                .rand()
+                .crypto()
                 .random_vec(CIPHERSUITE.hash_length())
                 .expect("randomness"),
         ));
@@ -2894,7 +2893,7 @@ mod tests {
     fn generation_id_is_deterministic_and_context_sensitive() {
         let provider = OpenMlsRustCrypto::default();
         let secret_bytes = provider
-            .rand()
+            .crypto()
             .random_vec(CIPHERSUITE.hash_length())
             .expect("randomness");
         let state = state_from_secret_bytes(&provider, &secret_bytes, LeafNodeIndex::new(0));

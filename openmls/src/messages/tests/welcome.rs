@@ -43,7 +43,7 @@ fn test_welcome_context_mismatch() {
         _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
     };
 
-    let group_id = GroupId::random(alice_provider.rand());
+    let group_id = GroupId::random(alice_provider.crypto());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .build();
@@ -209,7 +209,7 @@ fn test_welcome_message() {
     let group_info_tbs = {
         let group_context = GroupContext::new(
             ciphersuite,
-            GroupId::random(provider.rand()),
+            GroupId::random(provider.crypto()),
             123,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
             vec![1, 1, 1],
@@ -235,15 +235,15 @@ fn test_welcome_message() {
         .expect("Error signing GroupInfo");
 
     // Generate key and nonce for the symmetric cipher.
-    let welcome_key = AeadKey::random(ciphersuite, provider.rand());
-    let welcome_nonce = AeadNonce::random(provider.rand());
+    let welcome_key = AeadKey::random(ciphersuite, provider.crypto());
+    let welcome_nonce = AeadNonce::random(provider.crypto());
 
     // Generate receiver key pair.
     let receiver_key_pair = provider
         .crypto()
         .derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, provider.rand())
+            Secret::random(ciphersuite, provider.crypto())
                 .expect("Not enough randomness.")
                 .as_slice(),
         )
@@ -316,7 +316,7 @@ fn test_welcome_message() {
 fn test_welcome_processing() {
     let alice_provider = &Provider::default();
     let bob_provider = &Provider::default();
-    let group_id = GroupId::random(alice_provider.rand());
+    let group_id = GroupId::random(alice_provider.crypto());
     let mls_group_create_config = MlsGroupCreateConfig::builder()
         .ciphersuite(ciphersuite)
         .build();

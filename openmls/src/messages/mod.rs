@@ -32,8 +32,6 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
-#[cfg(all(test, feature = "generate-kats"))]
-use openmls_traits::random::OpenMlsRand;
 
 pub(crate) mod codec;
 pub mod external_proposals;
@@ -555,13 +553,14 @@ impl GroupSecrets {
 impl GroupSecrets {
     pub fn random_encoded(
         ciphersuite: Ciphersuite,
-        rng: &impl OpenMlsRand,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
-            rng,
+            crypto,
             Psk::External(ExternalPsk::new(
-                rng.random_vec(ciphersuite.hash_length())
+                crypto
+                    .random_vec(ciphersuite.hash_length())
                     .expect("Not enough randomness."),
             )),
         )
@@ -569,9 +568,9 @@ impl GroupSecrets {
         let psks = vec![psk_id];
 
         GroupSecrets::new_encoded(
-            &JoinerSecret::random(ciphersuite, rng),
+            &JoinerSecret::random(ciphersuite, crypto),
             Some(&PathSecret {
-                path_secret: Secret::random(ciphersuite, rng).expect("Not enough randomness."),
+                path_secret: Secret::random(ciphersuite, crypto).expect("Not enough randomness."),
             }),
             &psks,
         )

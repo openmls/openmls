@@ -178,7 +178,7 @@ let bundle = emulator_group
     .derivation_epoch(true)
     .force_self_update(true)
     .load_psks(provider.storage())?
-    .build(provider.rand(), provider.crypto(), &emulator_signer, |_| true)?
+    .build(provider.crypto(), &emulator_signer, |_| true)?
     .stage_commit(provider)?;
 ```
 
@@ -249,7 +249,7 @@ let bundle = main_group
     .commit_builder()
     .vc_emulation(provider.crypto(), provider.storage(), emulator_group.group_id())?
     .load_psks(provider.storage())?
-    .build(provider.rand(), provider.crypto(), &vc_signer, |_| true)?
+    .build(provider.crypto(), &vc_signer, |_| true)?
     .stage_commit(provider)?;
 
 main_group.merge_pending_commit(provider)?;
@@ -312,7 +312,7 @@ let mut bundle = main_group
     .commit_builder()
     .vc_emulation(provider.crypto(), provider.storage(), emulator_group.group_id())?
     .load_psks(provider.storage())?
-    .build(provider.rand(), provider.crypto(), &vc_signer, |_| true)?
+    .build(provider.crypto(), &vc_signer, |_| true)?
     .stage_commit(provider)?;
 
 if let Some(confirmation) = bundle.take_confirmation() {

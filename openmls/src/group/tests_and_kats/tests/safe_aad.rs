@@ -65,7 +65,7 @@ fn create_group_pair<Provider: crate::storage::OpenMlsProvider>(
     wire_format_policy: WireFormatPolicy,
     safe_aad_required: bool,
 ) -> (MlsGroup, MlsGroup, CredentialWithKeyAndSigner) {
-    let group_id = GroupId::random(alice_provider.rand());
+    let group_id = GroupId::random(alice_provider.crypto());
 
     let alice_credential = generate_credential_with_key(
         "Alice".into(),
@@ -259,7 +259,7 @@ fn safe_aad_absent_when_not_required() {
 #[openmls_test::openmls_test]
 fn safe_aad_set_rejects_invalid_items() {
     let alice_provider = &Provider::default();
-    let group_id = GroupId::random(alice_provider.rand());
+    let group_id = GroupId::random(alice_provider.crypto());
     let alice_credential = generate_credential_with_key(
         "Alice".into(),
         ciphersuite.signature_algorithm(),
@@ -415,7 +415,6 @@ fn safe_aad_commit_builder_with_aad_replaces_only_tail() {
         .load_psks(alice_provider.storage())
         .unwrap()
         .build(
-            alice_provider.rand(),
             alice_provider.crypto(),
             &alice_credential.signer,
             |_proposal| true,
@@ -480,7 +479,6 @@ fn safe_aad_commit_without_with_aad_uses_group_tail() {
         .load_psks(alice_provider.storage())
         .unwrap()
         .build(
-            alice_provider.rand(),
             alice_provider.crypto(),
             &alice_credential.signer,
             |_proposal| true,

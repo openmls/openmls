@@ -134,7 +134,7 @@ fn test_remove_operation_variants() {
         let alice_provider = &Provider::default();
         let bob_provider = &Provider::default();
         let charlie_provider = &Provider::default();
-        let group_id = GroupId::random(alice_provider.rand());
+        let group_id = GroupId::random(alice_provider.crypto());
 
         // Generate credentials with keys
         let alice_credential_with_key_and_signer = generate_credential_with_key(

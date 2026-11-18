@@ -54,7 +54,6 @@ mod tests {
 
     impl<'a> OpenMlsProvider for SqlxTestProvider<'a> {
         type CryptoProvider = RustCrypto;
-        type RandProvider = RustCrypto;
         type StorageProvider = SqliteStorageProvider<'a, JsonCodec>;
 
         fn storage(&self) -> &Self::StorageProvider {
@@ -62,10 +61,6 @@ mod tests {
         }
 
         fn crypto(&self) -> &Self::CryptoProvider {
-            &self.crypto
-        }
-
-        fn rand(&self) -> &Self::RandProvider {
             &self.crypto
         }
     }

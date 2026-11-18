@@ -776,7 +776,7 @@ impl MlsGroup {
             .propose_group_context_extensions(extensions)?
             .load_psks(provider.storage())
             .await?
-            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .build(provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
             .await?;
 

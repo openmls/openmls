@@ -9,8 +9,7 @@
 //!
 //! To avoid that, this module provides a single [`CryptoProvider`] that wraps the
 //! *current* libcrux `CryptoProvider` and re-implements the previous version's
-//! [`OpenMlsCrypto`](openmls_traits_compat::crypto::OpenMlsCrypto) and
-//! [`OpenMlsRand`](openmls_traits_compat::random::OpenMlsRand) traits on top of
+//! [`OpenMlsCrypto`](openmls_traits_compat::crypto::OpenMlsCrypto) trait on top of
 //! it. Every operation is delegated to the current provider; only the trait's
 //! argument and result types are translated at the boundary.
 //!
@@ -27,7 +26,6 @@
 use openmls_libcrux_crypto_current::CryptoProvider as Inner;
 
 use openmls_traits::crypto::OpenMlsCrypto as CurrentCrypto;
-use openmls_traits::random::OpenMlsRand as CurrentRand;
 use openmls_traits::types as cur;
 
 // The previous version's traits crate, selected by the active migration feature.
@@ -398,13 +396,13 @@ impl openmls_traits_compat::crypto::OpenMlsCrypto for CryptoProvider {
 impl openmls_traits_compat::random::OpenMlsRand for CryptoProvider {
     // The inner provider's error type already satisfies the trait bound
     // (`std::error::Error + Debug`), so it is reused directly.
-    type Error = openmls_libcrux_crypto_current::RandError;
+    type Error = cur::CryptoError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
-        CurrentRand::random_array::<N>(&self.inner)
+        CurrentCrypto::random_array::<N>(&self.inner)
     }
 
     fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
-        CurrentRand::random_vec(&self.inner, len)
+        CurrentCrypto::random_vec(&self.inner, len)
     }
 }

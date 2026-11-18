@@ -1,7 +1,7 @@
 //! KAT vectors for targeted messages.
 
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 use tls_codec::{DeserializeBytes, Serialize as TlsSerializeTrait};
 
@@ -60,8 +60,6 @@ pub fn generate_kat_vector(
     padding_length: usize,
 ) -> TargetedMessageKatVector {
     let crypto = provider.crypto();
-    let rand = provider.rand();
-
     let sender_signer = SignatureKeyPair::new(ciphersuite.signature_algorithm())
         .expect("signature keypair generation failed");
     let credential_with_key = CredentialWithKey {
@@ -75,7 +73,7 @@ pub fn generate_kat_vector(
         .tls_serialize_detached()
         .expect("LeafNode serialization failed");
 
-    let ikm = rand
+    let ikm = crypto
         .random_vec(ciphersuite.hash_length())
         .expect("IKM generation failed");
     let hpke_keypair = crypto
@@ -84,9 +82,9 @@ pub fn generate_kat_vector(
     let recipient_encryption_key = EncryptionKey::from(hpke_keypair.public);
     let recipient_encryption_priv_bytes: Vec<u8> = (*hpke_keypair.private).to_vec();
 
-    let group_id_bytes = rand.random_vec(16).expect("group_id generation failed");
+    let group_id_bytes = crypto.random_vec(16).expect("group_id generation failed");
     let group_id = GroupId::from_slice(&group_id_bytes);
-    let exporter_secret_bytes = rand
+    let exporter_secret_bytes = crypto
         .random_vec(ciphersuite.hash_length())
         .expect("exporter_secret generation failed");
     let exporter_secret = ExporterSecret::from_slice(&exporter_secret_bytes);

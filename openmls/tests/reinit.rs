@@ -153,12 +153,7 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
             .add_proposal(Proposal::re_init(reinit_proposal.clone()))
             .load_psks(alice_provider.storage())
             .unwrap()
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_signer,
-                |_| true,
-            )
+            .build(alice_provider.crypto(), &alice_signer, |_| true)
             .unwrap()
             .stage_commit(alice_provider)
             .unwrap();
@@ -188,12 +183,7 @@ fn run_reinit_flow<Provider: OpenMlsProvider + Default>(
             .consume_proposal_store(true)
             .load_psks(alice_provider.storage())
             .unwrap()
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_signer,
-                |_| true,
-            )
+            .build(alice_provider.crypto(), &alice_signer, |_| true)
             .unwrap()
             .stage_commit(alice_provider)
             .unwrap();
@@ -413,7 +403,7 @@ fn run_reinit_membership_check<Provider: openmls::storage::OpenMlsProvider + Def
 
     // === Sender commits a ReInit, which suspends the predecessor ===
     let reinit_proposal = ReInitProposal::new(
-        GroupId::random(sender_provider.rand()),
+        GroupId::random(sender_provider.crypto()),
         ProtocolVersion::Mls10,
         ciphersuite,
         Extensions::empty(),
@@ -423,12 +413,7 @@ fn run_reinit_membership_check<Provider: openmls::storage::OpenMlsProvider + Def
         .add_proposal(Proposal::re_init(reinit_proposal.clone()))
         .load_psks(sender_provider.storage())
         .unwrap()
-        .build(
-            sender_provider.rand(),
-            sender_provider.crypto(),
-            &sender_signer,
-            |_| true,
-        )
+        .build(sender_provider.crypto(), &sender_signer, |_| true)
         .unwrap()
         .stage_commit(sender_provider)
         .unwrap();

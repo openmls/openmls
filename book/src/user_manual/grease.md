@@ -120,11 +120,11 @@ let provider = OpenMlsRustCrypto::default();
 let capabilities = Capabilities::builder()
     .ciphersuites(vec![ciphersuite])
     .credentials(vec![CredentialType::Basic])
-    .with_grease(provider.rand())
+    .with_grease(provider.crypto())
     .build();
 
 // Or on an existing Capabilities instance
-let capabilities = some_capabilities.with_grease(provider.rand());
+let capabilities = some_capabilities.with_grease(provider.crypto());
 ```
 
 This will add one random GREASE value to each capability list
@@ -141,9 +141,9 @@ OpenMLS also provides a helper function to generate individual random GREASE val
 
 ```rust
 use openmls::grease::random_grease_value;
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_rust_crypto::RustCrypto;
 
-let crypto = OpenMlsRustCrypto::default();
+let crypto = RustCrypto::default();
 let grease_value = random_grease_value(&crypto);
 
 // Use in capabilities
@@ -238,7 +238,7 @@ let signature_keys = SignatureKeyPair::new(
 let capabilities = Capabilities::builder()
     .ciphersuites(vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519])
     .credentials(vec![CredentialType::Basic])
-    .with_grease(provider.rand())
+    .with_grease(provider.crypto())
     .build();
 
 // Create a KeyPackage with GREASE values

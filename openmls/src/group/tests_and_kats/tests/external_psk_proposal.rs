@@ -118,7 +118,7 @@ fn external_psk_proposal_should_be_accepted() {
     // The DS crafts an external PreSharedKey proposal.
     let psk_id = PreSharedKeyId::new(
         ciphersuite,
-        ds_provider.rand(),
+        ds_provider.crypto(),
         Psk::External(ExternalPsk::new(vec![1, 2, 3, 4, 5, 6, 7, 8])),
     )
     .unwrap();
@@ -184,7 +184,7 @@ fn external_psk_proposal_should_fail_when_invalid_external_senders_index() {
 
     let psk_id = PreSharedKeyId::new(
         ciphersuite,
-        ds_provider.rand(),
+        ds_provider.crypto(),
         Psk::External(ExternalPsk::new(vec![1, 2, 3, 4, 5, 6, 7, 8])),
     )
     .unwrap();

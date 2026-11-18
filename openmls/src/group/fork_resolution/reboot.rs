@@ -95,7 +95,7 @@ impl<'a> RebootBuilder<'a> {
             .pipe_through(refine_commit_builder)
             .load_psks(provider.storage())
             .await?
-            .build(provider.rand(), provider.crypto(), signer, |_| true)?
+            .build(provider.crypto(), signer, |_| true)?
             .stage_commit(provider)
             .await
             .map_err(RebootError::CommitBuilderStage)
@@ -174,12 +174,7 @@ mod test {
             .propose_adds(Some(charlie_kpb.key_package().clone()))
             .load_psks(alice_provider.storage())
             .unwrap()
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_signer,
-                |_| true,
-            )
+            .build(alice_provider.crypto(), &alice_signer, |_| true)
             .unwrap()
             .stage_commit(alice_provider)
             .unwrap();
@@ -189,12 +184,7 @@ mod test {
             .propose_adds(Some(dave_kpb.key_package().clone()))
             .load_psks(bob_provider.storage())
             .unwrap()
-            .build(
-                bob_provider.rand(),
-                bob_provider.crypto(),
-                &bob_signer,
-                |_| true,
-            )
+            .build(bob_provider.crypto(), &bob_signer, |_| true)
             .unwrap()
             .stage_commit(bob_provider)
             .unwrap();

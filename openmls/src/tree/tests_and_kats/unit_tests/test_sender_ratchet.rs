@@ -10,7 +10,7 @@ fn test_max_forward_distance() {
     let provider = &Provider::default();
 
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet1 = DecryptionRatchet::new(secret.clone());
     let mut ratchet2 = DecryptionRatchet::new(secret);
 
@@ -49,7 +49,7 @@ fn test_out_of_order_generations() {
     let provider = &Provider::default();
 
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet1 = DecryptionRatchet::new(secret);
 
     // Ratchet forward twice the size of the window
@@ -90,7 +90,7 @@ fn test_forward_secrecy() {
     // Encryption Ratchets are forward-secret by default, since they don't store
     // any keys. Thus, we can only test FS on Decryption Ratchets.
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DecryptionRatchet::new(secret);
 
     // Let's ratchet once and see if the ratchet keeps any keys around.
@@ -140,7 +140,7 @@ fn test_forward_secrecy() {
 fn sender_ratchet_generation_overflow() {
     let provider = OpenMlsRustCrypto::default();
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = RatchetSecret::initial_ratchet_secret(secret);
     ratchet.set_generation(u32::MAX - 1);
     let _ = ratchet
@@ -156,7 +156,7 @@ fn sender_ratchet_generation_overflow() {
 fn decryption_follows_the_ratchet_chain() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut chain = RatchetSecret::initial_ratchet_secret(secret.clone());
     let chain_keys: Vec<_> = (0..=10)
         .map(|_| {
@@ -201,7 +201,7 @@ fn decryption_follows_the_ratchet_chain() {
 fn peek_leaves_decryption_ratchet_unchanged() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DecryptionRatchet::new(secret);
     ratchet
         .secret_for_decryption(ciphersuite, provider.crypto(), 3, configuration)
@@ -224,7 +224,7 @@ fn peek_leaves_decryption_ratchet_unchanged() {
 fn stale_peeked_generation_is_rejected() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DecryptionRatchet::new(secret);
 
     let (_, forward) = ratchet
@@ -266,7 +266,7 @@ fn stale_peeked_generation_is_rejected() {
 fn dual_use_encrypt_confirm_drops_secret() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let (generation, _) = ratchet
@@ -294,7 +294,7 @@ fn dual_use_encrypt_confirm_drops_secret() {
 fn dual_use_encrypt_then_decrypt_own() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let (generation, _) = ratchet
@@ -323,7 +323,7 @@ fn dual_use_encrypt_then_decrypt_own() {
 fn dual_use_delete_secret_edge_cases() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     // Deleting at the current head (generation == head, window_index == -1) is
@@ -366,7 +366,7 @@ fn dual_use_delete_secret_edge_cases() {
 fn dual_use_decrypts_past_out_of_order_tolerance() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     // Send more messages than `out_of_order_tolerance` so that the cache is
@@ -405,7 +405,7 @@ fn dual_use_decrypts_past_out_of_order_tolerance() {
 fn dual_use_confirming_later_messages_keeps_old_unconfirmed_secret() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let (first_generation, _) = ratchet
@@ -441,7 +441,7 @@ fn dual_use_confirming_later_messages_keeps_old_unconfirmed_secret() {
 fn dual_use_decryption_moves_receive_window() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let target_generation = configuration.out_of_order_tolerance() * 2;
@@ -491,7 +491,7 @@ fn dual_use_decryption_moves_receive_window() {
 fn dual_use_local_sends_do_not_advance_receive_window() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let first_received_generation = configuration.out_of_order_tolerance();
@@ -558,7 +558,7 @@ fn dual_use_local_sends_do_not_advance_receive_window() {
 fn dual_use_zero_tolerance_pruned_generation_is_too_distant() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::new(0, 1000);
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let _decrypted = ratchet
@@ -581,7 +581,7 @@ fn dual_use_zero_tolerance_pruned_generation_is_too_distant() {
 fn dual_use_confirmed_generation_older_than_receive_window_is_own_message_confirmed() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let (confirmed_generation, _) = ratchet
@@ -637,7 +637,7 @@ fn round_trip_without_prune_bound(ratchet: &DualUseRatchet) -> DualUseRatchet {
 fn dual_use_persisted_prune_bound_is_kept() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::new(0, 1000);
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let _decrypted = ratchet
@@ -662,7 +662,7 @@ fn dual_use_persisted_prune_bound_is_kept() {
 fn dual_use_state_without_prune_bound_heals_on_next_pruning() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::new(0, 1000);
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let _decrypted = ratchet
@@ -695,7 +695,7 @@ fn dual_use_state_without_prune_bound_heals_on_next_pruning() {
 fn dual_use_promoted_ratchet_treats_past_generation_as_own_send() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet_head = RatchetSecret::initial_ratchet_secret(secret);
     let _ = ratchet_head
         .ratchet_forward(provider.crypto(), ciphersuite)
@@ -713,7 +713,7 @@ fn dual_use_promoted_ratchet_treats_past_generation_as_own_send() {
 fn dual_use_stale_peeked_generation_is_rejected() {
     let provider = &Provider::default();
     let configuration = &SenderRatchetConfiguration::default();
-    let secret = Secret::random(ciphersuite, provider.rand()).expect("Not enough randomness.");
+    let secret = Secret::random(ciphersuite, provider.crypto()).expect("Not enough randomness.");
     let mut ratchet = DualUseRatchet::new(secret);
 
     let (_, forward) = ratchet

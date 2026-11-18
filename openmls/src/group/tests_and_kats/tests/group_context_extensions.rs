@@ -1500,12 +1500,7 @@ fn fail_insufficient_extensiontype_capabilities_commit_path_valn0502() {
         .force_self_update(true)
         .load_psks(bob.party.provider.storage())
         .unwrap()
-        .build(
-            bob.party.provider.rand(),
-            bob.party.provider.crypto(),
-            &bob.party.signer,
-            |_| true,
-        )
+        .build(bob.party.provider.crypto(), &bob.party.signer, |_| true)
         .unwrap()
         .stage_commit(&bob.party.provider)
         .unwrap();

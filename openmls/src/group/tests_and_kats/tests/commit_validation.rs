@@ -331,14 +331,14 @@ fn test_valsem201() {
     };
 
     let psk_proposal = || {
-        let secret = Secret::random(ciphersuite, alice_provider.rand()).unwrap();
+        let secret = Secret::random(ciphersuite, alice_provider.crypto()).unwrap();
         let rand = alice_provider
-            .rand()
+            .crypto()
             .random_vec(ciphersuite.hash_length())
             .unwrap();
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
-            alice_provider.rand(),
+            alice_provider.crypto(),
             Psk::External(ExternalPsk::new(rand)),
         )
         .unwrap();
@@ -413,12 +413,7 @@ fn test_valsem201() {
             .force_self_update(false)
             .load_psks(alice_provider.storage())
             .unwrap()
-            .build(
-                alice_provider.rand(),
-                alice_provider.crypto(),
-                &alice_credential.signer,
-                |_| true,
-            )
+            .build(alice_provider.crypto(), &alice_credential.signer, |_| true)
             .unwrap()
             .commit_result()
             .commit;
@@ -771,7 +766,7 @@ fn test_valsem204() {
             .map(|upn| {
                 PlainUpdatePathNode::new(
                     upn.encryption_key().clone(),
-                    Secret::random(ciphersuite, alice_provider.rand())
+                    Secret::random(ciphersuite, alice_provider.crypto())
                         .unwrap()
                         .into(),
                 )

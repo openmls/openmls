@@ -1691,11 +1691,10 @@ mod serde_json_current {
         impl_storage_provider_virtual_clients_draft!(CURRENT_VERSION, serde_json::Error);
     }
 
-    // The full current-version `OpenMlsProvider` (storage + crypto + rand) used to
+    // The full current-version `OpenMlsProvider` (storage + crypto) used to
     // drive a migrated group through real operations.
     impl<'a> openmls_traits::OpenMlsProvider for super::SerdeJsonOpenMlsProvider<'a> {
         type CryptoProvider = openmls_libcrux_crypto_current::CryptoProvider;
-        type RandProvider = openmls_libcrux_crypto_current::CryptoProvider;
         type StorageProvider = super::SerdeJsonProvider<'a>;
 
         fn storage(&self) -> &Self::StorageProvider {
@@ -1703,10 +1702,6 @@ mod serde_json_current {
         }
 
         fn crypto(&self) -> &Self::CryptoProvider {
-            &self.crypto
-        }
-
-        fn rand(&self) -> &Self::RandProvider {
             &self.crypto
         }
     }
@@ -1736,11 +1731,10 @@ mod ciborium_current {
         impl_storage_provider_virtual_clients_draft!(CURRENT_VERSION, CiboriumError);
     }
 
-    // The full current-version `OpenMlsProvider` (storage + crypto + rand) used to
+    // The full current-version `OpenMlsProvider` (storage + crypto) used to
     // drive a migrated group through real operations against a CBOR store.
     impl<'a> openmls_traits::OpenMlsProvider for super::CiboriumOpenMlsProvider<'a> {
         type CryptoProvider = openmls_libcrux_crypto_current::CryptoProvider;
-        type RandProvider = openmls_libcrux_crypto_current::CryptoProvider;
         type StorageProvider = super::CiboriumProvider<'a>;
 
         fn storage(&self) -> &Self::StorageProvider {
@@ -1748,10 +1742,6 @@ mod ciborium_current {
         }
 
         fn crypto(&self) -> &Self::CryptoProvider {
-            &self.crypto
-        }
-
-        fn rand(&self) -> &Self::RandProvider {
             &self.crypto
         }
     }

@@ -1,6 +1,6 @@
 //! # The OpenMLS Crypto Trait
 //!
-//! This trait defines all cryptographic functions used by OpenMLS.
+//! This trait defines all cryptographic and randomness functions used by OpenMLS.
 
 use tls_codec::SecretVLBytes;
 
@@ -204,4 +204,12 @@ pub trait OpenMlsCrypto: Send + Sync {
     /// Inverse of [`OpenMlsCrypto::ff1_aes128_encrypt`].
     #[cfg(feature = "virtual-clients-draft")]
     fn ff1_aes128_decrypt(&self, key: &[u8; 16], ciphertext: u32) -> Result<u32, CryptoError>;
+
+    // === Randomness === //
+
+    /// Fill an array with random bytes.
+    fn random_array<const N: usize>(&self) -> Result<[u8; N], CryptoError>;
+
+    /// Fill a vector of length `len` with bytes.
+    fn random_vec(&self, len: usize) -> Result<Vec<u8>, CryptoError>;
 }

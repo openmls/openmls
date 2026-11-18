@@ -1,6 +1,6 @@
 # OpenMLS Traits
 
-This crate defines a number of crates that have to be implemented in order to use OpenMLS.
+This crate defines a number of traits that have to be implemented in order to use OpenMLS.
 
 The OpenMLS repository provides a default implementation for these traits
 
@@ -10,11 +10,7 @@ The OpenMLS repository provides a default implementation for these traits
 
 ## Traits
 
-There are 4 different traits.
-
-### OpenMlsRand
-
-This [trait](./src/random.rs) defines two functions to generate arrays and vectors, and is used by OpenMLS to generate randomness.
+There are 3 different traits.
 
 ### OpenMlsCrypto
 
@@ -25,12 +21,13 @@ This [trait](./src/crypto.rs) defines all cryptographic functions required by Op
 - AEAD
 - Signatures
 - HPKE
+- Randomness
 
 ### StorageProvider
 
 This [trait](./src/storage.rs) defines a CRUD API for a key store that is used to store long-term key material from OpenMLS.
 
-### OpenMlsCryptoProvider
+### OpenMlsProvider
 
 Additionally, there's a wrapper [trait](./src/traits.rs) defined that is expected to be passed into the public OpenMLS API.
 

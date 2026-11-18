@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    random::OpenMlsRand,
     storage::{StorageProvider as StorageProviderTrait, CURRENT_VERSION},
     types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
 };
@@ -236,12 +235,11 @@ impl EncryptionKeyPair {
     }
 
     pub(crate) fn random(
-        rand: &impl OpenMlsRand,
         crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<Self, LibraryError> {
         let ikm =
-            Secret::random(ciphersuite, rand).map_err(LibraryError::unexpected_crypto_error)?;
+            Secret::random(ciphersuite, crypto).map_err(LibraryError::unexpected_crypto_error)?;
         Ok(crypto
             .derive_hpke_keypair(ciphersuite.hpke_config(), ikm.as_slice())
             .map_err(LibraryError::unexpected_crypto_error)?
