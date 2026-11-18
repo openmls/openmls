@@ -1,3 +1,10 @@
+//! # OpenMLS Memory Storage
+//!
+//! This crate provides [`MemoryStorage`], which implements the OpenMLS trait
+//! [`StorageProvider`] by keeping all values in a `HashMap` in memory.
+//!
+//! This crate is for testing and prototyping only.
+
 use openmls_traits::storage::*;
 use serde::Serialize;
 use std::{collections::HashMap, sync::RwLock};
