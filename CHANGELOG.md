@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- [#2213](https://github.com/openmls/openmls/pull/2213): Commit and self-update-proposal creation now reject a signer whose signature scheme does not match the group's ciphersuite with `InvalidSignerCiphersuite`; previously only a `NewSignerBundle`'s signer was checked.
+
 ### Added
 
 - [#1923](https://github.com/openmls/openmls/pull/1923): Added an async mode for the storage API. With the `async` feature, every function that reads or writes storage is an `async fn`, for example `MlsGroup::new`, `MlsGroup::process_message`, `MlsGroup::merge_pending_commit`, `MlsGroup::load` and `KeyPackageBuilder::build`. The storage futures are `Send`. The sync mode stays the default. A single crate in the build that enables `async` switches every crate in the build to the async API. OpenMLS futures are not cancel-safe, see the crate docs.
