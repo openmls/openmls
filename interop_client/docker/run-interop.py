@@ -52,6 +52,8 @@ Requires: docker, docker compose, and Python 3.8+.
 """
 
 import argparse
+from collections import defaultdict, namedtuple
+from itertools import chain
 import json
 import os
 import re
@@ -63,20 +65,19 @@ import tempfile
 import threading
 import time
 
-# The name each client reports via the `Name` RPC (recorded in every result's
-# `actors` map). OpenMLS reports the constant "OpenMLS" (IMPLEMENTATION_NAME in
-# interop_client/src/main.rs); peers report their own names (e.g. mls-rs reports
-# "Wickr MLS on port 50053"). We bucket results by this OpenMLS name, not by the
-# host:port we dial.
-OPENMLS_ID_NAME = "OpenMLS"
+Peer = namedtuple("Peer", ("hostport", "host_port", "name"))
+'''
+hostport: connection string in docker-compose
+host_port: exposed port
+profile: docker-compose profile that activates the peer
+'''
 
-OPENMLS_HOSTPORT = "openmls:50051"
-OPENMLS_HOST_PORT = 50051
-# host:port each peer is reached at from *inside* the compose network, the port
-# it publishes to the host (for readiness checks), and its compose profile.
+# TODO: Rename or simplify this hostport / host_port thing
+self_peer = Peer(hostport="openmls:50051", host_port=50051)
+
 PEERS = {
-    "mls-rs": {"hostport": "mls-rs:50053", "host_port": 50053, "profile": "mls-rs"},
-    "mlspp": {"hostport": "mlspp:50052", "host_port": 50052, "profile": "mlspp"},
+    "mls-rs": Peer(hostport="mls-rs:50053", host_port=50053, name="mls-rs"),
+    "mlspp": Peer(hostport="mlspp:50052", host_port=50052, name="mlspp"),
 }
 
 T_START, T_END = "<!-- INTEROP-TABLE:START -->", "<!-- INTEROP-TABLE:END -->"
@@ -136,10 +137,9 @@ def compose(profile_args, *args, **kw):
 def list_configs(profile_args):
     """Enumerate config files from inside the test-runner image.
 
-    `docker compose run` implicitly (re)builds the image if needed, and that
-    build's log noise (including a known, deliberately-swallowed compile error
-    in the vendored go-mock-client -- see test-runner/Dockerfile) shares stdout
-    with the `ls` output. Only lines that actually look like config filenames
+    `docker compose run` implicitly builds the image if needed, and that
+    build's log noise shares stdout with the `ls` output.
+    Only lines that actually look like config filenames
     are accepted; anything else (build noise, a failed `ls`) is a hard error
     rather than silently becoming a bogus `-config=`."""
     res = compose(
@@ -212,16 +212,11 @@ def run_one(cfg, peer, timeout, profile_args, suite=0, mode="both", verbose=Fals
     to finish -- required for the finite-but-slow `deep_random` config.
 
     `suite` (non-zero) restricts to a single ciphersuite and `mode`
-    ('public'/'private') restricts the handshake wire format -- both for faster
-    debugging (they map to the test-runner's -suite / -public / -private flags).
+    ('public'/'private') restricts the handshake wire format.
 
-    The test-runner prints nothing until it exits, then writes a single JSON
-    result blob to stdout (stderr carries only hard config/connection errors).
-    So there's no real progress to show; instead we print a heartbeat dot every
-    5s (matching `wait_port`) so a long, silent run doesn't look hung, and --
-    only when `verbose` is set -- echo stderr live as it arrives. stdout is
-    always drained on a background thread (never printed): without a reader,
-    a large result tree can exceed the pipe buffer and deadlock the process."""
+    The test-runner prints heartbeat dots until it exits, then writes a single JSON
+    result blob to stdout (stderr carries only hard config/connection errors)."""
+
     runner_args = []
     if suite:
         runner_args += ["-suite", str(suite)]
@@ -231,7 +226,7 @@ def run_one(cfg, peer, timeout, profile_args, suite=0, mode="both", verbose=Fals
         runner_args += ["-private"]
     cmd = [
         "docker", "compose", *profile_args, "run", "--rm", "-T", "test-runner",
-        "-client", OPENMLS_HOSTPORT, "-client", PEERS[peer]["hostport"],
+        "-client", self_peer.host_port, "-client", peer.hostport,
         *runner_args,
         f"-config=../configs/{cfg}",
     ]
@@ -295,15 +290,7 @@ def clean_runners():
 
 
 def teardown(profile_args):
-    """Stop and remove the compose services this driver started.
-
-    We bring the whole `mls-interop` project down (openmls + the selected peers
-    + the network). This driver starts those services with `compose up -d`, so
-    without an explicit teardown they keep running long after the matrix
-    finishes. The openmls service mounts the repo (and thus its `target/`) from
-    the host, so a later run recompiles only incrementally -- tearing the
-    services down here is cheap. `docker compose down` also removes any container
-    still attached to the network, so it is called after `clean_runners()`."""
+    """Stop and remove the compose services this driver started."""
     try:
         compose(profile_args, "down", "--remove-orphans",
                 capture_output=True, text=True)
@@ -316,6 +303,9 @@ def teardown(profile_args):
 # --------------------------------------------------------------------------- #
 # Aggregation                                                                  #
 # --------------------------------------------------------------------------- #
+
+
+####################################
 
 def config_name(cfg):
     """Strip the trailing `.json` from a config filename, if present."""
@@ -405,6 +395,17 @@ def aggregate(manifest, peer_order):
     manifest: list of (config_name, peer, path|"MISSING"|"TIMEOUT").
     Returns (table_md, failures_md).
     """
+    total_runs = defaultdict(int)
+    successful_runs = defaultdict(int)
+    for cfg, peer, path in manifest:
+        name = config_name(cfg)
+        success = True
+            
+        if success:
+            successful_runs[(name, peer.name)] += 1
+        total_runs[(name, peer.name)] += 1
+
+
     cols = ["self"] + peer_order
     # stats[config][col] = {"passed", "unsupported", "nonconformant", "total"}
     stats = {}
@@ -581,6 +582,10 @@ def aggregate(manifest, peer_order):
                         for v in cfg.values())
     return table, failures, total_genuine
 
+
+
+
+# --- README manipulation -------------------------------------------------------
 
 def splice(text, start, end, body, label):
     block = f"{start}\n{body}\n{end}"
@@ -763,16 +768,9 @@ def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     readme = "../README.md"
 
-    peers = [p for p in args.peers.split(",") if p]
-    for p in peers:
-        if p not in PEERS:
-            sys.exit(f"unknown peer: {p} (want mls-rs and/or mlspp)")
-
-    profile_args = []
-    services = ["openmls"]
-    for p in peers:
-        profile_args += ["--profile", PEERS[p]["profile"]]
-        services.append(p)
+    peers = [PEERS[p] for p in args.peers.split(",") if p]
+    profile_args = chain.from_iterable(("--profile", p.name) for p in peers)
+    services = [self_peer.name] + [p.name for p in peers]
 
     if args.configs:
         config_list = [c for c in args.configs.split(",") if c]
@@ -810,37 +808,38 @@ def main():
         print(f"==> starting services ({' '.join(services)})")
         compose(profile_args, "up", "-d", *services, check=True)
 
-    wait_port("openmls", OPENMLS_HOST_PORT, 900, profile_args)  # first run compiles
+    wait_port(self_peer.name, self_peer.host_port, 900, profile_args)  # first run compiles
     for p in peers:
-        wait_port(p, PEERS[p]["host_port"], 180, profile_args)
+        wait_port(p.name, p.host_port, 180, profile_args)
 
     # --- run the matrix ---
-    manifest = []
+    # (config name, peer name, output file path)
+    manifest: list[(str, str, str)] = []
     try:
         with tempfile.TemporaryDirectory() as out_dir:
             for cfg in config_list:
                 for p in peers:
-                    print(f"==> running {cfg} against {p}")
+                    print(f"==> running {cfg} against {p.name}")
                     rc, out, err, timed_out = run_one(
                         cfg, p, args.timeout, profile_args,
                         suite=args.suite, mode=args.mode, verbose=args.verbose)
-                    path = os.path.join(out_dir, f"{config_name(cfg)}__{p}.json")
-                    with open(path, "w") as fh:
-                        fh.write(out)
+                    output_path = os.path.join(out_dir, f"{config_name(cfg)}__{p.name}.json")
+                    with open(output_path, "w") as f:
+                        f.write(out)
                     try:
                         json.loads(out)
-                        manifest.append((cfg, p, path))
+                        manifest.append((cfg, p.name, output_path))
                     except json.JSONDecodeError:
                         if timed_out:
-                            print(f"    TIMEOUT after {args.timeout}s ({cfg}/{p})",
+                            print(f"    TIMEOUT after {args.timeout}s ({cfg}/{p.name})",
                                   file=sys.stderr)
                             manifest.append((cfg, p, "TIMEOUT"))
                         else:
-                            print(f"    WARNING: no valid JSON from {cfg}/{p} "
+                            print(f"    WARNING: no valid JSON from {cfg}/{p.name} "
                                   f"(connection or config error, rc={rc}):", file=sys.stderr)
                             for line in (err or "").splitlines()[-3:]:
                                 print(f"      {line}", file=sys.stderr)
-                            manifest.append((cfg, p, "MISSING"))
+                            manifest.append((cfg, p.name, "MISSING"))
 
             table, failures, genuine_fail_count = aggregate(manifest, peers)
     finally:
