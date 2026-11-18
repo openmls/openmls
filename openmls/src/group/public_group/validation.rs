@@ -604,20 +604,28 @@ impl PublicGroup {
             // https://validation.openmls.tech/#valn0801
             // https://validation.openmls.tech/#valn0802
             if let Psk::Resumption(psk) = psk_id.psk() {
-                if matches!(
-                    psk.usage(),
-                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit
-                ) {
-                    // https://validation.openmls.tech/#valn0801
-                    // https://validation.openmls.tech/#valn0802
-                    // Branching and reinit PSKs must only be processed as part
-                    // of the initial commit of the new sub-group resp. successor
-                    // group, adding the other members.
-                    if self.group_context.epoch().as_u64() != 0 {
-                        return Err(PskError::NotAllowed.into());
+                match psk.usage() {
+                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit => {
+                        // https://validation.openmls.tech/#valn0801
+                        // https://validation.openmls.tech/#valn0802
+                        // Branching and reinit PSKs must only be processed as part
+                        // of the initial commit of the new sub-group resp. successor
+                        // group, adding the other members.
+                        if self.group_context.epoch().as_u64() != 0 {
+                            return Err(PskError::NotAllowed.into());
+                        }
+                        // Note: branch/reinit exclusivity (valn1401) is enforced for
+                        // the Welcome PSK list in `PreSharedKeyId::validate_in_welcome`.
                     }
-                    // Note: branch/reinit exclusivity (valn1401) is enforced for
-                    // the Welcome PSK list in `PreSharedKeyId::validate_in_welcome`.
+                    ResumptionPskUsage::Application => {
+                        if self.group_id() != psk.psk_group_id() {
+                            return Err(PskError::DifferentGroupId {
+                                expected: self.group_id().to_owned(),
+                                got: psk.psk_group_id().to_owned(),
+                            }
+                            .into());
+                        }
+                    }
                 }
             }
 
@@ -754,6 +762,8 @@ impl PublicGroup {
     ///     and Removes
     ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
     ///     Remove
+    ///   - An [`AppDataUpdateProposal`] removes a [`ComponentId`] that has no entry in the
+    ///     [`AppDataDictionary`] of the current group context
     #[cfg(feature = "extensions-draft")]
     pub(crate) fn validate_app_data_update_proposals_and_group_context(
         &self,
@@ -844,6 +854,11 @@ impl PublicGroup {
         // type second - for a given ID, removes come first. The sorting is stable and
         // won't mess with the ordering of updates within a component.
         // This is ensured in ProposalQueue::app_data_update_proposals.
+        //
+        // AppDataUpdate proposals are applied to the dictionary of the current group context (a
+        // GroupContextExtensions proposal must not change it), so that is where state has to be
+        // present for a removal.
+        let current_dictionary = self.group_context().extensions().app_data_dictionary();
         let mut latest = None;
         for proposal in proposal_queue.app_data_update_proposals() {
             let proposal = &proposal.app_data_update_proposal;
@@ -856,32 +871,24 @@ impl PublicGroup {
                         AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
                     }
                     AppDataUpdateOperationType::Remove => {
-                        AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+                        AppDataUpdateValidationError::MoreThanOneRemovePerComponentId
                     }
                 };
 
                 return Err(app_data_update_validation_error);
             }
 
-            if proposal.operation().operation_type() == AppDataUpdateOperationType::Remove {
+            if operation_type == AppDataUpdateOperationType::Remove {
                 // From the draft:
                 //
                 // An AppDataUpdate proposal is invalid if [...] it specifies the removal of
                 // state for a component_id that has no state present.
                 //
                 // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
-                let Some(gce) = group_context_extension_proposal else {
-                    // extension gets implicitly created in the group context, so absence is not an
-                    // error condition
-                    return Ok(());
-                };
-                let Some(app_data_dict) = gce.extensions().app_data_dictionary() else {
-                    // extension gets implicitly created in the group context, so absence is not an
-                    // error condition
-                    return Ok(());
-                };
-
-                if app_data_dict.dictionary().get(&component_id).is_none() {
+                if current_dictionary
+                    .and_then(|dictionary| dictionary.dictionary().get(&component_id))
+                    .is_none()
+                {
                     return Err(AppDataUpdateValidationError::CannotRemoveNonexistentComponent);
                 }
 

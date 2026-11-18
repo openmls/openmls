@@ -2,6 +2,7 @@
 
 mod commit_builder_aad;
 mod commit_builder_leaf_node_validation;
+mod decryption_ratchet_updates;
 mod external_init;
 mod mls_group;
 mod past_secrets;
