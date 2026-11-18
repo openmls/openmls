@@ -69,6 +69,7 @@ fn generate(
     init_secret: &InitSecret,
     group_id: &[u8],
     epoch: u64,
+    crypto: &impl OpenMlsProvider,
 ) -> (
     Vec<u8>,
     CommitSecret,
@@ -80,7 +81,6 @@ fn generate(
     GroupContext,
     HpkeKeyPair,
 ) {
-    let crypto = OpenMlsRustCrypto::default();
     let tree_hash = crypto
         .rand()
         .random_vec(ciphersuite.hash_length())
@@ -190,7 +190,7 @@ pub fn generate_test_vector(
             tree_hash,
             group_context,
             external_key_pair,
-        ) = generate(ciphersuite, &init_secret, &group_id, epoch);
+        ) = generate(ciphersuite, &init_secret, &group_id, epoch, provider);
 
         // exporter
         let exporter_label = "exporter label";
@@ -253,11 +253,19 @@ pub fn generate_test_vector(
 fn write_test_vectors() {
     const NUM_EPOCHS: u64 = 2;
     let mut tests = Vec::new();
-    let provider = OpenMlsRustCrypto::default();
+    let provider = openmls_libcrux_crypto::Provider::default();
     for &ciphersuite in provider.crypto().supported_ciphersuites().iter() {
         tests.push(generate_test_vector(NUM_EPOCHS, ciphersuite, &provider));
     }
     write("test_vectors/key-schedule-new.json", &tests);
+
+    // The official vectors in `key-schedule.json` only cover the RFC 9420
+    // ciphersuites (0x0001..=0x0007). The others go into `key-schedule-pq.json`.
+    let pq_tests: Vec<_> = tests
+        .into_iter()
+        .filter(|test| !(0x0001..=0x0007).contains(&test.cipher_suite))
+        .collect();
+    write("test_vectors/key-schedule-pq-new.json", &pq_tests);
 }
 
 #[openmls_test::openmls_test]
@@ -268,6 +276,28 @@ fn read_test_vectors_key_schedule() {
 
     let tests: Vec<KeyScheduleTestVector> =
         read_json!("../../../../test_vectors/key-schedule.json");
+
+    for test_vector in tests {
+        match run_test_vector(test_vector, provider) {
+            Ok(_) => {}
+            Err(e) => panic!("Error while checking key schedule test vector.\n{e:?}"),
+        }
+    }
+}
+
+/// Vectors for the [draft-ietf-mls-pq-ciphersuites] ciphersuites, generated with
+/// the libcrux provider (see `write_test_vectors`).
+///
+/// [draft-ietf-mls-pq-ciphersuites]: https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+#[openmls_test::openmls_test]
+fn read_test_vectors_key_schedule_pq() {
+    let provider = &Provider::default();
+
+    let _ = pretty_env_logger::try_init();
+
+    let tests: Vec<KeyScheduleTestVector> =
+        read_json!("../../../../test_vectors/key-schedule-pq.json");
 
     for test_vector in tests {
         match run_test_vector(test_vector, provider) {

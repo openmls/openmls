@@ -4,7 +4,7 @@ authors = ["OpenMLS Authors"]
 version = "0.6.0"
 edition = "2021"
 rust-version.workspace = true
-description = "A very basic storage for OpenMLS implementing openmls_traits."
+description = "An in-memory storage for OpenMLS implementing openmls_traits. For testing and prototyping only."
 license = "MIT"
 documentation = "https://docs.rs/openmls_memory_storage"
 repository = "https://github.com/openmls/openmls/tree/main/memory_storage"
@@ -18,7 +18,7 @@ serde_json = "1.0"
 serde = { workspace = true, features = ["derive"] }
 log = { version = "0.4" }
 hex = { version = "0.4", features = ["serde"], optional = true }
-base64 = { version = "0.22", optional = true }
+base64 = { version = "0.23", optional = true }
 
 [features]
 test-utils = ["hex", "openmls_traits/test-utils"] # Enable test utilites

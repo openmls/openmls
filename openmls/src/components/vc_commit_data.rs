@@ -169,6 +169,7 @@ mod tests {
         binary_tree::LeafNodeIndex,
         ciphersuite::hash_ref::KeyPackageRef,
         components::vc_derivation_info::{EpochId, KeyPackageInfo},
+        extensions::{Extension, Extensions, LastResortExtension, UnknownExtension},
     };
 
     const CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -187,11 +188,19 @@ mod tests {
                     key_package_ref: KeyPackageRef::from_slice(b"first key package ref"),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 0,
+                    extensions: Extensions::empty(),
                 },
                 KeyPackageInfo {
                     key_package_ref: KeyPackageRef::from_slice(b"second key package ref"),
                     cipher_suite: CIPHERSUITE,
                     key_package_index: 1,
+                    // Unknown extensions must survive the round trip in
+                    // their original position.
+                    extensions: Extensions::from_vec(vec![
+                        Extension::Unknown(0xff00, UnknownExtension(b"unknown".to_vec())),
+                        Extension::LastResort(LastResortExtension::default()),
+                    ])
+                    .expect("distinct extension types are valid"),
                 },
             ],
         }

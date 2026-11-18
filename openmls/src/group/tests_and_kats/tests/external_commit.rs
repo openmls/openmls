@@ -1,4 +1,5 @@
 //! This module contains tests for external commit messages
+use crate::treesync::LeafNodeParameters;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
@@ -71,6 +72,7 @@ fn test_external_commit() {
             bob_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -146,6 +148,7 @@ fn test_external_commit() {
             charlie_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(charlie_provider.storage())
         .unwrap()
         .build(
@@ -229,6 +232,7 @@ fn test_external_commit() {
             alice_credential.credential_with_key.clone(),
         )
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(alice_provider.storage())
         .unwrap()
         .build(

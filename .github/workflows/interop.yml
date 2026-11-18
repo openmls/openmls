@@ -41,7 +41,7 @@ jobs:
       # docker-compose.cache.yml actually persist layers in the GitHub Actions
       # cache across runs (the default `docker` driver ignores them).
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Run full interop matrix
         env:

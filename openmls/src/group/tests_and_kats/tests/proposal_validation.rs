@@ -1,6 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://book.openmls.tech/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
+use crate::test_utils::minimal_capabilities_for;
 use std::slice::from_ref;
 
 use crate::{
@@ -2256,10 +2257,10 @@ fn valsem113() {
 
     let capabilities_with_support = Capabilities::new(
         None,
-        None,
+        Some(&[ciphersuite]),
         None,
         Some(&[ProposalType::Custom(custom_proposal_type)]),
-        None,
+        Some(&[CredentialType::Basic]),
     );
 
     let mls_group_config = MlsGroupJoinConfig::default();
@@ -2283,6 +2284,8 @@ fn valsem113() {
 
         // Generate Bob's KeyPackage depending on the test mode
         let bob_key_package = if matches!(test_mode, TestMode::Unsupported) {
+            // Advertise everything except the proposal type under test, so the
+            // leaf is rejected for the proposal, not for its own ciphersuite.
             KeyPackageBuilder::new()
         } else {
             KeyPackageBuilder::new().leaf_node_capabilities(capabilities_with_support.clone())
@@ -2297,7 +2300,8 @@ fn valsem113() {
 
         // Create a group with the defined capabilities
         let mut alice_group = if matches!(test_mode, TestMode::Unsupported) {
-            MlsGroup::builder()
+            // Advertise everything except the proposal type under test.
+            MlsGroup::builder().with_capabilities(minimal_capabilities_for(ciphersuite).build())
         } else {
             MlsGroup::builder().with_capabilities(capabilities_with_support.clone())
         }
@@ -2395,6 +2399,64 @@ fn valsem113() {
     }
 }
 
+/// A custom proposal whose type collides with a registered proposal type or a
+/// GREASE value would decode as a different proposal, so it must be rejected.
+#[openmls_test::openmls_test]
+fn custom_proposal_with_colliding_type() {
+    let alice_provider = &Provider::default();
+
+    let alice_credential_with_keys = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .build(
+            alice_provider,
+            &alice_credential_with_keys.signer,
+            alice_credential_with_keys.credential_with_key.clone(),
+        )
+        .unwrap();
+
+    // ExternalInit, Remove and a GREASE value.
+    for proposal_type in [6u16, 3, 0x0A0A] {
+        let custom_proposal = CustomProposal::new(proposal_type, vec![1, 2, 3]);
+
+        assert!(matches!(
+            alice_group.propose_custom_proposal_by_value(
+                alice_provider,
+                &alice_credential_with_keys.signer,
+                custom_proposal.clone(),
+            ),
+            Err(ProposalError::LibraryError(_))
+        ));
+        assert!(matches!(
+            alice_group.propose_custom_proposal_by_reference(
+                alice_provider,
+                &alice_credential_with_keys.signer,
+                custom_proposal.clone(),
+            ),
+            Err(ProposalError::LibraryError(_))
+        ));
+        assert_eq!(alice_group.pending_proposals().count(), 0);
+
+        let result = alice_group
+            .commit_builder()
+            .add_proposal(Proposal::custom(custom_proposal))
+            .load_psks(alice_provider.storage())
+            .unwrap()
+            .build(
+                alice_provider.rand(),
+                alice_provider.crypto(),
+                &alice_credential_with_keys.signer,
+                |_| true,
+            );
+        assert!(matches!(result, Err(CreateCommitError::LibraryError(_))));
+    }
+}
+
 // Tests `PublicGroup::validate_key_package_for_add`, which runs the checks of
 // an Add proposal on a single key package. The group used here carries the
 // unknown extension 0xf001 in its group context and requires support for the
@@ -2410,6 +2472,7 @@ fn validate_key_package_for_add() {
     let capabilities = |ciphersuite, extension_types: Vec<ExtensionType>| {
         Capabilities::builder()
             .ciphersuites(vec![ciphersuite])
+            .credentials(vec![CredentialType::Basic])
             .extensions(extension_types)
             .build()
     };

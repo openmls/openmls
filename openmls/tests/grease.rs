@@ -5,10 +5,28 @@
 //! MLS protocol implementation, including in KeyPackages, capabilities,
 //! proposals, and validation logic.
 
-use openmls::prelude::*;
+use openmls::prelude::{
+    tls_codec::{Deserialize, Serialize},
+    *,
+};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::Ciphersuite;
+
+// The ciphersuite used throughout this file, wherever a group/KeyPackage
+// doesn't pick one explicitly.
+const TEST_CIPHERSUITE: Ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+// Capabilities builder seeded with `TEST_CIPHERSUITE` and a `Basic`
+// credential — explicitly set capabilities always need both, and most tests
+// in this file only care about the GREASE values they add on top. Chain
+// `.credentials(...)` etc. to override the placeholder when a test wants a
+// specific list.
+fn test_capabilities() -> CapabilitiesBuilder {
+    Capabilities::builder()
+        .ciphersuites(vec![TEST_CIPHERSUITE])
+        .credentials(vec![CredentialType::Basic])
+}
 
 // Helper function to create a test credential
 fn create_credential(identity: &[u8]) -> (CredentialWithKey, SignatureKeyPair) {
@@ -36,7 +54,7 @@ fn test_grease_proposals_in_capabilities() {
     let (bob_credential, bob_signer) = create_credential(b"Bob");
 
     // Create Alice's group with GREASE proposals in capabilities
-    let alice_capabilities = Capabilities::builder()
+    let alice_capabilities = test_capabilities()
         .proposals(vec![
             ProposalType::Add,
             ProposalType::Update,
@@ -53,7 +71,7 @@ fn test_grease_proposals_in_capabilities() {
         .expect("Failed to create group");
 
     // Create Bob's KeyPackage with GREASE proposals
-    let bob_capabilities = Capabilities::builder()
+    let bob_capabilities = test_capabilities()
         .proposals(vec![
             ProposalType::Add,
             ProposalType::Update,
@@ -95,7 +113,7 @@ fn test_grease_extensions_in_capabilities() {
     let (alice_credential, alice_signer) = create_credential(b"Alice");
 
     // Create capabilities with GREASE extensions
-    let alice_capabilities = Capabilities::builder()
+    let alice_capabilities = test_capabilities()
         .extensions(vec![
             ExtensionType::ApplicationId,
             ExtensionType::Grease(0x3A3A), // Add GREASE extension
@@ -119,7 +137,7 @@ fn test_grease_credentials_in_capabilities() {
     let (alice_credential, alice_signer) = create_credential(b"Alice");
 
     // Create capabilities with GREASE credentials
-    let alice_capabilities = Capabilities::builder()
+    let alice_capabilities = test_capabilities()
         .credentials(vec![
             CredentialType::Basic,
             CredentialType::Grease(0x5A5A), // Add GREASE credential
@@ -156,7 +174,7 @@ fn test_multiple_grease_values_filtered() {
     let (bob_credential, bob_signer) = create_credential(b"Bob");
 
     // Create Alice with many GREASE values
-    let alice_capabilities = Capabilities::builder()
+    let alice_capabilities = test_capabilities()
         .proposals(vec![
             ProposalType::Add,
             ProposalType::Grease(0x0A0A),
@@ -184,7 +202,7 @@ fn test_multiple_grease_values_filtered() {
         .expect("Failed to create group");
 
     // Create Bob with completely different GREASE values
-    let bob_capabilities = Capabilities::builder()
+    let bob_capabilities = test_capabilities()
         .proposals(vec![
             ProposalType::Add,
             ProposalType::Grease(0x9A9A),
@@ -339,7 +357,7 @@ fn test_grease_injection_via_with_grease() {
     let (credential, signer) = create_credential(b"Alice");
 
     // Create capabilities with GREASE values using with_grease()
-    let capabilities = Capabilities::builder().with_grease(provider.rand()).build();
+    let capabilities = test_capabilities().with_grease(provider.rand()).build();
 
     // Create a KeyPackage with these capabilities
     let key_package = KeyPackage::builder()
@@ -435,7 +453,7 @@ fn test_grease_injection_in_groups_via_with_grease() {
     let (credential, signer) = create_credential(b"Alice");
 
     // Create capabilities with GREASE values using with_grease()
-    let capabilities = Capabilities::builder().with_grease(provider.rand()).build();
+    let capabilities = test_capabilities().with_grease(provider.rand()).build();
 
     // Create a group with these capabilities
     let alice_group = MlsGroup::builder()
@@ -474,4 +492,25 @@ fn test_grease_injection_in_groups_via_with_grease() {
         has_grease_credential,
         "with_grease() should add a GREASE credential"
     );
+}
+
+#[test]
+fn test_grease_ciphersuite_rejected_in_wire_position() {
+    let provider = OpenMlsRustCrypto::default();
+    let (credential, signer) = create_credential(b"Alice");
+    let key_package = KeyPackage::builder()
+        .build(
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            &provider,
+            &signer,
+            credential,
+        )
+        .expect("Failed to create KeyPackage");
+
+    // Protocol version (2 bytes), then the ciphersuite (2 bytes).
+    let mut bytes = key_package.key_package().tls_serialize_detached().unwrap();
+    assert_eq!(&bytes[2..4], &[0x00, 0x01]);
+    bytes[2..4].copy_from_slice(&[0x0A, 0x0A]);
+
+    assert!(KeyPackageIn::tls_deserialize_exact(bytes.as_slice()).is_err());
 }

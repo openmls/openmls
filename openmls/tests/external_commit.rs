@@ -83,6 +83,7 @@ fn test_external_commit() {
         let (_bob_group, _) = MlsGroup::external_commit_builder()
             .build_group(bob_provider, verifiable_group_info, bob_credential)
             .unwrap()
+            .leaf_node_parameters(LeafNodeParameters::builder().build())
             .load_psks(bob_provider.storage())
             .unwrap()
             .build(
@@ -145,6 +146,7 @@ fn test_group_info() {
         )
         .build_group(bob_provider, verifiable_group_info, bob_credential)
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(
@@ -200,6 +202,7 @@ fn test_group_info() {
     let _ = MlsGroup::external_commit_builder()
         .build_group(bob_provider, verifiable_group_info, bob_credential)
         .unwrap()
+        .leaf_node_parameters(LeafNodeParameters::builder().build())
         .load_psks(bob_provider.storage())
         .unwrap()
         .build(

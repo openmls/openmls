@@ -58,6 +58,9 @@ pub enum NewGroupError<StorageError> {
     /// The ciphersuite is not supported by the crypto provider.
     #[error("Ciphersuite {0:?} is not supported by the crypto provider.")]
     UnsupportedCiphersuite(Ciphersuite),
+    /// The leaf node's capabilities don't cover what the leaf itself uses.
+    #[error(transparent)]
+    LeafNodeBuild(#[from] crate::treesync::node::leaf_node::LeafNodeBuildError),
     /// A virtual-clients processing error occurred.
     #[cfg(feature = "virtual-clients-draft")]
     #[error(transparent)]

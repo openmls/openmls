@@ -11,7 +11,7 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 
 use crate::ciphersuite::Secret;
-use crate::tree::secret_tree::SecretTreeError;
+use crate::tree::secret_tree::{DecryptionSecret, SecretTreeError};
 use crate::tree::sender_ratchet::{
     Generation, RatchetKeyMaterial, RatchetSecret, SenderRatchetConfiguration,
 };
@@ -32,6 +32,11 @@ pub(crate) struct DualUseRatchet {
     #[serde(with = "vector_converter")]
     past_secrets: BTreeMap<Generation, DualUsePastSecret>,
     ratchet_head: RatchetSecret,
+    /// Every generation pruned from the receive window so far lies below this
+    /// bound. A missing generation at or above it was removed by confirming an
+    /// own send. Below it we cannot tell the two cases apart.
+    #[serde(default)]
+    pruned_below: Generation,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -51,6 +56,18 @@ enum RetainedDecryptionSecret {
 }
 
 impl DualUsePastSecret {
+    fn peek_for_decryption(&self) -> Result<RatchetKeyMaterial, SecretTreeError> {
+        match self {
+            Self::AwaitingConfirmation(ratchet_secret)
+            | Self::RetainedForDecryption(RetainedDecryptionSecret::Available(ratchet_secret)) => {
+                Ok(ratchet_secret.clone())
+            }
+            Self::RetainedForDecryption(RetainedDecryptionSecret::Consumed) => {
+                Err(SecretTreeError::SecretReuseError)
+            }
+        }
+    }
+
     fn take_for_decryption(&mut self) -> Result<RatchetKeyMaterial, SecretTreeError> {
         match mem::replace(
             self,
@@ -77,10 +94,14 @@ impl From<RatchetSecret> for DualUseRatchet {
     /// a fresh [`DualUseRatchet`] with no past secrets. This is used to
     /// upgrade own ratchets deserialized from state written by a build
     /// without the feature.
+    ///
+    /// An `EncryptionRatchet` only ever encrypts, so every generation below
+    /// its head was an own send and none was pruned.
     fn from(ratchet_head: RatchetSecret) -> Self {
         Self {
             past_secrets: BTreeMap::new(),
             ratchet_head,
+            pruned_below: 0,
         }
     }
 }
@@ -90,6 +111,7 @@ impl DualUseRatchet {
         Self {
             past_secrets: BTreeMap::new(),
             ratchet_head: RatchetSecret::initial_ratchet_secret(secret),
+            pruned_below: 0,
         }
     }
 
@@ -142,20 +164,26 @@ impl DualUseRatchet {
         Ok((generation, ratchet_secrets))
     }
 
-    /// Gets a secret for decryption.
+    /// Returns the secret for decrypting `generation` without changing the
+    /// ratchet. If the secret is [`DecryptionSecret::Available`], also returns
+    /// the change that [`Self::consume`] applies to mark the generation as
+    /// used.
     ///
     /// The receive-side retention window is computed only from generations
     /// retained for decryption because encryption also advances the derivation
-    /// head. Local sends don't enter this window. Unconfirmed encryption secrets
-    /// are retained even if they fall outside the receive window.
-    pub(crate) fn secret_for_decryption(
-        &mut self,
+    /// head. Local sends don't enter this window. Unconfirmed encryption
+    /// secrets are retained even if they fall outside the receive window.
+    ///
+    /// A generation used in own messages that was already confirmed previously
+    /// returns [`DecryptionSecret::OwnMessageConfirmed`].
+    pub(crate) fn peek(
+        &self,
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         generation: Generation,
         configuration: &SenderRatchetConfiguration,
-    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
-        log::debug!("secret_for_decryption");
+    ) -> Result<(DecryptionSecret, Option<PeekedDualUseGeneration>), SecretTreeError> {
+        log::debug!("peek decryption secret");
         let head_generation = self.ratchet_head.generation();
         if head_generation < u32::MAX - configuration.maximum_forward_distance()
             && generation > head_generation + configuration.maximum_forward_distance()
@@ -163,51 +191,111 @@ impl DualUseRatchet {
             return Err(SecretTreeError::TooDistantInTheFuture);
         }
 
-        let ratchet_secrets = if generation >= head_generation {
-            for skipped_generation in head_generation..generation {
-                let ratchet_secrets = self
-                    .ratchet_head
-                    .ratchet_forward(crypto, ciphersuite)
-                    .map(|(_, key_material)| key_material)?;
-                self.past_secrets.insert(
-                    skipped_generation,
-                    DualUsePastSecret::RetainedForDecryption(RetainedDecryptionSecret::Available(
-                        ratchet_secrets,
-                    )),
+        if generation >= head_generation {
+            let mut ratchet_head = self.ratchet_head.clone();
+            // All skipped secrets are kept, oldest first. Consuming prunes
+            // the ones outside the window, which also moves the prune bound.
+            let mut skipped_secrets = Vec::new();
+            for _ in head_generation..generation {
+                skipped_secrets.push(
+                    ratchet_head
+                        .ratchet_forward(crypto, ciphersuite)
+                        .map(|(_, key_material)| key_material)?,
                 );
             }
-            let ratchet_secrets = self
-                .ratchet_head
+            let ratchet_secrets = ratchet_head
                 .ratchet_forward(crypto, ciphersuite)
                 .map(|(_, key_material)| key_material)?;
-            self.past_secrets.insert(
-                generation,
-                DualUsePastSecret::RetainedForDecryption(RetainedDecryptionSecret::Consumed),
-            );
-            ratchet_secrets
+            Ok((
+                DecryptionSecret::Available(ratchet_secrets),
+                Some(PeekedDualUseGeneration::Forward {
+                    from_head: head_generation,
+                    ratchet_head,
+                    skipped_secrets,
+                }),
+            ))
         } else {
-            let Some(entry) = self.past_secrets.get_mut(&generation) else {
-                return Err(self.error_for_missing_past_secret(generation));
+            let Some(entry) = self.past_secrets.get(&generation) else {
+                return self
+                    .missing_past_secret(generation)
+                    .map(|decryption_secret| (decryption_secret, None));
             };
-            entry.take_for_decryption()?
-        };
-
-        self.prune_past_secrets(configuration);
-        Ok(ratchet_secrets)
+            Ok((
+                DecryptionSecret::Available(entry.peek_for_decryption()?),
+                Some(PeekedDualUseGeneration::Past { generation }),
+            ))
+        }
     }
 
-    fn error_for_missing_past_secret(&self, generation: Generation) -> SecretTreeError {
-        if self
-            .past_secrets
-            .iter()
-            .find(|(_, entry)| entry.is_retained_for_decryption())
-            .is_some_and(|(oldest_generation, _)| generation < *oldest_generation)
-        {
-            log::error!("  Generation is too far in the past (not in the window).");
-            SecretTreeError::TooDistantInThePast
-        } else {
-            SecretTreeError::SecretReuseError
+    /// Marks a generation returned by [`Self::peek`] as used. Returns an error
+    /// if the ratchet changed in a way that makes `peeked` stale.
+    pub(crate) fn consume(
+        &mut self,
+        peeked: PeekedDualUseGeneration,
+        configuration: &SenderRatchetConfiguration,
+    ) -> Result<(), SecretTreeError> {
+        match peeked {
+            PeekedDualUseGeneration::Forward {
+                from_head,
+                ratchet_head,
+                skipped_secrets,
+            } => {
+                if from_head != self.ratchet_head.generation() {
+                    log::error!("The ratchet moved since the generation was peeked.");
+                    return Err(SecretTreeError::LibraryError);
+                }
+                let generation = ratchet_head.generation() - 1;
+                self.ratchet_head = ratchet_head;
+                for (skipped_generation, ratchet_secrets) in (from_head..).zip(skipped_secrets) {
+                    self.past_secrets.insert(
+                        skipped_generation,
+                        DualUsePastSecret::RetainedForDecryption(
+                            RetainedDecryptionSecret::Available(ratchet_secrets),
+                        ),
+                    );
+                }
+                self.past_secrets.insert(
+                    generation,
+                    DualUsePastSecret::RetainedForDecryption(RetainedDecryptionSecret::Consumed),
+                );
+            }
+            PeekedDualUseGeneration::Past { generation } => {
+                self.past_secrets
+                    .get_mut(&generation)
+                    .ok_or(SecretTreeError::SecretReuseError)?
+                    .take_for_decryption()?;
+            }
         }
+        self.prune_past_secrets(configuration);
+        Ok(())
+    }
+
+    /// Gets a secret for decryption and marks it as used.
+    #[cfg(test)]
+    pub(crate) fn secret_for_decryption(
+        &mut self,
+        ciphersuite: Ciphersuite,
+        crypto: &impl OpenMlsCrypto,
+        generation: Generation,
+        configuration: &SenderRatchetConfiguration,
+    ) -> Result<DecryptionSecret, SecretTreeError> {
+        let (decryption_secret, peeked) =
+            self.peek(ciphersuite, crypto, generation, configuration)?;
+        if let Some(peeked) = peeked {
+            self.consume(peeked, configuration)?;
+        }
+        Ok(decryption_secret)
+    }
+
+    fn missing_past_secret(
+        &self,
+        generation: Generation,
+    ) -> Result<DecryptionSecret, SecretTreeError> {
+        if generation < self.pruned_below {
+            log::error!("  Generation is too far in the past (not in the window).");
+            return Err(SecretTreeError::TooDistantInThePast);
+        }
+        Ok(DecryptionSecret::OwnMessageConfirmed)
     }
 
     fn prune_past_secrets(&mut self, configuration: &SenderRatchetConfiguration) {
@@ -229,6 +317,21 @@ impl DualUseRatchet {
 
         for generation in generations_to_prune {
             self.past_secrets.remove(&generation);
+            self.pruned_below = self.pruned_below.max(generation + 1);
         }
     }
+}
+
+/// The change to a [`DualUseRatchet`] that marks one generation as used,
+/// computed by [`DualUseRatchet::peek`].
+pub(crate) enum PeekedDualUseGeneration {
+    /// The generation is at or after the head. The ratchet moves its head to
+    /// `ratchet_head` and retains the skipped secrets that fit into its window.
+    Forward {
+        from_head: Generation,
+        ratchet_head: RatchetSecret,
+        skipped_secrets: Vec<RatchetKeyMaterial>,
+    },
+    /// The generation is below the head.
+    Past { generation: Generation },
 }

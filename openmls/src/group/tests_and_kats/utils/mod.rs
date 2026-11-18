@@ -18,6 +18,8 @@ use crate::{
 
 use self::storage::OpenMlsProvider;
 
+pub(crate) mod storage_error;
+
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
 pub(crate) struct TestClientConfig {
@@ -108,8 +110,7 @@ pub(crate) fn setup(
     // Initialize all of the groups, each group gets assigned a sequential group
     // id. TODO: Depending on the use case, it might be hard to figure out which
     // group is which.
-    for group_id in 0..config.groups.len() {
-        let group_config = &config.groups[group_id];
+    for (group_id, group_config) in config.groups.iter().enumerate() {
         // The first party in the members array is going to be the group
         // initiator.
         let initial_group_member = test_clients
@@ -127,6 +128,7 @@ pub(crate) fn setup(
             .ciphersuite(group_config.ciphersuite)
             .use_ratchet_tree_extension(group_config.use_ratchet_tree_extension)
             .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+            .with_capabilities(minimal_capabilities_for(group_config.ciphersuite).build())
             .build(
                 provider,
                 &credential_with_key_and_signer.signer,
@@ -146,13 +148,10 @@ pub(crate) fn setup(
                 .get_mut(&GroupId::from_slice(&group_id.to_be_bytes()))
                 .expect("An unexpected error occurred.");
             let mut key_packages = vec![];
-            for client_id in 1..group_config.members.len() {
+            for member in group_config.members.iter().skip(1) {
                 // Pull a KeyPackage from the key_store for the new member.
                 let next_member_key_package = key_store
-                    .get_mut(&(
-                        group_config.members[client_id].name,
-                        group_config.ciphersuite,
-                    ))
+                    .get_mut(&(member.name, group_config.ciphersuite))
                     .expect("An unexpected error occurred.")
                     .pop()
                     .expect("An unexpected error occurred.");
@@ -178,9 +177,9 @@ pub(crate) fn setup(
                 .build();
 
             // Distribute the Welcome message to the other members.
-            for client_id in 1..group_config.members.len() {
+            for member in group_config.members.iter().skip(1) {
                 let new_group_member = test_clients
-                    .get(group_config.members[client_id].name)
+                    .get(member.name)
                     .expect("An unexpected error occurred.")
                     .borrow_mut();
                 // Create the local group state of the new member based on the
@@ -280,6 +279,8 @@ pub(crate) fn generate_credential_with_key<Provider: OpenMlsProvider>(
         signer,
     }
 }
+
+pub(crate) use crate::test_utils::minimal_capabilities_for;
 
 // Helper function to generate a KeyPackageBundle
 pub(crate) fn generate_key_package<Provider: OpenMlsProvider>(

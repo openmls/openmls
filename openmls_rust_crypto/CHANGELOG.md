@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- `aead_encrypt` and `aead_decrypt` now return `CryptoError::InvalidLength` for a nonce of the wrong length. `sign` returns the same error for an ECDSA private key of the wrong length. Previously these inputs caused a panic.
+
 ## 0.6.0 (2026-08-25)
 
 ### Added
