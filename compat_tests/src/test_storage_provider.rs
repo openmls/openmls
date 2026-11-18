@@ -1861,10 +1861,10 @@ mod postcard_compat {
         fn iter_group_ids<GroupId: traits::GroupId<CURRENT_VERSION>>(
             &self,
         ) -> Result<Vec<GroupId>, postcard::Error> {
-            let mut data = self.0 .0.lock().unwrap();
+            let data = self.0 .0.lock().unwrap();
             data.group_context
-                .iter()
-                .map(|(k, _v)| postcard::from_bytes(k))
+                .keys()
+                .map(|key| postcard::from_bytes(key))
                 .collect::<Result<Vec<_>, _>>()
         }
     }
