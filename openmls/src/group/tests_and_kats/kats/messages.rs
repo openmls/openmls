@@ -305,7 +305,10 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             .tls_serialize_detached()
             .unwrap(),
 
-        group_secrets: GroupSecrets::random_encoded(ciphersuite, provider.rand()).unwrap(),
+        group_secrets: GroupSecrets::random_encoded(ciphersuite, provider.rand())
+            .unwrap()
+            .as_ref()
+            .to_vec(),
         ratchet_tree: alice_ratchet_tree.tls_serialize_detached().unwrap(),
 
         add_proposal: add_proposal.tls_serialize_detached().unwrap(),
@@ -416,9 +419,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     let gs = GroupSecrets::tls_deserialize_exact(&tv_group_secrets).unwrap();
     let my_group_secrets =
         GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), &gs.psks).unwrap();
-    if tv_group_secrets != my_group_secrets {
+    if tv_group_secrets != my_group_secrets.as_ref() {
         log::error!("  GroupSecrets encoding mismatch");
-        log::debug!("    Encoded: {my_group_secrets:x?}");
+        log::debug!("    Encoded: {:x?}", my_group_secrets.as_ref());
         log::debug!("    Expected: {tv_group_secrets:x?}");
         if cfg!(test) {
             panic!("GroupSecrets encoding mismatch");
