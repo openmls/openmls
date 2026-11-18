@@ -1228,9 +1228,6 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             // The spec requires the SafeAAD prefix even with zero items
             // when the target GroupContext has `safe_aad` present, so a
             // bare `aad` would be rejected by SafeAAD-aware receivers.
-            // The joining group carries no application-staged items, so
-            // the prefix is empty unless the builder staged the
-            // virtual-clients marker.
             #[cfg(feature = "extensions-draft")]
             if group.context().safe_aad_required() {
                 crate::framing::safe_aad::assemble_authenticated_data(&group.safe_aad, &aad)

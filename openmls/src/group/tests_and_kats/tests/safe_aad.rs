@@ -507,3 +507,74 @@ fn safe_aad_commit_without_with_aad_uses_group_tail() {
     assert_eq!(safe_aad.items(), items.as_slice());
     assert_eq!(processed.tail_aad(), tail.as_slice());
 }
+
+/// An external commit carries the Safe AAD items named with `with_safe_aad`.
+#[openmls_test::openmls_test]
+fn safe_aad_external_commit_with_safe_aad() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+    let (mut alice_group, _bob_group, alice_credential) = create_group_pair(
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        true,
+    );
+    let group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_credential.signer, true)
+        .expect("exporting the group info");
+    let verifiable_group_info = MlsMessageIn::from(group_info)
+        .into_verifiable_group_info()
+        .expect("a group info");
+    let charlie_credential = generate_credential_with_key(
+        "Charlie".into(),
+        ciphersuite.signature_algorithm(),
+        charlie_provider,
+    );
+
+    let items = vec![
+        SafeAadItem::new(3, b"three".to_vec()),
+        SafeAadItem::new(9, b"nine".to_vec()),
+    ];
+    let (_charlie_group, bundle) = MlsGroup::external_commit_builder()
+        .with_safe_aad(items.clone())
+        .expect("items in ascending order")
+        .with_aad(b"tail".to_vec())
+        .build_group(
+            charlie_provider,
+            verifiable_group_info,
+            charlie_credential.credential_with_key.clone(),
+        )
+        .expect("building the group")
+        .leaf_node_parameters(
+            LeafNodeParameters::builder()
+                .with_capabilities(safe_aad_capabilities(ciphersuite))
+                .build(),
+        )
+        .load_psks(charlie_provider.storage())
+        .expect("loading PSKs")
+        .build(
+            charlie_provider.rand(),
+            charlie_provider.crypto(),
+            &charlie_credential.signer,
+            |_| true,
+        )
+        .expect("building the external commit")
+        .finalize(charlie_provider)
+        .expect("finalizing the external commit");
+
+    let commit: MlsMessageIn = bundle.into_commit().into();
+    let processed = alice_group
+        .process_message(alice_provider, commit.into_protocol_message().unwrap())
+        .expect("processing the external commit");
+    assert_eq!(processed.safe_aad().expect("Safe AAD").items(), items);
+    assert_eq!(processed.tail_aad(), b"tail");
+
+    assert!(MlsGroup::external_commit_builder()
+        .with_safe_aad(vec![
+            SafeAadItem::new(9, Vec::new()),
+            SafeAadItem::new(3, Vec::new()),
+        ])
+        .is_err());
+}
