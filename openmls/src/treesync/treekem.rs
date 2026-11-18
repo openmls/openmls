@@ -239,7 +239,7 @@ impl TreeSyncDiff<'_> {
                 key_package.hpke_init_key().as_slice(),
                 "Welcome",
                 encrypted_group_info,
-                &group_secrets_bytes,
+                group_secrets_bytes.as_ref(),
                 key_package.ciphersuite(),
                 crypto,
             )
