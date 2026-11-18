@@ -71,6 +71,12 @@ impl Secret {
         }
     }
 
+    pub(crate) fn from_vec(bytes: Vec<u8>) -> Self {
+        Self {
+            value: SecretVLBytes::new(bytes),
+        }
+    }
+
     /// HKDF extract where `self` is `salt`.
     pub(crate) fn hkdf_extract<'a>(
         &self,
