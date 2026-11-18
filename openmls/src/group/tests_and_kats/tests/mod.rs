@@ -29,6 +29,7 @@ mod past_secrets;
 mod proposal_validation;
 mod random_group_operations;
 mod remove_operation;
+mod storage_error_propagation;
 mod unsupported_ciphersuite;
 #[cfg(all(
     feature = "virtual-clients-draft",
