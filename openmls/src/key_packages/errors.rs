@@ -25,8 +25,8 @@ pub enum KeyPackageVerifyError {
     /// The lifetime of the leaf node is missing.
     #[error("The lifetime of the leaf node is missing.")]
     MissingLifetime,
-    /// A key package extension is not supported in the leaf's capabilities.
-    #[error("A key package extension is not supported in the leaf's capabilities.")]
+    /// A key package or leaf node extension is not supported in the leaf's capabilities.
+    #[error("A key package or leaf node extension is not supported in the leaf's capabilities.")]
     UnsupportedExtension,
     /// The key package signature is not valid.
     #[error("The key package signature is not valid.")]

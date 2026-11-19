@@ -61,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2289](https://github.com/openmls/openmls/pull/2289): `GroupInfo` equality no longer depends on whether the signed payload is cached, so a signed `GroupInfo` now equals the same `GroupInfo` after decoding and verifying it.
 - [#2242](https://github.com/openmls/openmls/pull/2242): `CommitBuilder::load_psk` now checks that resumption PSKs of usage `Application` reference the correct group ID, and returns `CreateCommitError::PskError(PskError::DifferentGroupId)`. In earlier versions it would return `CreateCommitError::PskError(PskError::KeyNotFound)`
 - [#2295](https://github.com/openmls/openmls/pull/2295): `JoinBuilder::check_members(true)` now uses multiset semantics to check member credentials in subgroups and reinitialized groups.
+- [#2268](https://github.com/openmls/openmls/issues/2268): `KeyPackageIn::validate` now rejects a KeyPackage whose LeafNode carries an extension that its capabilities don't list (`KeyPackageVerifyError::UnsupportedExtension`), as RFC 9420 Section 7.2 requires. Previously only the KeyPackage's own extensions were checked.
 
 ## 0.9.0 (2026-08-25)
 

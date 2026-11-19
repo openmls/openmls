@@ -901,3 +901,43 @@ fn key_package_validation_with_grease_extension() {
         .validate(provider.crypto(), ProtocolVersion::Mls10)
         .expect("validation should accept an advertised GREASE extension");
 }
+
+/// Validation of a key package must reject a leaf node that carries an
+/// extension its capabilities don't list (RFC 9420 Section 7.2).
+#[openmls_test::openmls_test]
+fn key_package_validation_checks_leaf_node_extensions() {
+    const EXTENSION_TYPE: u16 = 0xff00;
+
+    let provider = &Provider::default();
+    let (key_package_orig, _, signer) = key_package(ciphersuite, provider);
+
+    // Add an extension to the leaf node without listing it in the capabilities.
+    let mut franken_key_package =
+        frankenstein::FrankenKeyPackage::from(key_package_orig.key_package().clone());
+    franken_key_package
+        .leaf_node
+        .extensions
+        .push(frankenstein::FrankenExtension::Unknown(
+            EXTENSION_TYPE,
+            vec![].into(),
+        ));
+    franken_key_package.resign(&signer);
+
+    let err = KeyPackageIn::from(franken_key_package.clone())
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .unwrap_err();
+
+    assert_eq!(err, KeyPackageVerifyError::UnsupportedExtension);
+
+    // Once the capabilities list the extension, validation succeeds.
+    franken_key_package
+        .leaf_node
+        .capabilities
+        .extensions
+        .push(EXTENSION_TYPE);
+    franken_key_package.resign(&signer);
+
+    KeyPackageIn::from(franken_key_package)
+        .validate(provider.crypto(), ProtocolVersion::Mls10)
+        .expect("validation should accept an advertised leaf node extension");
+}
