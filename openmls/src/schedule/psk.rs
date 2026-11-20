@@ -685,10 +685,6 @@ pub mod store {
                 self.resumption_psk.push(item);
                 self.cursor += 1;
             } else {
-                // Normalize before indexing, then advance: indexing with a
-                // not-yet-normalized cursor evicts the wrong (too-new) entry
-                // for the first `len - 1` overflow calls after the store
-                // first fills up. See issue #2227.
                 self.cursor %= self.resumption_psk.len();
                 self.resumption_psk[self.cursor] = item;
                 self.cursor += 1;
