@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [GHSA-gc79-23g3-8g52](https://github.com/openmls/openmls/security/advisories/GHSA-gc79-23g3-8g52): As part of addressing this issue, we change the argument type to the `validate_extension_type` method of  `ExtensionValidator` and sealed the trait.
 - [#2173](https://github.com/openmls/openmls/pull/2173): Simplified the HPKE construction for targeted messages to match the updated draft (`targeted-messages-draft` feature). The recipient and sender leaf indices are now bound through the HPKE info and the `authenticated_data` field is used directly as the HPKE AAD. The `TargetedMessageTBM` struct is removed and the sender uses a single-shot PSK-mode seal. The `OpenMlsCrypto` trait method `hpke_seal_psk_resolved_aad` is replaced by `hpke_seal_psk`.
 - [#2257](https://github.com/openmls/openmls/pull/2257): `LeafNodeLifetimePolicy` has the new variant `VerifyAt`, so an exhaustive `match` on it needs another arm.
+- [#2339](https://github.com/openmls/openmls/pull/2339): With `draft-ietf-mls-pq-ciphersuites`, the ML-DSA operations of `RustCrypto` run in functions of their own. `signature_key_gen`, `sign` and `verify_signature` with another signature scheme no longer reserve the stack of the ML-DSA keys, up to about 130 KiB per call.
 
 ### Removed
 
