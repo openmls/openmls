@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [#2170](https://github.com/openmls/openmls/pull/2170): **Breaking:** The discriminant of `HpkeKemType::XWingKemDraft6` changed from `0x004D` to `0x647a`, the `MLKEM768-X25519` code point registered by `draft-ietf-hpke-pq` (`draft-ietf-mls-pq-ciphersuites` feature). The PQ ciphersuites now follow the updated drafts and are not compatible with earlier versions; see the `openmls` changelog.
 - [#1923](https://github.com/openmls/openmls/pull/1923): `StorageProvider`, `PublicStorageProvider`, `Key` and `Entity` now require `MaybeSync`, and the storage error types require `MaybeSend`. This only adds bounds in async mode.
 
 ## 0.6.0 (2026-08-25)
