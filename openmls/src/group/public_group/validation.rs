@@ -245,6 +245,7 @@ impl PublicGroup {
                 signature_key_set.insert(signature_key);
             }
         }
+        encryption_key_set.extend(self.treesync().full_parent_encryption_keys());
 
         // Collect signature keys from add proposals and the commit path leaf
         // node

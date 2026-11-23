@@ -1057,6 +1057,106 @@ fn test_valsem103_valsem104() {
         .expect("Unexpected error.");
 }
 
+#[openmls_test::openmls_test]
+fn parent_node_duplicate_encryption_key_is_rejected() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let ProposalValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+        alice_credential_with_key_and_signer,
+        ..
+    } = validation_test_setup(
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ciphersuite,
+        alice_provider,
+        bob_provider,
+    );
+
+    // Perform and merge a self-update so the ratchet tree has a populated parent node.
+    let commit = alice_group
+        .self_update(
+            alice_provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
+        .expect("Error creating initial self-update")
+        .into_contents();
+    alice_group
+        .merge_pending_commit(alice_provider)
+        .expect("Error merging initial self-update");
+    let processed = bob_group
+        .process_message(bob_provider, commit.0.into_protocol_message().unwrap())
+        .expect("Bob failed to process initial self-update");
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) = processed.into_content()
+    else {
+        panic!("Expected staged commit");
+    };
+    bob_group
+        .merge_staged_commit(bob_provider, *staged_commit)
+        .expect("Bob failed to merge initial self-update");
+
+    let parent_encryption_key = bob_group
+        .public_group()
+        .treesync()
+        .full_parent_encryption_keys()
+        .next()
+        .expect("Expected at least one populated parent node");
+
+    // Create a second commit and attach an Add proposal reusing that parent encryption key.
+    let serialized_update = alice_group
+        .self_update(
+            alice_provider,
+            &alice_credential_with_key_and_signer.signer,
+            LeafNodeParameters::default(),
+        )
+        .expect("Error creating self-update")
+        .into_contents()
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
+
+    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
+    let original_plaintext = plaintext.clone();
+
+    let dave_provider = &Provider::default();
+    let (dave_credential_with_key, dave_key_package) =
+        generate_credential_with_key_and_key_package("Dave".into(), ciphersuite, dave_provider);
+
+    let mut franken_key_package = FrankenKeyPackage::from(dave_key_package);
+    franken_key_package.leaf_node.encryption_key = parent_encryption_key.into();
+    franken_key_package.resign(&dave_credential_with_key.signer);
+    let dave_key_package = KeyPackage::from(franken_key_package);
+
+    let add_proposal = Proposal::add(AddProposal {
+        key_package: dave_key_package,
+    });
+
+    let verifiable_plaintext = insert_proposal_and_resign(
+        dave_provider,
+        ciphersuite,
+        vec![ProposalOrRef::proposal(add_proposal)],
+        plaintext,
+        &original_plaintext,
+        &alice_group,
+        &alice_credential_with_key_and_signer.signer,
+    );
+
+    let err = bob_group
+        .process_message(bob_provider, ProtocolMessage::from(verifiable_plaintext))
+        .expect_err("Expected duplicate parent encryption key to be rejected.");
+
+    assert!(matches!(
+        err,
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+            ProposalValidationError::DuplicateEncryptionKey
+        ))
+    ));
+}
+
 #[derive(Debug)]
 enum KeyPackageTestVersion {
     // Wrong ciphersuite in the KeyPackage

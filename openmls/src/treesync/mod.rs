@@ -765,6 +765,14 @@ impl TreeSync {
             })
     }
 
+    /// Returns an iterator over the encryption keys of all non-blank parent nodes.
+    pub(crate) fn full_parent_encryption_keys(&self) -> impl Iterator<Item = Vec<u8>> + '_ {
+        self.tree
+            .parents()
+            .filter_map(|(_, tsn)| tsn.node().as_ref())
+            .map(|parent_node| parent_node.encryption_key().as_slice().to_vec())
+    }
+
     /// Returns the nodes in the tree ordered according to the
     /// array-representation of the underlying binary tree.
     pub fn export_ratchet_tree(&self) -> RatchetTree {
