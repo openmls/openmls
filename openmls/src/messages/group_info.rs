@@ -94,10 +94,10 @@ impl VerifiableGroupInfo {
         self.payload.group_context.ciphersuite()
     }
 
-    /// Get (unverified) signer of the verifiable group info.
+    /// Get (unverified) leaf index of the member that signed the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn signer(&self) -> LeafNodeIndex {
+    pub fn signer(&self) -> LeafNodeIndex {
         self.payload.signer
     }
 
@@ -169,7 +169,11 @@ impl From<VerifiableGroupInfo> for GroupInfo {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSize, SerdeSerialize, SerdeDeserialize)]
+///
+/// Deserializing a `GroupInfo` with serde does not verify its signature. Only
+/// deserialize data that was serialized by this application, and use
+/// [`VerifiableGroupInfo`] for group infos received from others.
+#[derive(Debug, Clone, TlsSize, SerdeSerialize, SerdeDeserialize)]
 #[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
@@ -179,11 +183,20 @@ pub struct GroupInfo {
     serialized_payload: Option<Vec<u8>>,
 }
 
+// `serialized_payload` is a cache: it is set after signing and unset after
+// verifying or deserializing, so it must not take part in the comparison.
+impl PartialEq for GroupInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.payload == other.payload && self.signature == other.signature
+    }
+}
+
 impl TlsSerializeTrait for GroupInfo {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let mut written = 0;
         if let Some(ref bytes) = self.serialized_payload {
-            written += writer.write(bytes)?;
+            writer.write_all(bytes)?;
+            written += bytes.len();
         } else {
             written += self.payload.tls_serialize(writer)?;
         }
@@ -206,6 +219,11 @@ impl GroupInfo {
     /// Returns the [`GroupInfo`] signature.
     pub fn signature(&self) -> &Signature {
         &self.signature
+    }
+
+    /// Returns the leaf index of the member that signed the group info.
+    pub fn signer(&self) -> LeafNodeIndex {
+        self.payload.signer
     }
 
     /// Returns the confirmation tag.

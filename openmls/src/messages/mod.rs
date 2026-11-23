@@ -20,7 +20,7 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     framing::SenderContext,
-    group::{errors::ValidationError, WelcomeError, WelcomeKeyMaterial},
+    group::{errors::ValidationError, LeafNodeLifetimePolicy, WelcomeError, WelcomeKeyMaterial},
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     storage::OpenMlsProvider,
     treesync::{
@@ -128,7 +128,8 @@ impl Welcome {
     /// Read-only: nothing is deleted or consumed, in contrast to
     /// [`crate::group::ProcessedWelcome::new_from_welcome`]. Returns `None` if no secret addresses
     /// this client (not found in the provider's storage).
-    pub fn resolve_own_key_material<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn resolve_own_key_material<Provider: OpenMlsProvider>(
         &self,
         provider: &Provider,
     ) -> Result<Option<WelcomeKeyMaterial>, WelcomeError<Provider::StorageError>> {
@@ -138,6 +139,7 @@ impl Welcome {
             if let Some(bundle) = provider
                 .storage()
                 .key_package(&hash_ref)
+                .await
                 .map_err(WelcomeError::StorageError)?
             {
                 return Ok(Some(WelcomeKeyMaterial::with_key_package_bundle(bundle)));
@@ -145,7 +147,8 @@ impl Welcome {
 
             #[cfg(feature = "virtual-clients-draft")]
             if let Some(material) =
-                crate::group::resolve_vc_welcome_material(provider, self.ciphersuite(), &hash_ref)?
+                crate::group::resolve_vc_welcome_material(provider, self.ciphersuite(), &hash_ref)
+                    .await?
             {
                 return Ok(Some(WelcomeKeyMaterial::with_vc_welcome_material(material)));
             }
@@ -277,11 +280,12 @@ impl CommitIn {
         crypto: &impl OpenMlsCrypto,
         sender_context: SenderContext,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<Commit, ValidationError> {
         let proposals = self
             .proposals
             .into_iter()
-            .map(|p| p.validate(crypto, ciphersuite, protocol_version))
+            .map(|p| p.validate(crypto, ciphersuite, protocol_version, lifetime_policy))
             .collect::<Result<Vec<_>, _>>()?;
 
         let path = if let Some(path) = self.path {
@@ -374,11 +378,11 @@ pub struct ConfirmationTag(pub(crate) Mac);
 
 /// PathSecret
 ///
-/// > 11.2.2. Welcoming New Members
+/// > RFC 9420 12.4.3.1. Joining via Welcome Message
 ///
 /// ```text
 /// struct {
-///   opaque path_secret<1..255>;
+///   opaque path_secret<V>;
 /// } PathSecret;
 /// ```
 #[derive(

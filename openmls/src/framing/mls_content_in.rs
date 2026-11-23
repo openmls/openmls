@@ -5,7 +5,7 @@ use crate::{
     ciphersuite::signable::Signable,
     error::LibraryError,
     framing::SenderContext,
-    group::{errors::ValidationError, GroupEpoch, GroupId},
+    group::{errors::ValidationError, GroupEpoch, GroupId, LeafNodeLifetimePolicy},
     messages::{proposals_in::ProposalIn, CommitIn},
     versions::ProtocolVersion,
 };
@@ -63,15 +63,20 @@ impl FramedContentIn {
         crypto: &impl OpenMlsCrypto,
         sender_context: Option<SenderContext>,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<FramedContent, ValidationError> {
         Ok(FramedContent {
             group_id: self.group_id,
             epoch: self.epoch,
             sender: self.sender,
             authenticated_data: self.authenticated_data,
-            body: self
-                .body
-                .validate(ciphersuite, crypto, sender_context, protocol_version)?,
+            body: self.body.validate(
+                ciphersuite,
+                crypto,
+                sender_context,
+                protocol_version,
+                lifetime_policy,
+            )?,
         })
     }
 }
@@ -152,12 +157,19 @@ impl FramedContentBodyIn {
         crypto: &impl OpenMlsCrypto,
         sender_context: Option<SenderContext>,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<FramedContentBody, ValidationError> {
         Ok(match self {
             FramedContentBodyIn::Application(bytes) => FramedContentBody::Application(bytes),
-            FramedContentBodyIn::Proposal(proposal_in) => FramedContentBody::Proposal(
-                proposal_in.validate(crypto, ciphersuite, sender_context, protocol_version)?,
-            ),
+            FramedContentBodyIn::Proposal(proposal_in) => {
+                FramedContentBody::Proposal(proposal_in.validate(
+                    crypto,
+                    ciphersuite,
+                    sender_context,
+                    protocol_version,
+                    lifetime_policy,
+                )?)
+            }
             FramedContentBodyIn::Commit(commit_in) => {
                 let sender_context = sender_context
                     .ok_or_else(|| LibraryError::custom("Forgot the commit sender context"))?;
@@ -166,6 +178,7 @@ impl FramedContentBodyIn {
                     crypto,
                     sender_context,
                     protocol_version,
+                    lifetime_policy,
                 )?))
             }
         })

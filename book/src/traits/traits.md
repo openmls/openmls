@@ -26,7 +26,32 @@ A crypto provider backed by the high-assurance cryptography library [libcrux].
 Supported ciphersuites
 - MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
 - MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-- MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519
+- MLS_128_DHKEMP256_AES128GCM_SHA256_P256
+
+**Post-quantum ciphersuites**
+With the `draft-ietf-mls-pq-ciphersuites` feature, both providers additionally
+support ciphersuites from [draft-ietf-mls-pq-ciphersuites]. The draft has no
+IANA code points yet, so OpenMLS uses provisional ones that may change.
+
+| Draft | Ciphersuite                                            | Code point | Rust Crypto | Libcrux |
+| ----- | ------------------------------------------------------ | ---------- | ----------- | ------- |
+| TBD1  | MLS_128_MLKEM768X25519_AES128GCM_SHA256_Ed25519        | 0x004F     | ✓           | ✓       |
+| TBD2  | MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519        | 0x004E     | ✓           | ✓       |
+| TBD3  | MLS_128_MLKEM768P256_AES128GCM_SHA256_P256             | 0xF050     | ✗ (1)       | ✓       |
+| TBD4  | MLS_128_MLKEM768P256_AES256GCM_SHA384_P256             | 0xF051     | ✗ (1)       | ✓       |
+| TBD5  | MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384            | 0xF052     | ✗ (1)       | ✗ (2)   |
+| TBD6  | MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519              | 0xF042     | ✓           | ✓       |
+| TBD7  | MLS_128_MLKEM768_AES256GCM_SHA384_P256                 | 0x0050     | ✓           | ✓       |
+| TBD8  | MLS_192_MLKEM1024_AES256GCM_SHA384_P384                | 0x0042     | ✓           | ✗ (2)   |
+| TBD9  | MLS_128_MLKEM768X25519_CHACHA20POLY1305_SHA384_MLDSA44 | 0x0052     | ✓           | ✓       |
+| TBD10 | MLS_192_MLKEM768_AES256GCM_SHA384_MLDSA65              | 0x0051     | ✓           | ✓       |
+| TBD11 | MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87             | 0x0907     | ✓           | ✓       |
+| –     | MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87             | 0x0906     | ✓           | ✓       |
+| –     | MLS_256_XWING_CHACHA20POLY1305_SHA256_Ed25519 (legacy) | 0x004D     | ✗           | ✓       |
+
+- (1) The RustCrypto HPKE backend does not implement the MLKEM768-P256 and
+  MLKEM1024-P384 hybrid KEMs.
+- (2) libcrux has no ECDSA P-384 implementation yet.
 
 ## The Traits
 
@@ -87,6 +112,20 @@ value (in which case they are an `Entity`).
 ```rust,no_run,noplayground
 {{#include ../../../traits/src/storage.rs:entity_trait}}
 ```
+
+#### Sync and async mode
+
+The storage traits come in a sync and an async flavor. The source shown on this
+page uses the async signatures, which return `impl Future<Output = ...> + Send`.
+In the default sync mode the same methods return the output type directly, and
+`MaybeSync` and `MaybeSend` place no bounds on the types.
+
+The async mode is enabled with the `async` feature of `openmls` or
+`openmls_traits`. It applies to the whole build as soon as one crate enables it.
+In async mode the provider and the keys and entities must be `Sync`, and the
+error type must be `Send`. An implementation that supports both modes writes the
+methods as `async fn` and marks the `impl` block with
+`#[openmls_traits::maybe_async(AFIT)]`.
 
 An implementation of the storage trait should ensure that it can address and
 efficiently handle values.
@@ -151,3 +190,4 @@ combine it with one of the provided crypto and randomness trait implementations.
 [libcrux crypto]: https://crates.io/crates/openmls_libcrux_crypto
 [openmls traits crate]: https://crates.io/crates/openmls_traits
 [rand crate]: https://crates.io/crates/rand
+[draft-ietf-mls-pq-ciphersuites]: https://datatracker.ietf.org/doc/draft-ietf-mls-pq-ciphersuites

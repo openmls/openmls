@@ -30,9 +30,11 @@ use crate::{
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::ExternalSendersExtension,
-    group::{errors::ValidationError, mls_group::staged_commit::StagedCommit},
+    group::{
+        errors::ValidationError, mls_group::staged_commit::StagedCommit, LeafNodeLifetimePolicy,
+    },
     tree::{
-        secret_tree::{DecryptionSecret, SecretType},
+        secret_tree::{DecryptionSecret, PendingRatchetUpdate, SecretType},
         sender_ratchet::SenderRatchetConfiguration,
     },
     versions::ProtocolVersion,
@@ -43,7 +45,6 @@ use crate::{
     component::ComponentId,
     framing::safe_aad::SafeAad,
     group::{
-        errors::StageCommitError,
         mls_group::{errors::ResolveAppDataCommitError, processing::UnresolvedAppDataCommit},
         ExportedSecret, StagedCommitSafeExport,
     },
@@ -67,7 +68,13 @@ use super::{
 pub(crate) enum InboundDecryptionResult {
     /// A message from another sender or from a sibling emulator client (with
     /// the `virtual-clients-draft` feature), decrypted and ready for parsing.
-    Decrypted(DecryptedMessage),
+    Decrypted {
+        message: DecryptedMessage,
+        /// The sender ratchet change that decrypting a PrivateMessage requires.
+        /// It must only be applied once the message is processed successfully.
+        /// `None` for a PublicMessage.
+        ratchet_update: Option<PendingRatchetUpdate>,
+    },
     /// A private message whose sender data claims this client's own leaf.
     /// Carries the plaintext framing fields needed to build the
     /// [`ProcessedMessage`], since the content itself cannot be decrypted.
@@ -82,7 +89,7 @@ impl InboundDecryptionResult {
     #[cfg(test)]
     pub(crate) fn into_decrypted(self) -> Option<DecryptedMessage> {
         match self {
-            Self::Decrypted(message) => Some(message),
+            Self::Decrypted { message, .. } => Some(message),
             Self::OwnPrivateMessage { .. } => None,
         }
     }
@@ -201,7 +208,7 @@ impl DecryptedMessage {
             .message_secrets_for_epoch_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let generation = sender_data.generation;
-        let decryption_secret = message_secrets.secret_tree_mut().secret_for_decryption(
+        let decryption_secret = message_secrets.secret_tree_mut().prepare_decryption(
             ciphersuite,
             crypto,
             sender_data.leaf_index,
@@ -209,10 +216,12 @@ impl DecryptedMessage {
             generation,
             sender_ratchet_configuration,
         );
-        let ratchet_key_material = match decryption_secret {
-            Ok(DecryptionSecret::Available(ratchet_key_material)) => ratchet_key_material,
+        let (ratchet_key_material, ratchet_update) = match decryption_secret {
+            Ok((DecryptionSecret::Available(ratchet_key_material), ratchet_update)) => {
+                (ratchet_key_material, ratchet_update)
+            }
             #[cfg(feature = "virtual-clients-draft")]
-            Ok(DecryptionSecret::OwnMessageConfirmed) => {
+            Ok((DecryptionSecret::OwnMessageConfirmed, _)) => {
                 log::debug!("  Own generation {generation} was already confirmed.");
                 return Ok(InboundDecryptionResult::OwnPrivateMessage {
                     epoch: ciphertext.epoch(),
@@ -232,12 +241,15 @@ impl DecryptedMessage {
             #[cfg(feature = "virtual-clients-draft")]
             effective_emulator_ctx,
         )?;
-        Self::from_verifiable_content(
+        let message = Self::from_verifiable_content(
             decrypted.verifiable,
             #[cfg(feature = "virtual-clients-draft")]
             decrypted.emulator_sender_leaf_index,
-        )
-        .map(InboundDecryptionResult::Decrypted)
+        )?;
+        Ok(InboundDecryptionResult::Decrypted {
+            message,
+            ratchet_update,
+        })
     }
 
     // Internal constructor function. Does the following checks:
@@ -394,6 +406,7 @@ impl UnverifiedMessage {
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
         protocol_version: ProtocolVersion,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<VerifiedMessage, ValidationError> {
         let content: AuthenticatedContentIn = self
             .verifiable_content
@@ -401,8 +414,13 @@ impl UnverifiedMessage {
             .map_err(|_| ValidationError::InvalidSignature)?;
         // https://validation.openmls.tech/#valn1302
         // https://validation.openmls.tech/#valn1304
-        let content =
-            content.validate(ciphersuite, crypto, self.sender_context, protocol_version)?;
+        let content = content.validate(
+            ciphersuite,
+            crypto,
+            self.sender_context,
+            protocol_version,
+            lifetime_policy,
+        )?;
         Ok(VerifiedMessage {
             content,
             credential: self.credential,
@@ -461,24 +479,31 @@ impl ProcessedMessage {
         }
     }
 
-    /// Swaps an [`ProcessedMessageContent::UnresolvedAppDataCommit`] for the
-    /// [`StagedCommit`] produced by `stage`, keeping all other fields (sender,
-    /// credential, authenticated data, Safe AAD state) intact.
+    /// Splits off the [`UnresolvedAppDataCommit`] this message carries so the
+    /// caller can stage it. The returned function puts the [`StagedCommit`]
+    /// back as [`ProcessedMessageContent::StagedCommitMessage`] content and
+    /// keeps all other fields (sender, credential, authenticated data, Safe AAD
+    /// state) intact. Staging may be sync or async, so we return the pieces
+    /// rather than take a staging closure.
     ///
-    /// Returns an error if the content is not an unresolved app data commit;
-    /// the message is consumed either way.
+    /// Returns an error if the content is not an unresolved app data commit.
+    /// The message is consumed either way.
     #[cfg(feature = "extensions-draft")]
-    pub(crate) fn resolve_app_data_commit(
-        mut self,
-        stage: impl FnOnce(UnresolvedAppDataCommit) -> Result<StagedCommit, StageCommitError>,
-    ) -> Result<Self, ResolveAppDataCommitError> {
+    pub(crate) fn split_unresolved_app_data_commit(
+        self,
+    ) -> Result<
+        (UnresolvedAppDataCommit, impl FnOnce(StagedCommit) -> Self),
+        ResolveAppDataCommitError,
+    > {
         let ProcessedMessageContent::UnresolvedAppDataCommit(unresolved_commit) = self.content
         else {
             return Err(ResolveAppDataCommitError::NotAnUnresolvedAppDataCommit);
         };
-        let staged_commit = stage(*unresolved_commit)?;
-        self.content = ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit));
-        Ok(self)
+        let with_staged_commit = move |staged_commit: StagedCommit| Self {
+            content: ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit)),
+            ..self
+        };
+        Ok((*unresolved_commit, with_staged_commit))
     }
 
     /// Parse the Safe AAD prefix at the start of `authenticated_data` and

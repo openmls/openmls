@@ -127,8 +127,8 @@ pub trait Verifiable: Sized {
     /// does not return an error, and then converting the value into
     /// `Self::VerifiedStruct`.
     ///
-    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
-    /// `CredentialError::InvalidSignature` otherwise.
+    /// Returns `Ok(Self::VerifiedStruct)` if the signature is valid and
+    /// [`SignatureError::VerificationError`] otherwise.
     fn verify(
         self,
         crypto: &impl OpenMlsCrypto,

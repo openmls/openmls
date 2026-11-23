@@ -11,8 +11,8 @@ use crate::{
     group::{
         config::PastEpochDeletionPolicy, past_secrets::MessageSecretsStore,
         public_group::errors::PublicGroupBuildError, BranchInfo, CommitBuilderStageError,
-        CommitMessageBundle, CreateCommitError, GroupContext, GroupId, MlsGroup,
-        MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
+        CommitMessageBundle, CreateCommitError, GroupContext, GroupId, LeafNodeLifetimePolicy,
+        MlsGroup, MlsGroupCreateConfig, MlsGroupCreateConfigBuilder, MlsGroupState, NewGroupError,
         PublicGroup, ReInitInfo, WireFormatPolicy,
     },
     key_packages::{KeyPackage, Lifetime},
@@ -101,6 +101,7 @@ impl MlsGroupBuilder {
             branch_info,
             extensions: None,
             force_self_update: false,
+            lifetime_policy: LeafNodeLifetimePolicy::Verify,
         }
     }
 
@@ -125,13 +126,15 @@ impl MlsGroupBuilder {
     }
 
     /// Build a new group as configured by this builder.
-    pub fn build<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<MlsGroup, NewGroupError<Provider::StorageError>> {
         self.build_internal(provider, signer, credential_with_key, None)
+            .await
     }
 
     /// Build a new group with the given group ID.
@@ -142,7 +145,8 @@ impl MlsGroupBuilder {
     ///
     /// If a group with the same ID already exists in storage and
     /// `replace_old_group` was not set, an error will be returned.
-    pub(super) fn build_internal<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub(super) async fn build_internal<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -167,7 +171,8 @@ impl MlsGroupBuilder {
                 crate::components::vc_derivation_info::require_newest_vc_derivation_epoch(
                     provider.storage(),
                     emulation_group_id,
-                )?;
+                )
+                .await?;
             return build_vc_internal(
                 provider,
                 signer,
@@ -176,11 +181,13 @@ impl MlsGroupBuilder {
                 group_id,
                 self.replace_old_group,
                 epoch_id,
-            );
+            )
+            .await;
         }
 
         if !self.replace_old_group
             && MlsGroup::load(provider.storage(), &group_id)
+                .await
                 .map_err(NewGroupError::StorageError)?
                 .is_some()
         {
@@ -225,12 +232,19 @@ impl MlsGroupBuilder {
         let mut resumption_psk_store = ResumptionPskStore::new(32);
 
         // Prepare the PskSecret
-        let psk_secret = load_psks(provider.storage(), &resumption_psk_store, &self.psk_ids)
-            .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
-            .map_err(|e| {
-                log::debug!("Unexpected PSK error: {e:?}");
-                LibraryError::custom("Unexpected PSK error")
-            })?;
+        let psk_secret = load_psks(
+            provider.storage(),
+            &resumption_psk_store,
+            Some(public_group_builder.group_context().group_id()),
+            None,
+            &self.psk_ids,
+        )
+        .await
+        .and_then(|psks| PskSecret::new(provider.crypto(), ciphersuite, psks))
+        .map_err(|e| {
+            log::debug!("Unexpected PSK error: {e:?}");
+            LibraryError::custom("Unexpected PSK error")
+        })?;
 
         let mut key_schedule =
             KeySchedule::init(ciphersuite, provider.crypto(), &joiner_secret, psk_secret)?;
@@ -291,7 +305,8 @@ impl MlsGroupBuilder {
                         .vc_derivation_epoch_retention_policy()
                         .clone(),
                 ),
-            )?;
+            )
+            .await?;
         }
 
         let mls_group = MlsGroup {
@@ -314,9 +329,11 @@ impl MlsGroupBuilder {
 
         mls_group
             .store(provider.storage())
+            .await
             .map_err(NewGroupError::StorageError)?;
         mls_group
             .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+            .await
             .map_err(NewGroupError::StorageError)?;
 
         Ok(mls_group)
@@ -493,6 +510,7 @@ pub struct BranchGroupBuilder {
     branch_info: BranchInfo,
     extensions: Option<Extensions<GroupContext>>,
     force_self_update: bool,
+    lifetime_policy: LeafNodeLifetimePolicy,
 }
 
 impl BranchGroupBuilder {
@@ -514,6 +532,14 @@ impl BranchGroupBuilder {
         self
     }
 
+    /// Sets how the lifetimes of the key packages of the new members are
+    /// checked. See
+    /// [`CommitBuilder::leaf_node_lifetime_policy`](crate::group::CommitBuilder::leaf_node_lifetime_policy).
+    pub fn leaf_node_lifetime_policy(mut self, lifetime_policy: LeafNodeLifetimePolicy) -> Self {
+        self.lifetime_policy = lifetime_policy;
+        self
+    }
+
     /// Create the sub-group and the branch commit that adds `new_members` to it.
     ///
     /// This creates a fresh group with the parent's ciphersuite, adds the branch
@@ -526,7 +552,8 @@ impl BranchGroupBuilder {
     /// The commit is staged but **not** merged: merge it with
     /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
     /// only once the delivery service has confirmed it.
-    pub fn build_branch<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_branch<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -537,12 +564,15 @@ impl BranchGroupBuilder {
         let group_builder = self
             .group_builder
             .ciphersuite(self.branch_info.ciphersuite());
-        let mut group = group_builder.build(provider, signer, credential_with_key)?;
+        let mut group = group_builder
+            .build(provider, signer, credential_with_key)
+            .await?;
 
         let mut builder = group
             .commit_builder()
             .branch(provider.rand(), &self.branch_info)?
-            .propose_adds(new_members);
+            .propose_adds(new_members)
+            .leaf_node_lifetime_policy(self.lifetime_policy);
         if let Some(extensions) = self.extensions {
             builder = builder.propose_group_context_extensions(extensions)?;
         }
@@ -550,9 +580,11 @@ impl BranchGroupBuilder {
             builder = builder.force_self_update(true);
         }
         let bundle = builder
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         Ok((group, bundle))
     }
@@ -610,7 +642,8 @@ impl ReInitGroupBuilder {
     /// The commit is staged but **not** merged: merge it with
     /// [`MlsGroup::merge_pending_commit`](crate::group::MlsGroup::merge_pending_commit)
     /// only once the delivery service has confirmed it.
-    pub fn build_reinit<Provider: OpenMlsProvider>(
+    #[openmls_traits::maybe_async]
+    pub async fn build_reinit<Provider: OpenMlsProvider>(
         self,
         provider: &Provider,
         signer: &impl Signer,
@@ -630,7 +663,9 @@ impl ReInitGroupBuilder {
             .ciphersuite(proposal.ciphersuite)
             .with_group_id(proposal.group_id)
             .with_group_context_extensions(proposal.extensions);
-        let mut group = group_builder.build(provider, signer, credential_with_key)?;
+        let mut group = group_builder
+            .build(provider, signer, credential_with_key)
+            .await?;
 
         let mut commit_builder = group
             .commit_builder()
@@ -645,9 +680,11 @@ impl ReInitGroupBuilder {
             commit_builder = commit_builder.force_self_update(true);
         }
         let bundle = commit_builder
-            .load_psks(provider.storage())?
+            .load_psks(provider.storage())
+            .await?
             .build(provider.rand(), provider.crypto(), signer, |_| true)?
-            .stage_commit(provider)?;
+            .stage_commit(provider)
+            .await?;
 
         Ok((group, bundle))
     }
@@ -684,7 +721,8 @@ pub enum ReInitError<StorageError> {
 /// [`MlsGroup::vc_join_at_creation`]: crate::group::MlsGroup::vc_join_at_creation
 #[cfg(feature = "virtual-clients-draft")]
 #[allow(clippy::too_many_arguments)]
-fn build_vc_internal<Provider: OpenMlsProvider>(
+#[openmls_traits::maybe_async]
+async fn build_vc_internal<Provider: OpenMlsProvider>(
     provider: &Provider,
     signer: &impl Signer,
     credential_with_key: CredentialWithKey,
@@ -706,6 +744,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
 
     if !replace_old_group
         && MlsGroup::load(provider.storage(), &group_id)
+            .await
             .map_err(NewGroupError::StorageError)?
             .is_some()
     {
@@ -731,7 +770,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     // `key_package` generation (empty operation context, matching the KeyPackage
     // batch path), and persist the advanced tree right away. A retried creation
     // consumes a fresh generation.
-    let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id)?;
+    let (state, mut operation_tree) = load_vc_epoch_state_and_tree(provider, &epoch_id).await?;
     let (emulation_leaf_index, epoch_encryption_key, emulation_ciphersuite) = state.into_parts();
     let (generation, operation_secret) = operation_tree.next_operation_secret(
         provider.crypto(),
@@ -744,6 +783,7 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
     provider
         .storage()
         .write_vc_operation_tree(&epoch_id, &operation_tree)
+        .await
         .map_err(NewGroupError::StorageError)?;
 
     // The creator batch consists of this single derivation and is closed
@@ -878,13 +918,16 @@ fn build_vc_internal<Provider: OpenMlsProvider>(
         epoch_id,
         max_entries,
     )
+    .await
     .map_err(NewGroupError::StorageError)?;
 
     mls_group
         .store(provider.storage())
+        .await
         .map_err(NewGroupError::StorageError)?;
     mls_group
         .store_epoch_keypairs(provider.storage(), &[leaf_keypair])
+        .await
         .map_err(NewGroupError::StorageError)?;
 
     Ok(mls_group)

@@ -53,6 +53,10 @@ impl TlsSerializeTrait for ProtocolVersion {
                 let v = 1u16;
                 v.tls_serialize(writer)
             }
+            // `Other(1)` would decode as `Mls10`.
+            ProtocolVersion::Other(1) => Err(tls_codec::Error::EncodingError(
+                "Other(1) is encoded as 0x0001, which decodes as Mls10".to_string(),
+            )),
             ProtocolVersion::Other(v) => v.tls_serialize(writer),
         }
     }

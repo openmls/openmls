@@ -421,7 +421,7 @@ fn discard_commit_external_join() {
 
 #[openmls_test]
 fn discard_commit_group_context_extensions() {
-    let unknown_extension_type = 1;
+    let unknown_extension_type = 0xff00;
 
     // Define the MlsGroup configuration
     let mls_group_create_config = MlsGroupCreateConfig::builder()

@@ -5,11 +5,8 @@ members = [
     "openmls_rust_crypto",
     "libcrux_crypto",
     "fuzz",
-    "cli",
     "interop_client",
     "memory_storage",
-    "delivery-service/ds",
-    "delivery-service/ds-lib",
     "basic_credential",
     "openmls-wasm",
     "openmls_test",
@@ -27,6 +24,8 @@ rust-version = "1.94.0"
 tls_codec = { version = "0.5", features = ["derive", "serde", "mls"] }
 serde = { version = "^1.0" }
 thiserror = { version = "^2.0" }
+# 0.2.11 is the first version that rewrites `-> impl Future` returns in sync mode.
+maybe-async = "0.2.11"
 
 openmls = { version = "0.9.0", path = "openmls" }
 

@@ -34,18 +34,23 @@
 //!
 //! ## Runtime
 //!
-//! The provider exposes a synchronous API and drives the underlying async
-//! `sqlx` calls internally with [`tokio::task::block_in_place`]. It therefore
-//! has to run on a multi-threaded tokio runtime.
+//! The provider exposes an async API and enables the async mode of
+//! `openmls_traits`. The mode applies to the whole build, so crates that only
+//! support the sync mode cannot be used together with this crate.
+//!
+//! Calls on one provider are serialized by an async mutex around the
+//! connection, so concurrent OpenMLS operations that share a provider wait for
+//! each other. The futures are `Send` and can run on a multi-threaded runtime.
 
-use std::{cell::RefCell, marker::PhantomData};
+use std::marker::PhantomData;
 
 use openmls_traits::storage::{CURRENT_VERSION, Entity, Key};
 use serde::Serialize;
 use sqlx::SqliteConnection;
+use tokio::sync::Mutex;
 
 pub use crate::codec::Codec;
-use crate::{migrator::MigratorWrapper, storage_provider::block_async_in_place};
+use crate::migrator::MigratorWrapper;
 
 mod codec;
 mod group_data;
@@ -61,7 +66,7 @@ mod wrappers;
 /// The codec is used to serialize and deserialize the data stored in the
 /// underlying database.
 pub struct SqliteStorageProvider<'a, C> {
-    connection: RefCell<&'a mut SqliteConnection>,
+    connection: Mutex<&'a mut SqliteConnection>,
     codec: PhantomData<C>,
 }
 
@@ -70,18 +75,18 @@ impl<'a, C: Codec> SqliteStorageProvider<'a, C> {
     /// [`SqliteConnection`].
     pub fn new(connection: &'a mut SqliteConnection) -> Self {
         Self {
-            connection: RefCell::new(connection),
+            connection: Mutex::new(connection),
             codec: PhantomData,
         }
     }
 
-    /// Run the migrations for the storage provider. Uses sqlx's built-in
+    /// Run the migrations for the storage provider using sqlx's built-in
     /// migration support.
-    pub fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
-        let mut conn = self.connection.borrow_mut();
-        block_async_in_place(
-            sqlx::migrate!("./migrations").run_direct(&mut MigratorWrapper(*conn)),
-        )?;
+    pub async fn run_migrations(&mut self) -> Result<(), sqlx::migrate::MigrateError> {
+        let connection = self.connection.get_mut();
+        sqlx::migrate!("./migrations")
+            .run_direct(&mut MigratorWrapper(connection))
+            .await?;
         Ok(())
     }
 

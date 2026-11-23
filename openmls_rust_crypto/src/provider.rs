@@ -66,6 +66,10 @@ fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
         HpkeKemType::MlKem768 => hpke_types::KemAlgorithm::MlKem768,
         #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
         HpkeKemType::MlKem1024 => hpke_types::KemAlgorithm::MlKem1024,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem768P256 => hpke_types::KemAlgorithm::MlKem768P256,
+        #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+        HpkeKemType::MlKem1024P384 => hpke_types::KemAlgorithm::MlKem1024P384,
     }
 }
 
@@ -88,6 +92,56 @@ fn aead_mode(aead: HpkeAeadType) -> hpke_types::AeadAlgorithm {
     }
 }
 
+// The ML-DSA operations are never inlined. With ML-DSA-87 they take more than 100 KiB of stack,
+// which `signature_key_gen`, `sign` and `verify_signature` would otherwise reserve on every call,
+// whatever the signature scheme.
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+#[inline(never)]
+fn ml_dsa_key_gen<P: ml_dsa::MlDsaParams>(
+    rng: &RwLock<rand_chacha::ChaCha20Rng>,
+) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+    use ml_dsa::{Generate, Keypair};
+    let sk = {
+        let mut rng = rng
+            .write()
+            .map_err(|_| CryptoError::InsufficientRandomness)?;
+        ml_dsa::SigningKey::<P>::generate_from_rng(&mut *rng)
+    };
+    let pk = sk.verifying_key().encode().to_vec();
+    let sk = sk.to_seed().to_vec();
+    Ok((sk, pk))
+}
+
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+#[inline(never)]
+fn ml_dsa_verify<P: ml_dsa::MlDsaParams>(
+    data: &[u8],
+    pk: &[u8],
+    signature: &[u8],
+) -> Result<(), CryptoError> {
+    use ml_dsa::Verifier;
+    let encoded_key: &ml_dsa::EncodedVerifyingKey<P> =
+        pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
+    let encoded_signature: &ml_dsa::EncodedSignature<P> = signature
+        .try_into()
+        .map_err(|_| CryptoError::InvalidLength)?;
+    let key = ml_dsa::VerifyingKey::<P>::decode(encoded_key);
+    let signature =
+        ml_dsa::Signature::<P>::decode(encoded_signature).ok_or(CryptoError::InvalidSignature)?;
+    key.verify(data, &signature)
+        .map_err(|_| CryptoError::InvalidSignature)
+}
+
+#[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
+#[inline(never)]
+fn ml_dsa_sign<P: ml_dsa::MlDsaParams>(data: &[u8], key: &[u8]) -> Result<Vec<u8>, CryptoError> {
+    use ml_dsa::Signer;
+    let seed: &ml_dsa::Seed = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
+    let k = ml_dsa::SigningKey::<P>::from_seed(seed);
+    let signature = k.sign(data);
+    Ok(signature.encode().to_vec())
+}
+
 impl OpenMlsCrypto for RustCrypto {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
         match ciphersuite {
@@ -104,6 +158,8 @@ impl OpenMlsCrypto for RustCrypto {
             | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA384_MLDSA87
             | Ciphersuite::MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87
             | Ciphersuite::MLS_128_MLKEM768_AES256GCM_SHA384_Ed25519 => Ok(()),
+            // This includes the ML-KEM + P-256/P-384 hybrid ciphersuites, because
+            // hpke-rs-rust-crypto does not implement those KEMs.
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }
     }
@@ -312,47 +368,11 @@ impl OpenMlsCrypto for RustCrypto {
                 Ok((k.to_bytes().as_slice().into(), pk))
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            SignatureScheme::MLDSA44 => {
-                use ml_dsa::{Generate, Keypair};
-                let sk = {
-                    let mut rng = self
-                        .rng
-                        .write()
-                        .map_err(|_| CryptoError::InsufficientRandomness)?;
-                    ml_dsa::SigningKey::<ml_dsa::MlDsa44>::generate_from_rng(&mut *rng)
-                };
-                let pk = sk.verifying_key().encode().to_vec();
-                let sk = sk.to_seed().to_vec();
-                Ok((sk, pk))
-            }
+            SignatureScheme::MLDSA44 => ml_dsa_key_gen::<ml_dsa::MlDsa44>(&self.rng),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            SignatureScheme::MLDSA65 => {
-                use ml_dsa::{Generate, Keypair};
-                let sk = {
-                    let mut rng = self
-                        .rng
-                        .write()
-                        .map_err(|_| CryptoError::InsufficientRandomness)?;
-                    ml_dsa::SigningKey::<ml_dsa::MlDsa65>::generate_from_rng(&mut *rng)
-                };
-                let pk = sk.verifying_key().encode().to_vec();
-                let sk = sk.to_seed().to_vec();
-                Ok((sk, pk))
-            }
+            SignatureScheme::MLDSA65 => ml_dsa_key_gen::<ml_dsa::MlDsa65>(&self.rng),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            SignatureScheme::MLDSA87 => {
-                use ml_dsa::{Generate, Keypair};
-                let sk = {
-                    let mut rng = self
-                        .rng
-                        .write()
-                        .map_err(|_| CryptoError::InsufficientRandomness)?;
-                    ml_dsa::SigningKey::<ml_dsa::MlDsa87>::generate_from_rng(&mut *rng)
-                };
-                let pk = sk.verifying_key().encode().to_vec();
-                let sk = sk.to_seed().to_vec();
-                Ok((sk, pk))
-            }
+            SignatureScheme::MLDSA87 => ml_dsa_key_gen::<ml_dsa::MlDsa87>(&self.rng),
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }
@@ -396,47 +416,11 @@ impl OpenMlsCrypto for RustCrypto {
                 .map_err(|_| CryptoError::InvalidSignature)
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            SignatureScheme::MLDSA44 => {
-                use ml_dsa::Verifier;
-                let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa44> =
-                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
-                let encoded_signature: &ml_dsa::EncodedSignature<ml_dsa::MlDsa44> = signature
-                    .try_into()
-                    .map_err(|_| CryptoError::InvalidLength)?;
-                let key = ml_dsa::VerifyingKey::<ml_dsa::MlDsa44>::decode(encoded_key);
-                let signature = ml_dsa::Signature::<ml_dsa::MlDsa44>::decode(encoded_signature)
-                    .ok_or(CryptoError::InvalidSignature)?;
-                key.verify(data, &signature)
-                    .map_err(|_| CryptoError::InvalidSignature)
-            }
+            SignatureScheme::MLDSA44 => ml_dsa_verify::<ml_dsa::MlDsa44>(data, pk, signature),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            SignatureScheme::MLDSA65 => {
-                use ml_dsa::Verifier;
-                let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa65> =
-                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
-                let encoded_signature: &ml_dsa::EncodedSignature<ml_dsa::MlDsa65> = signature
-                    .try_into()
-                    .map_err(|_| CryptoError::InvalidLength)?;
-                let key = ml_dsa::VerifyingKey::<ml_dsa::MlDsa65>::decode(encoded_key);
-                let signature = ml_dsa::Signature::<ml_dsa::MlDsa65>::decode(encoded_signature)
-                    .ok_or(CryptoError::InvalidSignature)?;
-                key.verify(data, &signature)
-                    .map_err(|_| CryptoError::InvalidSignature)
-            }
+            SignatureScheme::MLDSA65 => ml_dsa_verify::<ml_dsa::MlDsa65>(data, pk, signature),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            SignatureScheme::MLDSA87 => {
-                use ml_dsa::Verifier;
-                let encoded_key: &ml_dsa::EncodedVerifyingKey<ml_dsa::MlDsa87> =
-                    pk.try_into().map_err(|_| CryptoError::InvalidLength)?;
-                let encoded_signature: &ml_dsa::EncodedSignature<ml_dsa::MlDsa87> = signature
-                    .try_into()
-                    .map_err(|_| CryptoError::InvalidLength)?;
-                let key = ml_dsa::VerifyingKey::<ml_dsa::MlDsa87>::decode(encoded_key);
-                let signature = ml_dsa::Signature::<ml_dsa::MlDsa87>::decode(encoded_signature)
-                    .ok_or(CryptoError::InvalidSignature)?;
-                key.verify(data, &signature)
-                    .map_err(|_| CryptoError::InvalidSignature)
-            }
+            SignatureScheme::MLDSA87 => ml_dsa_verify::<ml_dsa::MlDsa87>(data, pk, signature),
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }
@@ -468,29 +452,11 @@ impl OpenMlsCrypto for RustCrypto {
                 Ok(signature.to_bytes().into())
             }
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            SignatureScheme::MLDSA44 => {
-                use ml_dsa::Signer;
-                let seed: &ml_dsa::Seed = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa44>::from_seed(seed);
-                let signature = k.sign(data);
-                Ok(signature.encode().to_vec())
-            }
+            SignatureScheme::MLDSA44 => ml_dsa_sign::<ml_dsa::MlDsa44>(data, key),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            SignatureScheme::MLDSA65 => {
-                use ml_dsa::Signer;
-                let seed: &ml_dsa::Seed = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa65>::from_seed(seed);
-                let signature = k.sign(data);
-                Ok(signature.encode().to_vec())
-            }
+            SignatureScheme::MLDSA65 => ml_dsa_sign::<ml_dsa::MlDsa65>(data, key),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
-            SignatureScheme::MLDSA87 => {
-                use ml_dsa::Signer;
-                let seed: &ml_dsa::Seed = key.try_into().map_err(|_| CryptoError::InvalidLength)?;
-                let k = ml_dsa::SigningKey::<ml_dsa::MlDsa87>::from_seed(seed);
-                let signature = k.sign(data);
-                Ok(signature.encode().to_vec())
-            }
+            SignatureScheme::MLDSA87 => ml_dsa_sign::<ml_dsa::MlDsa87>(data, key),
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }
     }

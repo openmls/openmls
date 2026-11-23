@@ -415,6 +415,19 @@ impl PublicGroup {
         &self,
         key_package: &KeyPackage,
     ) -> Result<(), ProposalValidationError> {
+        self.validate_key_package_for_add_with_lifetime_policy(
+            key_package,
+            LeafNodeLifetimePolicy::Verify,
+        )
+    }
+
+    /// Like [`Self::validate_key_package_for_add`], but checks the lifetime of
+    /// the leaf node under `lifetime_policy`.
+    pub fn validate_key_package_for_add_with_lifetime_policy(
+        &self,
+        key_package: &KeyPackage,
+        lifetime_policy: LeafNodeLifetimePolicy,
+    ) -> Result<(), ProposalValidationError> {
         // ValSem105: Check if ciphersuite and version of the group are correct:
         // https://validation.openmls.tech/#valn0201
         if key_package.ciphersuite() != self.ciphersuite()
@@ -437,7 +450,7 @@ impl PublicGroup {
         }
 
         // https://validation.openmls.tech/#valn0202
-        self.validate_leaf_node(key_package.leaf_node())?;
+        self.validate_leaf_node(key_package.leaf_node(), lifetime_policy)?;
 
         Ok(())
     }
@@ -447,13 +460,17 @@ impl PublicGroup {
     pub(crate) fn validate_add_proposals(
         &self,
         proposal_queue: &ProposalQueue,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<(), ProposalValidationError> {
         let add_proposals = proposal_queue.add_proposals();
 
         // We do the key package validation checks here inline
         // https://validation.openmls.tech/#valn0501
         for add_proposal in add_proposals {
-            self.validate_key_package_for_add(add_proposal.add_proposal().key_package())?;
+            self.validate_key_package_for_add_with_lifetime_policy(
+                add_proposal.add_proposal().key_package(),
+                lifetime_policy,
+            )?;
         }
         Ok(())
     }
@@ -535,7 +552,11 @@ impl PublicGroup {
             }
 
             // https://validation.openmls.tech/#valn0601
-            self.validate_leaf_node(update_proposal.update_proposal().leaf_node())?;
+            // The leaf node of an Update carries no lifetime.
+            self.validate_leaf_node(
+                update_proposal.update_proposal().leaf_node(),
+                LeafNodeLifetimePolicy::Verify,
+            )?;
 
             // Check that the leaf node in the update proposal supports all group context extensions
             // https://validation.openmls.tech/#valn0602
@@ -583,20 +604,28 @@ impl PublicGroup {
             // https://validation.openmls.tech/#valn0801
             // https://validation.openmls.tech/#valn0802
             if let Psk::Resumption(psk) = psk_id.psk() {
-                if matches!(
-                    psk.usage(),
-                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit
-                ) {
-                    // https://validation.openmls.tech/#valn0801
-                    // https://validation.openmls.tech/#valn0802
-                    // Branching and reinit PSKs must only be processed as part
-                    // of the initial commit of the new sub-group resp. successor
-                    // group, adding the other members.
-                    if self.group_context.epoch().as_u64() != 0 {
-                        return Err(PskError::NotAllowed.into());
+                match psk.usage() {
+                    ResumptionPskUsage::Branch | ResumptionPskUsage::Reinit => {
+                        // https://validation.openmls.tech/#valn0801
+                        // https://validation.openmls.tech/#valn0802
+                        // Branching and reinit PSKs must only be processed as part
+                        // of the initial commit of the new sub-group resp. successor
+                        // group, adding the other members.
+                        if self.group_context.epoch().as_u64() != 0 {
+                            return Err(PskError::NotAllowed.into());
+                        }
+                        // Note: branch/reinit exclusivity (valn1401) is enforced for
+                        // the Welcome PSK list in `PreSharedKeyId::validate_in_welcome`.
                     }
-                    // Note: branch/reinit exclusivity (valn1401) is enforced for
-                    // the Welcome PSK list in `PreSharedKeyId::validate_in_welcome`.
+                    ResumptionPskUsage::Application => {
+                        if self.group_id() != psk.psk_group_id() {
+                            return Err(PskError::DifferentGroupId {
+                                expected: self.group_id().to_owned(),
+                                got: psk.psk_group_id().to_owned(),
+                            }
+                            .into());
+                        }
+                    }
                 }
             }
 
@@ -733,6 +762,8 @@ impl PublicGroup {
     ///     and Removes
     ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes more than one
     ///     Remove
+    ///   - An [`AppDataUpdateProposal`] removes a [`ComponentId`] that has no entry in the
+    ///     [`AppDataDictionary`] of the current group context
     #[cfg(feature = "extensions-draft")]
     pub(crate) fn validate_app_data_update_proposals_and_group_context(
         &self,
@@ -823,6 +854,11 @@ impl PublicGroup {
         // type second - for a given ID, removes come first. The sorting is stable and
         // won't mess with the ordering of updates within a component.
         // This is ensured in ProposalQueue::app_data_update_proposals.
+        //
+        // AppDataUpdate proposals are applied to the dictionary of the current group context (a
+        // GroupContextExtensions proposal must not change it), so that is where state has to be
+        // present for a removal.
+        let current_dictionary = self.group_context().extensions().app_data_dictionary();
         let mut latest = None;
         for proposal in proposal_queue.app_data_update_proposals() {
             let proposal = &proposal.app_data_update_proposal;
@@ -835,32 +871,24 @@ impl PublicGroup {
                         AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
                     }
                     AppDataUpdateOperationType::Remove => {
-                        AppDataUpdateValidationError::CombinedRemoveAndUpdateOperations
+                        AppDataUpdateValidationError::MoreThanOneRemovePerComponentId
                     }
                 };
 
                 return Err(app_data_update_validation_error);
             }
 
-            if proposal.operation().operation_type() == AppDataUpdateOperationType::Remove {
+            if operation_type == AppDataUpdateOperationType::Remove {
                 // From the draft:
                 //
                 // An AppDataUpdate proposal is invalid if [...] it specifies the removal of
                 // state for a component_id that has no state present.
                 //
                 // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-4
-                let Some(gce) = group_context_extension_proposal else {
-                    // extension gets implicitly created in the group context, so absence is not an
-                    // error condition
-                    return Ok(());
-                };
-                let Some(app_data_dict) = gce.extensions().app_data_dictionary() else {
-                    // extension gets implicitly created in the group context, so absence is not an
-                    // error condition
-                    return Ok(());
-                };
-
-                if app_data_dict.dictionary().get(&component_id).is_none() {
+                if current_dictionary
+                    .and_then(|dictionary| dictionary.dictionary().get(&component_id))
+                    .is_none()
+                {
                     return Err(AppDataUpdateValidationError::CannotRemoveNonexistentComponent);
                 }
 
@@ -931,24 +959,11 @@ impl PublicGroup {
         )
     }
 
-    /// Validate a leaf node.
-    ///
-    /// This always validates the lifetime.
+    /// Validate a leaf node, checking its lifetime under `lifetime_policy`.
     pub(crate) fn validate_leaf_node(
         &self,
         leaf_node: &crate::treesync::LeafNode,
-    ) -> Result<(), LeafNodeValidationError> {
-        // Call the validation function and validate the lifetime
-        self.validate_leaf_node_inner(leaf_node, LeafNodeLifetimePolicy::Verify)
-    }
-
-    /// Validate a leaf node.
-    ///
-    /// This may skip checking the lifetime when validating a ratchet tree.
-    pub(crate) fn validate_leaf_node_inner(
-        &self,
-        leaf_node: &crate::treesync::LeafNode,
-        validate_lifetimes: LeafNodeLifetimePolicy,
+        lifetime_policy: LeafNodeLifetimePolicy,
     ) -> Result<(), LeafNodeValidationError> {
         // https://validation.openmls.tech/#valn0103
         // https://validation.openmls.tech/#valn0104
@@ -972,11 +987,9 @@ impl PublicGroup {
         //
         // Some KATs use key packages that are expired by now. In order to run these tests, we
         // provide a way to turn off this check.
-        if matches!(validate_lifetimes, LeafNodeLifetimePolicy::Verify)
-            && !crate::skip_validation::is_disabled::leaf_node_lifetime()
-        {
+        if !crate::skip_validation::is_disabled::leaf_node_lifetime() {
             if let Some(lifetime) = leaf_node.life_time() {
-                lifetime.validate()?;
+                lifetime.validate_with_policy(lifetime_policy)?;
             }
         }
 
