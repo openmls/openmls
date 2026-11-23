@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.4.0 (2026-11-23)
+
 ### Changed
 
 - [#1923](https://github.com/openmls/openmls/pull/1923): The provider implements the async storage API of `openmls_traits` and no longer blocks on the tokio runtime, so it no longer needs a multi-threaded runtime. It enables the async mode of `openmls_traits`, so crates that only support the sync mode cannot be used in the same build.
