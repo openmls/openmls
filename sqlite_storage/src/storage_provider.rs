@@ -53,13 +53,19 @@ impl<C: Codec, ConnectionRef: BorrowMut<Connection>> SqliteStorageProvider<C, Co
     /// specifies a unique name for the refinery migration table.
     #[deprecated(since = "0.2.0", note = "use `run_migrations()` instead")]
     pub fn initialize(&mut self) -> Result<(), refinery::Error> {
-        migrations::runner().run(self.connection.borrow_mut())?;
+        migrations::runner()
+            .set_grouped(true)
+            .run(self.connection.borrow_mut())?;
         Ok(())
     }
 
     /// Initialize the database with the necessary tables.
+    ///
+    /// All pending migrations and their history rows are applied in one
+    /// transaction: if one fails, or the process dies during the run, none
+    /// of them is applied, and the next call starts from the same state.
     pub fn run_migrations(&mut self) -> Result<(), refinery::Error> {
-        let mut runner = migrations::runner();
+        let mut runner = migrations::runner().set_grouped(true);
         runner.set_migration_table_name("openmls_sqlite_storage_migrations");
 
         runner.run(self.connection.borrow_mut())?;
