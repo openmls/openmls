@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-64acf9db.js";
+            window.path_to_searchindex_js = "searchindex-09f92bb4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-5c7e1a74.js"></script>
+        <script src="toc-532909b4.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -4493,11 +4493,72 @@ cargo publish
 <h1 id="releases"><a class="header" href="#releases">Releases</a></h1>
 <p>Release notes for <code>openmls</code>, one page per version.</p>
 <ul>
+<li><a href="#0100-2026-11-23">0.10.0</a></li>
 <li><a href="#090-2026-08-25">0.9.0</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="090-2026-08-25"><a class="header" href="#090-2026-08-25">0.9.0 (2026-08-25)</a></h1>
+<h1 id="0100-2026-11-23"><a class="header" href="#0100-2026-11-23">0.10.0 (2026-11-23)</a></h1>
 <h2 id="highlights"><a class="header" href="#highlights">Highlights</a></h2>
+<ul>
+<li><strong>Async storage.</strong> With the new <code>async</code> feature, every OpenMLS function that reads or writes storage is an <code>async fn</code>, and the storage traits return <code>Send</code> futures. The sync API stays the default. One crate in the build that enables <code>async</code> switches the whole build.</li>
+<li><strong>Subgroup branching and reinitialization.</strong> Groups can branch into subgroups (RFC 9420 §11.3) and be reinitialized with new parameters (RFC 9420 §11.2).</li>
+<li><strong>Leaf node lifetime policies.</strong> Message processing, joining and key package validation can check lifetimes against a time the caller passes.</li>
+<li><strong>Updated PQ ciphersuites.</strong> The <code>draft-ietf-mls-pq-ciphersuites</code> ciphersuites follow the updated drafts and <code>draft-ietf-hpke-pq</code>. They don’t interoperate with 0.9.x.</li>
+<li><strong>Security fixes.</strong> Includes the fixes for GHSA-gc79-23g3-8g52, GHSA-p276-g3f3-wwgh and GHSA-94v4-rg25-x625.</li>
+<li><strong>MSRV raised to Rust 1.94.</strong></li>
+</ul>
+<h2 id="added"><a class="header" href="#added">Added</a></h2>
+<ul>
+<li><a href="https://github.com/openmls/openmls/pull/1923">#1923</a>: Async mode for the storage API (<code>async</code> feature).</li>
+<li><a href="https://github.com/openmls/openmls/pull/1913">#1913</a>, <a href="https://github.com/openmls/openmls/pull/2231">#2231</a>: Subgroup branching (<code>MlsGroup::branch_info</code>, <code>BranchGroupBuilder</code>, <code>StagedWelcome::build_from_branch</code>).</li>
+<li><a href="https://github.com/openmls/openmls/pull/2231">#2231</a>: Group reinitialization (<code>MlsGroup::propose_reinit</code>, <code>ExternalProposal::new_reinit</code>, <code>ReInitGroupBuilder</code>, <code>StagedWelcome::build_from_reinit</code>).</li>
+<li><a href="https://github.com/openmls/openmls/pull/2127">#2127</a>: <code>ExternalProposal::new_pre_shared_key</code>, plus <code>PreSharedKey</code> proposals from external senders are now accepted.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2257">#2257</a>: <code>LeafNodeLifetimePolicy::VerifyAt</code> and <code>*_with_lifetime_policy</code> variants of message processing and key package validation.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2167">#2167</a>: <code>PublicGroup::validate_key_package_for_add</code>, to check a candidate before building a commit.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2277">#2277</a>: <code>ExternalCommitBuilder::verify_group</code>, to verify the group before building an external commit.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2158">#2158</a>: <code>ExternalCommitBuilder::add_proposal(s)</code> and AppEphemeral proposals in external commits.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2142">#2142</a>: <code>Welcome::resolve_own_key_material</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2175">#2175</a>: <code>CommitBuilder::with_aad</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2184">#2184</a>, <a href="https://github.com/openmls/openmls/pull/2262">#2262</a>, <a href="https://github.com/openmls/openmls/pull/2275">#2275</a>, <a href="https://github.com/openmls/openmls/pull/2127">#2127</a>: Getters <code>PreSharedKeyProposal::psk</code>, <code>TreeSync::leaf</code>, <code>GroupInfo::signer</code> and <code>RatchetTreeIn::full_leaves</code>.</li>
+</ul>
+<h2 id="changed"><a class="header" href="#changed">Changed</a></h2>
+<ul>
+<li><a href="https://github.com/openmls/openmls/pull/2202">#2202</a>: Secret export functions return <code>ExportedSecret&lt;T&gt;</code> instead of <code>Vec&lt;u8&gt;</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2205">#2205</a>: <code>Capabilities</code> have no hardcoded defaults, and leaf construction validates them under a <code>CapabilitiesPolicy</code>.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2170">#2170</a>, <a href="https://github.com/openmls/openmls/pull/2261">#2261</a>: PQ ciphersuites follow the updated drafts. Groups on ML-KEM or X-Wing ciphersuites don’t interoperate with 0.9.x.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2133">#2133</a>: <code>mark_as_last_resort</code> uses the draft-10 <code>last_resort_key_package</code> component (<code>extensions-draft</code> feature).</li>
+<li><a href="https://github.com/openmls/openmls/security/advisories/GHSA-gc79-23g3-8g52">GHSA-gc79-23g3-8g52</a>: <code>ExtensionValidator</code> is sealed and <code>validate_extension_type</code> takes a different argument type.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2234">#2234</a>: MSRV raised to Rust 1.94.</li>
+<li>Removed the <code>js-test</code> feature. The <code>js</code> feature is enough to run the tests on <code>wasm32-unknown-unknown</code>.</li>
+</ul>
+<h2 id="fixed"><a class="header" href="#fixed">Fixed</a></h2>
+<ul>
+<li><a href="https://github.com/openmls/openmls/security/advisories/GHSA-p276-g3f3-wwgh">GHSA-p276-g3f3-wwgh</a>: Rejected private messages no longer advance the sender ratchet.</li>
+<li><a href="https://github.com/openmls/openmls/security/advisories/GHSA-94v4-rg25-x625">GHSA-94v4-rg25-x625</a>: Removed leaves no longer reappear after an external commit truncates and regrows the tree.</li>
+<li><a href="https://github.com/openmls/openmls/security/advisories/GHSA-gc79-23g3-8g52">GHSA-gc79-23g3-8g52</a>: Deeply nested invalid extensions no longer cause unbounded recursion.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2207">#2207</a>: Commits are checked for signature keys that another member already uses.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2197">#2197</a>: Reducing the past epoch deletion policy keeps the newest epochs.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2289">#2289</a>: Values that would decode as a different variant are rejected on encoding.</li>
+<li><a href="https://github.com/openmls/openmls/pull/2247">#2247</a>: Commits list their proposals in a deterministic order.</li>
+<li>Several fixes to GREASE handling and the <code>extensions-draft</code> AppDataUpdate rules. See the changelog.</li>
+</ul>
+<h2 id="supporting-crates"><a class="header" href="#supporting-crates">Supporting crates</a></h2>
+<p>Most of these crates have breaking changes, mainly from the async storage mode and the updated PQ ciphersuites:</p>
+<ul>
+<li><code>openmls_traits</code> 0.7.0 (async storage traits, new PQ KEMs)</li>
+<li><code>openmls_memory_storage</code> 0.7.0 (async mode, fix)</li>
+<li><code>openmls_rust_crypto</code> 0.7.0 (<code>hpke-rs</code> 0.8, fixes)</li>
+<li><code>openmls_libcrux_crypto</code> 0.5.0 (<code>hpke-rs</code> 0.8, more PQ ciphersuites, <code>legacy-pq-key-derivation</code> feature)</li>
+<li><code>openmls_basic_credential</code> 0.7.0 (async storage, signing through a crypto provider, fix)</li>
+<li><code>openmls_sqlite_storage</code> 0.4.0 (<code>rusqlite</code> 0.41, sync mode only)</li>
+<li><code>openmls_sqlx_storage</code> 0.4.0 (async storage API)</li>
+<li><code>openmls_test</code> 0.4.0 (dev-only, smaller generated code)</li>
+<li><code>openmls_serialization_helpers</code> 0.1.1 (<code>syn</code> 3.0)</li>
+</ul>
+<p>See each crate’s own <code>CHANGELOG.md</code> for details.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="090-2026-08-25"><a class="header" href="#090-2026-08-25">0.9.0 (2026-08-25)</a></h1>
+<h2 id="highlights-1"><a class="header" href="#highlights-1">Highlights</a></h2>
 <ul>
 <li><strong>Storage.</strong> Non-self describing storage formats are officially not supported anymore in OpenMLS starting with this release.</li>
 <li><strong>Storage migration helper.</strong> A new opt-in <code>migration-import</code> feature lets applications move existing group state to a storage provider using a different serde codec (e.g. bincode -&gt; CBOR), via new import entry points on <code>MlsGroup</code> and <code>PublicGroup</code>. See <a href="#migrating-the-storage-provider">Migrating from a previous version</a>.</li>
@@ -4505,7 +4566,7 @@ cargo publish
 <li><strong>Reworked <code>AppDataUpdate</code> processing.</strong> Both <code>MlsGroup</code> and <code>PublicGroup</code> now return commits carrying <code>AppDataUpdate</code> proposals as <code>ProcessedMessageContent::UnresolvedAppDataCommit</code>, replacing the previous <code>unprotect_message</code>/<code>process_unverified_message_with_app_data_updates</code> flow that exposed unverified content.</li>
 <li><strong>MSRV raised to Rust 1.91.</strong></li>
 </ul>
-<h2 id="added"><a class="header" href="#added">Added</a></h2>
+<h2 id="added-1"><a class="header" href="#added-1">Added</a></h2>
 <ul>
 <li><a href="https://github.com/openmls/openmls/pull/1972">#1972</a>: APIs for time-based deletion of past epoch secrets, and for setting the past epoch deletion policy for an <code>MlsGroup</code>.</li>
 <li><a href="https://github.com/openmls/openmls/pull/2010">#2010</a>: <code>MlsGroup::propose_self_update_with_new_signer</code>.</li>
@@ -4521,7 +4582,7 @@ cargo publish
 <li><a href="https://github.com/openmls/openmls/pull/1979">#1979</a>: Application data dictionary extension in key packages.</li>
 <li><a href="https://github.com/openmls/openmls/pull/2113">#2113</a>: <code>VcKeyPackageBatchBuilder</code> for virtual clients (experimental).</li>
 </ul>
-<h2 id="changed"><a class="header" href="#changed">Changed</a></h2>
+<h2 id="changed-1"><a class="header" href="#changed-1">Changed</a></h2>
 <ul>
 <li><a href="https://github.com/openmls/openmls/pull/2149">#2149</a>: <code>build_with_new_signer</code> now always generates an UpdatePath, so the new signature key reaches the committer’s leaf. External commits take their credential solely from <code>ExternalCommitBuilder::build_group</code>, with new errors for a mismatched credential or a new signer.</li>
 <li><a href="https://github.com/openmls/openmls/pull/2174">#2174</a>: Faster duplicate and membership checks during validation (hash sets, binary search for unmerged leaves). No API change.</li>
@@ -4536,7 +4597,7 @@ cargo publish
 <li><a href="https://github.com/openmls/openmls/pull/2092">#2092</a>, <a href="https://github.com/openmls/openmls/pull/2098">#2098</a>, <a href="https://github.com/openmls/openmls/pull/2099">#2099</a>: Reworked the <code>AppDataUpdate</code> receive-side API on <code>MlsGroup</code> and <code>PublicGroup</code> (see Highlights above).</li>
 <li><a href="https://github.com/openmls/openmls/pull/2083">#2083</a>: Raised MSRV to Rust 1.91.</li>
 </ul>
-<h2 id="fixed"><a class="header" href="#fixed">Fixed</a></h2>
+<h2 id="fixed-1"><a class="header" href="#fixed-1">Fixed</a></h2>
 <ul>
 <li><a href="https://github.com/openmls/openmls/pull/2186">#2186</a>: Fix wrong computation of tree node indexes when provided invalid inputs, which could let a commit from a sender outside the tree be accepted.</li>
 <li><a href="https://github.com/openmls/openmls/security/advisories/GHSA-rrmv-c79f-cf5r">GHSA-rrmv-c79f-cf5r</a>: Fix out-of-bounds panic in manual <code>DeserializeBytes</code> impls.</li>
@@ -4549,7 +4610,7 @@ cargo publish
 <li><a href="https://github.com/openmls/openmls/pull/2125">#2125</a>: A bare <code>GroupContextExtensions</code> proposal could bypass the <code>AppDataUpdate</code> immutability check on the <code>app_data_dictionary</code> extension.</li>
 <li><a href="https://github.com/openmls/openmls/pull/2051">#2051</a>: Backward-incompatible deserialization of <code>PastEpochDeletionPolicy</code>.</li>
 </ul>
-<h2 id="supporting-crates"><a class="header" href="#supporting-crates">Supporting crates</a></h2>
+<h2 id="supporting-crates-1"><a class="header" href="#supporting-crates-1">Supporting crates</a></h2>
 <p>None of these contain breaking changes to their own <em>stable</em> public APIs — all additive (new PQ ciphersuite support, virtual-clients-draft storage plumbing) or internal fixes. Several also carry the <code>extensions-draft-08</code> → <code>extensions-draft</code> feature-flag rename from #2060 (an unstable/draft feature that was never part of a stable release):</p>
 <ul>
 <li><code>openmls_traits</code> 0.6.0 (feature-flag rename, new PQ/virtual-clients/targeted-messages draft feature flags)</li>
