@@ -12,6 +12,7 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, *};
+use zeroize::{ZeroizeOnDrop, Zeroizing};
 
 #[cfg(all(test, feature = "generate-kats"))]
 use crate::schedule::psk::{ExternalPsk, Psk};
@@ -505,6 +506,17 @@ struct EncodedGroupSecrets<'a> {
     pub(crate) psks: &'a [PreSharedKeyId],
 }
 
+/// Plaintext GroupSecrets bytes that are wiped when dropped.
+pub(crate) struct GroupSecretsPlaintext(Zeroizing<Vec<u8>>);
+
+impl AsRef<[u8]> for GroupSecretsPlaintext {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl ZeroizeOnDrop for GroupSecretsPlaintext {}
+
 /// Error related to group secrets.
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum GroupSecretsError {
@@ -525,12 +537,13 @@ impl GroupSecrets {
         ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCrypto,
     ) -> Result<Self, GroupSecretsError> {
-        let group_secrets_plaintext =
+        let plaintext = GroupSecretsPlaintext(Zeroizing::new(
             hpke::decrypt_with_label(skey, "Welcome", context, ciphertext, ciphersuite, crypto)
-                .map_err(|_| GroupSecretsError::DecryptionFailed)?;
+                .map_err(|_| GroupSecretsError::DecryptionFailed)?,
+        ));
 
         // Note: This also checks that no extraneous data was encrypted.
-        let group_secrets = GroupSecrets::tls_deserialize_exact(group_secrets_plaintext)
+        let group_secrets = GroupSecrets::tls_deserialize_exact(plaintext)
             .map_err(|_| GroupSecretsError::Malformed)?;
 
         Ok(group_secrets)
@@ -541,13 +554,19 @@ impl GroupSecrets {
         joiner_secret: &JoinerSecret,
         path_secret: Option<&'a PathSecret>,
         psks: &'a [PreSharedKeyId],
-    ) -> Result<Vec<u8>, tls_codec::Error> {
-        EncodedGroupSecrets {
+    ) -> Result<GroupSecretsPlaintext, tls_codec::Error> {
+        let group_secrets = EncodedGroupSecrets {
             joiner_secret,
             path_secret,
             psks,
-        }
-        .tls_serialize_detached()
+        };
+        let mut plaintext = GroupSecretsPlaintext(Zeroizing::new(Vec::new()));
+        plaintext
+            .0
+            .try_reserve_exact(group_secrets.tls_serialized_len())
+            .map_err(|error| tls_codec::Error::EncodingError(error.to_string()))?;
+        group_secrets.tls_serialize(&mut *plaintext.0)?;
+        Ok(plaintext)
     }
 }
 
@@ -556,7 +575,7 @@ impl GroupSecrets {
     pub fn random_encoded(
         ciphersuite: Ciphersuite,
         rng: &impl OpenMlsRand,
-    ) -> Result<Vec<u8>, tls_codec::Error> {
+    ) -> Result<GroupSecretsPlaintext, tls_codec::Error> {
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
             rng,

@@ -139,7 +139,7 @@ impl EncryptionPrivateKey {
             ciphersuite,
             crypto,
         )
-        .map(|secret_bytes| Secret::from_slice(&secret_bytes))
+        .map(Secret::from_vec)
     }
 
     #[cfg(feature = "targeted-messages-draft")]

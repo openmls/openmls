@@ -195,7 +195,7 @@ impl FrankenWelcome {
                     key_package.hpke_init_key().as_slice(),
                     "Welcome",
                     encrypted_group_info.as_slice(),
-                    &encoded_group_secrets,
+                    encoded_group_secrets.as_ref(),
                     key_package.ciphersuite(),
                     crypto,
                 )
