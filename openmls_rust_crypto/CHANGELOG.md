@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.7.0 (2026-11-23)
+
 ### Changed
 
 - [#2261](https://github.com/openmls/openmls/pull/2261): **Breaking:** Updated to `hpke-rs` 0.8. The ML-KEM and X-Wing HPKE KEMs now follow `draft-ietf-hpke-pq`, as required by the updated `draft-ietf-mls-pq-ciphersuites`, which changes `DeriveKeyPair` for these KEMs. The PQ ciphersuites (`draft-ietf-mls-pq-ciphersuites` feature) are not compatible with earlier versions. See the `openmls` changelog.

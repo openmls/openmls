@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.7.0 (2026-11-23)
+
 ### Added
 
 - `HpkeKemType::MlKem768P256` (0x0050) and `HpkeKemType::MlKem1024P384` (0x0051) hybrid KEMs from `draft-ietf-hpke-pq`, and the ciphersuites `MLS_128_MLKEM768P256_AES128GCM_SHA256_P256` (TBD3, provisional code point 0xF050), `MLS_128_MLKEM768P256_AES256GCM_SHA384_P256` (TBD4, 0xF051) and `MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384` (TBD5, 0xF052) from `draft-ietf-mls-pq-ciphersuites`, behind the `draft-ietf-mls-pq-ciphersuites` feature flag.

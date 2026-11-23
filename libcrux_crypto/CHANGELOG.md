@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.5.0 (2026-11-23)
+
 ### Added
 
 - [#2281](https://github.com/openmls/openmls/pull/2281): The ML-KEM-768 + P-256 hybrid KEM (`MLKEM768-P256`) via `hpke-rs-libcrux`, so `MLS_128_MLKEM768P256_AES128GCM_SHA256_P256` (TBD3) and `MLS_128_MLKEM768P256_AES256GCM_SHA384_P256` (TBD4) from `draft-ietf-mls-pq-ciphersuites` are now supported (behind the `draft-ietf-mls-pq-ciphersuites` feature flag). `MLS_256_MLKEM1024_AES256GCM_SHA512_MLDSA87` (already accepted by `supports()`) is now also advertised in `supported_ciphersuites()`. `MLS_192_MLKEM1024P384_AES256GCM_SHA384_P384` (TBD5) and `MLS_192_MLKEM1024_AES256GCM_SHA384_P384` (TBD8) remain unsupported because libcrux has no ECDSA P-384 implementation; the ML-KEM-1024 + P-384 HPKE KEM itself is implemented.
