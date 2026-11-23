@@ -16,7 +16,7 @@ libcrux-ed25519 = { version = "0.0.10", features = ["rand"] }
 libcrux-hkdf = { version = "0.0.9" }
 libcrux-sha2 = { version = "0.0.9" }
 libcrux-hmac = { version = "0.0.9" }
-libcrux-hmac-drbg = { version = "0.0.2", features = ["rand"] }
+libcrux-hmac-drbg = { version = "0.0.2", features = ["rand", "sys_rng"] }
 libcrux-traits = { version = "0.0.9" }
 libcrux-ecdsa = { version = "0.0.9", features = ["rand"] }
 libcrux-ml-dsa = { version = "0.0.11", optional = true }
