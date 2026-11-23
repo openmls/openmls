@@ -13,7 +13,7 @@ readme = "README.md"
 [dependencies]
 openmls_traits = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-rusqlite = { version = "0.40", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 refinery = { version = "0.10", features = ["rusqlite", "enums"] }
 
 [dev-dependencies]
