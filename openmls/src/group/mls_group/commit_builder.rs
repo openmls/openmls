@@ -934,7 +934,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             stage_vc_new_derivation_epoch(builder.group.borrow_mut())?;
         }
 
-        let group = builder.group.borrow();
+        let group = builder.group.borrow_mut();
 
         // The staged Safe AAD is authoritative for whether this commit creates a
         // derivation epoch, so an application that staged the marker itself gets
@@ -943,7 +943,7 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
         let marks_new_vc_derivation_epoch = staged_vc_commit_data(group)?
             .is_some_and(|commit_data| commit_data.creates_derivation_epoch());
         let ciphersuite = group.ciphersuite();
-        let own_leaf_index = group.own_leaf_index();
+        let mut own_leaf_index = group.own_leaf_index();
         let (sender, is_external_commit) = match cur_stage.external_commit_info {
             None => (Sender::build_member(own_leaf_index), false),
             Some(_) => (Sender::NewMemberCommit, true),
@@ -1093,6 +1093,13 @@ impl<'a, G: BorrowMut<MlsGroup>> CommitBuilder<'a, LoadedPsks, G> {
             group
                 .public_group
                 .validate_external_commit(&proposal_queue)?;
+        }
+
+        if is_external_commit {
+            own_leaf_index = group
+                .public_group
+                .leftmost_free_index(proposal_queue.queued_proposals())?;
+            group.own_leaf_index = own_leaf_index;
         }
 
         let proposal_reference_list = proposal_queue.commit_list();

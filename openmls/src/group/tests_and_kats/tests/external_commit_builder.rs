@@ -818,3 +818,113 @@ fn verify_group_respects_skip_lifetime_validation() {
 
     assert_eq!(bob_group.members().count(), 2);
 }
+
+#[openmls_test]
+fn external_commit_with_inline_remove_recomputes_own_leaf_index() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let bob_new_provider = &Provider::default();
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: alice_credential,
+        signer: alice_signer,
+    } = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: bob_credential,
+        signer: _bob_signer,
+    } = generate_credential_with_key(
+        b"bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: bob_new_credential,
+        signer: bob_new_signer,
+    } = generate_credential_with_key(
+        b"bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_new_provider,
+    );
+
+    let mut alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .with_wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
+        .build(alice_provider, &alice_signer, alice_credential.clone())
+        .unwrap();
+
+    let bob_key_package = crate::prelude::KeyPackage::builder()
+        .build(ciphersuite, bob_provider, &_bob_signer, bob_credential)
+        .unwrap();
+
+    let (_commit, welcome, _group_info) = alice_group
+        .add_members(
+            alice_provider,
+            &alice_signer,
+            &[bob_key_package.key_package().clone()],
+        )
+        .unwrap();
+    alice_group.merge_pending_commit(alice_provider).unwrap();
+    let _ = welcome;
+
+    let verifiable_group_info = alice_group
+        .export_group_info(alice_provider.crypto(), &alice_signer, true)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    let (bob_new_group, commit_bundle) = MlsGroup::external_commit_builder()
+        .build_group(
+            bob_new_provider,
+            verifiable_group_info,
+            bob_new_credential.clone(),
+        )
+        .unwrap()
+        .add_proposals([crate::prelude::Proposal::remove(
+            crate::prelude::RemoveProposal {
+                removed: crate::binary_tree::LeafNodeIndex::new(1),
+            },
+        )])
+        .load_psks(bob_new_provider.storage())
+        .unwrap()
+        .build(
+            bob_new_provider.rand(),
+            bob_new_provider.crypto(),
+            &bob_new_signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(bob_new_provider)
+        .unwrap();
+
+    assert_eq!(
+        bob_new_group.own_leaf_index(),
+        crate::binary_tree::LeafNodeIndex::new(1)
+    );
+
+    let processed = alice_group
+        .process_message(
+            alice_provider,
+            commit_bundle.into_commit().into_protocol_message().unwrap(),
+        )
+        .unwrap();
+    let ProcessedMessageContent::StagedCommitMessage(staged_commit) = processed.into_content()
+    else {
+        panic!("Expected a staged commit message.");
+    };
+    alice_group
+        .merge_staged_commit(alice_provider, *staged_commit)
+        .unwrap();
+
+    assert_eq!(alice_group.members().count(), 2);
+    assert_eq!(
+        alice_group.members().collect::<Vec<_>>(),
+        bob_new_group.members().collect::<Vec<_>>()
+    );
+}

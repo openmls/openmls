@@ -368,6 +368,9 @@ pub(crate) fn test_sibling(index: TreeNodeIndex) -> TreeNodeIndex {
 /// Direct path from a node to the root.
 /// Does not include the node itself.
 pub(crate) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<ParentNodeIndex> {
+    if node_index.u32() >= size.leaf_count() {
+        return vec![];
+    }
     let r = root(size).u32();
 
     let mut d = vec![];
