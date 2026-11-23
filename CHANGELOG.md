@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- [#2195](https://github.com/openmls/openmls/pull/2195): Added `ExternalCommitBuilder::retain_past_epochs_from`, which carries the past epoch application message secrets of a previous incarnation of the group across an external commit. A member that rejoins its own group (e.g. because its group state became unusable) keeps decrypting application messages from epochs it participated in, bounded by the join config's `PastEpochDeletionPolicy` measured against the epoch the rejoin creates (note that the default policy retains no past epochs). Secrets for the epoch of the `GroupInfo` itself also replace the placeholder secrets of the pre-join epoch (#767) — taken from the previous state's current message secrets when it is exactly at that epoch with a matching group context, or from its retained tree for that epoch when it had moved past a stale `GroupInfo` — so messages sealed in that epoch remain decryptable as well. Also added the `PastEpochsGroupIdMismatch`, `PastEpochsCiphersuiteMismatch` and `PastEpochsSignatureKeyMismatch` variants to `ExternalCommitBuilderError`, returned when the provided group does not match the group being joined or belongs to a different member of it.
+
 ## 0.10.0 (2026-11-23)
 
 ### Added
