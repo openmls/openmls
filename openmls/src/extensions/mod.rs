@@ -438,8 +438,7 @@ where
         Self: Sized,
     {
         let candidate: Vec<ExtensionIn<T>> = Vec::tls_deserialize(bytes)?;
-        Extensions::<T>::try_from(candidate)
-            .map_err(|_| Error::DecodingError("Found duplicate extensions".into()))
+        Extensions::<T>::try_from(candidate).map_err(|err| Error::DecodingError(err.to_string()))
     }
 }
 

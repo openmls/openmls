@@ -606,3 +606,22 @@ fn deserialization_preserves_extension_order() {
         wire
     );
 }
+
+#[test]
+fn disallowed_extension_type_reports_accurate_decoding_error() {
+    let disallowed = vec![Extension::ApplicationId(ApplicationIdExtension::new(
+        b"Test",
+    ))];
+    let wire = disallowed
+        .tls_serialize_detached()
+        .expect("failed to serialize extension list");
+
+    let err = Extensions::<crate::group::GroupContext>::tls_deserialize_exact(&wire)
+        .expect_err("ApplicationId is not valid in GroupContext");
+
+    let expected = InvalidExtensionError::from(ExtensionTypeNotValidInGroupContextError(
+        ExtensionType::ApplicationId,
+    ))
+    .to_string();
+    assert_eq!(err, tls_codec::Error::DecodingError(expected));
+}

@@ -240,7 +240,7 @@ impl PassiveClient {
     fn inject_key_package(
         &self,
         key_package: Vec<u8>,
-        _signature_priv: Vec<u8>,
+        signature_priv: Vec<u8>,
         encryption_priv: Vec<u8>,
         init_priv: Vec<u8>,
     ) {
@@ -252,6 +252,59 @@ impl PassiveClient {
                 _ => panic!(),
             }
         };
+
+        let ciphersuite = key_package.ciphersuite();
+        let crypto = self.provider.crypto();
+
+        let probe_sig = crypto
+            .sign(
+                ciphersuite.signature_algorithm(),
+                b"kat-key-check",
+                &signature_priv,
+            )
+            .expect("signature_priv must sign with ciphersuite signature algorithm");
+        crypto
+            .verify_signature(
+                ciphersuite.signature_algorithm(),
+                b"kat-key-check",
+                key_package.leaf_node().signature_key().as_slice(),
+                &probe_sig,
+            )
+            .expect("signature_priv must match KeyPackage leaf signature key");
+
+        let enc_ct = crypto
+            .hpke_seal(
+                ciphersuite.hpke_config(),
+                key_package.leaf_node().encryption_key().as_slice(),
+                b"",
+                b"",
+                b"kat-key-check",
+            )
+            .expect("hpke_seal for encryption_key");
+        let enc_pt = crypto
+            .hpke_open(
+                ciphersuite.hpke_config(),
+                &enc_ct,
+                &encryption_priv,
+                b"",
+                b"",
+            )
+            .expect("encryption_priv must match KeyPackage leaf encryption key");
+        assert_eq!(enc_pt, b"kat-key-check");
+
+        let init_ct = crypto
+            .hpke_seal(
+                ciphersuite.hpke_config(),
+                key_package.hpke_init_key().as_slice(),
+                b"",
+                b"",
+                b"kat-key-check",
+            )
+            .expect("hpke_seal for hpke_init_key");
+        let init_pt = crypto
+            .hpke_open(ciphersuite.hpke_config(), &init_ct, &init_priv, b"", b"")
+            .expect("init_priv must match KeyPackage hpke_init_key");
+        assert_eq!(init_pt, b"kat-key-check");
 
         let init_priv = HpkePrivateKey::from(init_priv);
 
