@@ -60,3 +60,58 @@ fn test_store_key_package() {
         .expect("Error deleting key package");
     // ANCHOR_END: store_delete
 }
+
+// A stored value that fails to deserialize must surface as an error from
+// `MlsGroup::load`, never as a panic.
+#[test]
+fn load_group_with_corrupted_memory_storage() {
+    use openmls_rust_crypto::{MemoryStorage, MemoryStorageError, OpenMlsRustCrypto};
+
+    let provider = OpenMlsRustCrypto::default();
+    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+    let credential = CredentialWithKey {
+        credential: BasicCredential::new(b"alice".to_vec()).into(),
+        signature_key: signer.public().into(),
+    };
+    let group = MlsGroup::new(
+        &provider,
+        &signer,
+        &MlsGroupCreateConfig::default(),
+        credential,
+    )
+    .unwrap();
+    let group_id = group.group_id().clone();
+    drop(group);
+
+    let stored = provider.storage().values.read().unwrap().clone();
+    assert!(MlsGroup::load(provider.storage(), &group_id)
+        .unwrap()
+        .is_some());
+
+    let mut rejected = 0;
+    for key in stored.keys() {
+        for corrupted in [b"[44251]".as_slice(), b"{}", b"\"x\"", b"["] {
+            let storage = MemoryStorage {
+                values: std::sync::RwLock::new(stored.clone()),
+            };
+            storage
+                .values
+                .write()
+                .unwrap()
+                .insert(key.clone(), corrupted.to_vec());
+
+            // Values that `load` doesn't read (e.g. epoch key pairs) go
+            // unnoticed here. All others must be reported as an error.
+            match MlsGroup::load(&storage, &group_id) {
+                Ok(Some(_)) => {}
+                Err(MemoryStorageError::SerializationError) => rejected += 1,
+                other => panic!(
+                    "unexpected result for key {key:?}, value {corrupted:?}: {:?}",
+                    other.map(|group| group.is_some())
+                ),
+            }
+        }
+    }
+    assert!(rejected > 0);
+}

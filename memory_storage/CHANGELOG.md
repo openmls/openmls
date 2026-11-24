@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#2163](https://github.com/openmls/openmls/pull/2163): `MemoryStorage::clear_proposal_queue` now deletes the queued proposals, not only their references.
 
+### Fixed
+
+- [#2331](https://github.com/openmls/openmls/pull/2331): `MemoryStorage` now returns `MemoryStorageError::SerializationError` instead of panicking when a stored value fails to deserialize or when a queued proposal reference points to a missing proposal.
+
 ## 0.6.0 (2026-08-25)
 
 ### Added
