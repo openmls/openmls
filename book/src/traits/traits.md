@@ -19,6 +19,7 @@ Supported ciphersuites
 - MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
 - MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
 - MLS_128_DHKEMP256_AES128GCM_SHA256_P256
+- MLS_256_DHKEMP384_AES256GCM_SHA384_P384
 
 **Libcrux Crypto Provider**
 A crypto provider backed by the high-assurance cryptography library [libcrux].

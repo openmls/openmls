@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added support for the ciphersuite `MLS_256_DHKEMP384_AES256GCM_SHA384_P384` (0x0007).
+
 ## 0.7.0 (2026-11-23)
 
 ### Changed

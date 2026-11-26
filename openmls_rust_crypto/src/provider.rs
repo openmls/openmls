@@ -147,7 +147,8 @@ impl OpenMlsCrypto for RustCrypto {
         match ciphersuite {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
             | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(()),
+            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
+            | Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => Ok(()),
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384
             | Ciphersuite::MLS_128_MLKEM768X25519_AES256GCM_SHA384_Ed25519
@@ -169,6 +170,7 @@ impl OpenMlsCrypto for RustCrypto {
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
             Ciphersuite::MLS_192_MLKEM1024_AES256GCM_SHA384_P384,
             #[cfg(feature = "draft-ietf-mls-pq-ciphersuites")]
@@ -675,6 +677,84 @@ mod tests {
                 "{ciphersuite:?} is advertised by supported_ciphersuites() but rejected by supports()"
             );
         }
+    }
+
+    #[test]
+    fn dhkem_p384_hpke_round_trips() {
+        let crypto = RustCrypto::default();
+        let ciphersuite = Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384;
+
+        let key_pair = crypto
+            .derive_hpke_keypair(ciphersuite.hpke_config(), &[7u8; 48])
+            .expect("deriving a P-384 key pair failed");
+        assert_eq!(key_pair.private.len(), 48);
+        assert_eq!(key_pair.public.len(), 97);
+
+        let ciphertext = crypto
+            .hpke_seal(
+                ciphersuite.hpke_config(),
+                &key_pair.public,
+                b"info",
+                b"aad",
+                b"plaintext",
+            )
+            .expect("HPKE seal failed");
+        assert_eq!(ciphertext.kem_output.as_slice().len(), 97);
+        let plaintext = crypto
+            .hpke_open(
+                ciphersuite.hpke_config(),
+                &ciphertext,
+                &key_pair.private,
+                b"info",
+                b"aad",
+            )
+            .expect("HPKE open failed");
+        assert_eq!(plaintext, b"plaintext");
+
+        let (enc, sender_secret) = crypto
+            .hpke_setup_sender_and_export(
+                ciphersuite.hpke_config(),
+                &key_pair.public,
+                b"info",
+                b"context",
+                48,
+            )
+            .expect("HPKE sender setup failed");
+        let receiver_secret = crypto
+            .hpke_setup_receiver_and_export(
+                ciphersuite.hpke_config(),
+                &enc,
+                &key_pair.private,
+                b"info",
+                b"context",
+                48,
+            )
+            .expect("HPKE receiver setup failed");
+        assert_eq!(&*sender_secret, &*receiver_secret);
+    }
+
+    #[test]
+    fn ecdsa_p384_sign_verify_round_trips() {
+        let crypto = RustCrypto::default();
+        let scheme = SignatureScheme::ECDSA_SECP384R1_SHA384;
+
+        let (private, public) = crypto
+            .signature_key_gen(scheme)
+            .expect("P-384 key generation failed");
+        assert_eq!(private.len(), 48);
+        assert_eq!(public.len(), 97);
+
+        let signature = crypto
+            .sign(scheme, b"data", &private)
+            .expect("P-384 signing failed");
+        assert_eq!(
+            crypto.verify_signature(scheme, b"data", &public, &signature),
+            Ok(())
+        );
+        assert_eq!(
+            crypto.verify_signature(scheme, b"other data", &public, &signature),
+            Err(CryptoError::InvalidSignature)
+        );
     }
 
     #[test]
