@@ -206,11 +206,10 @@ impl KeyPackageIn {
 
         // Extension included in the extensions or leaf_node.extensions fields
         // MUST be included in the leaf_node.capabilities field.
-        if !key_package
-            .payload
-            .leaf_node
-            .capabilities()
-            .contains_extensions(&key_package.payload.extensions)
+        let leaf_node = &key_package.payload.leaf_node;
+        let capabilities = leaf_node.capabilities();
+        if !capabilities.contains_extensions(&key_package.payload.extensions)
+            || !capabilities.contains_extensions(leaf_node.extensions())
         {
             return Err(KeyPackageVerifyError::UnsupportedExtension);
         }

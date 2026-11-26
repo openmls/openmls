@@ -69,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#2242](https://github.com/openmls/openmls/pull/2242): `CommitBuilder::load_psk` now checks that resumption PSKs of usage `Application` reference the correct group ID, and returns `CreateCommitError::PskError(PskError::DifferentGroupId)`. In earlier versions it would return `CreateCommitError::PskError(PskError::KeyNotFound)`
 - [#2207](https://github.com/openmls/openmls/pull/2207): Creating and staging a commit now checks that no other member uses the signature key of the committer's new leaf. Previously an external commit or an update could take over another member's signature key.
 - [#2207](https://github.com/openmls/openmls/pull/2207): A commit with a SelfRemove proposal and a later Update or Remove proposal for the same member no longer panics in debug builds.
+- [#2268](https://github.com/openmls/openmls/issues/2268): `KeyPackageIn::validate` now rejects a KeyPackage whose LeafNode carries an extension that its capabilities don't list (`KeyPackageVerifyError::UnsupportedExtension`), as RFC 9420 Section 7.2 requires. Previously only the KeyPackage's own extensions were checked.
 
 ## 0.9.0 (2026-08-25)
 
