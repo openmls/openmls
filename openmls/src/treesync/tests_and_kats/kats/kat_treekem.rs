@@ -15,7 +15,10 @@ use crate::{
     schedule::CommitSecret,
     test_utils::{hex_to_bytes, OpenMlsRustCrypto},
     treesync::{
-        node::{encryption_keys::EncryptionKeyPair, leaf_node::UpdateLeafNodeParams},
+        node::{
+            encryption_keys::EncryptionKeyPair,
+            leaf_node::{CapabilitiesPolicy, UpdateLeafNodeParams},
+        },
         treekem::{DecryptPathParams, UpdatePath, UpdatePathIn},
         TreeSync,
     },
@@ -245,7 +248,13 @@ pub fn run_test_vector(test: TreeKemTest, provider: &impl OpenMlsProvider) {
 
             let leaf_index = LeafNodeIndex::new(path_test.sender);
             let leaf_node = diff_after_kat.leaf(leaf_index).unwrap();
-            let leaf_node_params = UpdateLeafNodeParams::derive(leaf_node);
+            // The leaves in treekem.json list ciphersuites 1 to 6 in their
+            // capabilities, so for ciphersuite 7 they don't cover the tree's
+            // own ciphersuite.
+            let leaf_node_params = UpdateLeafNodeParams {
+                capabilities_policy: CapabilitiesPolicy::Widen,
+                ..UpdateLeafNodeParams::derive(leaf_node)
+            };
 
             // TODO(#1279): Update own leaf.
             let (vec_plain_update_path_nodes, _, commit_secret) = diff_after_kat
