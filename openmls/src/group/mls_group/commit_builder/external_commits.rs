@@ -16,12 +16,12 @@ use crate::{
         commit_builder::{CommitBuilder, ExternalCommitInfo, Initial},
         past_secrets::MessageSecretsStore,
         public_group::errors::CreationFromExternalError,
-        ExternalCommitBuilderFinalizeError, LeafNodeLifetimePolicy, MlsGroup, MlsGroupJoinConfig,
-        MlsGroupState, PendingCommitState, ProposalStore, PublicGroup, QueuedProposal,
-        ValidationError, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ExternalCommitBuilderFinalizeError, GroupContext, LeafNodeLifetimePolicy, MlsGroup,
+        MlsGroupJoinConfig, MlsGroupState, PendingCommitState, ProposalStore, PublicGroup,
+        QueuedProposal, ValidationError, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::{
-        group_info::VerifiableGroupInfo,
+        group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::{
             ExternalInitProposal, PreSharedKeyProposal, Proposal, ProposalOrRefType, ProposalType,
             RemoveProposal,
@@ -65,11 +65,15 @@ pub enum ExternalCommitBuilderError<StorageError> {
 /// optional SelfRemove proposals from other members, the ratchet tree, and the
 /// group join configuration can be set in the first builder stage.
 ///
-/// The second stage of this builder is a [`CommitBuilder`] that can be used to
-/// add one or more proposals by value to the external commit and specify
-/// [`LeafNodeParameters`]. Note that only proposal types that RFC 9420 and the
-/// MLS extensions draft allow in an external commit pass validation when the
-/// commit is built.
+/// [`Self::build_group`] verifies the group info and ratchet tree and returns
+/// a [`CommitBuilder`]. To inspect the verified group info and group context
+/// before building the external commit, use [`Self::verify_group`] instead,
+/// which returns a [`VerifiedExternalCommitBuilder`].
+///
+/// The [`CommitBuilder`] stage can be used to add one or more proposals by
+/// value to the external commit and specify [`LeafNodeParameters`]. Note that
+/// only proposal types that RFC 9420 and the MLS extensions draft allow in an
+/// external commit pass validation when the commit is built.
 #[derive(Default)]
 pub struct ExternalCommitBuilder {
     proposals: Vec<PublicMessageIn>,
@@ -165,6 +169,9 @@ impl ExternalCommitBuilder {
     /// Build the [`MlsGroup`] from the provided [`VerifiableGroupInfo`] and
     /// [`CredentialWithKey`].
     ///
+    /// This is equivalent to calling [`Self::verify_group`] followed by
+    /// [`VerifiedExternalCommitBuilder::build_group`].
+    ///
     /// Returns a [`CommitBuilder`] that can be used to further configure the
     /// external commit.
     pub fn build_group<Provider: OpenMlsProvider>(
@@ -176,10 +183,27 @@ impl ExternalCommitBuilder {
         CommitBuilder<'_, Initial, MlsGroup>,
         ExternalCommitBuilderError<Provider::StorageError>,
     > {
+        self.verify_group(provider, verifiable_group_info)?
+            .build_group(provider, credential_with_key)
+    }
+
+    /// Verify the provided [`VerifiableGroupInfo`] and the ratchet tree of the
+    /// group to be joined, without building an external commit. The ratchet
+    /// tree is taken from the [`VerifiableGroupInfo`] extensions if present,
+    /// and from [`Self::with_ratchet_tree`] otherwise.
+    ///
+    /// Returns a [`VerifiedExternalCommitBuilder`] that exposes the verified
+    /// [`GroupInfo`] and [`GroupContext`] and can build the external commit.
+    pub fn verify_group<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        verifiable_group_info: VerifiableGroupInfo,
+    ) -> Result<VerifiedExternalCommitBuilder, ExternalCommitBuilderError<Provider::StorageError>>
+    {
         let ExternalCommitBuilder {
             proposals,
             ratchet_tree,
-            mut config,
+            config,
             aad,
             validate_lifetimes,
             #[cfg(feature = "virtual-clients-draft")]
@@ -191,8 +215,6 @@ impl ExternalCommitBuilder {
             .crypto()
             .supports(group_ciphersuite)
             .map_err(|_| ExternalCommitBuilderError::UnsupportedCiphersuite(group_ciphersuite))?;
-
-        // Build the ratchet tree
 
         // Set nodes either from the extension or from the `ratchet_tree`.
         let ratchet_tree = match verifiable_group_info.extensions().ratchet_tree() {
@@ -210,6 +232,67 @@ impl ExternalCommitBuilder {
             ProposalStore::new(),
             validate_lifetimes,
         )?;
+
+        Ok(VerifiedExternalCommitBuilder {
+            public_group,
+            group_info,
+            proposals,
+            config,
+            aad,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group,
+        })
+    }
+}
+
+/// The second stage of the [`ExternalCommitBuilder`], returned by
+/// [`ExternalCommitBuilder::verify_group`]. It holds the verified group info
+/// and ratchet tree of the group to be joined, so they can be inspected before
+/// the external commit is built.
+pub struct VerifiedExternalCommitBuilder {
+    public_group: PublicGroup,
+    group_info: GroupInfo,
+    proposals: Vec<PublicMessageIn>,
+    config: MlsGroupJoinConfig,
+    aad: Vec<u8>,
+    #[cfg(feature = "virtual-clients-draft")]
+    emulation_group: bool,
+}
+
+impl VerifiedExternalCommitBuilder {
+    /// Returns the verified [`GroupInfo`] of the group to be joined.
+    pub fn group_info(&self) -> &GroupInfo {
+        &self.group_info
+    }
+
+    /// Returns the [`GroupContext`] of the group to be joined.
+    pub fn group_context(&self) -> &GroupContext {
+        self.public_group.group_context()
+    }
+
+    /// Build the [`MlsGroup`] from the verified group and the provided
+    /// [`CredentialWithKey`].
+    ///
+    /// Returns a [`CommitBuilder`] that can be used to further configure the
+    /// external commit.
+    pub fn build_group<Provider: OpenMlsProvider>(
+        self,
+        provider: &Provider,
+        credential_with_key: CredentialWithKey,
+    ) -> Result<
+        CommitBuilder<'_, Initial, MlsGroup>,
+        ExternalCommitBuilderError<Provider::StorageError>,
+    > {
+        let VerifiedExternalCommitBuilder {
+            public_group,
+            group_info,
+            proposals,
+            mut config,
+            aad,
+            #[cfg(feature = "virtual-clients-draft")]
+            emulation_group,
+        } = self;
+
         let group_context = public_group.group_context();
 
         // Obtain external_pub from GroupInfo extensions.

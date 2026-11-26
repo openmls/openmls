@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.7.0 (2026-11-23)
+
 ### Added
 
 - [#1923](https://github.com/openmls/openmls/pull/1923): `SignatureKeyPair::store`, `SignatureKeyPair::read` and `SignatureKeyPair::delete` are `async` when `openmls_traits` is in async mode.

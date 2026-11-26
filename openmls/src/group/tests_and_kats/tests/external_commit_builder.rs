@@ -6,14 +6,21 @@ use crate::{
     framing::{ProcessedMessageContent, ProtocolMessage},
     group::{
         errors::CreateCommitError,
+        mls_group::tests_and_kats::utils::setup_alice_bob_group,
+        public_group::errors::CreationFromExternalError,
         tests_and_kats::utils::{
             generate_credential_with_key, minimal_capabilities_for, CredentialWithKeyAndSigner,
         },
-        MlsGroup, MlsGroupJoinConfig, WireFormatPolicy, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        ExternalCommitBuilderError, MlsGroup, MlsGroupJoinConfig, WireFormatPolicy,
+        PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
+    key_packages::Lifetime,
     messages::proposals::{PreSharedKeyProposal, ProposalType},
     schedule::{ExternalPsk, PreSharedKeyId, Psk},
-    treesync::node::leaf_node::{LeafNodeIn, LeafNodeParameters, TreePosition, VerifiableLeafNode},
+    treesync::{
+        errors::{LeafNodeValidationError, LifetimeError},
+        node::leaf_node::{LeafNodeIn, LeafNodeParameters, TreePosition, VerifiableLeafNode},
+    },
 };
 
 #[openmls_test]
@@ -659,4 +666,155 @@ fn external_commit_rejects_new_signer() {
         .unwrap_err();
 
     assert_eq!(err, CreateCommitError::ExternalCommitWithNewSigner);
+}
+
+#[openmls_test]
+fn verify_group_exposes_group_info_and_context() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let charlie_provider = &Provider::default();
+
+    let (mut alice_group, _alice_signer, mut bob_group, bob_signer, _, _) =
+        setup_alice_bob_group(ciphersuite, alice_provider, bob_provider);
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: charlie_credential_with_key,
+        signer: charlie_signer,
+    } = generate_credential_with_key(
+        b"charlie".into(),
+        ciphersuite.signature_algorithm(),
+        charlie_provider,
+    );
+
+    // Bob exports the group info, so its signer is not the group creator.
+    let verifiable_group_info = bob_group
+        .export_group_info(bob_provider.crypto(), &bob_signer, true)
+        .unwrap()
+        .into_verifiable_group_info()
+        .unwrap();
+
+    let verified = MlsGroup::external_commit_builder()
+        .verify_group(charlie_provider, verifiable_group_info)
+        .unwrap();
+
+    assert_eq!(verified.group_info().signer(), bob_group.own_leaf_index());
+    assert_eq!(verified.group_context(), bob_group.export_group_context());
+    assert_eq!(
+        verified.group_info().group_context(),
+        bob_group.export_group_context()
+    );
+
+    let (charlie_group, commit_message_bundle) = verified
+        .build_group(charlie_provider, charlie_credential_with_key)
+        .unwrap()
+        .load_psks(charlie_provider.storage())
+        .unwrap()
+        .build(
+            charlie_provider.rand(),
+            charlie_provider.crypto(),
+            &charlie_signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(charlie_provider)
+        .unwrap();
+
+    let commit = commit_message_bundle
+        .into_commit()
+        .into_protocol_message()
+        .unwrap();
+
+    for (group, provider) in [
+        (&mut alice_group, alice_provider),
+        (&mut bob_group, bob_provider),
+    ] {
+        let processed_message = group.process_message(provider, commit.clone()).unwrap();
+        let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            processed_message.into_content()
+        else {
+            panic!("Expected a staged commit.");
+        };
+        group.merge_staged_commit(provider, *staged_commit).unwrap();
+
+        assert_eq!(
+            group.export_group_context(),
+            charlie_group.export_group_context()
+        );
+        assert_eq!(group.members().count(), 3);
+    }
+}
+
+#[openmls_test]
+fn verify_group_respects_skip_lifetime_validation() {
+    // Keeps other tests from globally disabling the lifetime check meanwhile.
+    let _lifetime_check_handle = crate::skip_validation::checks::leaf_node_lifetime::handle();
+
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: alice_credential_with_key,
+        signer: alice_signer,
+    } = generate_credential_with_key(
+        b"alice".into(),
+        ciphersuite.signature_algorithm(),
+        alice_provider,
+    );
+
+    let CredentialWithKeyAndSigner {
+        credential_with_key: bob_credential_with_key,
+        signer: bob_signer,
+    } = generate_credential_with_key(
+        b"bob".into(),
+        ciphersuite.signature_algorithm(),
+        bob_provider,
+    );
+
+    // Alice's leaf node has a lifetime that expired long ago.
+    let alice_group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .lifetime(Lifetime::init(0, 1))
+        .build(alice_provider, &alice_signer, alice_credential_with_key)
+        .unwrap();
+
+    let export_group_info = || {
+        alice_group
+            .export_group_info(alice_provider.crypto(), &alice_signer, true)
+            .unwrap()
+            .into_verifiable_group_info()
+            .unwrap()
+    };
+
+    let err = MlsGroup::external_commit_builder()
+        .verify_group(bob_provider, export_group_info())
+        .err()
+        .unwrap();
+    assert!(matches!(
+        err,
+        ExternalCommitBuilderError::PublicGroupError(
+            CreationFromExternalError::LeafNodeValidation(LeafNodeValidationError::Lifetime(
+                LifetimeError::Expired { .. }
+            ))
+        )
+    ));
+
+    let (bob_group, _commit_message_bundle) = MlsGroup::external_commit_builder()
+        .skip_lifetime_validation()
+        .verify_group(bob_provider, export_group_info())
+        .unwrap()
+        .build_group(bob_provider, bob_credential_with_key)
+        .unwrap()
+        .load_psks(bob_provider.storage())
+        .unwrap()
+        .build(
+            bob_provider.rand(),
+            bob_provider.crypto(),
+            &bob_signer,
+            |_| true,
+        )
+        .unwrap()
+        .finalize(bob_provider)
+        .unwrap();
+
+    assert_eq!(bob_group.members().count(), 2);
 }
