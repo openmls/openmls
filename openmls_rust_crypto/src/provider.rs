@@ -680,6 +680,14 @@ mod tests {
     }
 
     #[test]
+    fn supports_dhkem_p384_ciphersuite() {
+        let crypto = RustCrypto::default();
+        let ciphersuite = Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384;
+        assert_eq!(crypto.supports(ciphersuite), Ok(()));
+        assert!(crypto.supported_ciphersuites().contains(&ciphersuite));
+    }
+
+    #[test]
     fn dhkem_p384_hpke_round_trips() {
         let crypto = RustCrypto::default();
         let ciphersuite = Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384;
