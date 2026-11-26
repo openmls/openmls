@@ -249,7 +249,14 @@ impl Commit {
     TlsSerialize,
     TlsSize,
 )]
-pub(crate) struct CommitIn {
+/// A `Commit` as received, before validation.
+///
+/// Public so that a consumer parsing a structure that embeds a Commit it
+/// did not build -- a `SemiPrivateMessageContent` of
+/// draft-mahy-mls-semiprivatemessage, for one -- can decode it. The
+/// fields stay private: an unvalidated Commit is not a Commit, and
+/// reading it is what [`CommitIn::validate`] is for.
+pub struct CommitIn {
     proposals: Vec<ProposalOrRefIn>,
     path: Option<UpdatePathIn>,
 }

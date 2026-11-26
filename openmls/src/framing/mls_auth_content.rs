@@ -45,13 +45,24 @@ use crate::{
 ///} FramedContentAuthData;
 /// ```
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct FramedContentAuthData {
+/// RFC 9420 §6.1 `FramedContentAuthData`.
+///
+/// Public for the same reason as [`crate::messages::CommitIn`]: a
+/// consumer decoding a structure that embeds one needs to, and its
+/// layout depends on the `ContentType` beside it, which is why
+/// [`FramedContentAuthData::deserialize`] takes one.
+pub struct FramedContentAuthData {
     pub(super) signature: Signature,
     pub(super) confirmation_tag: Option<ConfirmationTag>,
 }
 
 impl FramedContentAuthData {
-    pub(crate) fn deserialize<R: Read>(
+    /// Decodes one `FramedContentAuthData` of the given content type.
+    ///
+    /// # Errors
+    ///
+    /// A [`tls_codec::Error`] if the bytes are short or malformed.
+    pub fn deserialize<R: Read>(
         bytes: &mut R,
         content_type: ContentType,
     ) -> Result<Self, tls_codec::Error> {
