@@ -955,9 +955,9 @@ impl VcDerivationEpochLog {
 /// derivation-epoch log. Only for decoding stored records and converting them
 /// with [`VcDerivationEpochLogEntry::from_legacy_record`].
 #[deprecated(
-    since = "0.9.0",
+    since = "0.10.0",
     note = "migration-only: decode pre-log registration records and convert them with \
-            `VcDerivationEpochLogEntry::from_legacy_record`. Will be removed in 0.10.0."
+            `VcDerivationEpochLogEntry::from_legacy_record`. Will be removed in a later release."
 )]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RegisteredVcDerivationEpoch {
@@ -1242,9 +1242,9 @@ impl VcEmulationBinding {
 /// [`VcEmulationBinding`] rows. Only for decoding stored records and
 /// converting their entries with [`VcEmulationBinding::from_legacy_record`].
 #[deprecated(
-    since = "0.9.0",
+    since = "0.10.0",
     note = "migration-only: decode pre-row bindings records and convert their entries with \
-            `VcEmulationBinding::from_legacy_record`. Will be removed in 0.10.0."
+            `VcEmulationBinding::from_legacy_record`. Will be removed in a later release."
 )]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VcEmulationBindings {

@@ -20,9 +20,9 @@ dependencies = [
 
 [[package]]
 name = "aes"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35f0f96ce78e38c3dc6d8948aa8163d06385be74000f3c7a95bf1eef35d3ea32"
+checksum = "fc0fc36d7440d015b45468ba08a21e80e056ebbd014c611c6298bb7503e04bd1"
 dependencies = [
  "cipher",
  "cpubits",
@@ -137,7 +137,7 @@ checksum = "82f6aeea286b8eb4dd3431a1be1b59d290ace00f5bfd8e2a159bc2a05e2c1667"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -230,22 +230,21 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "bindgen"
-version = "0.72.1"
+version = "0.73.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
+checksum = "787ef8ef523575546b106a58213d6e6b06198a05c2f757258c68a74273670cfa"
 dependencies = [
  "bitflags",
  "cexpr",
  "clang-sys",
- "itertools 0.13.0",
  "log",
  "prettyplease",
  "proc-macro2",
  "quote",
  "regex",
  "rustc-hash",
- "shlex 1.3.0",
- "syn 2.0.119",
+ "shlex",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -305,7 +304,7 @@ dependencies = [
  "find-msvc-tools",
  "jobserver",
  "libc",
- "shlex 2.0.1",
+ "shlex",
 ]
 
 [[package]]
@@ -398,9 +397,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.6.7"
+version = "4.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa8876b300ab35ba921adea3dfd70157a46249b33f95c9084ae5709785478946"
+checksum = "844c5c0b65be192cb68d570cca1b21a6444431d24e39c084dc0336177015337c"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -420,14 +419,14 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.6.7"
+version = "4.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9c751b79415d4e559e3d1fcf128e09e720eb673a06d26cf6f392d37d75b66e0"
+checksum = "b4c174f11f949b9ca8c60580925e282b9cbd5454750e506f08648b2038080cd7"
 dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -513,9 +512,9 @@ dependencies = [
 
 [[package]]
 name = "crabgrind"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "035c801dc4b418e1d857a6536dc88b4d1929c7a1fd163389766e18d322d34a84"
+checksum = "e3f4bc9b199b6cfdf87ef7960ac7be99306a1ad4d6c442b1c3701cddb22ea47d"
 dependencies = [
  "bindgen",
  "cc",
@@ -641,9 +640,9 @@ dependencies = [
 
 [[package]]
 name = "ctutils"
-version = "0.4.2"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5515a3834141de9eafb9717ad39eea8247b5674e6066c404e8c4b365d2a29e"
+checksum = "261af4dc7a06ea8a527a8717d8cbba3417530d6ea14e1edb3de6b67806be474f"
 dependencies = [
  "cmov",
  "subtle",
@@ -717,7 +716,7 @@ checksum = "c6232dd377dcc64799954cbd3a9bb882e9cdc1308ccd87b1c098f1fb2eaf82a8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -882,9 +881,9 @@ checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
 
 [[package]]
 name = "flate2"
-version = "1.1.10"
+version = "1.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e634e2e0ebac1ee034020da1ca582e17ffe4e0f5e985823721e168928136dcb"
+checksum = "626d4928326b646e70f65ed36fc7cf9f206bdb68a0019ee7c6b4709da4e084c4"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -1214,9 +1213,9 @@ dependencies = [
 
 [[package]]
 name = "hpke-rs"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deb74477a6c7f6e8e9c68de06fe928db79b3b8b9e04c900bfb729bf096df7d22"
+checksum = "cb3d62c3ce304a6ac89d584cdc8c619416bced26230a294df2ae7de1dc163a48"
 dependencies = [
  "hpke-rs-crypto",
  "hpke-rs-libcrux",
@@ -1241,9 +1240,9 @@ dependencies = [
 
 [[package]]
 name = "hpke-rs-libcrux"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "651d0e6fce0fc35a53150f163ffff703a54a94b095fd0f67c8eee55bb95172bf"
+checksum = "8d6ff06f438a10440a8a2972f15d89d2a725aa9b150164573203bd13e48c0d12"
 dependencies = [
  "hpke-rs-crypto",
  "libcrux-aead",
@@ -1583,15 +1582,6 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
@@ -1672,9 +1662,9 @@ checksum = "ce5d3ddc6d3fa000eb1536d85e147bfe31aacaba692ed6a876f95cb7c855be78"
 
 [[package]]
 name = "libcrux-aead"
-version = "0.0.10"
+version = "0.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f5f7c2e54c871be25920dd3a0a8cbac1552d7ab8e294967a71199ca14588304"
+checksum = "4670ccc1c140172ef7f18d6b9751910b0a8304b948fe8580de20f95bfc4158f7"
 dependencies = [
  "libcrux-aes",
  "libcrux-chacha20poly1305",
@@ -1684,9 +1674,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-aes"
-version = "0.0.10"
+version = "0.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd415025511a0bd8731cae34ae2d5e07c1b3f0443d5c12bd199c9e9b2f1fd4d5"
+checksum = "cd421cee7cda4921fdcb732104f9ce74ebaaf04bfb27bed8b9061f39b88f712c"
 dependencies = [
  "libcrux-intrinsics",
  "libcrux-platform",
@@ -1696,9 +1686,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-chacha20poly1305"
-version = "0.0.10"
+version = "0.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ae27cbc4917bfd7759d7db19ea6dcf0279f195431942b59ff113aa34a2140a3"
+checksum = "3502cb17f64544a4360dc6b63b54cd98796fe5e8ba0d276cb018610a2a5d9518"
 dependencies = [
  "libcrux-hacl-rs",
  "libcrux-macros",
@@ -1709,9 +1699,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-curve25519"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e78d0f36b23bcf258792dcc3a948fc628cb195950afa7b9a954250714688cfd"
+checksum = "03c041d754efacdaa80814b216e9f4378c80ee8d2d92348f2316db549b5deff7"
 dependencies = [
  "libcrux-hacl-rs",
  "libcrux-macros",
@@ -1721,9 +1711,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-ecdh"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50abafa35c0caade2f358504b7da0a438a7382dc1262f855aa479e89578301b6"
+checksum = "8a617799b25e3594e2b95b358bc5f29bdc87f891a1c90e373c0672c3b9c739bc"
 dependencies = [
  "libcrux-curve25519",
  "libcrux-p256",
@@ -1733,20 +1723,21 @@ dependencies = [
 
 [[package]]
 name = "libcrux-ecdsa"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71554ed1831885ed1c972993cd022ef17dcb5eeb0560610326a6a268c0ed02b9"
+checksum = "3af5b5f805000fda917050e58b09822db569b778c95fd7eb22cb28bd5b8f2e25"
 dependencies = [
  "libcrux-p256",
+ "libcrux-secrets",
  "libcrux-sha2",
  "rand",
 ]
 
 [[package]]
 name = "libcrux-ed25519"
-version = "0.0.10"
+version = "0.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55de36c252a9fd97a202c03535deecbe988c525eb16901b2ea17ed99e737edc9"
+checksum = "717c0581e0ac46a8e1f60c38373990c3157deed0c5c9870295bf97252d98a841"
 dependencies = [
  "libcrux-hacl-rs",
  "libcrux-macros",
@@ -1756,18 +1747,18 @@ dependencies = [
 
 [[package]]
 name = "libcrux-hacl-rs"
-version = "0.0.6"
+version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27ce64ead37fc67c1039fdbcf1e8c97044e6a644cb3d1f79060b5c9ac8fdfe0a"
+checksum = "762189c1588b1b79ebd035cb7685d9c4eb5ecf4a8cd39806e33f3850ac25bc8c"
 dependencies = [
  "libcrux-macros",
 ]
 
 [[package]]
 name = "libcrux-hkdf"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d061b72fb31bcb77940e379b3df170389c5f372a604f755c097fac9a870cc43"
+checksum = "489c3077fbf3f63f68351d1ba0fa810b091444d00bda6d1c55bb63e77d436d76"
 dependencies = [
  "libcrux-hacl-rs",
  "libcrux-hmac",
@@ -1776,9 +1767,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-hmac"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b454775ca55f79559f4dbc03b9896d46d929f11041d1c71c14501f0c1b97d75"
+checksum = "e044c92f0ef65178844b641eae56f85039b5a5a1f191c54eb09b63204ca492c6"
 dependencies = [
  "libcrux-hacl-rs",
  "libcrux-macros",
@@ -1789,9 +1780,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-hmac-drbg"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd26835f801ddd057dac83e3bf677b4755b3015ad0e5efeac22f6e519b5e1393"
+checksum = "79917d8e5bd4955c1747d61747f9cb58b7c7abc1645c85886f9b8d3d7641785a"
 dependencies = [
  "libcrux-hmac",
  "rand",
@@ -1799,9 +1790,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-intrinsics"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de82722c9c7419a311e84ee902e9643a15e39a6fcaade87f21e94f8d0f30fa70"
+checksum = "93e52c8c9f6647d6a288272a4384d1c0163a81df32d248e9be84ac65dee8246b"
 dependencies = [
  "core-models",
  "hax-lib 0.4.1",
@@ -1809,9 +1800,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-kem"
-version = "0.0.10"
+version = "0.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31bf62e2a587002bf2ccc022015daeb8457e1e09269b3544aeec12243a3e9b74"
+checksum = "14065afc5ea03484c481adf662ea1e1a7874f2c45791e942429970c4797e6041"
 dependencies = [
  "libcrux-curve25519",
  "libcrux-ecdh",
@@ -1829,14 +1820,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2afdd4da30d6e23f76bd6f3ad61be5c773720349eef3e791f8b79cfea3fe1436"
 dependencies = [
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
 name = "libcrux-ml-dsa"
-version = "0.0.11"
+version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31f8706f014055bed7b2706efb8e646e4590d95e447dfc146be2ed4705920dda"
+checksum = "dd80cac96e7f4a231afcb3369332c3f0718dfba76cf03312506f4388c9de91fa"
 dependencies = [
  "core-models",
  "hax-lib 0.4.1",
@@ -1850,9 +1841,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-ml-kem"
-version = "0.0.11"
+version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ceed00367748ec0b545bc4a7b0521f8c9fd476d02484340f0a95b0f45f828cd"
+checksum = "2ed5284aca0564023fd37205b1becb103bfcd37ef6f6a220192d1b075a8e19b3"
 dependencies = [
  "hax-lib 0.4.1",
  "libcrux-intrinsics",
@@ -1866,9 +1857,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-p256"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7489aa205be22524e2f6ddbe006c0c4ff5f1dfc7c17b783e3d02f1cb2a01c605"
+checksum = "bee2eda64c3f3a0a1d825e1da106bdae0bf45507df0f4cca9b502651f590412f"
 dependencies = [
  "libcrux-hacl-rs",
  "libcrux-macros",
@@ -1879,10 +1870,11 @@ dependencies = [
 
 [[package]]
 name = "libcrux-p384"
-version = "0.0.1"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80a58427aecd30b179aeb0e542cadbe198c2050aeb09de8fdef973b7862c1027"
+checksum = "853725bf4a4a655e64d17e0251ca5cdf31fa03e8c5a822dfadd05aa762c66a22"
 dependencies = [
+ "libcrux-secrets",
  "rand",
 ]
 
@@ -1897,9 +1889,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-poly1305"
-version = "0.0.7"
+version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d727ee28ee0d5d2661daa5f2f47965cd3489a0ac9130f3410e95632a98b12e49"
+checksum = "095f778be28b50af4c32887b31c8cc1911c8cd3cb3d51529232f17434cb90c20"
 dependencies = [
  "libcrux-hacl-rs",
  "libcrux-macros",
@@ -1907,9 +1899,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-secrets"
-version = "0.0.7"
+version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03c4ba47b3596f2771213ff162c792e9b93ddc0cdd178a2e407e00bb8ae4afcd"
+checksum = "38ae376c1514520cad255b2b199f9163c1825822df7d42efb9c835b0332af546"
 dependencies = [
  "crabgrind",
  "hax-lib 0.4.1",
@@ -1917,9 +1909,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-sha2"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86aa35d8fc9576a41df34af4d95d1f11186c1f65cd6c829329748915ea556d71"
+checksum = "265e84d299a82d5c1ad8dbabff693dbd667ae71bbbeb1af45b1447d95acc2428"
 dependencies = [
  "libcrux-hacl-rs",
  "libcrux-macros",
@@ -1928,9 +1920,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-sha3"
-version = "0.0.11"
+version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c8117e86e1f03417d8ebe50ed298c6ee0b05557783a75697d0c59a2ef2dcfc6"
+checksum = "90b0cf80f6519037036d7a6ccfb9e0e38364584f185c03ee53a09f593578fa32"
 dependencies = [
  "hax-lib 0.4.1",
  "libcrux-intrinsics",
@@ -1940,9 +1932,9 @@ dependencies = [
 
 [[package]]
 name = "libcrux-traits"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8958bb5c3780eb7c3355aeeb051629b830e47bfefd36befed93c81b53366bbc4"
+checksum = "14512aa663bde41efb5ec4a709f768530441ec25b7159d3bb8fe4145081c6b3d"
 dependencies = [
  "libcrux-secrets",
  "rand",
@@ -1976,9 +1968,9 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "libsqlite3-sys"
-version = "0.38.2"
+version = "0.39.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1d20bef17f513b9b3004532233187769cd072d790971f4e4da0e346eb6401e8"
+checksum = "14a5f01b87b92705d07b433c06f96cbc764637d81a0bffb5734ce17cf0f9a2b3"
 dependencies = [
  "cc",
  "pkg-config",
@@ -2008,9 +2000,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.34"
+version = "0.4.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
+checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "matchers"
@@ -2089,9 +2081,9 @@ dependencies = [
 
 [[package]]
 name = "ml-dsa"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "add6b9d92e496f16f4526d68ff29da1483aba4b119baeab8bed3b9e3544a6f3d"
+checksum = "6f6d49c3f3f0e10e18ca975ffda66f8da0ec36521c1d911adcbc521bf0743f5c"
 dependencies = [
  "const-oid",
  "crypto-common",
@@ -2119,7 +2111,7 @@ dependencies = [
 [[package]]
 name = "mls_interop_proto"
 version = "0.1.0"
-source = "git+https://github.com/mlswg/mls-implementations/#cfd450286d1bfd9cd2519b95c80f9771f94a5b1a"
+source = "git+https://github.com/mlswg/mls-implementations/#2034fe72e0c805a683ba76165660c834f2a8142a"
 dependencies = [
  "prost",
  "tonic",
@@ -2129,9 +2121,9 @@ dependencies = [
 
 [[package]]
 name = "module-lattice"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c61b87c9683ab7cb1c6871d261ad5479b6b10ceb52c4352aaca3b5d35a8febe"
+checksum = "c4a1e412c8ee83a1c678f427806219c49c96b2511b9f07497514f0e43fb26155"
 dependencies = [
  "ctutils",
  "hybrid-array",
@@ -2228,7 +2220,7 @@ checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 
 [[package]]
 name = "openmls"
-version = "0.9.0"
+version = "0.10.0-rc.1"
 dependencies = [
  "base64 0.23.1",
  "clap",
@@ -2285,7 +2277,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_basic_credential"
-version = "0.6.0"
+version = "0.7.0-rc.1"
 dependencies = [
  "ed25519-dalek",
  "getrandom",
@@ -2304,7 +2296,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_libcrux_crypto"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "aes",
  "fpe",
@@ -2330,7 +2322,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_memory_storage"
-version = "0.6.0"
+version = "0.7.0-rc.1"
 dependencies = [
  "base64 0.23.1",
  "hex",
@@ -2344,7 +2336,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_rust_crypto"
-version = "0.6.0"
+version = "0.7.0-rc.1"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -2371,7 +2363,7 @@ dependencies = [
 
 [[package]]
 name = "openmls_serialization_helpers"
-version = "0.1.0"
+version = "0.1.1-rc.1"
 dependencies = [
  "ciborium",
  "postcard",
@@ -2379,13 +2371,13 @@ dependencies = [
  "quote",
  "serde",
  "serde_json",
- "syn 3.0.6",
+ "syn 3.0.10",
  "thiserror",
 ]
 
 [[package]]
 name = "openmls_sqlite_storage"
-version = "0.3.0"
+version = "0.4.0-rc.1"
 dependencies = [
  "openmls_traits",
  "refinery",
@@ -2396,19 +2388,19 @@ dependencies = [
 
 [[package]]
 name = "openmls_test"
-version = "0.3.0"
+version = "0.4.0-rc.1"
 dependencies = [
  "openmls_libcrux_crypto",
  "openmls_rust_crypto",
  "openmls_sqlite_storage",
  "openmls_traits",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
 name = "openmls_traits"
-version = "0.6.0"
+version = "0.7.0-rc.1"
 dependencies = [
  "maybe-async",
  "serde",
@@ -2713,7 +2705,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03da047801ff44bb6a4d407d4860c05fd70bb81714e6b2f3812603d5b145b042"
 dependencies = [
  "heck",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "log",
  "multimap",
  "petgraph",
@@ -2734,7 +2726,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b570b25f7617e43d59005d0990ccb79e950a423952cea19671b7a876da390adf"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -2786,9 +2778,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rand"
-version = "0.10.3"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65c9fb96cbc91e3478eaae79a69fcd3f1ae4ad052e471fe6732fff548984b4af"
+checksum = "8f6fa277c67e6ea590466f04c3fe82cb509f0864fe470643e5570de9514a9b11"
 dependencies = [
  "chacha20",
  "getrandom",
@@ -2843,9 +2835,9 @@ dependencies = [
 
 [[package]]
 name = "refinery-core"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5357919ea1ec6b73b47471c5182cdb8fa09f679b0bcebc435066df5539a8081"
+checksum = "07f0a6b2d031aec7903f7ce81c723bbe7d3d8667441012b2a4388af0f3a70ef3"
 dependencies = [
  "cfg-if",
  "log",
@@ -2925,9 +2917,9 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.40.2"
+version = "0.41.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23f2a97da3e3873c73cb2a2e71b35c40ff95e0b1eefa8d72d8499a6928c3b5b3"
+checksum = "da9bba6f3506135e120a6586df05be18b48d18896600646a4bec8f993d91a594"
 dependencies = [
  "bitflags",
  "fallible-iterator",
@@ -3044,14 +3036,14 @@ checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
 name = "serde_json"
-version = "1.0.151"
+version = "1.0.154"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14"
+checksum = "e7e9cc8b1b85264074fbcc02a88680c4096b1e47df8f739dceb03bf482f04bd6"
 dependencies = [
  "itoa",
  "memchr",
@@ -3081,9 +3073,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "446ba717509524cb3f22f17ecc096f10f4822d76ab5c0b9822c5f9c284e825f4"
+checksum = "47d7069beb7d6ac7b9acd1039986e73443f24234f41074da099d6f994ac9ad19"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -3130,12 +3122,6 @@ checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
 ]
-
-[[package]]
-name = "shlex"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "shlex"
@@ -3255,9 +3241,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "3.0.6"
+version = "3.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8593e8e72159ed2257d083c7a454a85cbf854f37a0966d8d483aff8c8a3ebcee"
+checksum = "4ae9ccbea3a7b0b09443036490c8f34a8b1b760fd345e5c0dae0aac718faea79"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3278,7 +3264,7 @@ checksum = "901704edd0dfe137f1987838ee4f259e4e063c31371bdb423f7ae38ec6f77f02"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3320,7 +3306,7 @@ checksum = "fe5197923287db20a58125f0bc85c062f7f2c892de97b18c356f9efb14b28524"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3407,9 +3393,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.53.2"
+version = "1.54.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e95f91fcc7a621e8b030f6aa23c71fe9838ae2fb4d8118b75602a328f5144044"
+checksum = "b52fd3255258d26fac7264ab5a76b53c13367136dc011d3d6ad4f8ed070396a3"
 dependencies = [
  "bytes",
  "libc",
@@ -3428,7 +3414,7 @@ checksum = "78773a2a397f451582ce068015985c33193cf6dea8b74d2a639fe457b2f07b0e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -3497,9 +3483,9 @@ checksum = "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
 
 [[package]]
 name = "tonic"
-version = "0.14.6"
+version = "0.14.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac2a5518c70fa84342385732db33fb3f44bc4cc748936eb5833d2df34d6445ef"
+checksum = "e2cdfc673aabd30fe8fee92e65837b644c37c5d47f0f97ae6d5e0f1237d15e1b"
 dependencies = [
  "async-trait",
  "axum",
@@ -3518,6 +3504,7 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-stream",
+ "tokio-util",
  "tower",
  "tower-layer",
  "tower-service",
@@ -3816,7 +3803,7 @@ dependencies = [
  "bumpalo",
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
  "wasm-bindgen-shared",
 ]
 
@@ -3859,7 +3846,7 @@ checksum = "3b84b5ac638bfb168196a1a461fcc8f46a294a18b1b6be52133b4e0db122cc9f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -4002,7 +3989,7 @@ checksum = "ec8ebde2db3681e8c9980cc27822030e68752690ddfa9473e739aeb4dbde6d71"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
  "synstructure",
 ]
 
@@ -4043,15 +4030,15 @@ checksum = "f75b4683f6c7f45248d4d64056a24298c6281e0993356d7d1b4a1a962ef10d4a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
  "synstructure",
 ]
 
 [[package]]
 name = "zeroize"
-version = "1.9.1"
+version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"
+checksum = "85ccff8a4805aba1eaa4cd4afcd49f7557dd2cf5fd79ffc37f8959466effc5aa"
 dependencies = [
  "zeroize_derive",
 ]
@@ -4097,7 +4084,7 @@ checksum = "34df6fc39dbd26ddc9c10e6a2984476e13acce22e64e4487636ef494369225da"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.6",
+ "syn 3.0.10",
 ]
 
 [[package]]

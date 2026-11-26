@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+## 0.1.1 (2026-11-23)
+
+### Changed
+
+- [#2249](https://github.com/openmls/openmls/pull/2249): Updated `syn` to 3.0.
+
 ## 0.1.0 (2026-08-25)
 
 - [#2034](https://github.com/openmls/openmls/pull/2034): Initial release. Adds `serde` helpers for non-self-describing binary codecs (e.g. `bincode`) to correctly (de)serialize enums with feature-flagged variants, used by the storage-provider crates.
