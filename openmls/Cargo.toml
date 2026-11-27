@@ -131,6 +131,11 @@ extensions-draft-test-dependencies = [
     "openmls_libcrux_crypto?/extensions-draft",
     "openmls_memory_storage?/extensions-draft",
 ]
+# The SemiPrivateMessage wire format of
+# https://datatracker.ietf.org/doc/draft-mahy-mls-semiprivatemessage/
+# The frame only: nothing here encrypts or decrypts one, so the feature
+# needs no crypto provider support.
+semiprivate-message-draft = []
 # Implementation of the targeted messages draft:
 # https://datatracker.ietf.org/doc/draft-ietf-mls-targeted-messages/
 targeted-messages-draft = [

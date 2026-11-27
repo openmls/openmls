@@ -146,6 +146,10 @@ pub enum WireFormat {
     #[cfg(feature = "targeted-messages-draft")]
     #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
     TargetedMessage = 6,
+    /// Semi-private message (draft-mahy-mls-semiprivatemessage §5.1)
+    #[cfg(feature = "semiprivate-message-draft")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "semiprivate-message-draft")))]
+    SemiPrivateMessage = 0x0011,
 }
 
 /// This struct is used to group common framing parameters

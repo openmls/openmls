@@ -74,6 +74,12 @@ pub enum MlsMessageBodyIn {
     #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
     #[tls_codec(discriminant = 6)]
     TargetedMessage(crate::targeted_messages::TargetedMessageIn),
+
+    /// Semi-private message (draft-mahy-mls-semiprivatemessage)
+    #[cfg(feature = "semiprivate-message-draft")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "semiprivate-message-draft")))]
+    #[tls_codec(discriminant = 0x0011)]
+    SemiPrivateMessage(crate::semiprivate_message::SemiPrivateMessage),
 }
 
 impl MlsMessageIn {
@@ -87,6 +93,8 @@ impl MlsMessageIn {
             MlsMessageBodyIn::KeyPackage(_) => WireFormat::KeyPackage,
             #[cfg(feature = "targeted-messages-draft")]
             MlsMessageBodyIn::TargetedMessage(_) => WireFormat::TargetedMessage,
+            #[cfg(feature = "semiprivate-message-draft")]
+            MlsMessageBodyIn::SemiPrivateMessage(_) => WireFormat::SemiPrivateMessage,
         }
     }
 
