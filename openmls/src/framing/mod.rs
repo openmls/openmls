@@ -116,7 +116,12 @@ pub(crate) mod tests;
 /// | 0x0004          | mls_group_info           | Y           | RFC 9420                               |
 /// | 0x0005          | mls_key_package          | Y           | RFC 9420                               |
 /// | 0x0006          | mls_targeted_message     | Y           | draft-ietf-mls-targeted-messages       |
+/// | 0x0011 \*       | mls_semiprivate_message  | Y           | draft-mahy-mls-semiprivatemessage      |
 /// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | RFC 9420                               |
+///
+/// \* Not assigned by IANA yet: draft-mahy-mls-semiprivatemessage-08
+/// requests value TBD1 and suggests 0x0011, which OpenMLS uses until a
+/// value is assigned.
 #[derive(
     PartialEq,
     Eq,
@@ -146,6 +151,13 @@ pub enum WireFormat {
     #[cfg(feature = "targeted-messages-draft")]
     #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
     TargetedMessage = 6,
+    /// Semi-private message (draft-mahy-mls-semiprivatemessage §5.1)
+    ///
+    /// The value 0x0011 is the draft's suggested value, not an IANA
+    /// assignment, and may change when IANA assigns one.
+    #[cfg(feature = "semiprivate-message-draft")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "semiprivate-message-draft")))]
+    SemiPrivateMessage = 0x0011,
 }
 
 /// This struct is used to group common framing parameters

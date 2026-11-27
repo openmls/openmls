@@ -23,6 +23,7 @@ targeted-messages-draft = [
     "openmls/targeted-messages-draft",
     "openmls_rust_crypto/targeted-messages-draft",
 ]
+semiprivate-message-draft = ["openmls/semiprivate-message-draft"]
 
 [dependencies]
 wasm-bindgen = "0.2.84"

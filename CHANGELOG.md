@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- [#2352](https://github.com/openmls/openmls/pull/2352): Added the `mls_semiprivate_message` wire format of [draft-mahy-mls-semiprivatemessage](https://datatracker.ietf.org/doc/draft-mahy-mls-semiprivatemessage/), behind the `semiprivate-message-draft` feature. `WireFormat::SemiPrivateMessage` is value 0x0011, `MlsMessageBodyIn` and `MlsMessageBodyOut` carry a `SemiPrivateMessage`, and the `semiprivate_message` module holds the frame types. The frame only: nothing in it encrypts or decrypts a `SemiPrivateMessage`, since the draft's construction needs the sender's handshake ratchet.
+
 ## 0.10.0 (2026-11-23)
 
 ### Added

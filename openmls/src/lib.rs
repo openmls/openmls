@@ -209,6 +209,9 @@ pub mod group;
 pub mod key_packages;
 pub mod messages;
 pub mod schedule;
+#[cfg(feature = "semiprivate-message-draft")]
+#[cfg_attr(docsrs, doc(cfg(feature = "semiprivate-message-draft")))]
+pub mod semiprivate_message;
 #[cfg(feature = "targeted-messages-draft")]
 #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
 pub mod targeted_messages;

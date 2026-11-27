@@ -62,6 +62,12 @@ pub enum MlsMessageBodyOut {
     #[cfg_attr(docsrs, doc(cfg(feature = "targeted-messages-draft")))]
     #[tls_codec(discriminant = 6)]
     TargetedMessage(crate::targeted_messages::TargetedMessage),
+
+    /// Semi-private message (draft-mahy-mls-semiprivatemessage)
+    #[cfg(feature = "semiprivate-message-draft")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "semiprivate-message-draft")))]
+    #[tls_codec(discriminant = 0x0011)]
+    SemiPrivateMessage(crate::semiprivate_message::SemiPrivateMessage),
 }
 
 impl From<PublicMessage> for MlsMessageOut {
@@ -105,6 +111,17 @@ impl From<KeyPackageBundle> for MlsMessageOut {
         Self {
             version: key_package.key_package().protocol_version(),
             body: MlsMessageBodyOut::KeyPackage(key_package.key_package),
+        }
+    }
+}
+
+#[cfg(feature = "semiprivate-message-draft")]
+#[cfg_attr(docsrs, doc(cfg(feature = "semiprivate-message-draft")))]
+impl From<crate::semiprivate_message::SemiPrivateMessage> for MlsMessageOut {
+    fn from(message: crate::semiprivate_message::SemiPrivateMessage) -> Self {
+        Self {
+            version: ProtocolVersion::default(),
+            body: MlsMessageBodyOut::SemiPrivateMessage(message),
         }
     }
 }
@@ -201,6 +218,11 @@ impl From<MlsMessageBodyOut> for MlsMessageBodyIn {
             MlsMessageBodyOut::KeyPackage(kp) => MlsMessageBodyIn::KeyPackage(kp.into()),
             #[cfg(feature = "targeted-messages-draft")]
             MlsMessageBodyOut::TargetedMessage(tm) => MlsMessageBodyIn::TargetedMessage(tm.into()),
+            // One type serves both directions: OpenMLS checks nothing
+            // about this frame beyond the codec, so there is no
+            // unvalidated form to convert into.
+            #[cfg(feature = "semiprivate-message-draft")]
+            MlsMessageBodyOut::SemiPrivateMessage(spm) => MlsMessageBodyIn::SemiPrivateMessage(spm),
         }
     }
 }
@@ -230,6 +252,8 @@ impl From<MlsMessageIn> for MlsMessageOut {
             MlsMessageBodyIn::PrivateMessage(pm) => MlsMessageBodyOut::PrivateMessage(pm.into()),
             #[cfg(feature = "targeted-messages-draft")]
             MlsMessageBodyIn::TargetedMessage(tm) => MlsMessageBodyOut::TargetedMessage(tm.into()),
+            #[cfg(feature = "semiprivate-message-draft")]
+            MlsMessageBodyIn::SemiPrivateMessage(spm) => MlsMessageBodyOut::SemiPrivateMessage(spm),
         };
         Self { version, body }
     }
