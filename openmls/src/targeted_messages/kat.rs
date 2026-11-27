@@ -761,6 +761,11 @@ fn failure_of(
     })
 }
 
+/// Largest `sender_leaf_index` the harness builds a tree for. The tree is a
+/// dense slice, so an unbounded index from an untrusted vector file could
+/// exhaust memory; 2^20 leaves is far beyond any vector's needs.
+const MAX_KAT_SENDER_LEAF_INDEX: u32 = (1 << 20) - 1;
+
 /// Run receiver processing on a vector. `Err` means the vector's receiver
 /// state is unusable or processing failed for a reason that is not a
 /// Recipient Validation step.
@@ -787,10 +792,17 @@ fn process_vector(
     };
     let private_key = EncryptionPrivateKey::from(vector.recipient_encryption_priv.clone());
 
-    // Only the sender's leaf is looked up during processing; the recipient's
-    // own leaf is not needed and stays `None`.
-    let leaves_len = vector.sender_leaf_index.max(vector.recipient_leaf_index) as usize + 1;
-    let mut leaves: Vec<Option<&LeafNode>> = vec![None; leaves_len];
+    // Only the sender's leaf is looked up during processing, so the tree is
+    // the sender's leaf with blank leaves before it. The recipient's own leaf
+    // is not needed, so `recipient_leaf_index` does not size the tree; a
+    // lookup past the end is reported the same as a blank leaf.
+    if vector.sender_leaf_index > MAX_KAT_SENDER_LEAF_INDEX {
+        return Err(format!(
+            "sender_leaf_index {} exceeds the harness limit of {MAX_KAT_SENDER_LEAF_INDEX}",
+            vector.sender_leaf_index
+        ));
+    }
+    let mut leaves: Vec<Option<&LeafNode>> = vec![None; vector.sender_leaf_index as usize + 1];
     leaves[vector.sender_leaf_index as usize] = Some(&sender_leaf);
 
     let targeted: TargetedMessageIn =
@@ -917,6 +929,62 @@ mod tests {
             }
             log::info!("{path}: verified {verified} entries for {ciphersuite:?}");
         }
+    }
+
+    /// A `u32::MAX` leaf index in a vector must yield a per-vector outcome,
+    /// not an allocation that aborts the process.
+    #[test]
+    fn max_leaf_index_is_reported() {
+        let provider = openmls_rust_crypto::OpenMlsRustCrypto::default();
+        let crypto = &openmls_rust_crypto::RustCrypto::default();
+        let cs = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+
+        // A message really addressed to leaf u32::MAX is accepted.
+        let f = Fixture::new(&provider, cs, 0, 0, u32::MAX);
+        let msg = f.create(b"", b"hello", 0);
+        let vector = f.vector(
+            "to leaf u32::MAX".into(),
+            encode(msg),
+            None,
+            b"",
+            b"hello",
+            0,
+        );
+        assert_eq!(check_vector(&vector, crypto), ("accepted", Ok(())));
+
+        // A receiver at leaf u32::MAX rejects a message addressed to leaf 1.
+        let f = Fixture::new(&provider, cs, 0, 0, 1);
+        let msg = f.create(b"", b"hello", 0);
+        let mut vector = f.vector(
+            "receiver at leaf u32::MAX".into(),
+            encode(msg),
+            Some(Failure::RecipientLeafIndex),
+            b"",
+            b"",
+            0,
+        );
+        vector.recipient_leaf_index = u32::MAX;
+        assert_eq!(
+            check_vector(&vector, crypto),
+            ("recipient_leaf_index", Ok(()))
+        );
+
+        // A sender at leaf u32::MAX exceeds the harness limit and fails
+        // this vector with an error.
+        let f = Fixture::new(&provider, cs, 0, u32::MAX, 1);
+        let msg = f.create(b"", b"hello", 0);
+        let vector = f.vector(
+            "from leaf u32::MAX".into(),
+            encode(msg),
+            None,
+            b"",
+            b"hello",
+            0,
+        );
+        let (reported, result) = check_vector(&vector, crypto);
+        assert_eq!(reported, "error");
+        let err = result.expect_err("an out-of-range sender must fail the vector");
+        assert!(err.contains("harness limit"), "{err}");
     }
 
     /// Regenerate `test_vectors/targeted-messages-new.{json,txt}`.
