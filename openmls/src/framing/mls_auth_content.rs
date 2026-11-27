@@ -44,13 +44,19 @@ use crate::{
 ///    };
 ///} FramedContentAuthData;
 /// ```
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
-/// RFC 9420 §6.1 `FramedContentAuthData`.
 ///
-/// Public for the same reason as [`crate::messages::CommitIn`]: a
-/// consumer decoding a structure that embeds one needs to, and its
-/// layout depends on the `ContentType` beside it, which is why
+/// Public for the same reason as [`CommitIn`](crate::messages::CommitIn):
+/// an application decoding a structure that embeds one, such as the
+/// `SemiPrivateMessageContent` of draft-mahy-mls-semiprivatemessage, needs
+/// to. Its layout depends on the `ContentType` beside it, which is why
 /// [`FramedContentAuthData::deserialize`] takes one.
+///
+/// The values it carries are unverified: decoding checks only the
+/// encoding. Checking the signature needs the `FramedContentTBS` it covers
+/// and the sender's signature key, and checking the confirmation tag needs
+/// the group's key schedule, so both are left to OpenMLS when the message
+/// is processed. Re-encode it with [`tls_codec::Serialize`] to hand it on.
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub struct FramedContentAuthData {
     pub(super) signature: Signature,
     pub(super) confirmation_tag: Option<ConfirmationTag>,
@@ -76,6 +82,23 @@ impl FramedContentAuthData {
             signature,
             confirmation_tag,
         })
+    }
+
+    /// Returns the sender's signature over the `FramedContentTBS`.
+    ///
+    /// The signature has not been verified; use it only to inspect or
+    /// re-encode the message, not as evidence of who sent it.
+    pub fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    /// Returns the confirmation tag, which is present exactly when the
+    /// content type passed to [`FramedContentAuthData::deserialize`] was
+    /// [`ContentType::Commit`].
+    ///
+    /// The tag has not been verified against the group's confirmation key.
+    pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
+        self.confirmation_tag.as_ref()
     }
 }
 
