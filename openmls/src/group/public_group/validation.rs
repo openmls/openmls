@@ -755,7 +755,6 @@ impl PublicGroup {
     }
 
     /// Returns an [`AppDataUpdateValidationError`] if:
-    ///   - An [`AppDataUpdateProposal`] appears before a [`GroupContextExtensionProposal`]
     ///   - The [`GroupContextExtensionProposal`] updates the [`AppDataDictionary`] when the
     ///     required capabilities include AppDataUpdate proposal type
     ///   - For any [`ComponentId`], the list of [`AppDataUpdateProposal`]s includes both Updates
@@ -821,28 +820,6 @@ impl PublicGroup {
         let no_app_data_updates = proposal_queue.app_data_update_proposals().next().is_none();
         if no_app_data_updates {
             return Ok(());
-        }
-
-        // check ordering
-        // return an error if an AppDataUpdate appears before a GroupContextExtensions proposal
-        //
-        // From the draft:
-        //
-        // A commit can contain a GroupContextExtensions proposal which modifies
-        // GroupContext extensions other than app_data_dictionary, and can be
-        // followed by zero or more AppDataUpdate proposals.
-        //
-        // https://datatracker.ietf.org/doc/html/draft-ietf-mls-extensions#section-4.7-7
-        //
-        // Note that it is a bit unclear if this is really needed; we already require that default
-        // proposals are processed first.
-        if proposal_queue
-            .queued_proposals()
-            .map(|proposal| proposal.proposal().proposal_type())
-            .skip_while(|proposal_type| *proposal_type != ProposalType::AppDataUpdate)
-            .any(|proposal_type| proposal_type == ProposalType::GroupContextExtensions)
-        {
-            return Err(AppDataUpdateValidationError::IncorrectOrder);
         }
 
         // From the draft:
