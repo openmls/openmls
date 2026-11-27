@@ -1,4 +1,9 @@
 //! KAT vectors for targeted messages.
+//!
+//! Vectors follow the receiver-side format of the draft's Test Vectors
+//! appendix, extended with `valid`, `failure` and `description` so that a
+//! vector can also describe a message that the recipient MUST reject, together
+//! with the first Recipient Validation step that rejects it.
 
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite};
@@ -14,8 +19,8 @@ use crate::{
     schedule::ExporterSecret,
     storage::OpenMlsProvider,
     targeted_messages::{
-        create_targeted_message, process_targeted_message, TargetedMessageGroupContext,
-        TargetedMessageIn,
+        create_targeted_message, process_targeted_message, ProcessTargetedMessageError,
+        ProcessedTargetedMessage, TargetedMessageGroupContext, TargetedMessageIn,
     },
     treesync::node::{
         encryption_keys::{EncryptionKey, EncryptionPrivateKey},
@@ -23,9 +28,51 @@ use crate::{
     },
 };
 
+/// The first Recipient Validation step that rejects a message, in the order
+/// the draft's Recipient Validation section lists them.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Failure {
+    Decode,
+    GroupId,
+    Epoch,
+    RecipientLeafIndex,
+    SenderData,
+    SenderLeafIndex,
+    Signature,
+    Ciphertext,
+    Padding,
+}
+
+impl Failure {
+    fn as_str(self) -> &'static str {
+        match self {
+            Failure::Decode => "decode",
+            Failure::GroupId => "group_id",
+            Failure::Epoch => "epoch",
+            Failure::RecipientLeafIndex => "recipient_leaf_index",
+            Failure::SenderData => "sender_data",
+            Failure::SenderLeafIndex => "sender_leaf_index",
+            Failure::Signature => "signature",
+            Failure::Ciphertext => "ciphertext",
+            Failure::Padding => "padding",
+        }
+    }
+}
+
+fn default_true() -> bool {
+    true
+}
+
 /// KAT vector entry
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TargetedMessageKatVector {
+    #[serde(default)]
+    pub description: String,
+    #[serde(default = "default_true")]
+    pub valid: bool,
+    #[serde(default)]
+    pub failure: Option<Failure>,
     pub cipher_suite: u16,
     #[serde(with = "hex")]
     pub group_id: Vec<u8>,
@@ -117,6 +164,9 @@ pub fn generate_kat_vector(
         .expect("MlsMessageOut serialization failed");
 
     TargetedMessageKatVector {
+        description: String::new(),
+        valid: true,
+        failure: None,
         cipher_suite: u16::from(ciphersuite),
         group_id: group_id_bytes,
         epoch,
@@ -147,6 +197,11 @@ pub fn vectors_to_text(vectors: &[TargetedMessageKatVector]) -> String {
 fn append_vector_text(out: &mut String, number: usize, v: &TargetedMessageKatVector) {
     use std::fmt::Write;
     let _ = writeln!(out, "# Vector {number}");
+    let _ = writeln!(out, "description: {}", v.description);
+    let _ = writeln!(out, "valid: {}", v.valid);
+    if let Some(failure) = v.failure {
+        let _ = writeln!(out, "failure: {}", failure.as_str());
+    }
     let _ = writeln!(out, "cipher_suite: {}", v.cipher_suite);
     let _ = writeln!(out, "epoch: {}", v.epoch);
     let _ = writeln!(out, "sender_leaf_index: {}", v.sender_leaf_index);
@@ -185,74 +240,152 @@ fn write_hex_field(out: &mut String, name: &str, bytes: &[u8]) {
     }
 }
 
-pub fn verify_kat_vector(vector: &TargetedMessageKatVector, crypto: &impl OpenMlsCrypto) {
-    let ciphersuite =
-        Ciphersuite::try_from(vector.cipher_suite).expect("Unknown ciphersuite in KAT vector");
+/// Map an OpenMLS processing error to the Recipient Validation step it
+/// reports. `MalformedContent` covers both a non-zero padding byte and an
+/// undecodable `application_data` length prefix; OpenMLS cannot tell them
+/// apart, so both are reported as `padding`.
+fn failure_of(
+    e: ProcessTargetedMessageError<core::convert::Infallible>,
+) -> Result<Failure, String> {
+    use ProcessTargetedMessageError as E;
+    Ok(match e {
+        E::GroupIdMismatch => Failure::GroupId,
+        E::EpochMismatch => Failure::Epoch,
+        E::NotIntendedRecipient => Failure::RecipientLeafIndex,
+        E::SenderAuthDataDecryptionFailed | E::MalformedSenderAuthData => Failure::SenderData,
+        E::SenderNotFound => Failure::SenderLeafIndex,
+        E::SignatureVerificationFailed => Failure::Signature,
+        E::ContentDecryptionFailed => Failure::Ciphertext,
+        E::MalformedContent => Failure::Padding,
+        e @ (E::GroupNotActive | E::StorageError(_) | E::LibraryError(_)) => {
+            return Err(format!("unexpected error: {e}"))
+        }
+    })
+}
 
-    let (mls_in, rest) = MlsMessageIn::tls_deserialize_bytes(&vector.targeted_message)
-        .expect("Failed to deserialize MlsMessage from KAT vector");
-    assert!(rest.is_empty(), "trailing bytes after MlsMessage");
-
-    let targeted: TargetedMessageIn = mls_in
-        .into_targeted_message()
-        .expect("Vector message is not a targeted message");
-
-    assert_eq!(targeted.group_id().as_slice(), vector.group_id.as_slice());
-    assert_eq!(targeted.epoch().as_u64(), vector.epoch);
-    assert_eq!(targeted.recipient_leaf_index(), vector.recipient_leaf_index);
-    assert_eq!(
-        targeted.authenticated_data(),
-        vector.authenticated_data.as_slice()
-    );
+/// Run receiver processing on a vector. `Err` means the vector's receiver
+/// state is unusable or processing failed for a reason that is not a
+/// Recipient Validation step.
+fn process_vector(
+    vector: &TargetedMessageKatVector,
+    crypto: &impl OpenMlsCrypto,
+) -> Result<Result<ProcessedTargetedMessage, Failure>, String> {
+    let ciphersuite = Ciphersuite::try_from(vector.cipher_suite)
+        .map_err(|e| format!("unknown cipher_suite {}: {e:?}", vector.cipher_suite))?;
+    let (sender_leaf_in, rest) = LeafNodeIn::tls_deserialize_bytes(&vector.sender_leaf_node)
+        .map_err(|e| format!("sender_leaf_node does not decode: {e}"))?;
+    if !rest.is_empty() {
+        return Err("trailing bytes after sender_leaf_node".into());
+    }
+    let sender_leaf: LeafNode = sender_leaf_in.into();
 
     let group_id = GroupId::from_slice(&vector.group_id);
-    let epoch = GroupEpoch::from(vector.epoch);
     let exporter_secret = ExporterSecret::from_slice(&vector.exporter_secret);
-
     let ctx = TargetedMessageGroupContext {
         ciphersuite,
         group_id: &group_id,
-        epoch,
+        epoch: GroupEpoch::from(vector.epoch),
         exporter_secret: &exporter_secret,
     };
-
-    let recipient_index = LeafNodeIndex::new(vector.recipient_leaf_index);
     let private_key = EncryptionPrivateKey::from(vector.recipient_encryption_priv.clone());
 
-    let (sender_leaf_in, rest) = LeafNodeIn::tls_deserialize_bytes(&vector.sender_leaf_node)
-        .expect("Failed to deserialize sender LeafNode");
-    assert!(rest.is_empty(), "trailing bytes after sender LeafNode");
-    let sender_leaf: LeafNode = sender_leaf_in.into();
-
-    let leaves_len = vector
-        .sender_leaf_index
-        .max(vector.recipient_leaf_index)
-        .saturating_add(1) as usize;
+    // Only the sender's leaf is looked up during processing; the recipient's
+    // own leaf is not needed and stays `None`.
+    let leaves_len = vector.sender_leaf_index.max(vector.recipient_leaf_index) as usize + 1;
     let mut leaves: Vec<Option<&LeafNode>> = vec![None; leaves_len];
     leaves[vector.sender_leaf_index as usize] = Some(&sender_leaf);
 
-    let processed = process_targeted_message::<core::convert::Infallible>(
+    let targeted: TargetedMessageIn =
+        match MlsMessageIn::tls_deserialize_bytes(&vector.targeted_message) {
+            Ok((mls_in, [])) => match mls_in.into_targeted_message() {
+                Some(t) => t,
+                None => return Ok(Err(Failure::Decode)),
+            },
+            _ => return Ok(Err(Failure::Decode)),
+        };
+
+    match process_targeted_message(
         crypto,
         &ctx,
-        recipient_index,
+        LeafNodeIndex::new(vector.recipient_leaf_index),
         &private_key,
         &targeted,
         &leaves,
-    )
-    .expect("KAT vector failed to decrypt/verify");
+    ) {
+        Ok(processed) => Ok(Ok(processed)),
+        Err(e) => failure_of(e).map(Err),
+    }
+}
 
-    assert_eq!(
-        processed.sender_leaf_index().u32(),
-        vector.sender_leaf_index
-    );
-    assert_eq!(
-        processed.application_data(),
-        vector.application_data.as_slice()
-    );
-    assert_eq!(
-        processed.authenticated_data(),
-        vector.authenticated_data.as_slice()
-    );
+/// Check one vector. Returns the outcome OpenMLS reported (`accepted`, a
+/// `failure` value, or `error`) and whether it matches the vector.
+pub fn check_vector(
+    vector: &TargetedMessageKatVector,
+    crypto: &impl OpenMlsCrypto,
+) -> (&'static str, Result<(), String>) {
+    if vector.valid == vector.failure.is_some() {
+        return (
+            "error",
+            Err("inconsistent vector: `failure` must be null exactly when `valid` is true".into()),
+        );
+    }
+    match process_vector(vector, crypto) {
+        Err(e) => ("error", Err(e)),
+        Ok(Err(reported)) => {
+            let result = if Some(reported) == vector.failure {
+                Ok(())
+            } else {
+                Err(format!(
+                    "rejected at {}, expected {}",
+                    reported.as_str(),
+                    vector.failure.map_or("acceptance", Failure::as_str)
+                ))
+            };
+            (reported.as_str(), result)
+        }
+        Ok(Ok(p)) => {
+            let mut mismatches = Vec::new();
+            if !vector.valid {
+                mismatches.push(format!(
+                    "accepted, expected rejection at {}",
+                    vector.failure.map_or("?", Failure::as_str)
+                ));
+            } else {
+                if p.sender_leaf_index().u32() != vector.sender_leaf_index {
+                    mismatches.push("sender_leaf_index".to_string());
+                }
+                if p.application_data() != vector.application_data.as_slice() {
+                    mismatches.push("application_data".to_string());
+                }
+                if p.authenticated_data() != vector.authenticated_data.as_slice() {
+                    mismatches.push("authenticated_data".to_string());
+                }
+                if p.padding_length() != vector.padding_length {
+                    mismatches.push(format!(
+                        "padding_length {} != {}",
+                        p.padding_length(),
+                        vector.padding_length
+                    ));
+                }
+            }
+            let result = if mismatches.is_empty() {
+                Ok(())
+            } else {
+                Err(mismatches.join(", "))
+            };
+            ("accepted", result)
+        }
+    }
+}
+
+pub fn verify_kat_vector(vector: &TargetedMessageKatVector, crypto: &impl OpenMlsCrypto) {
+    let (reported, result) = check_vector(vector, crypto);
+    if let Err(e) = result {
+        panic!(
+            "KAT vector {:?} failed (reported {reported}): {e}",
+            vector.description
+        );
+    }
 }
 
 #[cfg(test)]
@@ -361,5 +494,37 @@ mod tests {
             vectors_to_text(&vectors),
         )
         .expect("Failed to write test_vectors/targeted-messages-new.txt");
+    }
+
+    /// Check every vector in the file named by `TM_VECTORS`, printing one
+    /// line per vector: index, PASS/FAIL, reported step, description.
+    #[test]
+    #[ignore]
+    fn verify_vector_file() {
+        let path = std::env::var("TM_VECTORS").expect("set TM_VECTORS to a vector file path");
+        let file = std::fs::File::open(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
+        let vectors: Vec<TargetedMessageKatVector> =
+            serde_json::from_reader(file).unwrap_or_else(|e| panic!("invalid {path}: {e}"));
+        let crypto = openmls_rust_crypto::RustCrypto::default();
+
+        let mut failed = 0;
+        for (i, v) in vectors.iter().enumerate() {
+            let (reported, result) = check_vector(v, &crypto);
+            match result {
+                Ok(()) => println!(
+                    "{i:3} suite {} PASS {reported:<20} {}",
+                    v.cipher_suite, v.description
+                ),
+                Err(e) => {
+                    failed += 1;
+                    println!(
+                        "{i:3} suite {} FAIL {reported:<20} {} -- {e}",
+                        v.cipher_suite, v.description
+                    );
+                }
+            }
+        }
+        println!("{path}: {} vectors, {failed} failed", vectors.len());
+        assert_eq!(failed, 0, "{failed} of {} vectors failed", vectors.len());
     }
 }
