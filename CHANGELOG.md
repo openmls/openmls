@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- [#2316](https://github.com/openmls/openmls/issues/2316): A Welcome now consumes the KeyPackage it is encrypted to in `StagedWelcome::into_group`, after the joined group is stored, instead of in `ProcessedWelcome::new_from_welcome`. Previously a Welcome that failed staging, for example with `WelcomeError::MissingRatchetTree`, or that the application dropped before calling `into_group`, still deleted the KeyPackage, so a later valid Welcome for it failed with `WelcomeError::NoMatchingKeyPackage`. Last-resort KeyPackages are still never deleted. Once a non-last-resort KeyPackage is consumed, `into_group` on another `StagedWelcome` for it fails with `WelcomeError::NoMatchingKeyPackage`, as its staging did before. If deleting the KeyPackage fails after the group is stored, `into_group` logs the error and still returns the group.
+
 ## 0.10.0 (2026-11-23)
 
 ### Added

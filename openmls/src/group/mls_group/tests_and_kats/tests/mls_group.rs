@@ -1,4 +1,4 @@
-use std::slice::from_ref;
+use std::{cell::RefCell, collections::HashMap, slice::from_ref};
 
 use mls_group::{
     tests_and_kats::utils::{flip_last_byte, setup_alice_bob, setup_alice_bob_group, setup_client},
@@ -14,6 +14,9 @@ use crate::{
     binary_tree::LeafNodeIndex,
     credentials::{test_utils::new_credential, CredentialType, NewSignerBundle},
     framing::*,
+    group::tests_and_kats::utils::storage_error::{
+        TestProvider, TestStorageError, TestStorageProvider,
+    },
     group::{errors::*, *},
     key_packages::*,
     messages::{
@@ -2408,6 +2411,242 @@ fn join_multiple_groups_last_resort_key_package() {
     .into_group(charlie_provider)
     .expect("error creating group from staged join");
     // done :-)
+}
+
+/// The KeyPackage a Welcome is encrypted to is consumed only when the join
+/// succeeds: a Welcome that is processed and dropped, or whose staging fails,
+/// leaves it in storage, and [`StagedWelcome::into_group`] deletes it. A
+/// last-resort KeyPackage is never deleted.
+#[openmls_test]
+fn welcome_consumes_key_package_only_on_join() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("alice", ciphersuite, alice_provider);
+    let (bob_credential_with_key, _bob_kpb, bob_signer, _bob_pk) =
+        setup_client("bob", ciphersuite, bob_provider);
+
+    for last_resort in [false, true] {
+        let mut key_package_builder = KeyPackage::builder();
+        if last_resort {
+            key_package_builder = key_package_builder.mark_as_last_resort();
+        }
+        let bob_kpb = key_package_builder
+            .build(
+                ciphersuite,
+                bob_provider,
+                &bob_signer,
+                bob_credential_with_key.clone(),
+            )
+            .expect("error building key package for bob");
+        let hash_ref = bob_kpb
+            .key_package()
+            .hash_ref(bob_provider.crypto())
+            .unwrap();
+        let stored = || -> bool {
+            bob_provider
+                .storage()
+                .key_package::<_, KeyPackageBundle>(&hash_ref)
+                .unwrap()
+                .is_some()
+        };
+
+        // Without the ratchet tree extension, staging needs the tree.
+        let mut alice_group = MlsGroup::builder()
+            .ciphersuite(ciphersuite)
+            .build(
+                alice_provider,
+                &alice_signer,
+                alice_credential_with_key.clone(),
+            )
+            .expect("error creating group for alice");
+        let (_, welcome, _) = alice_group
+            .add_members(
+                alice_provider,
+                &alice_signer,
+                from_ref(bob_kpb.key_package()),
+            )
+            .expect("error adding bob");
+        alice_group.merge_pending_commit(alice_provider).unwrap();
+        let welcome = || -> Welcome {
+            MlsMessageIn::from(welcome.clone())
+                .into_welcome()
+                .expect("expected a welcome")
+        };
+        let join_config = MlsGroupJoinConfig::default();
+
+        // A processed Welcome that is dropped does not consume the KeyPackage.
+        drop(ProcessedWelcome::new_from_welcome(bob_provider, &join_config, welcome()).unwrap());
+        assert!(stored(), "dropped ProcessedWelcome consumed the KeyPackage");
+
+        // Neither does a Welcome whose staging fails.
+        let err = StagedWelcome::new_from_welcome(bob_provider, &join_config, welcome(), None)
+            .expect_err("staging without a ratchet tree must fail");
+        assert!(matches!(err, WelcomeError::MissingRatchetTree));
+        assert!(stored(), "failed staging consumed the KeyPackage");
+
+        // A staged Welcome that is dropped does not consume it either.
+        let ratchet_tree = alice_group.export_ratchet_tree();
+        drop(
+            StagedWelcome::new_from_welcome(
+                bob_provider,
+                &join_config,
+                welcome(),
+                Some(ratchet_tree.clone().into()),
+            )
+            .unwrap(),
+        );
+        assert!(stored(), "dropped StagedWelcome consumed the KeyPackage");
+
+        // Joining consumes it, unless it is a last-resort KeyPackage.
+        let bob_group = StagedWelcome::new_from_welcome(
+            bob_provider,
+            &join_config,
+            welcome(),
+            Some(ratchet_tree.into()),
+        )
+        .unwrap()
+        .into_group(bob_provider)
+        .expect("error joining");
+        assert_eq!(bob_group.group_id(), alice_group.group_id());
+        assert_eq!(stored(), last_resort);
+    }
+}
+
+/// Adds `key_package` to a new group of Alice's and returns the group and the
+/// Welcome for it. The Welcome carries the ratchet tree.
+fn add_to_new_group<Provider: crate::storage::OpenMlsProvider>(
+    ciphersuite: crate::prelude::Ciphersuite,
+    provider: &Provider,
+    signer: &SignatureKeyPair,
+    credential_with_key: crate::prelude::CredentialWithKey,
+    key_package: &KeyPackage,
+) -> (MlsGroup, Welcome) {
+    let mut group = MlsGroup::builder()
+        .ciphersuite(ciphersuite)
+        .use_ratchet_tree_extension(true)
+        .build(provider, signer, credential_with_key)
+        .expect("error creating group");
+    let (_, welcome, _) = group
+        .add_members(provider, signer, from_ref(key_package))
+        .expect("error adding member");
+    group.merge_pending_commit(provider).unwrap();
+    let welcome = MlsMessageIn::from(welcome)
+        .into_welcome()
+        .expect("expected a welcome");
+    (group, welcome)
+}
+
+/// Staging leaves the KeyPackage in storage, so two Welcomes for the same
+/// non-last-resort KeyPackage can both be staged. Only the first one can be
+/// turned into a group. The second fails with
+/// [`WelcomeError::NoMatchingKeyPackage`], as its staging did when staging
+/// still consumed the KeyPackage, and its group is not stored.
+#[openmls_test]
+fn second_join_with_consumed_key_package_fails() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("alice", ciphersuite, alice_provider);
+    let (_bob_credential_with_key, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("bob", ciphersuite, bob_provider);
+    assert!(!bob_kpb.key_package().last_resort());
+
+    let (group_1, welcome_1) = add_to_new_group(
+        ciphersuite,
+        alice_provider,
+        &alice_signer,
+        alice_credential_with_key.clone(),
+        bob_kpb.key_package(),
+    );
+    let (group_2, welcome_2) = add_to_new_group(
+        ciphersuite,
+        alice_provider,
+        &alice_signer,
+        alice_credential_with_key,
+        bob_kpb.key_package(),
+    );
+
+    let join_config = MlsGroupJoinConfig::default();
+    let staged_1 = StagedWelcome::new_from_welcome(bob_provider, &join_config, welcome_1, None)
+        .expect("error staging the first welcome");
+    let staged_2 = StagedWelcome::new_from_welcome(bob_provider, &join_config, welcome_2, None)
+        .expect("error staging the second welcome");
+
+    let bob_group_1 = staged_1
+        .into_group(bob_provider)
+        .expect("error joining the first group");
+    assert_eq!(bob_group_1.group_id(), group_1.group_id());
+
+    let err = staged_2
+        .into_group(bob_provider)
+        .expect_err("joining with a consumed KeyPackage must fail");
+    assert!(matches!(err, WelcomeError::NoMatchingKeyPackage));
+    assert!(MlsGroup::load(bob_provider.storage(), group_2.group_id())
+        .unwrap()
+        .is_none());
+}
+
+/// If deleting the KeyPackage fails after the joined group is stored,
+/// [`StagedWelcome::into_group`] still returns the group. The KeyPackage stays
+/// in storage.
+#[openmls_test]
+fn join_succeeds_when_key_package_deletion_fails() {
+    let alice_provider = &Provider::default();
+    let bob_provider = &Provider::default();
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_pk) =
+        setup_client("alice", ciphersuite, alice_provider);
+    let (_bob_credential_with_key, bob_kpb, _bob_signer, _bob_pk) =
+        setup_client("bob", ciphersuite, bob_provider);
+    let hash_ref = bob_kpb
+        .key_package()
+        .hash_ref(bob_provider.crypto())
+        .unwrap();
+
+    let (alice_group, welcome) = add_to_new_group(
+        ciphersuite,
+        alice_provider,
+        &alice_signer,
+        alice_credential_with_key,
+        bob_kpb.key_package(),
+    );
+    let staged = StagedWelcome::new_from_welcome(
+        bob_provider,
+        &MlsGroupJoinConfig::default(),
+        welcome,
+        None,
+    )
+    .expect("error staging the welcome");
+
+    let failing_storage = TestStorageProvider {
+        delegate: bob_provider.storage(),
+        errors: RefCell::new(HashMap::from([(
+            "delete_key_package",
+            vec![TestStorageError::Injected("deleting the KeyPackage")],
+        )])),
+    };
+    let failing_provider = TestProvider {
+        storage: &failing_storage,
+        crypto: bob_provider.crypto(),
+        rand: bob_provider.rand(),
+    };
+
+    let bob_group = staged
+        .into_group(&failing_provider)
+        .expect("a failed KeyPackage deletion must not fail the join");
+    assert_eq!(bob_group.group_id(), alice_group.group_id());
+    // The injected error was used, so the deletion was attempted.
+    assert!(failing_storage.errors.borrow()["delete_key_package"].is_empty());
+    assert!(
+        MlsGroup::load(bob_provider.storage(), alice_group.group_id())
+            .unwrap()
+            .is_some()
+    );
+    assert!(bob_provider
+        .storage()
+        .key_package::<_, KeyPackageBundle>(&hash_ref)
+        .unwrap()
+        .is_some());
 }
 
 #[openmls_test]
