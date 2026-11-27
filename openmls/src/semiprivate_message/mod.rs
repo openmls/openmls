@@ -16,10 +16,7 @@
 //! OpenMLS checks them; it performs no checks on this frame beyond the
 //! codec, so there is no second state to name.
 
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, DeserializeBytes as TlsDeserializeBytesTrait,
-    Serialize as TlsSerializeTrait, *,
-};
+use tls_codec::*;
 
 use openmls_traits::types::HpkeCiphertext;
 
