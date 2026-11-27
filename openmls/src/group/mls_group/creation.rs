@@ -721,8 +721,12 @@ impl StagedWelcome {
     /// Once the group is stored, this deletes the [`KeyPackage`] the
     /// [`Welcome`] was encrypted to from storage, unless it is a last-resort
     /// [`KeyPackage`]. If storing the group fails, the [`KeyPackage`] stays.
-    /// If the deletion fails, this returns [`WelcomeError::StorageError`]
-    /// even though the group is already stored.
+    /// If only the deletion fails, this still returns the stored group, and
+    /// the [`KeyPackage`] stays in storage.
+    ///
+    /// Returns [`WelcomeError::NoMatchingKeyPackage`] if the (non-last-resort)
+    /// [`KeyPackage`] is no longer in storage, for example because another
+    /// [`StagedWelcome`] for it was already turned into a group.
     ///
     /// [`Welcome`]: crate::messages::Welcome
     #[openmls_traits::maybe_async]
@@ -730,6 +734,29 @@ impl StagedWelcome {
         self,
         provider: &Provider,
     ) -> Result<MlsGroup, WelcomeError<Provider::StorageError>> {
+        // Staging leaves the KeyPackage in storage, so several Welcomes for
+        // the same KeyPackage can be staged. Only the first join may use a
+        // non-last-resort KeyPackage, so check that it is still there before
+        // writing anything.
+        let key_package_ref = match self.key_material.key_package_bundle() {
+            Some(key_package_bundle) if !key_package_bundle.key_package().last_resort() => {
+                let key_package_ref = key_package_bundle
+                    .key_package()
+                    .hash_ref(provider.crypto())?;
+                if provider
+                    .storage()
+                    .key_package::<_, KeyPackageBundle>(&key_package_ref)
+                    .await
+                    .map_err(WelcomeError::StorageError)?
+                    .is_none()
+                {
+                    return Err(WelcomeError::NoMatchingKeyPackage);
+                }
+                Some(key_package_ref)
+            }
+            _ => None,
+        };
+
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
         let group_keypairs = if let Some(path_keypairs) = self.path_keypairs {
@@ -865,20 +892,20 @@ impl StagedWelcome {
         // available. A virtual client's own KeyPackage comes with retained
         // material, which this deletes too. The binding written for the
         // joined leaf above took over its epoch reference.
-        if let Some(key_package_bundle) = self.key_material.key_package_bundle() {
-            if key_package_bundle.key_package().last_resort() {
-                log::debug!("KeyPackage has a last-resort marker, not deleting");
-            } else {
-                provider
-                    .storage()
-                    .delete_key_package(
-                        &key_package_bundle
-                            .key_package()
-                            .hash_ref(provider.crypto())?,
-                    )
-                    .await
-                    .map_err(WelcomeError::StorageError)?;
+        //
+        // The deletion is best effort: the group is already stored, so
+        // returning an error here would lose the joined group, and a retry
+        // would fail with `GroupAlreadyExists`.
+        if let Some(key_package_ref) = key_package_ref {
+            if let Err(e) = provider
+                .storage()
+                .delete_key_package(&key_package_ref)
+                .await
+            {
+                log::error!("Joined the group, but deleting the KeyPackage failed: {e:?}");
             }
+        } else if self.key_material.key_package_bundle().is_some() {
+            log::debug!("KeyPackage has a last-resort marker, not deleting");
         }
 
         Ok(mls_group)
