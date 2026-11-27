@@ -249,20 +249,41 @@ impl Commit {
     TlsSerialize,
     TlsSize,
 )]
-pub(crate) struct CommitIn {
+/// A `Commit` as received, before validation.
+///
+/// Public so that an application parsing a structure that embeds a Commit
+/// it did not build, such as the `SemiPrivateMessageContent` of
+/// draft-mahy-mls-semiprivatemessage, can decode it with
+/// [`tls_codec::Deserialize`], inspect it through the `unverified_*`
+/// accessors, and re-encode it with [`tls_codec::Serialize`].
+///
+/// Nothing read from a `CommitIn` is validated. OpenMLS validates a Commit
+/// only while processing the message that carries it, against the group's
+/// state (the sender's position in the tree, the proposals in the store,
+/// the leaf node lifetime policy), so there is no public way to turn a
+/// `CommitIn` into a validated Commit on its own.
+pub struct CommitIn {
     proposals: Vec<ProposalOrRefIn>,
     path: Option<UpdatePathIn>,
 }
 
 impl CommitIn {
-    /// Returns the proposals covered by this commit. The commit has not been
-    /// validated at this point.
-    #[cfg(feature = "extensions-draft")]
-    pub(crate) fn unverified_proposals(&self) -> &[ProposalOrRefIn] {
+    /// Returns the proposals this Commit covers, inline or by reference, in
+    /// the order they appear on the wire.
+    ///
+    /// Nothing about them has been validated beyond their encoding: inline
+    /// proposals may be invalid or unsupported, and references may not name
+    /// any proposal the group knows.
+    pub fn unverified_proposals(&self) -> &[ProposalOrRefIn] {
         &self.proposals
     }
 
-    pub(crate) fn unverified_credential(&self) -> Option<CredentialWithKey> {
+    /// Returns the credential and signature key of the leaf node in this
+    /// Commit's update path, or `None` if the Commit has no path.
+    ///
+    /// The leaf node's signature has not been checked, so this is only the
+    /// identity the committer claims, not proof of it.
+    pub fn unverified_credential(&self) -> Option<CredentialWithKey> {
         self.path.as_ref().map(|p| {
             let credential = p.leaf_node().credential().clone();
             let pk = p.leaf_node().signature_key().clone();
@@ -274,6 +295,10 @@ impl CommitIn {
     }
 
     /// Returns a [`Commit`] after successful validation.
+    // Crate-private on purpose: `Commit` and `SenderContext` are crate-only
+    // types, and the checks here are only the part of Commit validation that
+    // needs no group state. Exposing it would let callers mistake a partly
+    // checked Commit for a validated one.
     pub(crate) fn validate(
         self,
         ciphersuite: Ciphersuite,

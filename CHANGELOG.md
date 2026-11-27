@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- [#2351](https://github.com/openmls/openmls/pull/2351): `CommitIn` and `FramedContentAuthData` are public, so an application can decode, inspect and re-encode a structure that embeds an unvalidated Commit, such as the `SemiPrivateMessageContent` of draft-mahy-mls-semiprivatemessage. `CommitIn::unverified_proposals` and `CommitIn::unverified_credential` read the Commit, `FramedContentAuthData::deserialize` decodes the auth data for a given `ContentType`, and `FramedContentAuthData::signature` and `FramedContentAuthData::confirmation_tag` read it. None of these values are validated; OpenMLS validates a Commit only while processing the message that carries it, so `CommitIn::validate` stays crate-private. `Signature::as_slice` is public too, so a signature taken from `FramedContentAuthData` can be verified.
+
 ## 0.10.0 (2026-11-23)
 
 ### Added

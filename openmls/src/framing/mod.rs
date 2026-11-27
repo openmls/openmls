@@ -59,6 +59,7 @@ pub(crate) mod codec;
 pub(crate) mod message_in;
 pub(crate) mod message_out;
 pub(crate) mod mls_auth_content;
+pub use mls_auth_content::FramedContentAuthData;
 pub(crate) mod mls_auth_content_in;
 pub(crate) mod mls_content;
 pub(crate) mod mls_content_in;
