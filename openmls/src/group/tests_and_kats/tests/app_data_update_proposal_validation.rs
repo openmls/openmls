@@ -1395,6 +1395,41 @@ fn test_app_data_update_valid_remove_then_remove_absent_without_gce() {
     );
 }
 
+/// A valid Remove for one component does not end validation, so duplicate Removes for a later
+/// component are still rejected: [Remove(X), Remove(Y), Remove(Y)] without a
+/// GroupContextExtensions proposal is invalid.
+#[openmls_test]
+fn test_app_data_update_valid_remove_then_duplicate_remove_without_gce() {
+    let alice_party = CorePartyState::<Provider>::new("alice");
+    let bob_party = CorePartyState::<Provider>::new("bob");
+    let mut group_state = seeded_group(&alice_party, &bob_party, ciphersuite);
+    let [alice] = group_state.members_mut(&["alice"]);
+
+    // One Remove(Y) by reference and one inline, so they have different proposal references and
+    // both stay in the queue.
+    alice
+        .group
+        .propose_app_data_update(
+            &alice_party.provider,
+            &alice.party.signer,
+            SEEDED_Y,
+            AppDataUpdateOperation::Remove,
+        )
+        .unwrap();
+    let remove_y_by_reference = alice.group.pending_proposals().next().unwrap().clone();
+
+    let proposals = vec![
+        inline_app_data_update(alice, ciphersuite, AppDataUpdateProposal::remove(SEEDED_X)),
+        remove_y_by_reference,
+        inline_app_data_update(alice, ciphersuite, AppDataUpdateProposal::remove(SEEDED_Y)),
+    ];
+
+    assert_eq!(
+        validate_app_data_updates(alice, proposals),
+        Err(AppDataUpdateValidationError::MoreThanOneRemovePerComponentId)
+    );
+}
+
 /// A single Remove of a component with data plus Updates of other components is valid.
 #[openmls_test]
 fn test_app_data_update_remove_and_other_updates_without_gce() {
