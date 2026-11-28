@@ -12,6 +12,7 @@ Before contributing, please read the [Code of Conduct](CODE_OF_CONDUCT.md) caref
 - [Working with this repository](#working-with-this-repository)
   - [Prioritisation](#prioritisation)
   - [Patches](#patches)
+- [Policy on LLM-Assisted Submissions](#policy-on-llm-assisted-submissions)
 - [Pull Requests](#pull-requests)
   - [PR & Commit Guidelines](#pr--commit-guidelines)
   - [PR Template](#pr-template)
@@ -65,6 +66,25 @@ branch = "fix/123"
 package = "hpke-rs"
 ```
 
+## Policy on LLM-Assisted Submissions
+
+LLMs can be a helpful tool, and we do not object to contributors using them as part of their workflow for writing code or conducting security research.
+
+However, submissions to OpenMLS must meet a reasonable quality bar and remain suitable for human review.
+AI-generated content can be produced very quickly, but it frequently contains hallucinations, inaccurate claims, repetitive reports, or non-functional code.
+Reviewing these submissions requires significant maintainer time and attention.
+
+To keep our review process sustainable, we enforce the following guidelines:
+
+- **Human validation is required.** Make sure that any AI-assisted issue, pull request, or security report has been carefully checked and verified by a human before it is submitted.
+- **Provide actionable context.** Issues and PRs must include clear, verified context. Bug reports must have actual reproduction steps.
+- **Low-quality submissions will be closed.** If our maintainers determine that an issue, pull request, or security report appears to be mass-generated, low-quality, or insufficiently validated, it may be closed without detailed review or response.
+- **Use of LLM tools must be disclosed.** Contributors must disclose whether they used LLM tools for their submission and describe what they used them for.
+- **Issues and PR descriptions must not be written by an LLM.** We prefer to read human-written words in communications such as issues, PR descriptions, and comments. If your primary language is not English, you may use an LLM to translate your text into English as closely as possible. Include your original text alongside the translation.
+
+This is not a ban on AI-assisted contributions.
+It is a practical policy intended to focus our efforts on submissions that are specific, verified, and actionable.
+
 ## Pull Requests
 
 We use the Github based PR workflow.
@@ -96,6 +116,7 @@ While the prerequisites above must be satisfied prior to having your pull reques
   - How did you verify that the change has not introduced any regressions?
   - Describe the actions you performed (including buttons you clicked, text you typed, commands you ran, etc.), and describe the results you observed.
 - If this is a user-facing change please describe the changes in a single line that explains this improvement in terms that a library user can understand.
+- State whether you used LLM tools and what for, as required by the [policy on LLM-assisted submissions](#policy-on-llm-assisted-submissions).
 
 ## Styleguides
 
